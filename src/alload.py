@@ -1329,7 +1329,8 @@ def load_links(slf, lnklines):
 							slf._modpass['mtie'][ka][kb] = -2-lnkcnt
 							mtc = -1
 						elif slf._modpass['mtie'][ka][kb] == -1 and mtc != -1: mtc += 1
-						elif slf._modpass['mtie'][ka][kb] == slf._modpass['tpar'][j][1]: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
+						#elif slf._modpass['mtie'][ka][kb] == slf._modpass['tpar'][j][1]: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
+						elif slf._modpass['mtie'][ka][kb] == mtc and mtc != -1: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
 			for k in range(len(varB)):
 				if slf._modpass['tpar'][j][0] == varB[k]:
 					foundB[k] = True
