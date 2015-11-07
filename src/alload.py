@@ -223,6 +223,9 @@ def check_argflag(argflag, curcpu=None):
 			msgs.warn("For a blind analysis, you cannot save the covariance matrix.",verbose=argflag['out']['verbose'])
 			argflag['out']['covar'] = ""
 	# Perform some checks on the input parameters:
+	if argflag['plot']['only'] == True:
+		msgs.warn("When plot+only is True, you must set plot+fits to be True",verbose=argflag['out']['verbose'])
+		argflag['plot']['fits'] = True
 	if argflag['chisq']['fstep'] < 1.0: msgs.error("Setting 'fstep' in family 'run' must be >= 1.0")
 	if argflag['out']['verbose'] not in [-1,0,1,2]: msgs.error("Setting 'verbose' in family 'out' must equal -1, 0, 1, or 2.")
 	if argflag['chisq']['miniter'] > argflag['chisq']['maxiter']:
