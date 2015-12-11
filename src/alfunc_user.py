@@ -11,20 +11,20 @@
 ##########################
 
 def load_user_functions():
-	# If your function requires the atomic data used by ALIS,
-	# you need to include the name of your function in the
-	# sendatomic list: e.g. sendatomic = ['myfunc'] where
-	# 'myfunc' is given by the parameter called self._idstr
-	# in your function.
-	sendatomic = []
+    # If your function requires the atomic data used by ALIS,
+    # you need to include the name of your function in the
+    # sendatomic list: e.g. sendatomic = ['myfunc'] where
+    # 'myfunc' is given by the parameter called self._idstr
+    # in your function.
+    sendatomic = []
 
-	# Finally, add your new function to the following dictionary.
-	# The key is simply the name you give to the parameter
-	# self._idstr in your function, and the keyword arguments
-	# are a call to your function Class. For example:
-	# usrdict = dict({ 'myfunc'         : myfunction.MyFunc,
-	#                  'another'        : another_function.Another
-	#                 })
-	usrdict = dict({})
+    # Finally, add your new function to the following dictionary.
+    # The key is simply the name you give to the parameter
+    # self._idstr in your function, and the keyword arguments
+    # are a call to your function Class. For example:
+    # usrdict = dict({ 'myfunc'         : myfunction.MyFunc,
+    #                  'another'        : another_function.Another
+    #                 })
+    usrdict = dict({})
 
-	return usrdict, sendatomic
+    return usrdict, sendatomic
