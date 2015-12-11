@@ -6,6 +6,7 @@ ALIS is a versatile software package that allows you to perform a model fit to s
 # Requirements
 * python
 * numpy
+* scipy
 * matplotlib
 * astropy
 
