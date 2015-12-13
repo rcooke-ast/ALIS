@@ -2,6 +2,7 @@ import os
 import numpy as np
 import almsgs
 import alfunc_base
+from scipy.special import wofz
 #import pycuda.driver as cuda
 #import pycuda.autoinit
 #from pycuda.compiler import SourceModule
@@ -196,7 +197,8 @@ class Voigt(alfunc_base.Base) :
             cne=cold*cns
             ww=(wave*1.0e-8)/zp1
             v=wv*ww*((1.0/ww)-(1.0/wv))/bl
-            tau=cne*voigtking(v,a)
+            tau = cne*wofz(v + 1j * a).real
+            #tau = cne*voigtking(v, a)
             return np.exp(-1.0*tau)
         #############
         yout = np.zeros((pin.shape[0],wave.size))
