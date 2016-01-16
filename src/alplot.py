@@ -98,7 +98,7 @@ def make_plots_all(slf, model=None):
                 numsub += 1
                 subids[i].append(1)
     # For each spectrum that is read in, create an entry in snpid with the index for the sidlist
-    snpid=[]
+    snpid = []
     for i in range(len(slf._snipid)): snpid.append(np.where(sidlst==slf._snipid[i])[0][0])
     pages = numoplt + int(np.ceil(numsub/float(panppg)))
     panels_left=numsub
@@ -406,14 +406,17 @@ def make_plots_all(slf, model=None):
     po_wfemc = [po_wvarr, po_fxarr, po_fearr, po_mdarr, po_ctarr, po_zrarr, po_twarr, po_tlarr, po_ftarr]
     msgs.info("Prepared {0:d} panels in subplots".format(subpnl_done), verbose=slf._argflag['out']['verbose'])
     msgs.info("Prepared {0:d} panels in single plots".format(numone), verbose=slf._argflag['out']['verbose'])
-    pticks=[slf._argflag['plot']['ticks'],slf._argflag['plot']['ticklabels']]
-    if slf._argflag['plot']['fits']:
+    pticks = [slf._argflag['plot']['ticks'],slf._argflag['plot']['ticklabels']]
+    plotCasePDF = ((slf._argflag['out']['plots'].lower() == 'true') or
+                   ((slf._argflag['out']['plots'].lower() != 'false') and
+                    (slf._argflag['out']['plots'] != '')))
+    if slf._argflag['plot']['fits'] or plotCasePDF:
         numpagesA = plot_drawplots(pages-numone, ps_wfemc, pgcnt_arr, ps_disps, dspl, slf._argflag, labels=ps_labels, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=ps_yrange)
         numpagesB = plot_drawplots(numone, po_wfemc, np.ones(numone).astype(np.int), po_disps, [1,1], slf._argflag, labels=po_labels, numpages=pages-numone, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=po_yrange)
     if slf._argflag['plot']['residuals']:
         numpagesA = plot_drawresiduals(pages-numone, ps_wfemc, pgcnt_arr, ps_disps, dspl, slf._argflag, labels=ps_labels, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=ps_yrange)
         numpagesB = plot_drawresiduals(numone, po_wfemc, np.ones(numone).astype(np.int), po_disps, [1,1], slf._argflag, labels=po_labels, numpages=pages-numone, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=po_yrange)
-    if slf._argflag['plot']['fits'] and slf._argflag['plot']['residuals']:
+    if (slf._argflag['plot']['fits'] or plotCasePDF) and slf._argflag['plot']['residuals']:
         numpagesA *= 2
         numpagesB *= 2
     msgs.info("Plotted {0:d} pages".format(numpagesA+numpagesB), verbose=slf._argflag['out']['verbose'])

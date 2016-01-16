@@ -888,7 +888,7 @@ class ClassMain:
                 alsave.save_covar(self, m.covar)
             # Plot the results
             plotCasePDF = ((self._argflag['out']['plots'].lower() == 'true') or ((self._argflag['out']['plots'].lower() != 'false') and (self._argflag['out']['plots'] != '')))
-            if self._argflag['plot']['fits'] or self._argflag['plot']['residuals'] or (plotCasePDF):
+            if self._argflag['plot']['fits'] or self._argflag['plot']['residuals'] or plotCasePDF:
                 alplot.make_plots_all(self)
                 if plotCasePDF:
                     alplot.plot_pdf(self)
@@ -926,7 +926,7 @@ def alis(modelfile=None, parlines=[], datlines=[], modlines=[], lnklines=[], dat
     lines is ignored if modelfile is given
     """
     msgs.info("calling ALIS...", verbose=verbose)
-    debug = False # There are two instances of this (one is in main just below)
+    debug = False  # There are two instances of this (one is in main just below)
     if debug:
         argflag = alload.optarg(os.path.realpath(__file__), verbose=verbose)
         return ClassMain(argflag, parlines=parlines, datlines=datlines, modlines=modlines, lnklines=lnklines, modelfile=modelfile, data=data, fitonly=fitonly, verbose=verbose)
@@ -953,13 +953,13 @@ def initialise(alispath, verbose=-1):
     slf._atomic = alload.load_atomic(slf)
     slf._isonefits = False
     slf._funcarray = [None, None, None]
-    slf._funcarray[0]=alfunc_base.call(getfuncs=True, verbose=slf._argflag['out']['verbose'])
-    slf._funcarray[1]=alfunc_base.call(verbose=slf._argflag['out']['verbose'])
-    slf._funcarray[2]=alfunc_base.call(prgname=slf._argflag['run']['prognm'], getinst=True, verbose=slf._argflag['out']['verbose'],atomic=slf._atomic)
+    slf._funcarray[0] = alfunc_base.call(getfuncs=True, verbose=slf._argflag['out']['verbose'])
+    slf._funcarray[1] = alfunc_base.call(verbose=slf._argflag['out']['verbose'])
+    slf._funcarray[2] = alfunc_base.call(prgname=slf._argflag['run']['prognm'], getinst=True, verbose=slf._argflag['out']['verbose'],atomic=slf._atomic)
     return slf
 
 if __name__ == "__main__":
-    debug = False # There are two instances of this (one is in alis just above)
+    debug = False  # There are two instances of this (one is in alis just above)
     if debug:
         msgs.bug("Read in resolution from column of data",verbose=2)
         msgs.bug("With voigt function, if the user says to put an O I profile in specid A, make sure there is actually an O I line in specid A.",verbose=2)
@@ -968,8 +968,8 @@ if __name__ == "__main__":
         msgs.bug("If emission is not specified for a specid before absorption (in a model with several specid's), the specid printed as an error is always one before",verbose=2)
         argflag = alload.optarg(os.path.realpath(__file__), argv=sys.argv[1:])
         # Assign filelist:
-#		if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)
-#		else:
+#       if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)
+#       else:
         argflag['run']['modname'] = sys.argv[-1]
         ClassMain(argflag)
     else:
