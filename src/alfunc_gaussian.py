@@ -13,9 +13,9 @@ class Gaussian(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'gaussian'									# ID string for this class
         self._pnumr   = 3											# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'blind':False, 'wave':-1.0})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'blind':0,     'wave':1})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'blind':"",    'wave':""})			# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'blind':False, 'wave':-1.0, 'IntFlux':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'blind':0,     'wave':1,    'IntFlux':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'blind':"",    'wave':"",   'IntFlux':""})			# Format for the keyword. "" is the Default setting
         self._parid   = ['amplitude', 'redshift', 'dispersion']		# Name of each parameter
         self._defpar  = [ 0.0,         0.0,        100.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ None,       None,      None ]				# By default, should these parameters be fixed?
@@ -40,15 +40,18 @@ class Gaussian(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        def model(par):
+        def model(par, karr):
             """
             Define the model here
             """
-            return par[0]*np.exp(-(x-par[1])**2/(2.0*(par[2]**2)))
+            if karr['IntFlux']:
+                return (par[0]/(np.sqrt(2.0*np.pi)*par[2]))*np.exp(-(x-par[1])**2/(2.0*(par[2]**2)))
+            else:
+                return par[0]*np.exp(-(x-par[1])**2/(2.0*(par[2]**2)))
         #############
         yout = np.zeros((p.shape[0],x.size))
         for i in range(p.shape[0]):
-            yout[i,:] = model(p[i,:])
+            yout[i,:] = model(p[i,:], karr=mkey[i])
         if ae == 'em': return yout.sum(axis=0)
         else: return yout.prod(axis=0)
 
