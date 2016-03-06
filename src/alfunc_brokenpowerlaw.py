@@ -13,9 +13,9 @@ class BrokenPowerLaw(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'brokenpowerlaw'														# ID string for this class
         self._pnumr   = 5																		# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'blind':False})										# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'blind':0})											# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'blind':""})											# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False})					# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0, 'blind':0})							# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"", 'blind':""})							# Format for the keyword. "" is the Default setting
         self._parid   = ['coefficient', 'blueindex', 'redindex', 'location',   'strength']		# Name of each parameter
         self._defpar  = [ 0.0,           0.0,         0.0,        5000.0,       1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ None,          None,        None,       None,         None ]			# By default, should these parameters be fixed?
