@@ -1,17 +1,17 @@
+from __future__ import absolute_import, division, print_function
+
 import os
 import time
 import copy
-import shutil
+import warnings
 import numpy as np
 from ihooks import BasicModuleLoader as srcloader
 # ALIS code
-from alis import myfunct_wrap
 from alcsmin import alfit
-import almsgs
-import alsave
-import alplot
-import alutils
-from matplotlib import pyplot as plt
+from alis import almsgs
+from alis import alsave
+from alis import alplot
+from alis import alutils
 msgs=almsgs.msgs()
 
 def make_directory(dirname,overwrite=False,verbose=2):
@@ -23,6 +23,7 @@ def make_directory(dirname,overwrite=False,verbose=2):
     return
 
 def perturb(slf, covar, bparams, parinfo):
+    from alis.alis import myfunct_wrap
     # Decide how many characters to use for output files
     nchr = str(np.int(np.log10(slf._argflag['sim']['perturb']))+1)
     # Create the directory structure for the simulations
@@ -133,6 +134,7 @@ def perturb(slf, covar, bparams, parinfo):
 
 
 def sim_random(slf, covar, bparams, parinfo):
+    from alis.alis import myfunct_wrap
     # Decide how many characters to use for output files
     nchr = str(np.int(np.log10(slf._argflag['sim']['random']))+1)
     # Create the directory structure for the simulations
@@ -283,6 +285,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
     + choice of starting parameters
     -------------------------------
     """
+    from alis.alis import myfunct_wrap
     # Make changes to the continuum
     wavf, fluf, errf = np.array([]), np.array([]), np.array([])
     stf, enf = [0 for all in slf._posnfull], [0 for all in slf._posnfull]
@@ -472,7 +475,7 @@ def sim_weighted_polyfit(x, y, deg, rcond=None, full=False, w=None):
     # warn on rank reduction
     if rank != order and not full:
         msg = "The fit may be poorly conditioned"
-        warnings.warn(msg, pu.RankWarning)
+        #warnings.warn(msg, pu.RankWarning)
 
     if full :
         return c, [resids, rank, s, rcond]

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division, print_function
+
 import sys
 
 class Colors:
@@ -50,40 +52,40 @@ class msgs:
 
     def error(self, msg, verbose=None):
         premsg="\n"+Colors.start + Colors.white_RD + "[ERROR]   ::" + Colors.end + " "
-        print >>sys.stderr,premsg+msg
+        print(premsg+msg, file=sys.stderr)
         sys.exit()
 
     def info(self, msg, verbose=None):
         if verbose is None and self._verbose != -1:
             premsg=Colors.start + Colors.green_CL + "[INFO]    ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
         elif verbose is not None and verbose != -1:
             premsg=Colors.start + Colors.green_CL + "[INFO]    ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
 
     def warn(self, msg, verbose=None):
         if verbose is None and self._verbose != -1:
             premsg=Colors.start + Colors.red_CL   + "[WARNING] ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
         elif verbose is not None and verbose != -1:
             premsg=Colors.start + Colors.red_CL   + "[WARNING] ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
 
     def test(self, msg, verbose=None):
         if verbose is None and self._verbose != -1:
             premsg=Colors.start + Colors.white_BL   + "[TEST]    ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
         elif verbose is not None and verbose != -1:
             premsg=Colors.start + Colors.white_BL   + "[TEST]    ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
 
     def bug(self, msg, verbose=None):
         if verbose is None and self._verbose != -1:
             premsg=Colors.start + Colors.white_BK   + "[BUG]     ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
         elif verbose is not None and verbose != -1:
             premsg=Colors.start + Colors.white_BK   + "[BUG]     ::" + Colors.end + " "
-            print >>sys.stderr,premsg+msg
+            print(premsg+msg, file=sys.stderr)
 
     def input(self):
         premsg=Colors.start + Colors.blue_CL  + "[INPUT]   ::" + Colors.end + " "
