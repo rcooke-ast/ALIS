@@ -1,16 +1,19 @@
-import os
-import sys
-import imp
-import copy
-import getopt
-import astropy.io.fits as pyfits
-from astropy.io.votable.table import parse_single_table
+from __future__ import absolute_import, division, print_function
+
 import numpy as np
-import almsgs
+import os, sys, imp
+import copy
+from alis import almsgs
 from multiprocessing import cpu_count
-from matplotlib import pyplot as plt
-from ihooks import BasicModuleLoader as srcloader
 msgs=almsgs.msgs()
+
+from astropy.io import fits as pyfits
+
+
+try:
+    from xastropy.xutils import xdebug as debugger
+except:
+    import pdb as debugger
 
 def cpucheck(ncpu,curcpu=0,verbose=2):
     cpucnt=cpu_count()
@@ -40,40 +43,53 @@ def cpucheck(ncpu,curcpu=0,verbose=2):
     return ncpu
 
 
-def usage(argflag):
-    print "\n#####################################################################"
-    print msgs.alisheader(argflag['run']['prognm'],verbose=2)
-    print "##  -----------------------------------------------------------------"
-    print "##  Options: (default values in brackets)"
-    print "##   -c or --cpus      : (all) Number of cpu cores to use"
-    print "##   -f or --fits      : Write model fits to *.dat files"
-    print "##   -g or --gpu       : enable GPU multiprocessing"
-    print "##   -h or --help      : Print this message"
-    print "##   -j or --justplot  : Plot the data and input model - don't fit"
-    print "##   -l or --labels    : Label absorption components when plotting"
-    print "##   -m or --model     : Write an output model with fitting results"
-    print "##   -p or --plot      : ({0:s}) plot model fits with MxN panels,".format(argflag['plot']['dims'])
-    print "##                             for no screen plots use: -p 0"
-    print "##   -r or random      : Number of random simulations to perform"
-    print "##   -s or --startid   : Starting ID number for the simulations"
-    print "##   -v or --verbose   : (2) Level of verbosity (0-2)"
-    print "##   -w or --writeover : If output files exist, write over them"
-    print "##   -x or --xaxis     : (0) Plot observed/rest wavelength [0/1]"
-    print "##                           or velocity [2]"
-    print "##  -----------------------------------------------------------------"
-    print "##  {0:s}".format(argflag['run']['last_update'])
-    print "#####################################################################\n"
-    sys.exit()
+def usage(name):
+    """ Header for parser
+    Parameters
+    ----------
+    argflag
+
+    Returns
+    -------
+    descs : str
+
+    """
+    #print "\n#####################################################################"
+    descs =  msgs.alisheader(name, verbose=2)
+    #descs += "\n##  -----------------------------------------------------------------"
+    #descs += "\n##  Options: (default values in brackets)"
+    #descs += "\n##   -c or --cpus      : (all) Number of cpu cores to use"
+    #descs += "\n##   -f or --fits      : Write model fits to *.dat files"
+    #descs += "\n##   -g or --gpu       : enable GPU multiprocessing"
+    #descs += "\n##   -h or --help      : Print this message"
+    #descs += "\n##   -j or --justplot  : Plot the data and input model - don't fit"
+    #descs += "\n##   -l or --labels    : Label absorption components when plotting"
+    #descs += "\n##   -m or --model     : Write an output model with fitting results"
+    #descs += "\n##   -p or --plot      : ('2x3') plot model fits with MxN panels,"
+    #descs += "\n##                             for no screen plots use: -p 0"
+    #descs += "\n##   -r or random      : Number of random simulations to perform"
+    #descs += "\n##   -s or --startid   : Starting ID number for the simulations"
+    #descs += "\n##   -v or --verbose   : (2) Level of verbosity (0-2)"
+    #descs += "\n##   -w or --writeover : If output files exist, write over them"
+    #descs += "\n##   -x or --xaxis     : (0) Plot observed/rest wavelength [0/1]"
+    #descs += "\n##                           or velocity [2]"
+    #descs += "\n##  -----------------------------------------------------------------"
+    #descs += "\n##  {0:s}".format(argflag['run']['last_update'])
+    #descs += "\n#####################################################################\n"
+    #sys.exit()
+    # Return
+    return descs
 
 def optarg(pathname, argv=None, verbose=2):
 
     # Load the default settings
     prgn_spl = pathname.split('/')
     fname = ""
-    for i in range(0,len(prgn_spl)-1): fname += prgn_spl[i]+"/"
+    for i in range(0,len(prgn_spl)-2): fname += prgn_spl[i]+"/"
     fname += 'settings.alis'
     argflag = load_settings(fname,verbose=verbose)
-    argflag['run']['prognm'] = pathname
+    argflag['run']['prognm'] = __file__  #pathname
+    """
     if argv is not None:
         # Load options from command line
         try:
@@ -94,22 +110,22 @@ def optarg(pathname, argv=None, verbose=2):
         except getopt.GetoptError, err:
             msgs.error(err.msg)
             usage(argflag)
-        plxaxis = ['observed','rest','velocity']
-        for o,a in opt:
-            if   o in ('-h', '--help')      : usage(argflag)
-            elif o in ('-c', '--cpus')      : argflag['run']['ncpus']     = a
-            elif o in ('-g', '--gpu')       : argflag['run']['ngpus']     = a
-            elif o in ('-p', '--plot')      : argflag['plot']['dims']   = a
-            elif o in ('-x', '--xaxis')     : argflag['plot']['xaxis']     = plxaxis[a]
-            elif o in ('-j', '--justplot')  : argflag['plot']['only']      = True
-            elif o in ('-l', '--labels')    : argflag['plot']['labels']    = True
-            elif o in ('-v', '--verbose')   : argflag['out']['verbose']   = int(a)
-            elif o in ('-r', '--random')    : argflag['sim']['random']    = int(a)
-            elif o in ('-s', '--startid')   : argflag['sim']['startid']   = int(a)
-            elif o in ('-f', '--fits')      : argflag['out']['fits']      = True
-            elif o in ('-m', '--model')     : argflag['out']['model']     = True
-            elif o in ('-w', '--writeover') : argflag['out']['overwrite'] = True
-
+    """
+    plxaxis = ['observed','rest','velocity']
+    argflag['run']['ncpus']   = argv.cpus
+    argflag['run']['ngpus']   = argv.gpu
+    argflag['plot']['dims']   = argv.plot
+    argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
+    argflag['plot']['only']   = argv.justplot
+    argflag['plot']['labels']  = argv.labels
+    argflag['out']['verbose']  = argv.verbose
+    if argv.random > 0:
+        argflag['sim']['random']   = argv.random
+    if argv.startid > 0:
+        argflag['sim']['startid']  = argv.startid
+    argflag['out']['fits']     = argv.fits
+    argflag['out']['model']    = argv.model
+    argflag['out']['overwrite'] = argv.writeover
     #######################
     # Now do some checks: #
     #######################
@@ -361,6 +377,8 @@ def load_atomic(slf):
     """
     Load the atomic transitions data
     """
+    from astropy.io.votable import parse_single_table
+
     prgname, atmname = slf._argflag['run']['prognm'], slf._argflag['run']['atomic']
     msgs.info("Loading atomic data", verbose=slf._argflag['out']['verbose'])
     prgn_spl = prgname.split('/')
@@ -1362,17 +1380,17 @@ def load_onefits(slf,loadname):
     except:
         msgs.error("The input file is a fits file, but not an ALIS onefits file."+msgs.newline()+"ALIS does not accept models with extension *.fits unless it"+msgs.newline()+"is an ALIS onefits file. The offending filename is:"+msgs.newline()+loadname)
     msgs.info("You have input an ALIS onefits file. What would you like to do?", verbose=slf._argflag['out']['verbose'])
-    print ""
-    print "  (1) Plot the starting model"
-    print "  (2) Plot the best-fitting model"
-    print "  (3) Print the best-fitting model"
-    print "  (4) Re-run the fit"
-    print "  (5) Extract the .mod file and the data"
+    print("")
+    print("  (1) Plot the starting model")
+    print("  (2) Plot the best-fitting model")
+    print("  (3) Print the best-fitting model")
+    print("  (4) Re-run the fit")
+    print("  (5) Extract the .mod file and the data")
 #	print "  (6) Plot the best-fitting model"
 #	print "  (7) Plot the best-fitting model"
 #	print "  (8) Plot the best-fitting model"
 #	print "  (9) Plot the best-fitting model"
-    print ""
+    print("")
     ans=0
     while ans not in [1,2,3,4,5]:
         ans = raw_input(msgs.input()+"Please select an option (1,2,3,4,5) - ")
@@ -1380,7 +1398,7 @@ def load_onefits(slf,loadname):
             ans = int(ans)
         except:
             pass
-    print ""
+    print("")
     ###########################
     ###  Plot the best-fitting model
     ###################
@@ -1414,7 +1432,7 @@ def load_onefits(slf,loadname):
             output  = ''.join(chr(int(i)) for i in toutput.split(","))
         except:
             msgs.error("The onefits file is corrupt")
-        print output
+        print(output)
         sys.exit()
     ###########################
     ###  Re-run the fit
@@ -1553,7 +1571,7 @@ def load_subpixels(slf, parin):
             elif slf._datopt['bintype'][sp][sn] == "A":
                 interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
-            else: msgs.bug("Bintype "+bintype+" is unknown",verbose=slf._argflag['out']['verbose'])
+            else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
             if np.all(1.0-slf._contfull[sp][ll:lu]): # No continuum is provided -- no interpolation is necessary

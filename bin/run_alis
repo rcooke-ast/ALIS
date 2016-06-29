@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+#
+# See top-level LICENSE file for Copyright information
+#
+# -*- coding: utf-8 -*-
+
+
+"""
+This script runs PYPIT
+"""
+import alis.scripts.run_alis as run_alis
+
+if __name__ == '__main__':
+    args = run_alis.parser()
+    run_alis.main(args)

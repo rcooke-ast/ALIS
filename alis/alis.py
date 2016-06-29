@@ -1,7 +1,6 @@
-#!/usr/bin/env python
+""" Absorption LIne Software
 """
-Absorption LIne Software
-"""
+from __future__ import absolute_import, division, print_function
 
 # Import standard libraries
 import os
@@ -14,15 +13,15 @@ import traceback
 import numpy as np
 from ihooks import BasicModuleLoader as srcloader
 # Import a Chi-Squared minimisation package
-from alcsmin import alfit
+from alis.alcsmin import alfit
 # Import useful ALIS definitions:
-import alconv
-import alload
-import alplot
-import alsave
-import alutils
-import alfunc_base
-import almsgs
+from alis import alconv
+from alis import alload
+from alis import alplot
+from alis import alsave
+from alis import alutils
+from alis import alfunc_base
+from alis import almsgs
 msgs = almsgs.msgs()
 
 #from multiprocessing import Pool as mpPool
@@ -879,16 +878,16 @@ class ClassMain:
             if self._argflag['out']['sm']:
                 msgs.error("Sorry, supermongo generated files are not implemented yet")
                 msgs.info("Generating Supermongo files to plot the output",verbose=self._argflag['out']['verbose'])
-                alsave.save_smfiles(self._modname_dla, fnames, elnames, elwaves, comparr, rdshft)
+                #alsave.save_smfiles(self._modname_dla, fnames, elnames, elwaves, comparr, rdshft)
             # Write an output of the parameters for the best-fitting model
             if self._argflag['run']['blind'] and m.status != -20:
                 if self._argflag['run']['convergence']:
                     if mc.status != -20 and mpars.status != -20:
                         msgs.info("Printing out the parameter errors:",verbose=self._argflag['out']['verbose'])
-                        print alsave.print_model(m.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray)
+                        print(alsave.print_model(m.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray))
                 else:
                     msgs.info("Printing out the parameter errors:",verbose=self._argflag['out']['verbose'])
-                    print alsave.print_model(m.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray)
+                    print(alsave.print_model(m.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray))
             if self._argflag['out']['model']:
                 fit_info=[(self._tend - self._tstart)/3600.0, m.fnorm, m.dof, m.niter, m.status]
                 alsave.save_model(self, m.params, m.perror, fit_info)
@@ -910,13 +909,13 @@ class ClassMain:
             msgs.info("Total fitting time in hours: %s" % ((self._tend - self._tstart)/3600.0),verbose=self._argflag['out']['verbose'])
             # If simulations were requested, do them now
             if self._argflag['sim']['random'] != None:
-                import alsims
+                from alis import alsims
                 if m.perror is None or m.perror is m.params: msgs.warn("Fitting routine interrupted. Cannot perform simulations",verbose=self._argflag['out']['verbose'])
                 else:
                     msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
                     alsims.sim_random(self, m.covar, m.params, parinfo)
             elif self._argflag['sim']['perturb'] != None:
-                import alsims
+                from alis import alsims
                 if m.perror is None or m.perror is m.params: msgs.warn("Fitting routine interrupted. Cannot perform simulations",verbose=self._argflag['out']['verbose'])
                 else:
                     msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
@@ -965,42 +964,4 @@ def initialise(alispath, verbose=-1):
     slf._funcarray[1] = alfunc_base.call(verbose=slf._argflag['out']['verbose'])
     slf._funcarray[2] = alfunc_base.call(prgname=slf._argflag['run']['prognm'], getinst=True, verbose=slf._argflag['out']['verbose'],atomic=slf._atomic)
     return slf
-
-if __name__ == "__main__":
-    debug = False  # There are two instances of this (one is in alis just above)
-    if debug:
-        msgs.bug("Read in resolution from column of data",verbose=2)
-        msgs.bug("With voigt function, if the user says to put an O I profile in specid A, make sure there is actually an O I line in specid A.",verbose=2)
-        msgs.bug("Prepare a separate .py file for user-created functions",verbose=2)
-        msgs.bug("Assign a number to every warning and error -- describe this in the manual",verbose=2)
-        msgs.bug("If emission is not specified for a specid before absorption (in a model with several specid's), the specid printed as an error is always one before",verbose=2)
-        argflag = alload.optarg(os.path.realpath(__file__), argv=sys.argv[1:])
-        # Assign filelist:
-#       if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)
-#       else:
-        argflag['run']['modname'] = sys.argv[-1]
-        ClassMain(argflag)
-    else:
-        try:
-            argflag = alload.optarg(os.path.realpath(__file__), argv=sys.argv[1:])
-            # Assign filelist:
-#			if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)
-#			else:
-            argflag['run']['modname'] = sys.argv[-1]
-            ClassMain(argflag)
-        except Exception:
-            # There is a bug in the code, print the file and line number of the error.
-            et, ev, tb = sys.exc_info()
-            while tb:
-                co = tb.tb_frame.f_code
-                filename = str(co.co_filename)
-                line_no =  str(traceback.tb_lineno(tb))
-                tb = tb.tb_next
-            filename=filename.split('/')[-1]
-            msgs.bug("There appears to be a bug on Line "+line_no+" of "+filename+" with error:"+msgs.newline()+str(ev)+msgs.newline()+"---> please contact the author",verbose=2)
-        except SystemExit:
-            # The code has found an error in the user input and terminated early.
-            pass
-        except:
-            msgs.bug("There appears to be an undefined (and therefore unhelpful) bug"+msgs.newline()+"---> please contact the author",verbose=2)
 
