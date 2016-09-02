@@ -12,10 +12,6 @@ from distutils.extension import Extension
 #from distutils.command.sdist import sdist as DistutilsSdist
 from setuptools import setup
 #
-# DESI support code.
-#
-#from desiutil.setup import DesiTest, DesiVersion, get_version
-#
 # Begin setup
 #
 setup_keywords = dict()
@@ -25,7 +21,7 @@ setup_keywords = dict()
 setup_keywords['name'] = 'alis'
 setup_keywords['description'] = 'ALIS'
 setup_keywords['author'] = 'Ryan Cooke'
-setup_keywords['author_email'] = 'rcooke@durham'
+setup_keywords['author_email'] = 'rcooke.ast@gmail.com'
 setup_keywords['license'] = 'BSD'
 setup_keywords['url'] = 'https://github.com/rcooke-ast/ALIS'
 #
@@ -54,19 +50,16 @@ setup_keywords['requires'] = ['Python (>2.7.0)']
 setup_keywords['zip_safe'] = False
 setup_keywords['use_2to3'] = True
 setup_keywords['packages'] = ['alis'] #find_packages('alis')
-#setup_keywords['package_dir'] = {'':''}
-#setup_keywords['cmdclass'] = {'version': DesiVersion, 'test': DesiTest, 'sdist': DistutilsSdist}
-#setup_keywords['test_suite']='{name}.tests.{name}_test_suite.{name}_test_suite'.format(**setup_keywords)
 """
 setup_keywords['setup_requires']=['pytest-runner']
 setup_keywords['tests_require']=['pytest']
 """
 
 # Cython
-import numpy, os
-from Cython.Distutils import build_ext
-from Cython.Build import cythonize
-from distutils.extension import Extension
+# import numpy, os
+# from Cython.Distutils import build_ext
+# from Cython.Build import cythonize
+# from distutils.extension import Extension
 
 """
 include_gsl_dir = os.getenv('GSL_PATH')+'/include/'
@@ -93,30 +86,6 @@ for pyx_file in pyx_files:
 
 setup_keywords['cmdclass']={'build_ext': build_ext}
 """
-
-# Autogenerate command-line scripts.
-#
-# setup_keywords['entry_points'] = {'console_scripts':['desiInstall = desiutil.install.main:main']}
-
-#
-# Add internal data directories.
-#
-
-data_files = []
-
-# walk through the data directory, adding all files
-data_generator = os.walk('alis/data')
-for path, directories, files in data_generator:
-    for f in files:
-        data_path = '/'.join(path.split('/')[1:])
-        data_files.append(data_path + '/' + f)
-# add pipeline and spectrograph settings
-settings = glob.glob('alis/settings/settings.*')
-settings = ['/'.join(path.split('/')[1:]) for path in settings]
-data_files.extend(settings)
-setup_keywords['package_data'] = {'alis': data_files,
-                                  '': ['*.rst', '*.txt']}
-setup_keywords['include_package_data'] = True
 
 #
 # Run setup command.
