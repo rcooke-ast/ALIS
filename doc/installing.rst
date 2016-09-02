@@ -51,7 +51,7 @@ Installing ALIS
 It is recommended that you grab the ALIS code from github::
 
 	#go to the directory where you would like to install ALIS.
-	git clone https://github.com/ALIS.git
+	git clone https://github.com/rcooke-ast/ALIS.git
 
 From there, you can build and install either with install or develop, e.g.::
 
