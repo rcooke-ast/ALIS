@@ -33,7 +33,7 @@ It is recommended that you use `Anaconda <https://www.continuum.io/downloads/>`_
 
 If you are using Anaconda, you can check the presence of these packages with::
 
-	conda list "^python$|numpy|astropy$|scipy$|matplotlib"
+	conda list "python|numpy|astropy|scipy|matplotlib"
 
 If the packages have been installed, this command should print out all the packages and their version numbers.
 
