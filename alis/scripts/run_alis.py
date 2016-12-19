@@ -20,18 +20,18 @@ def parser(options=None):
     parser = argparse.ArgumentParser(description=alload.usage('ALIS'),
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("alis_modfile", type=str, help="ALIS mod file (.mod extension)")
-    parser.add_argument("-c", "--cpus", type=int, default=1, help="(all) Number of cpu cores to use")
+    parser.add_argument("-c", "--cpus", type=int, help="(all) Number of cpu cores to use")
     parser.add_argument("-g", "--gpu", default=False, help="enable GPU multiprocessing", action="store_true")
-    parser.add_argument("-p", "--plot", type=str, default='',
+    parser.add_argument("-p", "--plot", type=str, 
                         help="({0:s}) plot model fits with MxN panels,\n".format('3x3')+"for no screen plots use: -p 0")
-    parser.add_argument("-x", "--xaxis", type=int, default=0,
+    parser.add_argument("-x", "--xaxis", type=int,
                         help="(0) Plot observed/rest wavelength [0/1] or velocity [2]")
     parser.add_argument("-j", "--justplot", default=False, action="store_true",
                         help="Plot the data and input model - don't fit")
     parser.add_argument("-l", "--labels", default=False, help="Label the absorption components when plotting", action="store_true")
-    parser.add_argument("-v", "--verbose", type=int, default=2, help="(2) Level of verbosity (0-2)")
-    parser.add_argument("-r", "--random", type=int, default=0, help="Number of random simulations to perform")
-    parser.add_argument("-s", "--startid", type=int, default=0, help="Starting ID for the simulations")
+    parser.add_argument("-v", "--verbose", type=int, help="(2) Level of verbosity (0-2)")
+    parser.add_argument("-r", "--random", type=int, help="Number of random simulations to perform")
+    parser.add_argument("-s", "--startid", type=int, help="Starting ID for the simulations")
     parser.add_argument("-f", "--fits", default=False, help="Write model fits to *.dat files", action="store_true")
     parser.add_argument("-m", "--model", default=False, help="Model", action="store_true")
     parser.add_argument("-w", "--writeover", default=False, help="Clobber", action="store_true")

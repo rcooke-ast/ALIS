@@ -112,20 +112,30 @@ def optarg(pathname, argv=None, verbose=2):
             usage(argflag)
     """
     plxaxis = ['observed','rest','velocity']
-    argflag['run']['ncpus']   = argv.cpus
-    argflag['run']['ngpus']   = argv.gpu
-    argflag['plot']['dims']   = argv.plot
-    argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
-    argflag['plot']['only']   = argv.justplot
-    argflag['plot']['labels']  = argv.labels
-    argflag['out']['verbose']  = argv.verbose
-    if argv.random > 0:
+    if argv.cpus is not None:
+        argflag['run']['ncpus']   = argv.cpus
+    if argv.gpu:
+        argflag['run']['ngpus']   = argv.gpu
+    if argv.plot is not None:
+        argflag['plot']['dims']   = argv.plot
+    if argv.xaxis is not None:
+        argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
+    if argv.justplot:
+        argflag['plot']['only']   = argv.justplot
+    if argv.labels:
+        argflag['plot']['labels']  = argv.labels
+    if argv.verbose is not None:
+        argflag['out']['verbose']  = argv.verbose
+    if argv.random is not None:
         argflag['sim']['random']   = argv.random
-    if argv.startid > 0:
+    if argv.startid is not None:
         argflag['sim']['startid']  = argv.startid
-    argflag['out']['fits']     = argv.fits
-    argflag['out']['model']    = argv.model
-    argflag['out']['overwrite'] = argv.writeover
+    if argv.fits:
+        argflag['out']['fits']     = argv.fits
+    if argv.model:
+        argflag['out']['model']    = argv.model
+    if argv.writeover:
+        argflag['out']['overwrite'] = argv.writeover
     #######################
     # Now do some checks: #
     #######################
