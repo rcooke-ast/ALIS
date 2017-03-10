@@ -5,7 +5,6 @@ import time
 import copy
 import warnings
 import numpy as np
-from ihooks import BasicModuleLoader as srcloader
 # ALIS code
 from alcsmin import alfit
 from alis import almsgs
@@ -311,6 +310,11 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
                 path, file = os.path.split(filename)
                 name, ext = os.path.splitext(file)
                 # Set the import loader
+                try:
+                    from ihooks import BasicModuleLoader as srcloader
+                except ImportError:
+                    msgs.error("Cannot call user-defined function without 'ihooks' module installed." + msgs.newline() +
+                               "Install ihooks to continue (note: ihooks is currently only supported in python 2.*)")
                 impload = srcloader()
                 modu = impload.find_module_in_dir(name, path)
                 if not modu: msgs.error("Could not import {0:s}".format(name))
