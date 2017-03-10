@@ -11,7 +11,6 @@ import signal
 import warnings
 import traceback
 import numpy as np
-from ihooks import BasicModuleLoader as srcloader
 # Import a Chi-Squared minimisation package
 from alis.alcsmin import alfit
 # Import useful ALIS definitions:
@@ -698,6 +697,11 @@ class ClassMain:
             path, file = os.path.split(filename)
             name, ext = os.path.splitext(file)
             # Set the import loader
+            try:
+                from ihooks import BasicModuleLoader as srcloader
+            except ImportError:
+                msgs.error("Cannot iterate model without 'ihooks' module installed." + msgs.newline() +
+                           "Install ihooks to continue (note: ihooks is currently only supported in python 2.*)")
             impload = srcloader()
             modu = impload.find_module_in_dir(name, path)
             if not modu: msgs.error("Could not import {0:s}".format(name))
