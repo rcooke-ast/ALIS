@@ -65,7 +65,12 @@ def save_asciifits(fname, slf, arr, model):
             msgs.bug("I didn't expect the keyword '{0:s}' when saving fits file -".format(i)+msgs.newline()+fname+".dat")
     data[:,-1] = model
     # Save the file
-    np.savetxt(fname+".dat", data )
+    dirname = os.path.dirname(fname + ".dat")
+    if dirname != '':
+        # Check the directory exists
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+    np.savetxt(fname + ".dat", data)
     return
 
 def save_fitsfits(fname, slf, arr, model):
