@@ -88,6 +88,25 @@ setup_keywords['cmdclass']={'build_ext': build_ext}
 """
 
 #
+# Add internal data directories.
+#
+
+data_files = []
+
+# walk through the data directory, adding all files
+data_generator = os.walk('alis/data')
+for path, directories, files in data_generator:
+    for f in files:
+        data_path = '/'.join(path.split('/')[1:])
+        data_files.append(data_path + '/' + f)
+settings = glob.glob('alis/data/settings.*')
+settings = ['/'.join(path.split('/')[1:]) for path in settings]
+data_files.extend(settings)
+setup_keywords['package_data'] = {'alis': data_files,
+                                  '': ['*.rst', '*.txt']}
+setup_keywords['include_package_data'] = True
+
+#
 # Run setup command.
 #
 setup(**setup_keywords)
