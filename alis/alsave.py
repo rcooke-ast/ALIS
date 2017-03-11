@@ -8,7 +8,8 @@ import astropy.io.fits as pyfits
 from matplotlib import pyplot as plt
 from matplotlib import cm as pltcm
 from alutils import getreason
-msgs=almsgs.msgs()
+msgs = almsgs.msgs()
+
 
 def file_exists(slf, filename):
     """
@@ -25,6 +26,7 @@ def file_exists(slf, filename):
                 filename = fileend
                 if os.path.exists(filename): ans = ''
     return ans, filename
+
 
 def save_asciifits(fname, slf, arr, model):
     """
@@ -63,7 +65,7 @@ def save_asciifits(fname, slf, arr, model):
             data[:,num] = np.zeros(lu-ll)
         else:
             msgs.bug("I didn't expect the keyword '{0:s}' when saving fits file -".format(i)+msgs.newline()+fname+".dat")
-    data[:,-1] = model
+    data[:, -1] = model
     # Save the file
     dirname = os.path.dirname(fname + ".dat")
     if dirname != '':
@@ -72,6 +74,7 @@ def save_asciifits(fname, slf, arr, model):
             os.makedirs(dirname)
     np.savetxt(fname + ".dat", data)
     return
+
 
 def save_fitsfits(fname, slf, arr, model):
     """
@@ -128,6 +131,7 @@ def save_fitsfits(fname, slf, arr, model):
             if ans == 'y': os.remove(fname+".fits")
     if ans == 'y': hdulist.writeto(fname+".fits")
     return
+
 
 def save_onefits(fname, slf):
     """
@@ -242,6 +246,7 @@ def save_onefits(fname, slf):
     if ans == 'y': hdulist.writeto(fname+".fits")
     return
 
+
 def save_modelfits(slf):
     msgs.info("Writing out the model fits", verbose=slf._argflag['out']['verbose'])
     stf = 0
@@ -344,6 +349,7 @@ def save_modelfits(slf):
         return slf, fnames
     else:
         return fnames
+
 
 def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=False, verbose=2, funcarray=[None,None,None]):
     function=funcarray[0]
@@ -577,6 +583,7 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
         sendstr += "\n"+shestring.replace("#Shift\n","")+"\n"
         return sendstr
 
+
 def save_covar(slf, covar):
     """
     Save the covariance matrix into an output ascii file
@@ -639,6 +646,7 @@ def save_covar(slf, covar):
         msgs.info("Saved image of covariance matrix to:"+msgs.newline()+filename.rstrip(fnspl[-1])+'png', verbose=slf._argflag['out']['verbose'])
     return
 
+
 def modlines(slf, params, mp, reletter=False, blind=False, verbose=2):
     level=0
     linesarr = []
@@ -658,6 +666,7 @@ def modlines(slf, params, mp, reletter=False, blind=False, verbose=2):
         if mp['emab'][i] == "zl": donezl.append(outstr) # Make sure we don't print zerolevel more than once.
         if aetag != 'convolution' and outstr not in donezl: linesarr += [outstr]
     return linesarr
+
 
 def save_smfiles(filename, fnames, elnames, elwaves, elcomps, rdshft):
     pages = int(np.ceil((elnames.size+3.0)/24.0))
