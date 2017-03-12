@@ -55,11 +55,11 @@ def main(args):
 
     debug = True # There are two instances of this (one is in alis just above)
     if debug:
-        msgs.bug("Read in resolution from column of data",verbose=2)
-        msgs.bug("With voigt function, if the user says to put an O I profile in specid A, make sure there is actually an O I line in specid A.",verbose=2)
-        msgs.bug("Prepare a separate .py file for user-created functions",verbose=2)
-        msgs.bug("Assign a number to every warning and error -- describe this in the manual",verbose=2)
-        msgs.bug("If emission is not specified for a specid before absorption (in a model with several specid's), the specid printed as an error is always one before",verbose=2)
+        msgs.work("Read in resolution from column of data",verbose=2)
+        msgs.work("With voigt function, if the user says to put an O I profile in specid A, make sure there is actually an O I line in specid A.",verbose=2)
+        msgs.work("Prepare a separate .py file for user-created functions",verbose=2)
+        msgs.work("Assign a number to every warning and error -- describe this in the manual",verbose=2)
+        msgs.work("If emission is not specified for a specid before absorption (in a model with several specid's), the specid printed as an error is always one before",verbose=2)
         argflag = alload.optarg(os.path.realpath(__file__), argv=args)
         # Assign filelist:
 #       if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)

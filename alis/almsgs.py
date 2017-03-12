@@ -15,6 +15,7 @@ class Colors:
     # Clear Backgrounds
     black_CL  = "1;30m"
     blue_CL   = "1;34m"
+    yellow_CL = "1;33m"
     green_CL  = "1;32m"
     red_CL    = "1;31m"
     purple_CL = "1;35m"
@@ -86,6 +87,17 @@ class msgs:
         elif verbose is not None and verbose != -1:
             premsg=Colors.start + Colors.white_BK   + "[BUG]     ::" + Colors.end + " "
             print(premsg+msg, file=sys.stderr)
+
+    def work(self, msg, verbose=None):
+        if verbose is None and self._verbose != -1:
+            premsgp = Colors.start + Colors.black_CL + "[WORK IN ]::" + Colors.end + "\n"
+            premsgs = Colors.start + Colors.yellow_CL + "[PROGRESS]::" + Colors.end + " "
+            print(premsgp + premsgs + msg, file=sys.stderr)
+        elif verbose is not None and verbose != -1:
+            premsgp = Colors.start + Colors.black_CL + "[WORK IN ]::" + Colors.end + "\n"
+            premsgs = Colors.start + Colors.yellow_CL + "[PROGRESS]::" + Colors.end + " "
+            print(premsgp + premsgs + msg, file=sys.stderr)
+        return
 
     def input(self):
         premsg=Colors.start + Colors.blue_CL  + "[INPUT]   ::" + Colors.end + " "
