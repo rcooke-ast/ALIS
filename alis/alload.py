@@ -5,7 +5,7 @@ import os, sys, imp
 import copy
 from alis import almsgs
 from multiprocessing import cpu_count
-msgs=almsgs.msgs()
+msgs = almsgs.msgs()
 
 from astropy.io import fits as pyfits
 
@@ -14,6 +14,7 @@ try:
     from xastropy.xutils import xdebug as debugger
 except:
     import pdb as debugger
+
 
 def cpucheck(ncpu,curcpu=0,verbose=2):
     cpucnt=cpu_count()
@@ -80,14 +81,16 @@ def usage(name):
     # Return
     return descs
 
+
 def optarg(pathname, argv=None, verbose=2):
 
     # Load the default settings
     prgn_spl = pathname.split('/')
     fname = ""
-    for i in range(0,len(prgn_spl)-2): fname += prgn_spl[i]+"/"
-    fname += 'settings.alis'
-    argflag = load_settings(fname,verbose=verbose)
+    for i in range(0, len(prgn_spl)-2):
+        fname += prgn_spl[i]+"/"
+    fname += 'data/settings.alis'
+    argflag = load_settings(fname, verbose=verbose)
     argflag['run']['prognm'] = __file__  #pathname
     """
     if argv is not None:
@@ -196,6 +199,7 @@ def set_params(lines, argflag, setstr=""):
         else: msgs.error(setstr + "Settings contains bad line (arg 1):"+msgs.newline()+lines[i].split('#')[0].strip())
     return argflag
 
+
 def load_settings(fname,verbose=2):
     def initialise():
         """
@@ -212,7 +216,7 @@ def load_settings(fname,verbose=2):
         return argflag
 
     # Read in the default settings
-    msgs.info("Loading the default settings",verbose=verbose)
+    msgs.info("Loading the default settings", verbose=verbose)
     argflag = initialise()
     infile = open(fname, 'r')
     lines = infile.readlines()
@@ -394,6 +398,7 @@ def load_atomic(slf):
     prgn_spl = prgname.split('/')
     fname = ""
     for i in range(0,len(prgn_spl)-1): fname += prgn_spl[i]+"/"
+    fname += "data/"
     # If the user specifies the atomic data file, make sure that it exists
     if os.path.exists(fname+atmname):
         msgs.info("Using atomic datafile:"+msgs.newline()+fname+atmname, verbose=slf._argflag['out']['verbose'])
@@ -1513,6 +1518,7 @@ def load_onefits(slf,loadname):
     else:
         msgs.error("Sorry - option {0:d} is not implemented yet".format(ans))
 
+
 def load_subpixels(slf, parin):
     nexbins = []
     modtyp=[[] for all in slf._posnfull]
@@ -1694,6 +1700,7 @@ def load_par_influence(slf, parin):
 #	return opinfl
     return [opinfl,pinfl]
 
+
 def get_binsize(wave, bintype="km/s", maxonly=True, verbose=2):
     binsize  = np.zeros((2,wave.size))
     binsizet = wave[1:] - wave[:-1]
@@ -1706,6 +1713,7 @@ def get_binsize(wave, bintype="km/s", maxonly=True, verbose=2):
     binsize = binsize.min(0)
     if maxonly: return np.max(binsize)
     else: return binsize
+
 
 def load_parinfo(slf):
     # Set up parameter dictionary
@@ -1740,6 +1748,7 @@ def load_parinfo(slf):
             slf._modpass['p0'][i], parinfo[i]['value'] = newval, newval
     return parinfo, levadd
 
+
 def load_tied(p, ptied=None, infl=None):
     ###############
     if infl is None:
@@ -1762,6 +1771,7 @@ def load_tied(p, ptied=None, infl=None):
             except:
                 msgs.error("Unable to set a tied parameter to the expression:"+msgs.newline()+ptied[i]+msgs.newline()+"There may be an undefined variable in the links")
     return p
+
 
 def getis(string, ival, infl, retlhs=True):
     strspl = (" "+string).split("p[")
