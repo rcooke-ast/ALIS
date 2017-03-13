@@ -421,7 +421,7 @@ def load_atomic(slf):
     # elK = Kvalue
     # elname = Element
     # elmass = AtomicMass
-    atmdata['Ion'] = np.array(isotope+"_"+table.array['Ion'])
+    atmdata['Ion'] = np.array(isotope+b"_"+table.array['Ion'])
     atmdata['Wavelength'] = np.array(table.array['RestWave'])
     atmdata['fvalue'] = np.array(table.array['fval'])
     atmdata['Gamma'] = np.array(table.array['Gamma'])
