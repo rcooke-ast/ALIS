@@ -102,6 +102,9 @@ for path, directories, files in data_generator:
 settings = glob.glob('alis/data/settings.*')
 settings = ['/'.join(path.split('/')[1:]) for path in settings]
 data_files.extend(settings)
+atomic = glob.glob('alis/data/atomic*')
+atomic = ['/'.join(path.split('/')[1:]) for path in atomic]
+data_files.extend(atomic)
 setup_keywords['package_data'] = {'alis': data_files,
                                   '': ['*.rst', '*.txt']}
 setup_keywords['include_package_data'] = True
