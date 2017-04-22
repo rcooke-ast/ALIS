@@ -506,10 +506,9 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                     ytkmax = wfemcarr[4][pg][i][w][wmt] + 0.12*(ymax-ymin)
                     ax.plot([wtc,wtc],[ytkmin,ytkmax], 'r-')
                     if plotticks[1] == True: # Also plot the tick labels
-                        ytkmax = wfemcarr[4][pg][i][w][wmt] + 0.15*(ymax-ymin)
-                        ax.text(wtc,ytkmax,wfemcarr[7][pg][i][j],horizontalalignment='center',rotation='vertical',clip_on=True)
-
-#			for j in range(0,len(comparr[pg][i])/3):
+                        ytkmax = wfemcarr[4][pg][i][w][wmt] + 0.13*(ymax-ymin)
+                        ax.text(wtc,ytkmax,wfemcarr[7][pg][i][j],horizontalalignment='center',verticalalignment='bottom',rotation=90,clip_on=True)
+                #			for j in range(0,len(comparr[pg][i])/3):
 #				if comparr[pg][i][3*j] == '0': cstr = 'k-'
 #				else: cstr = 'r-'
 #				if argx == 2: # For velocity:
