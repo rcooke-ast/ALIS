@@ -508,6 +508,8 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                     if plotticks[1] == True: # Also plot the tick labels
                         ytkmax = wfemcarr[4][pg][i][w][wmt] + 0.13*(ymax-ymin)
                         ax.text(wtc,ytkmax,wfemcarr[7][pg][i][j],horizontalalignment='center',verticalalignment='bottom',rotation=90,clip_on=True)
+                        # Increase ymax by a little to include tick labels on default plotting window
+                        ymax = wfemcarr[4][pg][i][w][wmt] + 0.5*(ymax-ymin)
                 #			for j in range(0,len(comparr[pg][i])/3):
 #				if comparr[pg][i][3*j] == '0': cstr = 'k-'
 #				else: cstr = 'r-'
