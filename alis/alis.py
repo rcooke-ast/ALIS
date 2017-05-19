@@ -662,7 +662,7 @@ class ClassMain:
             fileend=raw_input(msgs.input()+"Press enter to view the fits -")
             alplot.plot_showall()
         elif self._argflag['sim']['random'] is not None and self._argflag['sim']['beginfrom'] != "":
-            import alsims
+            from alis import alsims
             # If doing systematics you can skip the initial fit
             # Get the covariance matrix from the best-fitting model
             covar = np.loadtxt(self._argflag['sim']['beginfrom']+".covar")
@@ -674,7 +674,7 @@ class ClassMain:
             msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
             alsims.sim_random(self, covar, modpass['p0'], parinfo)
         elif self._argflag['sim']['perturb'] is not None and self._argflag['sim']['beginfrom'] != "":
-            import alsims
+            from alis import alsims
             # If doing systematics you can skip the initial fit
             # Get the covariance matrix from the best-fitting model
             covar = np.loadtxt(self._argflag['sim']['beginfrom']+".covar")
