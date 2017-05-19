@@ -6,7 +6,7 @@ import copy
 import warnings
 import numpy as np
 # ALIS code
-from alcsmin import alfit
+from alis.alcsmin import alfit
 from alis import almsgs
 from alis import alsave
 from alis import alplot
