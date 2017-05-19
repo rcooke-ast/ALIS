@@ -667,7 +667,7 @@ class ClassMain:
             # Get the covariance matrix from the best-fitting model
             covar = np.loadtxt(self._argflag['sim']['beginfrom']+".covar")
             # Load the best-fitting parameters
-            parlines, datlines, modlines = alload.load_input(self, filename=self._argflag['sim']['beginfrom'], updateself=False)
+            parlines, datlines, modlines, lnklines = alload.load_input(self, filename=self._argflag['sim']['beginfrom'], updateself=False)
             modpass = alload.load_model(self, modlines, updateself=False)
             # Calculate the best-fitting model
             model = self.myfunct(modpass['p0'], output=1)
@@ -679,7 +679,7 @@ class ClassMain:
             # Get the covariance matrix from the best-fitting model
             covar = np.loadtxt(self._argflag['sim']['beginfrom']+".covar")
             # Load the best-fitting parameters
-            parlines, datlines, modlines = alload.load_input(self, filename=self._argflag['sim']['beginfrom'], updateself=False)
+            parlines, datlines, modlines, lnklines = alload.load_input(self, filename=self._argflag['sim']['beginfrom'], updateself=False)
             modpass = alload.load_model(self, modlines, updateself=False)
             # Calculate the best-fitting model
             model = self.myfunct(modpass['p0'], output=1)
