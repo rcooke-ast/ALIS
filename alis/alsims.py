@@ -228,9 +228,9 @@ def sim_random(slf, covar, bparams, parinfo):
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
         mr = alfit(myfunct_wrap, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
-                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
-                    ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
-                    ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
+                   verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
+                   atol=self._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
+                   ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
 #		mr = alfit(myfunct_wrap, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
