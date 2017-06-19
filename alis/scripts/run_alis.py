@@ -34,6 +34,7 @@ def parser(options=None):
     parser.add_argument("-s", "--startid", type=int, help="Starting ID for the simulations")
     parser.add_argument("-f", "--fits", default=False, help="Write model fits to *.dat files", action="store_true")
     parser.add_argument("-m", "--model", default=False, help="Model", action="store_true")
+    parser.add_argument("-o", "--outname", type=str, default=False, help="Model output name", action="store_true")
     parser.add_argument("-w", "--writeover", default=False, help="Clobber", action="store_true")
     #parser.add_argument("-q", "--quick", default=False, help="Quick reduction", action="store_true")
     #parser.print_help()

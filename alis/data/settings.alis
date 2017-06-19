@@ -39,6 +39,7 @@ out  convtest     ""			# Output the details of the convergence test (No output i
 out  fits         False			# Output the best fitting model fits?
 out  onefits      False			# Output the best fitting models to a single fits file?
 out  model        True			# Output the best fitting model parameters?
+out  modelname    ""            # Set the output model name
 out  overwrite    False			# Overwrite existing files when writing out?
 out  plots        ""            # Save the output plots to a pdf file (No output is the argument is "" or "False")?
 out  sm           False			# Generate a SuperMongo plotting script?
