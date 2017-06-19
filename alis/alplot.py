@@ -650,7 +650,7 @@ def plot_pdf(slf):
     from matplotlib.backends.backend_pdf import PdfPages
     import alsave
     if (slf._argflag['out']['plots'].lower() == 'true'):
-        tfn = slf._argflag['run']['modname']+'.pdf'
+        tfn = slf._argflag['out']['modelname']+'.pdf'
     else:
         tfn = slf._argflag['out']['plots']
         if tfn[-4:] != ".pdf": tfn += ".pdf"

@@ -127,7 +127,7 @@ def perturb(slf, covar, bparams, parinfo):
     ntxt=":0"+nchr+"d}"
     outname="{0:s}.{1:s}_{2"+ntxt+"-{3"+ntxt
     msgs.info("Saving the results from the simulations",verbose=slf._argflag['out']['verbose'])
-    pertname=outname.format(slf._argflag['run']['modname'],'perturb',slf._argflag['sim']['startid'],slf._argflag['sim']['perturb']+slf._argflag['sim']['startid'])
+    pertname=outname.format(slf._argflag['out']['modelname'],'perturb',slf._argflag['sim']['startid'],slf._argflag['sim']['perturb']+slf._argflag['sim']['startid'])
     np.savetxt(pertname,outpert)
     return
 
@@ -216,7 +216,7 @@ def sim_random(slf, covar, bparams, parinfo):
                 else: p0new.append(slf._modpass['p0'][pw])
         else: p0new = slf._modpass['p0']
         #alsave.save_model(slf, p0new, mfit.perror, [(0.0 - 0.0)/3600.0, mfit.fnorm, mfit.dof, mfit.niter, mfit.status], printout=False, extratxt=[slf._argflag['sim']['dirname']+'/',".new"])
-        #np.savetxt(slf._argflag['run']['modname']+'.covar',mfit.covar)
+        #np.savetxt(slf._argflag['out']['modelname']+'.covar',mfit.covar)
         fdict = slf.__dict__.copy()
         fa = {'x':wavf, 'y':fluf, 'err':errf, 'fdict':fdict}
         # Calculate the starting chi-squared
@@ -263,11 +263,11 @@ def sim_random(slf, covar, bparams, parinfo):
     ntxt=":0"+nchr+"d}"
     outname="{0:s}.{1:s}_{2"+ntxt+"-{3"+ntxt
     msgs.info("Saving the results from the random simulations",verbose=slf._argflag['out']['verbose'])
-    randname=outname.format(slf._argflag['run']['modname'],'rand',slf._argflag['sim']['startid'],slf._argflag['sim']['random']+slf._argflag['sim']['startid'])
+    randname=outname.format(slf._argflag['out']['modelname'],'rand',slf._argflag['sim']['startid'],slf._argflag['sim']['random']+slf._argflag['sim']['startid'])
     np.savetxt(randname,outrand)
     if slf._argflag['sim']['systematics']:
         msgs.info("Saving the results from the systematics simulations",verbose=slf._argflag['out']['verbose'])
-        systname=outname.format(slf._argflag['run']['modname'],'syst',slf._argflag['sim']['startid'],slf._argflag['sim']['random']+slf._argflag['sim']['startid'])
+        systname=outname.format(slf._argflag['out']['modelname'],'syst',slf._argflag['sim']['startid'],slf._argflag['sim']['random']+slf._argflag['sim']['startid'])
         np.savetxt(systname,outsyst)
     return
 
