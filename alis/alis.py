@@ -98,7 +98,10 @@ class ClassMain:
         # Load the Links
         self._links = alload.load_links(self, self._lnklines)
 
-#		print self._modpass
+        if self._argflag['out']['modelname'] in ['', "\"\""]:
+            self._argflag['out']['modelname'] = self._argflag['run']['modname'] + '.out'
+
+        #		print self._modpass
 #		print self._snipid
 #		print self._specid
 #		sys.exit()
