@@ -627,6 +627,7 @@ import alfunc_gaussian
 import alfunc_legendre
 import alfunc_linear
 import alfunc_lineemission
+import alfunc_phionxs
 import alfunc_polynomial
 import alfunc_powerlaw
 import alfunc_random
@@ -660,6 +661,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'legendre'       : alfunc_legendre.Legendre,
                 'linear'         : alfunc_linear.Linear,
                 'lineemission'   : alfunc_lineemission.LineEmission,
+                'phionxs'        : alfunc_phionxs.PhotIon_CrossSection,
                 'polynomial'     : alfunc_polynomial.Polynomial,
                 'powerlaw'       : alfunc_powerlaw.PowerLaw,
                 'random'         : alfunc_random.Random,
