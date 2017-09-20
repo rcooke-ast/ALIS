@@ -267,7 +267,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
         # Return the result
         return params
 
-    def parin(self, i, par, parb):
+    def parin(self, i, par):
         """
         This routine converts a parameter in the input model file
         to the parameter used in 'call'
