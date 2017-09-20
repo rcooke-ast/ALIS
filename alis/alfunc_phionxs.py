@@ -45,11 +45,11 @@ class PhotIon_CrossSection(alfunc_base.Base):
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        def calc_xsec(wave, zp1, karr):
+        def calc_xsec(wave, zp1, vars):
             """Assuming wave is in Angstroms
             """
             engy = 6.62606957E-34 * 299792458.0 * zp1 / (wave*1.0E-10 * 1.60217657E-19)
-            Et, Emx, Eo, so, ya, P, yw, yo, y1 = karr[0], karr[1], karr[2], karr[3], karr[4], karr[5], karr[6], karr[7], karr[8]
+            Et, Emx, Eo, so, ya, P, yw, yo, y1 = vars[0], vars[1], vars[2], vars[3], vars[4], vars[5], vars[6], vars[7], vars[8]
             xsec = np.zeros(engy.size)
             x = engy / Eo - yo
             y = np.sqrt(x ** 2 + y1 ** 2)
@@ -69,7 +69,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
             if karr['logN']: cold = 10.0**par[0]
             else: cold = par[0]
             zp1 = par[1]+1.0
-            xsecv = calc_xsec(wave, zp1, karr)
+            xsecv = calc_xsec(wave, zp1, par[2:])
             return np.exp(-1.0*xsecv*cold)
         #############
         yout = np.zeros((pin.shape[0],wave.size))
@@ -256,7 +256,8 @@ class PhotIon_CrossSection(alfunc_base.Base):
         print info["C IV"]
         """
         import alutils
-        data = np.loadtxt("data/phionxsec.dat")
+        datname = "/".join(__file__.split("/")[:-1])+"/data/phionxsec.dat"
+        data = np.loadtxt(datname)
         for i in range(data.shape[0]):
             elem = alutils.numtoelem(int(data[i, 0]))
             ionstage = alutils.numtorn(int(data[i, 0]) - int(data[i, 1]), subone=True)
@@ -288,7 +289,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
         Return the parameters for a Phionxs function to be used by 'call'
         """
         levadd=0
-        params=np.zeros(self._pnumr+1)
+        params=np.zeros(self._pnumr+9)
         parinf=[]
         for i in range(self._pnumr):
             lnkprm = None
@@ -312,17 +313,13 @@ class PhotIon_CrossSection(alfunc_base.Base):
             else:
                 params[i] = lnkprm
         # Now get the cross-section data
-        params[-1] = self.load_xsec(self._keywd['ion'].lstrip('0123456789'))
+        params[2:] = self.load_xsec(self._keywd['ion'].lstrip('0123456789'))
         if ddpid is not None:
             if ddpid not in parinf: return []
         if nexbin is not None:
-            if params[:,2].min() == 0.0:
-                msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, int(round(np.sqrt(2.0)*nexbin[1]/params[:,2].min() + 0.5))
-            elif nexbin[0] == "A" : return params, int(round(np.sqrt(2.0)*299792.458*nexbin[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
-            else:
-                msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
-                msgs.error("Cannot proceed until this bug is fixed")
+            if nexbin[0] == "km/s": return params, 1
+            elif nexbin[0] == "A" : return params, 1
+            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params
 
