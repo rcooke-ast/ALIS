@@ -86,11 +86,18 @@ def optarg(pathname, argv=None, verbose=2):
 
     # Load the default settings
     prgn_spl = pathname.split('/')
-    fname = ""
-    for i in range(0, len(prgn_spl)-2):
-        fname += prgn_spl[i]+"/"
-    fname += 'data/settings.alis'
-    argflag = load_settings(fname, verbose=verbose)
+    try:
+        fname = ""
+        for i in range(0, len(prgn_spl)-2):
+            fname += prgn_spl[i]+"/"
+        fname += 'data/settings.alis'
+        argflag = load_settings(fname, verbose=verbose)
+    except IOError:
+        fname = ""
+        for i in range(0, len(prgn_spl)-1):
+            fname += prgn_spl[i]+"/"
+        fname += 'data/settings.alis'
+        argflag = load_settings(fname, verbose=verbose)
     argflag['run']['prognm'] = __file__  #pathname
     """
     if argv is not None:
@@ -115,32 +122,33 @@ def optarg(pathname, argv=None, verbose=2):
             usage(argflag)
     """
     plxaxis = ['observed','rest','velocity']
-    if argv.cpus is not None:
-        argflag['run']['ncpus']   = argv.cpus
-    if argv.gpu:
-        argflag['run']['ngpus']   = argv.gpu
-    if argv.plot is not None:
-        argflag['plot']['dims']   = argv.plot
-    if argv.xaxis is not None:
-        argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
-    if argv.justplot:
-        argflag['plot']['only']   = argv.justplot
-    if argv.labels:
-        argflag['plot']['labels']  = argv.labels
-    if argv.verbose is not None:
-        argflag['out']['verbose']  = argv.verbose
-    if argv.random is not None:
-        argflag['sim']['random']   = argv.random
-    if argv.startid is not None:
-        argflag['sim']['startid']  = argv.startid
-    if argv.fits:
-        argflag['out']['fits']     = argv.fits
-    if argv.model:
-        argflag['out']['model']    = argv.model
-    if argv.outname:
-        argflag['out']['modelname']    = argv.outname
-    if argv.writeover:
-        argflag['out']['overwrite'] = argv.writeover
+    if argv is not None:
+		if argv.cpus is not None:
+			argflag['run']['ncpus']   = argv.cpus
+		if argv.gpu:
+			argflag['run']['ngpus']   = argv.gpu
+		if argv.plot is not None:
+			argflag['plot']['dims']   = argv.plot
+		if argv.xaxis is not None:
+			argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
+		if argv.justplot:
+			argflag['plot']['only']   = argv.justplot
+		if argv.labels:
+			argflag['plot']['labels']  = argv.labels
+		if argv.verbose is not None:
+			argflag['out']['verbose']  = argv.verbose
+		if argv.random is not None:
+			argflag['sim']['random']   = argv.random
+		if argv.startid is not None:
+			argflag['sim']['startid']  = argv.startid
+		if argv.fits:
+			argflag['out']['fits']     = argv.fits
+		if argv.model:
+			argflag['out']['model']    = argv.model
+		if argv.outname:
+			argflag['out']['modelname']    = argv.outname
+		if argv.writeover:
+			argflag['out']['overwrite'] = argv.writeover
     #######################
     # Now do some checks: #
     #######################
