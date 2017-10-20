@@ -15,7 +15,7 @@ class LSF(alfunc_base.Base) :
     The only input parameter is a dummy parameter at this moment.
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
-        self._idstr   = 'vfwhm'			# ID string for this class
+        self._idstr   = 'lsf'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
         self._keywd   = dict({'name':'COS', 'grating':'G130M', 'life_position':1,  'cen_wave':'1309', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
         self._keych   = dict({'name':1,     'grating':0,       'life_position':0,  'cen_wave':0,      'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
@@ -149,12 +149,14 @@ class LSF(alfunc_base.Base) :
             mps['mlim'][cntr].append([self._limits[iind][i] if self._limited[iind][i]==1 else None for i in range(2)])
             return mps
         ################
-        isspl=instr.split()
+        # Convert colon back to equals so that it's interpreted as a keyword
+        instr = instr.replace(":", "=")
+        isspl = instr.split(",")
         # Seperate the parameters from the keywords
         kywrd = []
         keywdk = self._keywd.keys()
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
-        param = [None for all in range(self._pnumr)]
+        param = [str(self._defpar[all]) for all in range(self._pnumr)]
         parid = [i for i in range(self._pnumr)]
         for i in range(len(isspl)):
             if "=" in isspl[i]:
