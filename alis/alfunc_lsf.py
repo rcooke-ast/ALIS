@@ -36,7 +36,7 @@ class LSF(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, y, p, mkey=None, ncpus=1):
+    def call_CPU(self, x, y, p, ncpus=1):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -47,10 +47,10 @@ class LSF(alfunc_base.Base) :
         """
         if p[0] == 1.0:
             ysize = y.size
-            lsf_dict = dict(name=mkey['name'],
-                            grating=mkey['grating'],
-                            life_position=mkey['life_position'],
-                            cen_wave=mkey['cen_wave'])
+            lsf_dict = dict(name=self._keywd['name'],
+                            grating=self._keywd['grating'],
+                            life_position=str(self._keywd['life_position']),
+                            cen_wave=self._keywd['cen_wave'])
             lsf_val = ltLSF(lsf_dict)
             tab = lsf_val.interpolate_to_wv_array(x * u.AA)
             lsfk = tab["kernel"].data
@@ -80,16 +80,18 @@ class LSF(alfunc_base.Base) :
         Nsig   : Width in number of sigma to extract either side of
                  fitrange
         """
-        # Convert the input parameters to the parameters used in call
-        pin = [0.0 for all in par]
-        for i in range(len(par)):
-            tval=par[i].lstrip('+-.0123456789')
-            if tval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
-                tval=tval[2:].lstrip('.0123456789')
-            parsnd=float(par[i].rstrip(tval))
-            pin[i] = self.parin(i, parsnd)
+        lsf_dict = dict(name=self._keywd['name'],
+                        grating=self._keywd['grating'],
+                        life_position=str(self._keywd['life_position']),
+                        cen_wave=self._keywd['cen_wave'])
+        lsf_val = ltLSF(lsf_dict)
+        tab = lsf_val.interpolate_to_wv0(float(self._keywd['cen_wave']) * u.AA)
+        # Roughly estimate the FWHM
+        w = np.where(tab["kernel"].data >= 0.5 * np.max(tab["kernel"].data))
+        dwav = np.max(tab["wv"].data[w]) - np.min(tab["wv"].data[w])
+        fwhmv = 299792.458 * dwav / 1309.0
         # Use the parameters to now calculate the sigma width
-        sigd = pin[0] / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
+        sigd = fwhmv / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
         # Calculate the min and max extraction wavelengths
         wmin = fitrng[0]*(1.0 - Nsig*sigd)
         wmax = fitrng[1]*(1.0 + Nsig*sigd)
