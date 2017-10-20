@@ -1,22 +1,28 @@
 import numpy as np
 import almsgs
 import alfunc_base
-msgs=almsgs.msgs()
+import astropy.units as u
+msgs = almsgs.msgs()
+try:
+    from linetools.spectra.lsf import ltLSF
+except ImportError:
+    msgs.warn("linetools is not installed. Install it if you wish to use LSF")
 
-class vFWHM(alfunc_base.Base) :
+
+class LSF(alfunc_base.Base) :
     """
-    Convolves the spectrum with a Gaussian with a velocity full-width at half-maxium vFWHM:
-    p[0] = vFWHM
+    Convolves the spectrum with a line spread function from linetools.
+    The only input parameter is a dummy parameter at this moment.
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'vfwhm'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keywd   = dict({'name':'COS', 'grating':'G130M', 'life_position':1,  'cen_wave':'1309', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'name':1,     'grating':0,       'life_position':0,  'cen_wave':0,      'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'name':"",    'grating':"",      'life_position':"", 'cen_wave':"",     'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
         self._parid   = ['value']		# Name of each parameter
-        self._defpar  = [ 0.0 ]			# Default values for parameters that are not provided
-        self._fixpar  = [ None ]		# By default, should these parameters be fixed?
+        self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
+        self._fixpar  = [ True ]		# By default, should these parameters be fixed?
         self._limited = [ [1  ,0  ] ]	# Should any of these parameters be limited from below or above
         self._limits  = [ [0.0,0.0] ]	# What should these limiting values be
         self._svfmt   = [ "{0:.3g}" ]	# Specify the format used to print or save output
@@ -30,7 +36,7 @@ class vFWHM(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, y, p, ncpus=1):
+    def call_CPU(self, x, y, p, mkey=None, ncpus=1):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -39,85 +45,24 @@ class vFWHM(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        sigd = p[0] / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
-        if np.size(sigd) == 1: cond = sigd > 0
-        else: cond = np.size(np.where(sigd > 0.0)) >= 1
-        if cond:
-            ysize=y.size
-            fsigd=6.0*sigd
-            dwav = 0.5*(x[2:]-x[:-2])/x[1:-1]
-            dwav = np.append(np.append(dwav[0],dwav),dwav[-1])
-            if np.size(sigd) == 1:
-                df=np.min([np.int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
-                yval = np.zeros(2*df+1)
-                yval[df:2*df+1] = (x[df:2*df+1]/x[df] - 1.0)/sigd
-                yval[:df] = (x[:df]/x[df] - 1.0)/sigd
-                gaus = np.exp(-0.5*yval*yval)
-                size = ysize + gaus.size - 1
-                fsize = 2 ** np.int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
-                conv = np.fft.fft(y, fsize)
-                conv *= np.fft.fft(gaus/gaus.sum(), fsize)
-                ret = np.fft.ifft(conv).real.copy()
-                del conv
-                return ret[df:df+ysize]
-            elif np.size(sigd) == szflx:
-                yb = y.copy()
-                df=np.min([np.int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
-                for i in range(szflx):
-                    if sigd[i] == 0.0:
-                        yb[i] = y[i]
-                        continue
-                    yval = np.zeros(2*df+1)
-                    yval[df:2*df+1] = (x[df:2*df+1]/x[df] - 1.0)/sigd[i]
-                    yval[:df] = (x[:df]/x[df] - 1.0)/sigd[i]
-                    gaus = np.exp(-0.5*yval*yval)
-                    size = ysize + gaus.size - 1
-                    fsize = 2 ** np.int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
-                    conv  = np.fft.fft(y, fsize)
-                    conv *= np.fft.fft(gaus/gaus.sum(), fsize)
-                    ret   = np.fft.ifft(conv).real.copy()
-                    yb[i] = ret[df:df+ysize][i]
-                del conv
-                return yb
-            else:
-                msgs.error("vfwhm and flux arrays have different sizes.")
-        else: return y
-
-#	def call_CPU(self, x, y, p, ncpus=1):
-#		"""
-#		Define the functional form of the model
-#		--------------------------------------------------------
-#		x  : array of wavelengths
-#		y  : model flux array
-#		p  : array of parameters for this model
-#		--------------------------------------------------------
-#		"""
-#		sigd = p[0] / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
-#		szflx=np.size(y)
-#		flub= np.copy(y)
-#		flutx=np.ones(szflx+2)
-#		flutx[0], flutx[-1] = 0.0, 0.0
-#		flutf=np.zeros(szflx+2)
-#		flutf[1:-1]=y
-#		if sigd > 0.0:
-#			fsigd=6.0*sigd
-#			deltawave=0.5*(x[2:]-x[:-2])
-#			df=fsigd*x[1:-1]/deltawave
-#			nd=np.int_(df)
-#			nd[np.argwhere(nd <= 0)] = 1
-#			i=np.arange(1,x.size-1)
-#			nran=np.arange(-nd[0]+1,nd[0]+2)
-#			ind = nran+np.arange(np.size(i))[:,np.newaxis]
-#			indn = np.copy(ind)
-#			indn[np.where(indn<-1)]=-1
-#			indn[np.where(indn>=x.size)]=-1
-#			y=(x[indn]/np.transpose([x[i]]) - 1.0)/sigd
-#			sx=(flutx[indn+1]*np.exp(-y*y*0.5)).sum(1)
-#			sf=(flutf[indn+1]*np.exp(-y*y*0.5)).sum(1)
-#			w=np.where(sx>0.0)
-#			flub[i[w]] = sf[w]/sx[w]
-#		else: flub = y
-#		return flub
+        if p[0] == 1.0:
+            ysize = y.size
+            lsf_dict = dict(name=mkey['name'],
+                            grating=mkey['grating'],
+                            life_position=mkey['life_position'],
+                            cen_wave=mkey['cen_wave'])
+            lsf_val = ltLSF(lsf_dict)
+            tab = lsf_val.interpolate_to_wv_array(x * u.AA)
+            lsfk = tab["kernel"].data
+            size = ysize + lsfk.size - 1
+            fsize = 2 ** np.int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
+            conv = np.fft.fft(y, fsize)
+            conv *= np.fft.fft(lsfk/lsfk.sum(), fsize)
+            ret = np.fft.ifft(conv).real.copy()
+            del conv
+            return ret[ysize//2:ysize//2+ysize]
+        else:
+            return y
 
     def getminmax(self, par, fitrng, Nsig=10.0):
         """
