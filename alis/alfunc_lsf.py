@@ -4,7 +4,7 @@ import alfunc_base
 import astropy.units as u
 msgs = almsgs.msgs()
 try:
-    from linetools.spectra.lsf import ltLSF
+    from linetools.spectra.lsf import LSF as ltLSF
 except ImportError:
     msgs.warn("linetools is not installed. Install it if you wish to use LSF")
 
