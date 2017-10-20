@@ -49,13 +49,18 @@ class PhotIon_CrossSection(alfunc_base.Base):
             """Assuming wave is in Angstroms
             """
             engy = 6.62606957E-34 * 299792458.0 * zp1 / (wave*1.0E-10 * 1.60217657E-19)
-            Et, Emx, Eo, so, ya, P, yw, yo, y1 = vars[0], vars[1], vars[2], vars[3], vars[4], vars[5], vars[6], vars[7], vars[8]
+            Et, Emx, Eo, so, ya, P, yw, yo, y1, El = vars[0], vars[1], vars[2], vars[3], vars[4], vars[5], vars[6], vars[7], vars[8], vars[9]
             xsec = np.zeros(engy.size)
             x = engy / Eo - yo
             y = np.sqrt(x ** 2 + y1 ** 2)
             Fy = ((x - 1.0) ** 2 + yw ** 2) * y ** (0.5 * P - 5.5) * (1.0 + np.sqrt(y / ya)) ** (-1.0 * P)
             w = np.where((engy >= Et) & (engy <= Emx))
             xsec[w] = 1.0E-18 * so * Fy[w]
+            # Fill in the spectrum between the Lyman limit and the last line considered
+            wmn = np.argmin(engy[w])
+            xsecrep = xsec[w][wmn]
+            w = np.where((engy >= El) & (engy < Et))
+            xsec[w] = xsecrep
             return xsec
 
         def model(par, karr):
@@ -289,7 +294,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
         Return the parameters for a Phionxs function to be used by 'call'
         """
         levadd=0
-        params=np.zeros(self._pnumr+9)
+        params=np.zeros(self._pnumr+10)
         parinf=[]
         for i in range(self._pnumr):
             lnkprm = None
@@ -313,7 +318,10 @@ class PhotIon_CrossSection(alfunc_base.Base):
             else:
                 params[i] = lnkprm
         # Now get the cross-section data
-        params[2:] = self.load_xsec(self._keywd['ion'].lstrip('0123456789'))
+        params[2:-1] = self.load_xsec(self._keywd['ion'].lstrip('0123456789'))
+        # Update the ionization energy to correspond to the minimum wavelength in the linelist
+        nv = np.where(self._atomic['Ion'] == self._keywd['ion'])[0]
+        params[-1] = 6.62606957E-34 * 299792458.0 / (np.min(self._atomic['Wavelength'][nv])*1.0E-10 * 1.60217657E-19)
         if ddpid is not None:
             if ddpid not in parinf: return []
         if nexbin is not None:
