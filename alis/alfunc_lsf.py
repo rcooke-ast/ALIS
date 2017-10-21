@@ -64,7 +64,7 @@ class LSF(alfunc_base.Base) :
         else:
             return y
 
-    def getminmax(self, par, fitrng, Nsig=10.0):
+    def getminmax(self, par, fitrng, Nsig=30.0):
         """
         This definition is only used for specifying the
         FWHM Resolution of the data.
