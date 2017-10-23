@@ -638,6 +638,7 @@ import alfunc_variable
 import alfunc_voigt
 # Convolution routines
 import alfunc_afwhm
+import alfunc_lsf
 import alfunc_vfwhm
 import alfunc_vsigma
 import alshift
@@ -650,7 +651,7 @@ include it's idstr value and the function call here.
 """
 
 def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
-    sendatomic = ['voigt', 'lineemission']
+    sendatomic = ['voigt', 'lineemission', 'phionxs']
     # Add your new function to the following:
     fd = dict({ 'Afwhm'          : alfunc_afwhm.AFWHM,
                 'Ashift'         : alshift.Ashift,
@@ -670,6 +671,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'tophat'         : alfunc_tophat.TopHat,
                 'variable'       : alfunc_variable.Variable,
                 'vfwhm'          : alfunc_vfwhm.vFWHM,
+                'lsf'            : alfunc_lsf.LSF,
                 'voigt'          : alfunc_voigt.Voigt,
                 'vshift'         : alshift.vshift,
                 'vsigma'         : alfunc_vsigma.vSigma

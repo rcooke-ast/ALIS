@@ -462,7 +462,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
             # Plot the error spectrum
             ax.fill_between(wfemcarr[0][pg][i],wfemcarr[5][pg][i]-wfemcarr[2][pg][i],wfemcarr[5][pg][i]+wfemcarr[2][pg][i],facecolor='0.7')
             # Plot the residual region
-            ax.fill_between(wfemcarr[0][pg][i],shift+res_size,shift-res_size,facecolor='0.3')
+            ax.fill_between(wfemcarr[0][pg][i],shift+res_size,shift-res_size,facecolor='0.5')
 ##			ax.plot(wfemcarr[0][pg][i]+disp[pg][i],wfemcarr[2][pg][i], 'b-', drawstyle='steps')
             # Plot the data
             ax.plot(wfemcarr[0][pg][i]+disp[pg][i],wfemcarr[1][pg][i], 'k-', drawstyle='steps')
@@ -476,7 +476,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                 # Plot the continuum
                 ax.plot(wfemcarr[0][pg][i][w],wfemcarr[4][pg][i][w], 'b--')
                 # Plot the residuals
-                ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w],(wfemcarr[5][pg][i][w]+wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
+                ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w],(wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
                 # Plot the zero level
                 ax.plot(wfemcarr[0][pg][i],wfemcarr[5][pg][i], 'g--')
 #			if argx == 2: # For velocity:
