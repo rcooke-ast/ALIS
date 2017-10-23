@@ -9,6 +9,7 @@ ALIS is a versatile software package that allows you to perform a model fit to s
 * scipy
 * matplotlib
 * astropy
+* linetools (optional)
 
 # License
 This program is free software: you can redistribute it and/or modify
