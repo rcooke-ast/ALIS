@@ -51,7 +51,10 @@ class LSF(alfunc_base.Base) :
                             grating=self._keywd['grating'],
                             life_position=str(self._keywd['life_position']),
                             cen_wave=self._keywd['cen_wave'])
-            lsf_val = ltLSF(lsf_dict, scalefactor=p[0])
+            try:
+                lsf_val = ltLSF(lsf_dict, scalefactor=p[0])
+            except:
+                lsf_val = ltLSF(lsf_dict)
             tab = lsf_val.interpolate_to_wv_array(x * u.AA)
             lsfk = tab["kernel"].data
             size = ysize + lsfk.size - 1
