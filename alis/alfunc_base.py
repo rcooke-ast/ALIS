@@ -380,8 +380,10 @@ class Base :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if errs == None: errors = params
-        else: errors = errs
+        if type(errs) is np.ndarray:
+            errors = errs
+        else:
+            errors = params
         add = self._pnumr
         havtie = 0
         tienum = 0

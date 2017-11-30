@@ -402,8 +402,10 @@ class Polynomial(alfunc_base.Base) :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if errs == None: errors = params
-        else: errors = errs
+        if type(errs) is np.ndarray:
+            errors = errs
+        else:
+            errors = params
         pnumr = len(mp['mpar'][istart])
         add = pnumr
         havtie = 0
