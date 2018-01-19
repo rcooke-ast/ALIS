@@ -18,16 +18,16 @@ class Voigt(alfunc_base.Base) :
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'voigt'																				# ID string for this class
-        self._pnumr   = 6																					# Total number of parameters fed in
+        self._pnumr   = 7																					# Total number of parameters fed in
         self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'ion':'', 'logN':True})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
         self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'ion':1,  'logN':0})			# Require keywd to be changed (1 for yes, 0 for no)
         self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'ion':"{1:7}", 'logN':""})		# Format for the keyword. "" is the Default setting
-        self._parid   = ['ColDens',   'redshift', 'bturb',   'temperature', 'DELTAa/a',	'DELTAmu/mu']		# Name of each parameter
-        self._defpar  = [ 8.1,         0.0,        7.0,       1.0E2,         0.0,        0.0 ]				# Default values for parameters that are not provided
-        self._fixpar  = [ None,        None,       None,      None,          True,       True ]				# By default, should these parameters be fixed?
-        self._limited = [ [0  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,0],        [0  ,0 ],   [0  ,0  ] ]		# Should any of these parameters be limited from below or above
-        self._limits  = [ [0.0,0.0],  [0.0,0.0],  [0.5,0.0], [0.0,0.0],      [0.0,0.0],  [0.0,0.0] ]		# What should these limiting values be
-        self._svfmt   = [ "{0:.7g}", "{0:.10g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}",  "{0:.7g}"]			# Specify the format used to print or save output
+        self._parid   = ['ColDens',   'redshift', 'bturb',   'temperature', 'DELTAa/a',	'DELTAmu/mu', 'CoverFactor']		# Name of each parameter
+        self._defpar  = [ 8.1,         0.0,        7.0,       1.0E2,         0.0,        0.0,          1.0] 				# Default values for parameters that are not provided
+        self._fixpar  = [ None,        None,       None,      None,          True,       True,         True]				# By default, should these parameters be fixed?
+        self._limited = [ [0  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,0],        [0  ,0 ],   [0  ,0  ],    [1  ,1  ]]   		# Should any of these parameters be limited from below or above
+        self._limits  = [ [0.0,0.0],  [0.0,0.0],  [0.5,0.0], [0.0,0.0],      [0.0,0.0],  [0.0,0.0],    [0.0,1.0]]	    	# What should these limiting values be
+        self._svfmt   = [ "{0:.7g}", "{0:.10g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}",  "{0:.7g}",     "{0:.4g}"]			# Specify the format used to print or save output
         self._prekw   = [ 'ion' ]																			# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
         tempinput = self._parid+self._keych.keys()                             #
@@ -199,7 +199,8 @@ class Voigt(alfunc_base.Base) :
             v=wv*ww*((1.0/ww)-(1.0/wv))/bl
             tau = cne*wofz(v + 1j * a).real
             #tau = cne*voigtking(v, a)
-            return np.exp(-1.0*tau)
+            return (np.exp(-1.0*tau) + par[6]/(1.0 - par[6])) * (1.0 - par[6])
+
         #############
         yout = np.zeros((pin.shape[0],wave.size))
         for i in range(pin.shape[0]):
@@ -404,6 +405,7 @@ class Voigt(alfunc_base.Base) :
                 msgs.error("Voigt Total Doppler parameter is zero. It is recommended that you place more"+msgs.newline()+"realistic limits on either the parameters 'temperature' or 'bturb'")
         elif i == 4: pin = (par + 1.0)**2 - 1.0
         elif i == 5: pin = par
+        elif i == 6: pin = 1.0 - par
         else:
             msgs.error("Function "+self._idstr+" is badly defined in definition parin.")
         return pin
@@ -456,14 +458,14 @@ class Voigt(alfunc_base.Base) :
                 if nexbin is not None: return [], None
                 elif getinfl: return [], []
                 else: return []
-            params = np.zeros((self._atomic['Wavelength'][nv][nw].size,6))
+            params = np.zeros((self._atomic['Wavelength'][nv][nw].size,7))
             for ln in range(0,self._atomic['Wavelength'][nv][nw].size):
                 if np.isnan(self._atomic['Qvalue'][nv][nw][ln]) or self._atomic['Qvalue'][nv][nw][ln] is np.ma.masked:
                     restwave = self._atomic['Wavelength'][nv][nw][ln]
                     if pt[4] != 0.0: msgs.error("{0:s} {1:s} has no q-value.".format(self._keywd['ion'],str(restwave)))
                 else:
                     restwave = 1.0 / (1.0/self._atomic['Wavelength'][nv][nw][ln] + self._atomic['Qvalue'][nv][nw][ln]*pt[4]*1.0E-8)
-                params[ln,:] = np.array([pt[0],pt[1],pt[3],restwave,self._atomic['fvalue'][nv][nw][ln],self._atomic['Gamma'][nv][nw][ln]])
+                params[ln,:] = np.array([pt[0],pt[1],pt[3],restwave,self._atomic['fvalue'][nv][nw][ln],self._atomic['Gamma'][nv][nw][ln],pt[6]])
         else: # THE RATIO OF TWO COLUMN DENSITIES HAS BEEN SPECIFIED
             # Find all denrat in mp with matching specid's.
             pt=[]
@@ -529,14 +531,14 @@ class Voigt(alfunc_base.Base) :
                     if ddpid not in parinf: continue
                 nv = np.where(self._atomic['Ion'] == numrat)[0]
                 nw = np.where( (self._atomic['Wavelength'][nv]*(1.0+pt[-1][1]) >= wvrng[0]) & (self._atomic['Wavelength'][nv]*(1.0+pt[-1][1]) <= wvrng[1]) )
-                paramst = np.zeros((self._atomic['Wavelength'][nv][nw].size,6))
+                paramst = np.zeros((self._atomic['Wavelength'][nv][nw].size,7))
                 for ln in range(0,self._atomic['Wavelength'][nv][nw].size):
                     if np.isnan(self._atomic['Qvalue'][nv][nw][ln]) or self._atomic['Qvalue'][nv][nw][ln] is np.ma.masked:
                         restwave = self._atomic['Wavelength'][nv][nw][ln]
                         if pt[-1][4] != 0.0: msgs.error(self._keywd['ion']+" "+str(restwave)+" has no q-value.")
                     else:
                         restwave = 1.0 / (1.0/self._atomic['Wavelength'][nv][nw][ln] + self._atomic['Qvalue'][nv][nw][ln]*pt[-1][4]*1.0E-8)
-                    paramst[ln,:] = np.array([pt[-1][0],pt[-1][1],pt[-1][3],restwave,self._atomic['fvalue'][nv][nw][ln],self._atomic['Gamma'][nv][nw][ln]])
+                    paramst[ln,:] = np.array([pt[-1][0],pt[-1][1],pt[-1][3],restwave,self._atomic['fvalue'][nv][nw][ln],self._atomic['Gamma'][nv][nw][ln],pt[-1][6]])
                 if tsize == 0: params = paramst
                 else: params = np.append(params, paramst, axis=0)
                 tsize += self._atomic['Wavelength'][nv][nw].size
