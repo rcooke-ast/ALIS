@@ -199,7 +199,10 @@ class Voigt(alfunc_base.Base) :
             v=wv*ww*((1.0/ww)-(1.0/wv))/bl
             tau = cne*wofz(v + 1j * a).real
             #tau = cne*voigtking(v, a)
-            return (np.exp(-1.0*tau) + par[6]/(1.0 - par[6])) * (1.0 - par[6])
+            if par[6] == 1.0:
+                return np.exp(-1.0*tau)
+            else:
+                return (np.exp(-1.0*tau) + par[6]/(1.0 - par[6])) * (1.0 - par[6])
 
         #############
         yout = np.zeros((pin.shape[0],wave.size))
