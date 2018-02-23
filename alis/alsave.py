@@ -37,7 +37,7 @@ def save_asciifits(fname, slf, arr, model):
     Save the best-fitting model into an ascii file.
     """
     sp, sn, ll, lu = arr
-    wfek = slf._datopt['columns'][sp][sn].keys()
+    wfek = list(slf._datopt['columns'][sp][sn].keys())
     maxn=0
     for i in wfek:
         if slf._datopt['columns'][sp][sn][i] > maxn: maxn = slf._datopt['columns'][sp][sn][i]
@@ -85,7 +85,7 @@ def save_fitsfits(fname, slf, arr, model):
     Save the best-fitting model into fits files.
     """
     sp, sn, ll, lu = arr
-    wfek = slf._datopt['columns'][sp][sn].keys()
+    wfek = list(slf._datopt['columns'][sp][sn].keys())
     maxn=0
     for i in wfek:
         if slf._datopt['columns'][sp][sn][i] > maxn: maxn = slf._datopt['columns'][sp][sn][i]
@@ -172,7 +172,7 @@ def save_onefits(fname, slf):
             w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
             modelout[w] = slf._modfinal[sp][ll:lu][w]
             # Get the columns information for this index
-            wfek = slf._datopt['columns'][sp][sn].keys()
+            wfek = list(slf._datopt['columns'][sp][sn].keys())
             maxn=0
             for i in wfek:
                 if slf._datopt['columns'][sp][sn][i] > maxn: maxn = slf._datopt['columns'][sp][sn][i]

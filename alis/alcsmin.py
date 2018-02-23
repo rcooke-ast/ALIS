@@ -1195,7 +1195,17 @@ class alfit(object):
         # Loop through parameters, computing the derivative for each
         pool = mpPool(processes=self.ncpus)
         async_results = []
+        '''
+        import pickle
+        types = [type(functkw['fdict'][key]) for key in functkw['fdict'].keys()]
+        for key in functkw['fdict'].keys():
+            print("Pickling {:s}".format(key))
+            try:
+                pickle.dump(functkw['fdict'][key], open('foo.pickle', 'wb'))
+            except TypeError:
+                import pdb; pdb.set_trace()
         import pdb; pdb.set_trace()
+        '''
         for j in range(n):
             if numpy.abs(dside[ifree[j]]) <= 1:
                 # COMPUTE THE ONE-SIDED DERIVATIVE

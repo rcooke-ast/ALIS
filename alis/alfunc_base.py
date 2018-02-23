@@ -724,7 +724,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
             else:
                 fd[keys[i]] = fd[keys[i]](prgname=prgname, getinst=getinst, verbose=verbose)
     if getfuncs:
-        return fd.keys()
+        return list(fd.keys())
     else:
         return fd
 

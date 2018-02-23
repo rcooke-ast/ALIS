@@ -85,6 +85,7 @@ class ClassMain:
         funcinst=alfunc_base.call(prgname=self._argflag['run']['prognm'], getinst=True, verbose=self._argflag['out']['verbose'],atomic=self._atomic)
         self._funcarray=[function,funccall,funcinst]
 
+
         # Update the verbosity of messages for functions
         for i in self._funcarray[2].keys():
             self._funcarray[2][i]._verbose = self._argflag['out']['verbose']
