@@ -630,7 +630,7 @@ class ClassMain:
         self._ptied = []
         lnkcnt=0
         for i in range(npar):
-            if (parinfo[i].has_key('tied')):
+            if 'tied' in parinfo[i].keys():
                 self._ptied.append(parinfo[i]['tied'].replace("numpy","np"))
                 self._modpass['mlnk'].append([-2-lnkcnt,parinfo[i]['tied'].replace("numpy","np")])
                 lnkcnt += 1

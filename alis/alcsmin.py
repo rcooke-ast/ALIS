@@ -10,6 +10,7 @@ RJC: This is a modified version of MPFIT, which allows CPU multiprocessing
 
   Craig Markwardt converted the FORTRAN code to IDL.  The information for the
   IDL version is:
+
      Craig B. Markwardt, NASA/GSFC Code 662, Greenbelt, MD 20770
      craigm@lheamail.gsfc.nasa.gov
      UPDATED VERSIONs can be found on this WEB PAGE:
@@ -33,13 +34,18 @@ import numpy
 import types
 import signal
 #import scipy.linalg
-import almsgs
-from alsave import print_model
+from alis import almsgs
+from alis.alsave import print_model
 from multiprocessing import Pool as mpPool
 from multiprocessing.pool import ApplyResult
 msgs=almsgs.msgs()
 
-from copy_reg import pickle
+
+try:
+    from copyreg import pickle  # Python 3
+except:
+    from copy_reg import pickle
+
 from types import MethodType
 
 def _pickle_method(method):
@@ -354,11 +360,12 @@ class alfit(object):
 
         # Be sure that PARINFO is of the right type
         if parinfo is not None:
-            if type(parinfo) != types.ListType:
+            #if type(parinfo) != types.ListType:
+            if not isinstance(parinfo, list):
                 self.errmsg = 'PARINFO must be a list of dictionaries.'
                 return
             else:
-                if type(parinfo[0]) != types.DictionaryType:
+                if not isinstance(parinfo[0], dict): #type(parinfo[0]) != types.DictionaryType:
                     self.errmsg = 'PARINFO must be a list of dictionaries.'
                     return
             if ((xall is not None) and (len(xall) != len(parinfo))):
@@ -1013,7 +1020,7 @@ class alfit(object):
                        modpass=None, convtest=False, funcarray=[None,None,None]):
 
         if self.debug:
-            print 'Entering defiter...'
+            print('Entering defiter...')
         if verbose == 0:
             return
         if fnorm is None:
@@ -1024,12 +1031,12 @@ class alfit(object):
         nprint = len(x)
         if convtest: msgs.test("CONVERGENCE",verbose=verbose)
         if verbose <= 0: return
-        print "ITERATION ", ('%6i' % iter),"   CHI-SQUARED = ",('%.10g' % fnorm)," DOF = ", ('%i' % dof)," (REDUCED = {0:f})".format(fnorm/float(dof))
+        print("ITERATION ", ('%6i' % iter),"   CHI-SQUARED = ",('%.10g' % fnorm)," DOF = ", ('%i' % dof)," (REDUCED = {0:f})".format(fnorm/float(dof)))
         if verbose == 1 or modpass == None:
             return
         else:
             prstr, cvstr = print_model(x, modpass, verbose=verbose, funcarray=funcarray)
-            print prstr+cvstr[0]+cvstr[2]
+            print(prstr+cvstr[0]+cvstr[2])
             return 0
 
 
@@ -1037,7 +1044,7 @@ class alfit(object):
     # Procedure to parse the parameter values in PARINFO, which is a list of dictionaries
     def parinfo(self, parinfo=None, key='a', default=None, n=0):
         if self.debug:
-            print 'Entering parinfo...'
+            print('Entering parinfo...')
         if (n == 0) and (parinfo is not None):
             n = len(parinfo)
         if n == 0:
@@ -1046,18 +1053,18 @@ class alfit(object):
             return values
         values = []
         for i in range(n):
-            if (parinfo is not None) and (parinfo[i].has_key(key)):
+            if (parinfo is not None) and (key in parinfo[i].keys()):
                 values.append(parinfo[i][key])
             else:
                 values.append(default)
 
         # Convert to numeric arrays if possible
         test = default
-        if type(default) == types.ListType:
+        if isinstance(default, list): #type(default) == types.ListType:
             test=default[0]
-        if isinstance(test, types.IntType):
+        if isinstance(test, int): #types.IntType):
             values = numpy.asarray(values, int)
-        elif isinstance(test, types.FloatType):
+        elif isinstance(test, float): #types.FloatType):
             values = numpy.asarray(values, float)
         return values
 
@@ -1065,7 +1072,7 @@ class alfit(object):
     # derivatives or not.
     def call(self, fcn, x, functkw, fjac=None, ddpid=None, pp=None, emab=None, getemab=False):
         if self.debug:
-            print 'Entering call...'
+            print('Entering call...')
         if self.qanytied:
             x = self.tie(x, self.ptied)
         self.nfev = self.nfev + 1
@@ -1110,7 +1117,7 @@ class alfit(object):
                functkw=None, xall=None, ifree=None, dstep=None):
 
         if self.debug:
-            print 'Entering fdjac2...'
+            print('Entering fdjac2...')
         machep = self.machar.machep
         if epsfcn is None:
             epsfcn = machep
@@ -1134,7 +1141,7 @@ class alfit(object):
             [status, fp, fjac] = self.call(fcn, xall, functkw, fjac=fjac)
 
             if fjac.size != m*nall:
-                print 'Derivative matrix was not computed properly.'
+                print('Derivative matrix was not computed properly.')
                 return None
 
             # This definition is consistent with CURVEFIT
@@ -1188,6 +1195,7 @@ class alfit(object):
         # Loop through parameters, computing the derivative for each
         pool = mpPool(processes=self.ncpus)
         async_results = []
+        import pdb; pdb.set_trace()
         for j in range(n):
             if numpy.abs(dside[ifree[j]]) <= 1:
                 # COMPUTE THE ONE-SIDED DERIVATIVE
@@ -1228,7 +1236,7 @@ class alfit(object):
 
     def qrfac(self, a, pivot=0):
 
-        if self.debug: print 'Entering qrfac...'
+        if self.debug: print('Entering qrfac...')
         machep = self.machar.machep
         sz = a.shape
         m = sz[0]
@@ -1306,7 +1314,7 @@ class alfit(object):
 
     def qrsolv(self, r, ipvt, diag, qtb, sdiag):
         if self.debug:
-            print 'Entering qrsolv...'
+            print('Entering qrsolv...')
         sz = r.shape
         m = sz[0]
         n = sz[1]
@@ -1384,7 +1392,7 @@ class alfit(object):
     def lmpar(self, r, ipvt, diag, qtb, delta, x, sdiag, par=None):
 
         if self.debug:
-            print 'Entering lmpar...'
+            print('Entering lmpar...')
         dwarf = self.machar.minnum
         machep = self.machar.machep
         sz = r.shape
@@ -1499,7 +1507,7 @@ class alfit(object):
     # Procedure to tie one parameter to another.
     def tie(self, p, ptied=None):
         if self.debug:
-            print 'Entering tie...'
+            print('Entering tie...')
         if ptied is None:
             return
         for i in range(len(ptied)):
@@ -1515,14 +1523,14 @@ class alfit(object):
     def calc_covar(self, rr, ipvt=None, tol=1.e-14):
 
         if self.debug:
-            print 'Entering calc_covar...'
+            print('Entering calc_covar...')
         if numpy.rank(rr) != 2:
-            print 'r must be a two-dimensional matrix'
+            print('r must be a two-dimensional matrix')
             return -1
         s = rr.shape
         n = s[0]
         if s[0] != s[1]:
-            print 'r must be a square matrix'
+            print('r must be a square matrix')
             return -1
 
         if ipvt is None:

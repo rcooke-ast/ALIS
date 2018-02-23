@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import ticker
-import almsgs
+from alis import almsgs
 msgs=almsgs.msgs()
 
 def get_fitregions(wave,cont,fitted,disp,size=None):

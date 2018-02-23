@@ -1,15 +1,19 @@
+from __future__ import print_function, absolute_import, division, unicode_literals
+
 import os
 import copy
 import numpy as np
 import datetime
-import almsgs
-import alfunc_base
+from alis import almsgs
+from alis import alfunc_base
 import astropy.io.fits as pyfits
 from matplotlib import pyplot as plt
 from matplotlib import cm as pltcm
-from alutils import getreason
+from alis.alutils import getreason
 msgs = almsgs.msgs()
 
+try: input = raw_input
+except NameError: pass
 
 def file_exists(slf, filename):
     """
@@ -20,9 +24,9 @@ def file_exists(slf, filename):
     if os.path.exists(filename):
         while ans != 'y' and ans != 'n' and ans !='r':
             msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
-            ans = raw_input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
+            ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
             if ans == 'r':
-                fileend=raw_input(msgs.input()+"Enter new filename - ")
+                fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend
                 if os.path.exists(filename): ans = ''
     return ans, filename
@@ -127,7 +131,7 @@ def save_fitsfits(fname, slf, arr, model):
             ans = ''
             while ans != 'y' and ans != 'n':
                 msgs.warn("File %s exists!" % (fname+".fits"), verbose=slf._argflag['out']['verbose'])
-                ans = raw_input(msgs.input()+"Overwrite? (y/n) - ")
+                ans = input(msgs.input()+"Overwrite? (y/n) - ")
             if ans == 'y': os.remove(fname+".fits")
     if ans == 'y': hdulist.writeto(fname+".fits")
     return
@@ -238,9 +242,9 @@ def save_onefits(fname, slf):
             ans = ''
             while ans != 'y' and ans != 'n' and ans != 'r':
                 msgs.warn("File %s exists!" % (fname+".fits"), verbose=slf._argflag['out']['verbose'])
-                ans = raw_input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
+                ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
                 if ans == 'r':
-                    fname=raw_input(msgs.input()+"Enter new filename (without the extension) - ")
+                    fname=input(msgs.input()+"Enter new filename (without the extension) - ")
                     if os.path.exists(fname+".fits"): ans = ''
             if ans == 'y': os.remove(fname+".fits")
     if ans == 'y': hdulist.writeto(fname+".fits")
@@ -484,14 +488,14 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     cvstring, cvestring, cvastring = arrstring[0], arrstring[1], arrstring[2]
     shstring, shestring, shastring = arrstring[3], arrstring[4], arrstring[5]
     if printout and slf._argflag['out']['verbose'] != -1:
-        print "\n####################################################"
-        print outstring
-        print errstring
-        print "#"+"\n#".join(cvstring.replace("Convolution","Convolution Models:").split("\n"))
-        print cvestring.replace("#Convolution\n","")
-        print "#"+"\n#".join(shstring.replace("Shift","Shift Models:").split("\n"))
-        print shestring.replace("#Shift\n","")+"\n"
-        print "####################################################\n"
+        print("\n####################################################")
+        print(outstring)
+        print(errstring)
+        print("#"+"\n#".join(cvstring.replace("Convolution","Convolution Models:").split("\n")))
+        print(cvestring.replace("#Convolution\n",""))
+        print("#"+"\n#".join(shstring.replace("Shift","Shift Models:").split("\n")))
+        print(shestring.replace("#Shift\n","")+"\n")
+        print("####################################################\n")
     # Reinsert the comments at the original locations
     outstrspl = (toutstring+outstring).split('\n')
     for i in range(len(modcomlin)): outstrspl.insert(modcomind[i],modcomlin[i])
@@ -551,9 +555,9 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
         if os.path.exists(filename):
             while ans != 'y' and ans != 'n' and ans !='r':
                 msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
-                ans = raw_input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
+                ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
                 if ans == 'r':
-                    fileend=raw_input(msgs.input()+"Enter new filename - ")
+                    fileend=input(msgs.input()+"Enter new filename - ")
                     filename = fileend
                     if os.path.exists(filename): ans = ''
         if ans != 'n':
@@ -603,9 +607,9 @@ def save_covar(slf, covar):
                 ans = 'r'
             else:
                 msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
-                ans = raw_input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
+                ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
             if ans == 'r':
-                fileend=raw_input(msgs.input()+"Enter new filename - ")
+                fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend
                 if os.path.exists(filename): ans = ''
     if ans != 'n':

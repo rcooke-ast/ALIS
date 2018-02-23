@@ -123,32 +123,32 @@ def optarg(pathname, argv=None, verbose=2):
     """
     plxaxis = ['observed','rest','velocity']
     if argv is not None:
-		if argv.cpus is not None:
-			argflag['run']['ncpus']   = argv.cpus
-		if argv.gpu:
-			argflag['run']['ngpus']   = argv.gpu
-		if argv.plot is not None:
-			argflag['plot']['dims']   = argv.plot
-		if argv.xaxis is not None:
-			argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
-		if argv.justplot:
-			argflag['plot']['only']   = argv.justplot
-		if argv.labels:
-			argflag['plot']['labels']  = argv.labels
-		if argv.verbose is not None:
-			argflag['out']['verbose']  = argv.verbose
-		if argv.random is not None:
-			argflag['sim']['random']   = argv.random
-		if argv.startid is not None:
-			argflag['sim']['startid']  = argv.startid
-		if argv.fits:
-			argflag['out']['fits']     = argv.fits
-		if argv.model:
-			argflag['out']['model']    = argv.model
-		if argv.outname:
-			argflag['out']['modelname']    = argv.outname
-		if argv.writeover:
-			argflag['out']['overwrite'] = argv.writeover
+        if argv.cpus is not None:
+            argflag['run']['ncpus']   = argv.cpus
+        if argv.gpu:
+            argflag['run']['ngpus']   = argv.gpu
+        if argv.plot is not None:
+            argflag['plot']['dims']   = argv.plot
+        if argv.xaxis is not None:
+            argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
+        if argv.justplot:
+            argflag['plot']['only']   = argv.justplot
+        if argv.labels:
+            argflag['plot']['labels']  = argv.labels
+        if argv.verbose is not None:
+            argflag['out']['verbose']  = argv.verbose
+        if argv.random is not None:
+            argflag['sim']['random']   = argv.random
+        if argv.startid is not None:
+            argflag['sim']['startid']  = argv.startid
+        if argv.fits:
+            argflag['out']['fits']     = argv.fits
+        if argv.model:
+            argflag['out']['model']    = argv.model
+        if argv.outname:
+            argflag['out']['modelname']    = argv.outname
+        if argv.writeover:
+            argflag['out']['overwrite'] = argv.writeover
     #######################
     # Now do some checks: #
     #######################
@@ -175,7 +175,7 @@ def set_params(lines, argflag, setstr=""):
         if lines[i] == '': continue
         if lines[i][0] == '#' or lines[i] == '\n': continue
         linspl = lines[i].split()
-        if linspl[0] in argflag.keys():
+        if linspl[0] in list(argflag.keys()):
             if linspl[1] in argflag[linspl[0]].keys():
                 try:
                     if type(argflag[linspl[0]][linspl[1]]) is int:
@@ -477,7 +477,9 @@ def load_data(slf, datlines, data=None):
             filename = "Data read from 'data' keyword"
             linspl.insert(0,linspl[0])
         if not os.path.exists(filename) and data is None:
-            if not slf._argflag['generate']['data'] and not slf._isonefits: msgs.error("File does not exist -"+msgs.newline()+filename)
+            if not slf._argflag['generate']['data'] and not slf._isonefits:
+                import pdb; pdb.set_trace()
+                msgs.error("File does not exist -"+msgs.newline()+filename)
         fitfromcol, loadfromcol, systfromcol, resnfromcol, specidgiven = False, False, False, False, False
         fitspl, loadspl, systfrom, resnfrom = [''], [''], '', ''
         if len(linspl) > 1:
@@ -843,7 +845,7 @@ def load_data(slf, datlines, data=None):
 
 
 def load_userdata(data, colspl, wfe, verbose=2):
-    wfek = wfe.keys()
+    wfek = list(wfe.keys())
     usecols=()
     ucind=dict({})
     uccnt=0
@@ -902,7 +904,7 @@ def load_userdata(data, colspl, wfe, verbose=2):
 
 
 def load_datafile(filename, colspl, wfe, verbose=2, datatype="default"):
-    wfek = wfe.keys()
+    wfek = list(wfe.keys())
     dattyp = filename.split(".")[-1]
     if dattyp in ['dat', 'ascii', 'txt']:
         return load_ascii(filename, colspl, wfe, wfek, verbose=verbose)

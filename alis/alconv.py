@@ -1,7 +1,7 @@
 import os
 import datetime
-import almsgs
-from alutils import getreason
+from alis import almsgs
+from alis.alutils import getreason
 msgs=almsgs.msgs()
 
 def print_model(diff, mp, thresh, verbose=2, funcarray=[None, None, None]):
