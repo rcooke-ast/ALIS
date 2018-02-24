@@ -94,13 +94,16 @@ class Gaussian(alfunc_base.Base) :
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
                             exec(cmd)
-                getid = level+levadd  # THIS SEEMS DANGEROUS
+                getid = mp['tpar'][mp['mtie'][ival][i]][1]
                 levadd += 1
             else:
                 getid = level+levadd
                 levadd+=1
             if lnkprm is None:
-                params[i] = self.parin(i, p[getid], parb)
+                try:
+                    params[i] = self.parin(i, p[getid], parb)
+                except:
+                    import pdb; pdb.set_trace()
                 if mp['mfix'][ival][i] == 0: parinf.append(getid)
             else:
                 params[i] = lnkprm

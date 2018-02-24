@@ -381,7 +381,7 @@ class Base :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if errs == None: errors = params
+        if np.all(errs == None): errors = params
         else: errors = errs
         add = self._pnumr
         havtie = 0

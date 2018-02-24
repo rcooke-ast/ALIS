@@ -648,7 +648,7 @@ def plot_showall():
 def plot_pdf(slf):
     msgs.info("Saving a pdf of the data and models", verbose=slf._argflag['out']['verbose'])
     from matplotlib.backends.backend_pdf import PdfPages
-    import alsave
+    from alis import alsave
     if (slf._argflag['out']['plots'].lower() == 'true'):
         tfn = slf._argflag['out']['modelname']+'.pdf'
     else:
