@@ -1326,7 +1326,6 @@ def load_model(slf, modlines, updateself=True):
         slf._emab = emab
         slf._funcused = funcused
     modpass['line'] = pnumlin
-    import pdb; pdb.set_trace()
     return modpass
 
 
