@@ -442,6 +442,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
         for i in range(pgcnt[pg]):
             w = np.where(wfemcarr[3][pg][i] > -0.5)
             modl_min, modl_max = np.min(wfemcarr[3][pg][i][w]), np.max(wfemcarr[3][pg][i][w])
+            modl_min = min(0.0, modl_min)
             flue_med = 3.0*np.median(wfemcarr[2][pg][i])
             res_size = 0.05*(modl_max-modl_min)
             shift = np.min([modl_min-2.0*res_size, np.min(wfemcarr[5][pg][i])-np.max(wfemcarr[2][pg][i][w])-2.0*res_size])
@@ -450,11 +451,13 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
             if np.size(w[0]) == 0:
 #				msgs.warn("There was no model data found for plot page {0:d}, panel {1:d}".format(pg+1,i+1), verbose=argflag['out']['verbose'])
                 modl_min, modl_max = np.min(wfemcarr[1][pg][i]), np.max(wfemcarr[1][pg][i])
+                modl_min = min(0.0, modl_min)
                 flue_med = 3.0*np.median(wfemcarr[2][pg][i])
-                res_size = 0.05*(modl_max-modl_min)
+                res_size = 0.05*(modl_max-min(0.0, modl_min))
                 shift = np.min([modl_min-2.0*res_size, np.min(errcen)-np.median(wfemcarr[2][pg][i])-2.0*res_size])
             else:
                 modl_min, modl_max = np.min(wfemcarr[3][pg][i][w]), np.max(wfemcarr[3][pg][i][w])
+                modl_min = min(0.0, modl_min)
                 flue_med = 3.0*np.median(wfemcarr[2][pg][i])
                 res_size = 0.05*(modl_max-modl_min)
                 shift = np.min([modl_min-2.0*res_size, np.min(errcen)-np.median(wfemcarr[2][pg][i][w])-2.0*res_size])
