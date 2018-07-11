@@ -446,24 +446,26 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
             flue_med = 3.0*np.median(wfemcarr[2][pg][i])
             res_size = 0.05*(modl_max-modl_min)
             shift = np.min([modl_min-2.0*res_size, np.min(wfemcarr[5][pg][i])-np.max(wfemcarr[2][pg][i][w])-2.0*res_size])
+            # Determine the effective zero level (i.e. zero/(zero+cont)  note: this is the general case)
+            errcen = wfemcarr[5][pg][i]/(wfemcarr[4][pg][i]+wfemcarr[5][pg][i])
             if np.size(w[0]) == 0:
 #				msgs.warn("There was no model data found for plot page {0:d}, panel {1:d}".format(pg+1,i+1), verbose=argflag['out']['verbose'])
                 modl_min, modl_max = np.min(wfemcarr[1][pg][i]), np.max(wfemcarr[1][pg][i])
                 modl_min = min(0.0, modl_min)
                 flue_med = 3.0*np.median(wfemcarr[2][pg][i])
-                res_size = 0.05*(modl_max-modl_min)
-                shift = np.min([modl_min-2.0*res_size, np.min(wfemcarr[5][pg][i])-np.median(wfemcarr[2][pg][i])-2.0*res_size])
+                res_size = 0.05*(modl_max-min(0.0, modl_min))
+                shift = np.min([modl_min-2.0*res_size, np.min(errcen)-np.median(wfemcarr[2][pg][i])-2.0*res_size])
             else:
                 modl_min, modl_max = np.min(wfemcarr[3][pg][i][w]), np.max(wfemcarr[3][pg][i][w])
                 modl_min = min(0.0, modl_min)
                 flue_med = 3.0*np.median(wfemcarr[2][pg][i])
                 res_size = 0.05*(modl_max-modl_min)
-                shift = np.min([modl_min-2.0*res_size, np.min(wfemcarr[5][pg][i])-np.median(wfemcarr[2][pg][i][w])-2.0*res_size])
+                shift = np.min([modl_min-2.0*res_size, np.min(errcen)-np.median(wfemcarr[2][pg][i][w])-2.0*res_size])
             ymax = np.max([modl_max+flue_med, 1.2*np.max(wfemcarr[4][pg][i])])
             ymin = shift - 2.0*res_size
             ax = fig[pgnum].add_subplot(dims[0],dims[1],i+1)
             # Plot the error spectrum
-            ax.fill_between(wfemcarr[0][pg][i],wfemcarr[5][pg][i]-wfemcarr[2][pg][i],wfemcarr[5][pg][i]+wfemcarr[2][pg][i],facecolor='0.7')
+            ax.fill_between(wfemcarr[0][pg][i],errcen-wfemcarr[2][pg][i],errcen+wfemcarr[2][pg][i],facecolor='0.7')
             # Plot the residual region
             ax.fill_between(wfemcarr[0][pg][i],shift+res_size,shift-res_size,facecolor='0.5')
 ##			ax.plot(wfemcarr[0][pg][i]+disp[pg][i],wfemcarr[2][pg][i], 'b-', drawstyle='steps')
@@ -481,7 +483,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                 # Plot the residuals
                 ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w],(wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
                 # Plot the zero level
-                ax.plot(wfemcarr[0][pg][i],wfemcarr[5][pg][i], 'g--')
+                ax.plot(wfemcarr[0][pg][i],errcen, 'g--')
 #			if argx == 2: # For velocity:
 #				wmin=np.min([mmpltx[0],1.2*np.min(wfemcarr[0][pg][i][w])])
 #				wmax=np.max([mmpltx[1],1.2*np.max(wfemcarr[0][pg][i][w])])

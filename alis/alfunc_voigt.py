@@ -571,8 +571,10 @@ class Voigt(alfunc_base.Base) :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if errs == None: errors = params
-        else: errors = errs
+        if type(errs) is np.ndarray:
+            errors = errs
+        else:
+            errors = params
         parid = [i for i in range(self._pnumr)]
         if len(mp['mpar'][istart]) == self._pnumr: numpar = self._pnumr
         else:
