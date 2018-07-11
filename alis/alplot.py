@@ -481,7 +481,8 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                 # Plot the continuum
                 ax.plot(wfemcarr[0][pg][i][w],wfemcarr[4][pg][i][w], 'b--')
                 # Plot the residuals
-                ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w],(wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
+                incfit = wfemcarr[8][pg][i]
+                ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w],incfit*(wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
                 # Plot the zero level
                 ax.plot(wfemcarr[0][pg][i],errcen, 'g--')
 #			if argx == 2: # For velocity:
