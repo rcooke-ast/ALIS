@@ -94,7 +94,6 @@ class Gaussian(alfunc_base.Base) :
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
                             exec(cmd)
-                #getid = mp['tpar'][mp['mtie'][ival][i]][1]  # THIS IS A JXP KLUDGE.  WHAT IS CORRECT??
                 levadd += 1
             else:
                 getid = level+levadd
