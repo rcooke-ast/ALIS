@@ -402,7 +402,7 @@ class Polynomial(alfunc_base.Base) :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if np.all(errs == None):
+        if errs is None:
             errors = params
         else:
             errors = errs

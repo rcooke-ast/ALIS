@@ -321,13 +321,13 @@ class LineEmission(alfunc_voigt.Voigt) :
             numrat, denrat = self._keywd['ion'].split('/')
             eliont = numrat.split("_")
             elion  = "_".join(eliont[:-1])
-            m = np.where(self._atomic['Element'] == elion.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == elion.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+elion.split('_')[0]+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE INTEGRATED FLUX FOR A SINGLE ION HAS BEEN SPECIFIED
             # Check the specified element exists
-            m = np.where(self._atomic['Element'] == self._keywd['ion'].split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
             if np.size(m) != 1: msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             # Get a preliminary set of parameters
             pt=np.zeros(self._pnumr)

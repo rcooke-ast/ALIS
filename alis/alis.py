@@ -23,6 +23,9 @@ from alis import alfunc_base
 from alis import almsgs
 msgs = almsgs.msgs()
 
+try: input = raw_input
+except NameError: pass
+
 #from multiprocessing import Pool as mpPool
 #import pycuda.driver as cuda
 #import pycuda.autoinit
@@ -663,7 +666,7 @@ class ClassMain:
             plotCasePDF = ((self._argflag['out']['plots'].lower() == 'true') or ((self._argflag['out']['plots'].lower() != 'false') and (self._argflag['out']['plots'] != '')))
             if plotCasePDF:
                 alplot.plot_pdf(self)
-            fileend=raw_input(msgs.input()+"Press enter to view the fits -")
+            fileend=input(msgs.input()+"Press enter to view the fits -")
             alplot.plot_showall()
         elif self._argflag['sim']['random'] is not None and self._argflag['sim']['beginfrom'] != "":
             from alis import alsims
@@ -754,7 +757,7 @@ class ClassMain:
                 if plotCasePDF:
                     alplot.plot_pdf(self)
                 if self._argflag['plot']['fits'] or self._argflag['plot']['residuals']:
-                    null=raw_input(msgs.input()+"Press enter to view the fits -")
+                    null=input(msgs.input()+"Press enter to view the fits -")
                     alplot.plot_showall()
         else:
             msgs.info("Commencing chi-squared minimisation",verbose=self._argflag['out']['verbose'])
@@ -908,11 +911,11 @@ class ClassMain:
                 if plotCasePDF:
                     alplot.plot_pdf(self)
                 if self._argflag['plot']['fits'] or self._argflag['plot']['residuals']:
-                    null=raw_input(msgs.input()+"Press enter to view the fits -")
+                    null=input(msgs.input()+"Press enter to view the fits -")
                     alplot.plot_showall()
 #			if self._argflag['plot']['fits']:
 #				alplot.make_plots_all(self)
-#				fileend=raw_input(msgs.input()+"Press enter to view the fits -")
+#				fileend=input(msgs.input()+"Press enter to view the fits -")
 #				alplot.plot_showall()
             msgs.info("Total fitting time in hours: %s" % ((self._tend - self._tstart)/3600.0),verbose=self._argflag['out']['verbose'])
             # If simulations were requested, do them now

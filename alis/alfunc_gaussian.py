@@ -94,16 +94,13 @@ class Gaussian(alfunc_base.Base) :
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
                             exec(cmd)
-                getid = mp['tpar'][mp['mtie'][ival][i]][1]  # THIS IS A JXP KLUDGE.  WHAT IS CORRECT??
+                #getid = mp['tpar'][mp['mtie'][ival][i]][1]  # THIS IS A JXP KLUDGE.  WHAT IS CORRECT??
                 levadd += 1
             else:
                 getid = level+levadd
                 levadd+=1
             if lnkprm is None:
-                try:
-                    params[i] = self.parin(i, p[getid], parb)
-                except:
-                    import pdb; pdb.set_trace()
+                params[i] = self.parin(i, p[getid], parb)
                 if mp['mfix'][ival][i] == 0: parinf.append(getid)
             else:
                 params[i] = lnkprm

@@ -423,15 +423,16 @@ class Voigt(alfunc_base.Base) :
         if '/' in self._keywd['ion']:
             cdratio = True
             numrat, denrat = self._keywd['ion'].split('/')
-            m = np.where(self._atomic['Element'] == numrat.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == numrat.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+numrat+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE COLUMN DENSITY FOR A SINGLE ION HAS BEEN SPECIFIED
             pt=np.zeros(self._pnumr)
             levadd=0
-            m = np.where(self._atomic['Element'] == self._keywd['ion'].split('_')[0])
-            if np.size(m) != 1: msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
+            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
+            if np.size(m) != 1:
+                msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             for i in range(self._pnumr):
                 lnkprm = None
                 parb = dict({'ap_1a':[None], 'ap_2a':pt[2], 'ap_2b':self._atomic['AtomicMass'][m][0]})
@@ -577,7 +578,7 @@ class Voigt(alfunc_base.Base) :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if errs == None: errors = params
+        if errs is None: errors = params
         else: errors = errs
         parid = [i for i in range(self._pnumr)]
         if len(mp['mpar'][istart]) == self._pnumr: numpar = self._pnumr
@@ -771,15 +772,16 @@ class Voigt(alfunc_base.Base) :
         if '/' in self._keywd['ion']:
             cdratio = True
             numrat, denrat = self._keywd['ion'].split('/')
-            m = np.where(self._atomic['Element'] == numrat.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == numrat.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+numrat+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE COLUMN DENSITY FOR A SINGLE ION HAS BEEN SPECIFIED
             pt=np.zeros(self._pnumr)
             levadd=0
-            m = np.where(self._atomic['Element'] == self._keywd['ion'].split('_')[0])
-            if np.size(m) != 1: msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
+            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
+            if np.size(m) != 1:
+                msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             for i in range(self._pnumr):
                 lnkprm = None
                 parb = dict({'ap_1a':[None], 'ap_2a':pt[2], 'ap_2b':self._atomic['AtomicMass'][m][0]})

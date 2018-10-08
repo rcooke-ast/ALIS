@@ -9,6 +9,8 @@ msgs = almsgs.msgs()
 
 from astropy.io import fits as pyfits
 
+try: input = raw_input
+except NameError: pass
 
 try:
     from xastropy.xutils import xdebug as debugger
@@ -431,14 +433,14 @@ def load_atomic(slf):
     # elK = Kvalue
     # elname = Element
     # elmass = AtomicMass
-    atmdata['Ion'] = np.array(isotope+b"_"+table.array['Ion'])
+    atmdata['Ion'] = np.array(isotope+b"_"+table.array['Ion']).astype(np.str)
     atmdata['Wavelength'] = np.array(table.array['RestWave'])
     atmdata['fvalue'] = np.array(table.array['fval'])
     atmdata['Gamma'] = np.array(table.array['Gamma'])
     atmdata['Qvalue'] = np.array(table.array['q'])
     atmdata['Kvalue'] = np.array(table.array['K'])
     seen = set()
-    atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)])
+    atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(np.str)
     seen = set()
     atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
     return atmdata
@@ -478,7 +480,6 @@ def load_data(slf, datlines, data=None):
             linspl.insert(0,linspl[0])
         if not os.path.exists(filename) and data is None:
             if not slf._argflag['generate']['data'] and not slf._isonefits:
-                import pdb; pdb.set_trace()
                 msgs.error("File does not exist -"+msgs.newline()+filename)
         fitfromcol, loadfromcol, systfromcol, resnfromcol, specidgiven = False, False, False, False, False
         fitspl, loadspl, systfrom, resnfrom = [''], [''], '', ''
@@ -1420,7 +1421,7 @@ def load_onefits(slf,loadname):
     print("")
     ans=0
     while ans not in [1,2,3,4,5]:
-        ans = raw_input(msgs.input()+"Please select an option (1,2,3,4,5) - ")
+        ans = input(msgs.input()+"Please select an option (1,2,3,4,5) - ")
         try:
             ans = int(ans)
         except:
