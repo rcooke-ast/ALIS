@@ -1,7 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import ticker
-import almsgs
+from alis import almsgs
 msgs=almsgs.msgs()
 
 def get_fitregions(wave,cont,fitted,disp,size=None):
@@ -654,7 +654,7 @@ def plot_showall():
 def plot_pdf(slf):
     msgs.info("Saving a pdf of the data and models", verbose=slf._argflag['out']['verbose'])
     from matplotlib.backends.backend_pdf import PdfPages
-    import alsave
+    from alis import alsave
     if (slf._argflag['out']['plots'].lower() == 'true'):
         tfn = slf._argflag['out']['modelname']+'.pdf'
     else:

@@ -1,7 +1,7 @@
 import os
 import numpy as np
-import almsgs
-import alfunc_base
+from alis import almsgs
+from alis import alfunc_base
 from scipy.special import wofz
 #import pycuda.driver as cuda
 #import pycuda.autoinit
@@ -30,7 +30,7 @@ class Voigt(alfunc_base.Base) :
         self._svfmt   = [ "{0:.7g}", "{0:.10g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}",  "{0:.7g}"]			# Specify the format used to print or save output
         self._prekw   = [ 'ion' ]																			# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
-        tempinput = self._parid+self._keych.keys()                             #
+        tempinput = self._parid+list(self._keych.keys())                             #
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
         ########################################################################
         self._verbose = verbose
@@ -187,6 +187,12 @@ class Voigt(alfunc_base.Base) :
             # calculate the effective absorption in a given pixel. Let's
             # sample each pixel by nexpd bins per Doppler parameter.
             # This is only valid if the pixelsize is in km/s
+            #
+            # NOTE:
+            #
+            # tau = sqrt(pi) * re * f * wave * c / bval
+            # where re = classical electron radius = (e^2)/(me c^2) = 2.8179403227E-13 cm
+            #
             if karr['logN']: cold = 10.0**par[0]
             else: cold = par[0]
             zp1=par[1]+1.0
@@ -262,7 +268,7 @@ class Voigt(alfunc_base.Base) :
         isspl=instr.split()
         # Seperate the parameters from the keywords
         ptemp, kywrd = [], []
-        keywdk = self._keywd.keys()
+        keywdk = list(self._keywd.keys())
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
         numink = 0
         numpar = self._pnumr
@@ -417,15 +423,16 @@ class Voigt(alfunc_base.Base) :
         if '/' in self._keywd['ion']:
             cdratio = True
             numrat, denrat = self._keywd['ion'].split('/')
-            m = np.where(self._atomic['Element'] == numrat.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == numrat.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+numrat+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE COLUMN DENSITY FOR A SINGLE ION HAS BEEN SPECIFIED
             pt=np.zeros(self._pnumr)
             levadd=0
-            m = np.where(self._atomic['Element'] == self._keywd['ion'].split('_')[0])
-            if np.size(m) != 1: msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
+            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
+            if np.size(m) != 1:
+                msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             for i in range(self._pnumr):
                 lnkprm = None
                 parb = dict({'ap_1a':[None], 'ap_2a':pt[2], 'ap_2b':self._atomic['AtomicMass'][m][0]})
@@ -571,10 +578,8 @@ class Voigt(alfunc_base.Base) :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if type(errs) is np.ndarray:
-            errors = errs
-        else:
-            errors = params
+        if errs is None: errors = params
+        else: errors = errs
         parid = [i for i in range(self._pnumr)]
         if len(mp['mpar'][istart]) == self._pnumr: numpar = self._pnumr
         else:
@@ -664,7 +669,7 @@ class Voigt(alfunc_base.Base) :
                 levadd += 1
         level += add
         # Now write in the keywords
-        keys = mp['mkey'][istart].keys()
+        keys = list(mp['mkey'][istart].keys())
         keys[:] = (kych for kych in keys if kych[:] != 'input') # Remove the keyword 'input'
         for i in range(len(keys)):
             if mp['mkey'][istart]['input'][keys[i]] == 0: # This keyword wasn't provided as user input
@@ -767,15 +772,16 @@ class Voigt(alfunc_base.Base) :
         if '/' in self._keywd['ion']:
             cdratio = True
             numrat, denrat = self._keywd['ion'].split('/')
-            m = np.where(self._atomic['Element'] == numrat.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == numrat.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+numrat+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE COLUMN DENSITY FOR A SINGLE ION HAS BEEN SPECIFIED
             pt=np.zeros(self._pnumr)
             levadd=0
-            m = np.where(self._atomic['Element'] == self._keywd['ion'].split('_')[0])
-            if np.size(m) != 1: msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
+            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
+            if np.size(m) != 1:
+                msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             for i in range(self._pnumr):
                 lnkprm = None
                 parb = dict({'ap_1a':[None], 'ap_2a':pt[2], 'ap_2b':self._atomic['AtomicMass'][m][0]})

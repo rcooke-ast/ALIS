@@ -1,6 +1,7 @@
+from __future__ import print_function, absolute_import, division, unicode_literals
 import numpy as np
 import traceback
-import almsgs
+from alis import almsgs
 import sys
 msgs=almsgs.msgs()
 
@@ -25,7 +26,7 @@ class Base :
         self._svfmt   = [ "{0:.8g}",   "{0:.8g}", "{0:.8g}"]		# Specify the format used to print or save output
         self._prekw   = []											# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
-        tempinput = self._parid+self._keych.keys()                             #
+        tempinput = self._parid+list(self._keych.keys())                             #
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
         ########################################################################
         self._verbose = verbose
@@ -245,7 +246,7 @@ class Base :
         isspl=instr.split()
         # Seperate the parameters from the keywords
         ptemp, kywrd = [], []
-        keywdk = self._keywd.keys()
+        keywdk = list(self._keywd.keys())
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
         numink = 0
         param = [None for all in range(self._pnumr)]
@@ -380,10 +381,8 @@ class Base :
         Nothing should be changed here when writing a new function.
         --------------------------------------------------------
         """
-        if type(errs) is np.ndarray:
-            errors = errs
-        else:
-            errors = params
+        if errs is None: errors = params
+        else: errors = errs
         add = self._pnumr
         havtie = 0
         tienum = 0
@@ -477,7 +476,7 @@ class Base :
                 levadd += 1
         level += add
         # Now write in the keywords
-        keys = mp['mkey'][istart].keys()
+        keys = list(mp['mkey'][istart].keys())
         keys[:] = (kych for kych in keys if kych[:] != 'input') # Remove the keyword 'input'
         for i in range(len(keys)):
             if mp['mkey'][istart]['input'][keys[i]] == 0: # This keyword wasn't provided as user input
@@ -622,29 +621,29 @@ class Base :
 #######################################################################################
 
 # Import all of the functions used in alis
-import alfunc_brokenpowerlaw
-import alfunc_chebyshev
-import alfunc_constant
-import alfunc_gaussian
-import alfunc_legendre
-import alfunc_linear
-import alfunc_lineemission
-import alfunc_phionxs
-import alfunc_polynomial
-import alfunc_powerlaw
-import alfunc_random
-import alfunc_spline
-import alfunc_thar
-import alfunc_tophat
-import alfunc_variable
-import alfunc_voigt
+from alis import alfunc_brokenpowerlaw
+from alis import alfunc_chebyshev
+from alis import alfunc_constant
+from alis import alfunc_gaussian
+from alis import alfunc_legendre
+from alis import alfunc_linear
+from alis import alfunc_lineemission
+from alis import alfunc_phionxs
+from alis import alfunc_polynomial
+from alis import alfunc_powerlaw
+from alis import alfunc_random
+from alis import alfunc_spline
+from alis import alfunc_thar
+from alis import alfunc_tophat
+from alis import alfunc_variable
+from alis import alfunc_voigt
 # Convolution routines
-import alfunc_afwhm
-import alfunc_lsf
-import alfunc_vfwhm
-import alfunc_vsigma
-import alshift
-import alfunc_user
+from alis import alfunc_afwhm
+from alis import alfunc_lsf
+from alis import alfunc_vfwhm
+from alis import alfunc_vsigma
+from alis import alshift
+from alis import alfunc_user
 
 """
 Initialises the functions that are used in this file.
@@ -696,10 +695,10 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
         sys.exit()
 
     # Incorporate the user-defined functions
-    kvals = usr_fd.keys()
+    kvals = list(usr_fd.keys())
     if len(kvals) == 0:
         msgs.info("No user functions to load!")
-    fdk = fd.keys()
+    fdk = list(fd.keys())
     # Check there is no overlap in function names
     for i in range(len(kvals)):
         if kvals[i] in fdk:
@@ -718,14 +717,14 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
         msgs.bug("Two keywords in alfunc_base.py unexpectedly set to 'True' ...", verbose=2)
         sys.exit()
     if getinst:
-        keys = fd.keys()
+        keys = list(fd.keys()) # Python 3
         for i in range(len(keys)):
             if keys[i] in sendatomic:
                 fd[keys[i]] = fd[keys[i]](prgname=prgname, getinst=getinst, verbose=verbose, atomic=atomic)
             else:
                 fd[keys[i]] = fd[keys[i]](prgname=prgname, getinst=getinst, verbose=verbose)
     if getfuncs:
-        return fd.keys()
+        return list(fd.keys())
     else:
         return fd
 

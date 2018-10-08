@@ -1,7 +1,7 @@
 import os
 import numpy as np
-import almsgs
-import alfunc_voigt
+from alis import almsgs
+from alis import alfunc_voigt
 #import pycuda.driver as cuda
 #import pycuda.autoinit
 #from pycuda.compiler import SourceModule
@@ -30,7 +30,7 @@ class LineEmission(alfunc_voigt.Voigt) :
         self._svfmt   = [ "{0:.7g}", "{0:.10g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}"]			# Specify the format used to print or save output
         self._prekw   = [ 'ion' ]																# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
-        tempinput = self._parid+self._keych.keys()                             #
+        tempinput = self._parid+list(self._keych.keys())                             #
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
         ########################################################################
         self._verbose = verbose
@@ -164,7 +164,7 @@ class LineEmission(alfunc_voigt.Voigt) :
         isspl=instr.split()
         # Seperate the parameters from the keywords
         ptemp, kywrd = [], []
-        keywdk = self._keywd.keys()
+        keywdk = list(self._keywd.keys())
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
         numink = 0
         numpar = self._pnumr
@@ -321,13 +321,13 @@ class LineEmission(alfunc_voigt.Voigt) :
             numrat, denrat = self._keywd['ion'].split('/')
             eliont = numrat.split("_")
             elion  = "_".join(eliont[:-1])
-            m = np.where(self._atomic['Element'] == elion.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == elion.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+elion.split('_')[0]+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE INTEGRATED FLUX FOR A SINGLE ION HAS BEEN SPECIFIED
             # Check the specified element exists
-            m = np.where(self._atomic['Element'] == self._keywd['ion'].split('_')[0])
+            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
             if np.size(m) != 1: msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             # Get a preliminary set of parameters
             pt=np.zeros(self._pnumr)

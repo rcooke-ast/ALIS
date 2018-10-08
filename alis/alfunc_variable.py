@@ -1,6 +1,6 @@
 import numpy as np
-import almsgs
-import alfunc_base
+from alis import almsgs
+from alis import alfunc_base
 msgs=almsgs.msgs()
 
 class Variable(alfunc_base.Base):
@@ -24,7 +24,7 @@ class Variable(alfunc_base.Base):
         self._svfmt   = [ "{0:.8g}" ]							# Specify the format used to print or save output
         self._prekw   = []										# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
-        tempinput = self._parid+self._keych.keys()                             #
+        tempinput = self._parid+list(self._keych.keys())                             #
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
         ########################################################################
         self._verbose = verbose

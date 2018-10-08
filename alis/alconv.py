@@ -1,8 +1,11 @@
 import os
 import datetime
-import almsgs
-from alutils import getreason
+from alis import almsgs
+from alis.alutils import getreason
 msgs=almsgs.msgs()
+
+try: input = raw_input
+except NameError: pass
 
 def print_model(diff, mp, thresh, verbose=2, funcarray=[None, None, None]):
     function=funcarray[0]
@@ -86,9 +89,9 @@ def save_convtest(slf,diff,thresh,info,printout=True,extratxt=["",""]):
     if os.path.exists(filename):
         while ans != 'y' and ans != 'n' and ans !='r':
             msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
-            ans = raw_input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
+            ans = nput(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
             if ans == 'r':
-                fileend=raw_input(msgs.input()+"Enter new filename - ")
+                fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend
                 if os.path.exists(filename): ans = ''
     if ans != 'n':

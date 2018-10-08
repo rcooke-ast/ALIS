@@ -2,7 +2,7 @@
 This file contains a number of useful utilities
 that are used by ALIS.
 """
-import almsgs
+from alis import almsgs
 msgs=almsgs.msgs()
 
 def getreason(idnum,verbose=2):

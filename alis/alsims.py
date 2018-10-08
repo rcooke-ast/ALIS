@@ -13,6 +13,9 @@ from alis import alplot
 from alis import alutils
 msgs=almsgs.msgs()
 
+try: input = raw_input
+except NameError: pass
+
 def make_directory(dirname,overwrite=False,verbose=2):
     currDIR=os.getcwd()
     newdir = "{0:s}/{1:s}".format(currDIR,dirname)
@@ -122,7 +125,7 @@ def perturb(slf, covar, bparams, parinfo):
         if slf._argflag['plot']['fits']:
             model = myfunct_wrap(mr.params,output=3,**fa)
             alplot.make_plots_all(slf, model=model)
-            fileend=raw_input(msgs.input()+"Press enter to view the fits -")
+            fileend=input(msgs.input()+"Press enter to view the fits -")
             alplot.plot_showall()
     ntxt=":0"+nchr+"d}"
     outname="{0:s}.{1:s}_{2"+ntxt+"-{3"+ntxt
@@ -253,7 +256,7 @@ def sim_random(slf, covar, bparams, parinfo):
         if slf._argflag['plot']['fits']:
             model = myfunct_wrap(mr.params,output=3,**fa)
             alplot.make_plots_all(slf, model=model)
-            fileend=raw_input(msgs.input()+"Press enter to view the fits -")
+            fileend=input(msgs.input()+"Press enter to view the fits -")
             alplot.plot_showall()
         if slf._argflag['sim']['systematics']:
             # Calculate the systematics
@@ -352,7 +355,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
     if slf._argflag['plot']['fits']:
         model = myfunct_wrap(p0new,output=3,**fa)
         alplot.make_plots_all(slf,model=model)
-        fileend=raw_input(msgs.input()+"Press enter to view the fits -")
+        fileend=input(msgs.input()+"Press enter to view the fits -")
         alplot.plot_showall()
     # Now fit it!
     tstart=time.time()
@@ -375,7 +378,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
     if slf._argflag['plot']['fits']:
         model = myfunct_wrap(ms.params,output=3,**fa)
         alplot.make_plots_all(slf,model=model)
-        fileend=raw_input(msgs.input()+"Press enter to view the fits -")
+        fileend=input(msgs.input()+"Press enter to view the fits -")
         alplot.plot_showall()
     # Get the results and print them to file
     alsave.save_model(slf, ms.params, ms.perror, [(tend - tstart)/3600.0, ms.fnorm, ms.dof, ms.niter, ms.status], printout=False, extratxt=[slf._argflag['sim']['dirname']+'/',".syst"+ntxt])
