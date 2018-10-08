@@ -19,9 +19,9 @@ class Voigt(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'voigt'																				# ID string for this class
         self._pnumr   = 6																					# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'ion':'', 'logN':True})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'ion':1,  'logN':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'ion':"{1:7}", 'logN':""})		# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'ion':'', 'logN':True, 'freq':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'ion':1,  'logN':0,    'freq':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'ion':"{1:7}", 'logN':"", 'freq':""})		# Format for the keyword. "" is the Default setting
         self._parid   = ['ColDens',   'redshift', 'bturb',   'temperature', 'DELTAa/a',	'DELTAmu/mu']		# Name of each parameter
         self._defpar  = [ 8.1,         0.0,        7.0,       1.0E2,         0.0,        0.0 ]				# Default values for parameters that are not provided
         self._fixpar  = [ None,        None,       None,      None,          True,       True ]				# By default, should these parameters be fixed?
@@ -193,6 +193,9 @@ class Voigt(alfunc_base.Base) :
             # tau = sqrt(pi) * re * f * wave * c / bval
             # where re = classical electron radius = (e^2)/(me c^2) = 2.8179403227E-13 cm
             #
+            #wave = 1.0E10 * 299792458.0 / (freq * 1000.0)
+            if karr['freq']: wavein = 1.0E10 * 299792458.0 / freq
+            else: wavein = wave
             if karr['logN']: cold = 10.0**par[0]
             else: cold = par[0]
             zp1=par[1]+1.0
@@ -201,7 +204,7 @@ class Voigt(alfunc_base.Base) :
             a=par[5]*wv*wv/(3.76730313461770655E11*bl)
             cns=wv*wv*par[4]/(bl*2.002134602291006E12)
             cne=cold*cns
-            ww=(wave*1.0e-8)/zp1
+            ww=(wavein*1.0e-8)/zp1
             v=wv*ww*((1.0/ww)-(1.0/wv))/bl
             tau = cne*wofz(v + 1j * a).real
             #tau = cne*voigtking(v, a)
@@ -556,6 +559,7 @@ class Voigt(alfunc_base.Base) :
                 msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
             if nexbin[0] == "km/s": return params, int(round(np.sqrt(2.0)*nexbin[1]/params[:,2].min() + 0.5))
             elif nexbin[0] == "A" : return params, int(round(np.sqrt(2.0)*299792.458*nexbin[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
+            elif nexbin[0] == "Hz" : return params, int(round(np.sqrt(2.0)*299792.458*nexbin[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
             else:
                 msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
                 msgs.error("Cannot proceed until this bug is fixed")
