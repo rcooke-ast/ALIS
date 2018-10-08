@@ -187,6 +187,12 @@ class Voigt(alfunc_base.Base) :
             # calculate the effective absorption in a given pixel. Let's
             # sample each pixel by nexpd bins per Doppler parameter.
             # This is only valid if the pixelsize is in km/s
+            #
+            # NOTE:
+            #
+            # tau = sqrt(pi) * re * f * wave * c / bval
+            # where re = classical electron radius = (e^2)/(me c^2) = 2.8179403227E-13 cm
+            #
             if karr['logN']: cold = 10.0**par[0]
             else: cold = par[0]
             zp1=par[1]+1.0
