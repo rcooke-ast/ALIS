@@ -20,7 +20,7 @@ class LSF(alfunc_base.Base) :
         self._keywd   = dict({'name':'COS', 'grating':'G130M', 'life_position':1,  'cen_wave':'1309', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
         self._keych   = dict({'name':1,     'grating':0,       'life_position':0,  'cen_wave':0,      'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
         self._keyfm   = dict({'name':"",    'grating':"",      'life_position':"", 'cen_wave':"",     'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._parid   = ['value']		# Name of each parameter
+        self._parid   = ['scale']		# Name of each parameter
         self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ True ]		# By default, should these parameters be fixed?
         self._limited = [ [1  ,0  ] ]	# Should any of these parameters be limited from below or above
@@ -45,13 +45,16 @@ class LSF(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        if p[0] == 1.0:
+        if p[0] > 0.0:
             ysize = y.size
             lsf_dict = dict(name=self._keywd['name'],
                             grating=self._keywd['grating'],
                             life_position=str(self._keywd['life_position']),
                             cen_wave=self._keywd['cen_wave'])
-            lsf_val = ltLSF(lsf_dict)
+            try:
+                lsf_val = ltLSF(lsf_dict, scalefactor=p[0])
+            except:
+                lsf_val = ltLSF(lsf_dict)
             tab = lsf_val.interpolate_to_wv_array(x * u.AA)
             lsfk = tab["kernel"].data
             size = ysize + lsfk.size - 1
