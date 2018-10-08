@@ -551,7 +551,7 @@ def load_data(slf, datlines, data=None):
 #								if defn not in dir(usrmod): msgs.error("Systematics module {0:s} must contain function {1:s}".format(module,defn))
                             systload.append(kwdspl[1])
                 elif kwdspl[0] == 'bintype':
-                    if kwdspl[1] not in ['km/s','A']: msgs.error("Bintype "+kwdspl[1]+" is not allowed")
+                    if kwdspl[1] not in ['km/s','A','Hz']: msgs.error("Bintype "+kwdspl[1]+" is not allowed")
             if fitspl == ['columns'] and not fitfromcol:
                 msgs.error("You must specify which column fitrange is in")
             if loadspl == ['columns'] and not loadfromcol:
@@ -743,6 +743,13 @@ def load_data(slf, datlines, data=None):
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
                         contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
+                    elif bntyp == 'Hz':
+                        npix = 1.0 + np.ceil((lwavemax - lwavemin) / slf._argflag['generate']['pixelsize'])
+                        wavein = lwavemin + slf._argflag['generate']['pixelsize'] * np.arange(npix)
+                        fluxin = np.zeros(wavein.size)
+                        fluein = np.zeros(wavein.size)
+                        contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(
+                            wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     else:
                         msgs.error("Sorry, I do not know the bintype: {0:s}".format(bntyp))
             # Is this a onefits file?
@@ -1600,6 +1607,10 @@ def load_subpixels(slf, parin):
             elif slf._datopt['bintype'][sp][sn] == "A":
                 interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
+            elif slf._datopt['bintype'][sp][sn] == "Hz":
+                binlen = 1.0 / np.float64(nexbins[sp][sn])
+                interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
+                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
             else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
@@ -1719,6 +1730,7 @@ def get_binsize(wave, bintype="km/s", maxonly=True, verbose=2):
     binsizet = wave[1:] - wave[:-1]
     if bintype == "km/s": binsizet *= 2.99792458E5/wave[:-1]
     elif bintype == "A" : pass
+    elif bintype == "Hz" : pass
     else: msgs.bug("Bintype "+bintype+" is unknown",verbose=verbose)
     maxbin  = np.max(binsizet)
     binsize[0,:-1], binsize[1,1:] = binsizet, binsizet
