@@ -194,12 +194,15 @@ class Voigt(alfunc_base.Base) :
             # where re = classical electron radius = (e^2)/(me c^2) = 2.8179403227E-13 cm
             #
             #wave = 1.0E10 * 299792458.0 / (freq * 1000.0)
-            if karr['freq']: wavein = 1.0E10 * 299792458.0 / freq
-            else: wavein = wave
+            if karr['freq']:
+                wavein = 1.0E10 * 299792458.0 / wave
+                wv = 29979245800.0 / par[3]
+            else:
+                wavein = wave
+                wv = par[3] * 1.0e-8
             if karr['logN']: cold = 10.0**par[0]
             else: cold = par[0]
             zp1=par[1]+1.0
-            wv=par[3]*1.0e-8
             bl=par[2]*wv/2.99792458E5
             a=par[5]*wv*wv/(3.76730313461770655E11*bl)
             cns=wv*wv*par[4]/(bl*2.002134602291006E12)
@@ -422,6 +425,19 @@ class Voigt(alfunc_base.Base) :
         Return the parameters for a Voigt function to be used by 'call'
         """
         parinf=[]
+        wvmin, wvmax = wvrng[0], wvrng[1]
+        if wvmin > wvmax:
+            # Likely, Hz is the bintype
+            temp = wvmin
+            wvmin = wvmax
+            wvmax = temp
+        # if nexbin is None:
+        #     wvmin, wvmax = wvrng[0], wvrng[1]
+        # else:
+        #     if nexbin[0] == "Hz":
+        #         wvmin, wvmax = 1.0E-10 * 299792458.0 / wvrng[1], 1.0E-10 * 299792458.0 / wvrng[0]
+        #     else:
+        #         wvmin, wvmax = wvrng[0], wvrng[1]
         # Determine if this is a column density ratio:
         if '/' in self._keywd['ion']:
             cdratio = True
@@ -461,7 +477,7 @@ class Voigt(alfunc_base.Base) :
             if ddpid is not None:
                 if ddpid not in parinf: return []
             nv = np.where(self._atomic['Ion'] == self._keywd['ion'])[0]
-            nw = np.where( (self._atomic['Wavelength'][nv]*(1.0+pt[1]) >= wvrng[0]) & (self._atomic['Wavelength'][nv]*(1.0+pt[1]) <= wvrng[1]) )
+            nw = np.where( (self._atomic['Wavelength'][nv]*(1.0+pt[1]) >= wvmin) & (self._atomic['Wavelength'][nv]*(1.0+pt[1]) <= wvmax) )
             if self._atomic['Wavelength'][nv][nw].size == 0:
                 if nexbin is not None: return [], None
                 elif getinfl: return [], []
@@ -538,7 +554,7 @@ class Voigt(alfunc_base.Base) :
                 if ddpid is not None:
                     if ddpid not in parinf: continue
                 nv = np.where(self._atomic['Ion'] == numrat)[0]
-                nw = np.where( (self._atomic['Wavelength'][nv]*(1.0+pt[-1][1]) >= wvrng[0]) & (self._atomic['Wavelength'][nv]*(1.0+pt[-1][1]) <= wvrng[1]) )
+                nw = np.where( (self._atomic['Wavelength'][nv]*(1.0+pt[-1][1]) >= wvmin) & (self._atomic['Wavelength'][nv]*(1.0+pt[-1][1]) <= wvmax) )
                 paramst = np.zeros((self._atomic['Wavelength'][nv][nw].size,6))
                 for ln in range(0,self._atomic['Wavelength'][nv][nw].size):
                     if np.isnan(self._atomic['Qvalue'][nv][nw][ln]) or self._atomic['Qvalue'][nv][nw][ln] is np.ma.masked:

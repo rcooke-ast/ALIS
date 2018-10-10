@@ -639,6 +639,7 @@ from alis import alfunc_variable
 from alis import alfunc_voigt
 # Convolution routines
 from alis import alfunc_afwhm
+from alis import alfunc_apod
 from alis import alfunc_lsf
 from alis import alfunc_vfwhm
 from alis import alfunc_vsigma
@@ -655,6 +656,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
     sendatomic = ['voigt', 'lineemission', 'phionxs']
     # Add your new function to the following:
     fd = dict({ 'Afwhm'          : alfunc_afwhm.AFWHM,
+                'apod'           : alfunc_apod.APOD,
                 'Ashift'         : alshift.Ashift,
                 'brokenpowerlaw' : alfunc_brokenpowerlaw.BrokenPowerLaw,
                 'chebyshev'      : alfunc_chebyshev.Chebyshev,

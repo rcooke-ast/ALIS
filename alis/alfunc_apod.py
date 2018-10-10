@@ -4,7 +4,7 @@ from alis import alfunc_base
 from scipy.signal import convolve
 msgs=almsgs.msgs()
 
-class AFWHM(alfunc_base.Base) :
+class APOD(alfunc_base.Base) :
     """
     Convolves the spectrum with a Gaussian with full-width at half-maxium AFWHM (in Angstroms):
     p[0] = AFWHM
@@ -73,6 +73,8 @@ class AFWHM(alfunc_base.Base) :
                 instfunc[ww] = 0.5 * (instfunc[ww[0] - 1] + instfunc[ww[0] + 1])
         else:
             return y
+        # Normalise
+        instfunc = instfunc / instfunc.sum()
         # Convolve the data with the instrument function
         yb = convolve(y, instfunc, mode='same', method='fft')
         return yb
@@ -169,12 +171,14 @@ class AFWHM(alfunc_base.Base) :
             mps['mlim'][cntr].append([self._limits[iind][i] if self._limited[iind][i]==1 else None for i in range(2)])
             return mps
         ################
-        isspl=instr.split()
+        # Convert colon back to equals so that it's interpreted as a keyword
+        instr = instr.replace(":", "=")
+        isspl = instr.split(",")
         # Seperate the parameters from the keywords
         kywrd = []
         keywdk = list(self._keywd.keys())
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
-        param = [None for all in range(self._pnumr)]
+        param = [str(self._defpar[all]) for all in range(self._pnumr)]
         parid = [i for i in range(self._pnumr)]
         for i in range(len(isspl)):
             if "=" in isspl[i]:
