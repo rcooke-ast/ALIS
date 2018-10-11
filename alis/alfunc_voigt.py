@@ -489,7 +489,8 @@ class Voigt(alfunc_base.Base) :
             for ln in range(0,self._atomic['Wavelength'][nv][nw].size):
                 if np.isnan(self._atomic['Qvalue'][nv][nw][ln]) or self._atomic['Qvalue'][nv][nw][ln] is np.ma.masked:
                     restwave = self._atomic['Wavelength'][nv][nw][ln]
-                    if pt[4] != 0.0: msgs.error("{0:s} {1:s} has no q-value.".format(self._keywd['ion'],str(restwave)))
+                    if pt[4] != 0.0:
+                        msgs.error("{0:s} {1:s} has no q-value.".format(self._keywd['ion'],str(restwave)))
                 else:
                     restwave = 1.0 / (1.0/self._atomic['Wavelength'][nv][nw][ln] + self._atomic['Qvalue'][nv][nw][ln]*pt[4]*1.0E-8)
                 params[ln,:] = np.array([pt[0],pt[1],pt[3],restwave,self._atomic['fvalue'][nv][nw][ln],self._atomic['Gamma'][nv][nw][ln]])
@@ -769,11 +770,13 @@ class Voigt(alfunc_base.Base) :
             # Now set limits and fixed values
             if mp['mtie'][mnum][i] >= 0: add -= 1
             elif mp['mtie'][mnum][i] <= -2:
+#                pinfo[level+levadd]['step'] = 1.0E-15
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
                 mp['mfix'][mnum][i] = -1
                 levadd += 1
             else:
+#                pinfo[level+levadd]['step'] = 1.0E-15
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]

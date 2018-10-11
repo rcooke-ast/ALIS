@@ -1382,15 +1382,15 @@ def load_links(slf, lnklines):
                 for ka in range(len(slf._modpass['mtie'])):
                     for kb in range(len(slf._modpass['mtie'][ka])):
                         if slf._modpass['mtie'][ka][kb] >= 0:
-                            # Tied parameter is not included in tpar[:][1]
+                            # Tied parameter is not included in tpar[*][1]
                             continue
                         if mtc == slf._modpass['tpar'][j][1]-lnkcnt: # You need to subtract lnkcnt here because modpass['mtie'] is being updated during the for loop and changes a -1 to a more negative number
                             slf._modpass['mtie'][ka][kb] = -2-lnkcnt
                             mtc = -1
                             # elif slf._modpass['mtie'][ka][kb] == slf._modpass['tpar'][j][1]: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
                         elif slf._modpass['mtie'][ka][kb] == mtc and mtc != -1: slf._modpass['mtie'][ka][kb] = -2 - lnkcnt
-                        elif mtc != -1: mtc += 1
-                        #elif slf._modpass['mtie'][ka][kb] == -1 and mtc != -1: mtc += 1
+                        #elif mtc != -1: mtc += 1
+                        elif slf._modpass['mtie'][ka][kb] == -1 and mtc != -1: mtc += 1
             for k in range(len(varB)):
                 if slf._modpass['tpar'][j][0] == varB[k]:
                     foundB[k] = True
