@@ -1786,7 +1786,9 @@ def load_tied(p, ptied=None, infl=None):
                 continue
             cmd = 'p[' + str(i) + '] = ' + ptied[i]
             try:
-                exec(cmd)
+                namespace = dict({'p':p})
+                exec(cmd, namespace)
+                p = namespace['p']
             except:
                 msgs.error("Unable to set a tied parameter to the expression:"+msgs.newline()+ptied[i]+msgs.newline()+"There may be an undefined variable in the links")
     else:
@@ -1796,7 +1798,9 @@ def load_tied(p, ptied=None, infl=None):
             ival, pstr = getis(ptied[i], i, infl)
             cmd = 'p[' + str(ival) + '] = ' + pstr
             try:
-                exec(cmd)
+                namespace = dict({'p':p})
+                exec(cmd, namespace)
+                p = namespace['p']
             except:
                 msgs.error("Unable to set a tied parameter to the expression:"+msgs.newline()+ptied[i]+msgs.newline()+"There may be an undefined variable in the links")
     return p

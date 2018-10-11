@@ -752,7 +752,9 @@ class alfit(object):
                         for pqt in range(npar):
                             if self.ptied[pqt] == '': continue
                             cmd = "parval = "+parinfo[pqt]['tied'].replace("p[","xcopy[")
-                            exec(cmd)
+                            namespace = dict({'xcopy':xcopy})
+                            exec(cmd, namespace)
+                            parval = namespace['parval']
                             # Check if this parameter is lower than the enforced limit
                             if parinfo[pqt]['limited'][0] == 1:
                                 if parval < parinfo[pqt]['limits'][0]:
@@ -761,14 +763,18 @@ class alfit(object):
                                         xcopyB = self.params.copy()
                                         xcopyB[ifree] = x + arrom[nts]*wa1
                                         cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                        exec(cmd)
+                                        namespace = dict({'xcopyB': xcopyB})
+                                        exec(cmd, namespace)
+                                        tmpval = namespace['tmpval']
                                         if tmpval > parinfo[pqt]['limits'][0]: # Then we shouldn't scale the parameters by more than arrom[nts]
                                             arromB = numpy.linspace(arrom[nts],arrom[nts-1],91)[::-1]
                                             xcopyB[ifree] -= arrom[nts]*wa1
                                             for ntsB in range(1,arromB.size):
                                                 xcopyB[ifree] = x + arromB[ntsB]*wa1
                                                 cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                                exec(cmd)
+                                                namespace = dict({'xcopyB': xcopyB})
+                                                exec(cmd, namespace)
+                                                tmpval = namespace['tmpval']
                                                 if tmpval > parinfo[pqt]['limits'][0]:
                                                     # Find the parameters used in this linking, and scale there wa1 values appropriately
                                                     strspl = (" "+parinfo[pqt]['tied']).split("p[")
@@ -790,14 +796,18 @@ class alfit(object):
                                         xcopyB = self.params.copy()
                                         xcopyB[ifree] = x + arrom[nts]*wa1*alpha
                                         cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                        exec(cmd)
+                                        namespace = dict({'xcopyB': xcopyB})
+                                        exec(cmd, namespace)
+                                        tmpval = namespace['tmpval']
                                         if tmpval < parinfo[pqt]['limits'][1]: # Then we shouldn't scale the parameters by more than arrom[nts]
                                             arromB = numpy.linspace(arrom[nts],arrom[nts-1],91)[::-1]
                                             xcopyB[ifree] -= arrom[nts]*wa1*alpha
                                             for ntsB in range(1,arromB.size):
                                                 xcopyB[ifree] = x + arromB[ntsB]*wa1*alpha
                                                 cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                                exec(cmd)
+                                                namespace = dict({'xcopyB': xcopyB})
+                                                exec(cmd, namespace)
+                                                tmpval = namespace['tmpval']
                                                 if tmpval < parinfo[pqt]['limits'][1]:
                                                     # Find the parameters used in this linking, and scale there wa1 values appropriately
                                                     strspl = (" "+parinfo[pqt]['tied']).split("p[")
@@ -1513,7 +1523,9 @@ class alfit(object):
             if ptied[i] == '':
                 continue
             cmd = 'p[' + str(i) + '] = ' + ptied[i]
-            exec(cmd)
+            namespace = dict({'p': p})
+            exec(cmd, namespace)
+            p = namespace['p']
         return p
 
 
