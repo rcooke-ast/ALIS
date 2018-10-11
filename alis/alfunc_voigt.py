@@ -1,4 +1,5 @@
 import os
+import pdb
 import numpy as np
 from alis import almsgs
 from alis import alfunc_base
@@ -464,7 +465,9 @@ class Voigt(alfunc_base.Base) :
                         for j in range(len(mp['mlnk'])):
                             if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                                 cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                                exec(cmd)
+                                namespace = dict({'p':p})
+                                exec(cmd, namespace)
+                                lnkprm = namespace['lnkprm']
                     levadd += 1
                 else:
                     getid = level+levadd
@@ -513,7 +516,9 @@ class Voigt(alfunc_base.Base) :
                         for j in range(len(mp['mlnk'])):
                             if mp['mlnk'][j][0] == mp['mtie'][ival][0]:
                                 cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                                exec(cmd)
+                                namespace = dict({'p':p})
+                                exec(cmd, namespace)
+                                lnkprm = namespace['lnkprm']
                 else:
                     getid = level
                 if lnkprm is None:
@@ -814,7 +819,9 @@ class Voigt(alfunc_base.Base) :
                         for j in range(len(mp['mlnk'])):
                             if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                                 cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                                exec(cmd)
+                                namespace = dict({'p':p})
+                                exec(cmd, namespace)
+                                lnkprm = namespace['lnkprm']
                     levadd += 1
                 else:
                     getid = level+levadd
@@ -881,7 +888,9 @@ class Voigt(alfunc_base.Base) :
                             for k in range(len(mp['mlnk'])):
                                 if mp['mlnk'][k][0] == mp['mtie'][i][j]:
                                     cmd = 'lnkprm = ' + mp['mlnk'][k][1]
-                                    exec(cmd)
+                                    namespace = dict({'p': p})
+                                    exec(cmd, namespace)
+                                    lnkprm = namespace['lnkprm']
                         levadd += 1
                     else:
                         getid = levid[i]+levadd
