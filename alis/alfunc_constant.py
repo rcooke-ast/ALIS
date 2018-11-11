@@ -116,6 +116,7 @@ class Constant(alfunc_base.Base) :
         if nexbin is not None:
             if nexbin[0] == "km/s": return params, 1
             elif nexbin[0] == "A" : return params, 1
+            elif nexbin[0] == "Hz" : return params, 1
             else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params

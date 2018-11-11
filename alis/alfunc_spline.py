@@ -625,6 +625,7 @@ class Spline(alfunc_base.Base) :
         if nexbin is not None:
             if nexbin[0] == "km/s": return params, 1
             elif nexbin[0] == "A" : return params, 1
+            elif nexbin[0] == "Hz" : return params, 1
             else: msgs.bug("bintype {0:s} should not have been specified in model function: {1:s}".format(nexbin[0],self._idstr), verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params
