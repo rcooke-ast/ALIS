@@ -163,10 +163,9 @@ def optarg(pathname, argv=None, verbose=2):
         msgs.warn("You must set the 'fits' flag if you want to"+msgs.newline()+"produce a SuperMongo file",verbose=verbose)
         msgs.info("Setting the fits flag",verbose=verbose)
         argflag['out']['fits'] = True
-
     return argflag
 
-def set_params(lines, argflag, setstr=""):
+def set_params(lines, argflag, setstr="", verbose=None):
     """
     Adjust settings parameters.
     lines    : an array of settings with the same format as the default 'settings.alis'
@@ -179,6 +178,9 @@ def set_params(lines, argflag, setstr=""):
         linspl = lines[i].split()
         if linspl[0] in list(argflag.keys()):
             if linspl[1] in argflag[linspl[0]].keys():
+                if linspl[0] == 'out' and linspl[1] == 'verbose' and verbose is not None:
+                    # Don't override a user-specified verbosity
+                    continue
                 try:
                     if type(argflag[linspl[0]][linspl[1]]) is int:
                         argflag[linspl[0]][linspl[1]] = int(linspl[2])
@@ -230,9 +232,11 @@ def load_settings(fname,verbose=2):
     # Read in the default settings
     msgs.info("Loading the default settings", verbose=verbose)
     argflag = initialise()
+    if verbose != argflag['out']['verbose']:
+        argflag['out']['verbose'] = verbose
     infile = open(fname, 'r')
     lines = infile.readlines()
-    argflag = set_params(lines, argflag, setstr="Default ")
+    argflag = set_params(lines, argflag, setstr="Default ", verbose=verbose)
     return argflag
 
 def check_argflag(argflag, curcpu=None):

@@ -78,7 +78,6 @@ class ClassMain:
             self._retself = True
         else:
             self._parlines, self._datlines, self._modlines, self._lnklines = alload.load_input(self)
-
         # Load the atomic data
         self._atomic = alload.load_atomic(self)
 
