@@ -1626,18 +1626,18 @@ def load_subpixels(slf, parin):
             else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
-            if np.all(1.0-slf._contfull[sp][ll:lu]): # No continuum is provided -- no interpolation is necessary
+            if np.count_nonzero(1.0-slf._contfull[sp][ll:lu]) == 0: # No continuum is provided -- no interpolation is necessary
                 contspx[sp] = np.append(contspx[sp], np.zeros(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
-                gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),np.array([(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])])).reshape(lu-ll,1)
+                gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
                 contspx[sp] = np.append(contspx[sp], (slf._contfull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten(0))
-            if np.all(1.0-slf._zerofull[sp][ll:lu]): # No zero-level is provided -- no interpolation is necessary
+            if np.count_nonzero(slf._zerofull[sp][ll:lu]) == 0: # No zero-level is provided -- no interpolation is necessary
                 zerospx[sp] = np.append(zerospx[sp], np.zeros(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._zerofull[sp][lu-1]-slf._zerofull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
-                gradB = np.append( np.array([(slf._zerofull[sp][ll+1]-slf._zerofull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),np.array([(slf._zerofull[sp][lu-1]-slf._zerofull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])])).reshape(lu-ll,1)
+                gradB = np.append( np.array([(slf._zerofull[sp][ll+1]-slf._zerofull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
                 zerospx[sp] = np.append(zerospx[sp], (slf._zerofull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten(0))
         posnspx[sp].append(wavespx[sp].size)
