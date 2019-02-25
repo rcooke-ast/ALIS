@@ -127,7 +127,7 @@ class ClassMain:
 #			p = alload.load_tied(p, self._ptied, infl=self._pinfl)
 #			msgs.bug("since na is not a free parameter, this does not need to be applied here, and the extra functionality getis and part of load_tied can be removed. You need to make sure that all functions are picking up on the linked (i.e. tied) parameters")
 #		modgpu=[]
-        modelem, modelab, mzero, mcont, modcv, modcvf = [], [], copy.deepcopy(zerospx), copy.deepcopy(contspx), [], []
+        modelem, modelab, mzero, mcont, modcv, modcvf = [], [], copy.deepcopy(zerospx), [], [], []
         self._modfinal, self._contfinal, self._zerofinal = [], [], []
         # Setup of the data <---> model arrays
         pararr = [[] for all in pos]
@@ -143,6 +143,7 @@ class ClassMain:
             modelab.append(np.ones(wavespx[sp].size))
 #			mzero.append(zerospx[sp])
 #			mcont.append(contspx[sp])
+            mcont.append(np.zeros(wavespx[sp].size))
             modcv.append(np.zeros(x[sp].size))
             modcvf.append(np.zeros(self._wavefit[sp].size))
             self._modfinal.append(-9.999999999E9*np.ones(x[sp].size))
@@ -318,8 +319,9 @@ class ClassMain:
 #                            modelem[sp][ll:lu] += mout
 #                        else: # absorption
 #                            modelab[sp][ll:lu] *= mout
-                    if ea == 0 and np.count_nonzero(mcont[sp][ll:lu]) == 0:
+                    if ea == 0:
                         mcont[sp][ll:lu] += modelem[sp][ll:lu].copy()
+
         # Convolve the data with the appropriate instrumental profile
         stf, enf = [0 for all in pos], [0 for all in pos]
         cvind = np.where(np.array(self._modpass['emab'])=='cv')[0][0]
@@ -353,7 +355,8 @@ class ClassMain:
                 self._funcarray[2][shmtyp]._keywd = self._modpass['mkey'][shind]
                 shparams = self._funcarray[1][shmtyp].set_vars(self._funcarray[2][shmtyp], p, self._levadd[shind], self._modpass, shind)
                 shwave = self._funcarray[1][shmtyp].call_CPU(self._funcarray[2][shmtyp], wavespx[sp][llx:lux], shparams)
-                mdtmp = self._funcarray[1][mtyp].call_CPU(self._funcarray[2][mtyp], shwave, contspx[sp][llx:lux]*modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                mdtmp = self._funcarray[1][mtyp].call_CPU(self._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                mdtmp *= contspx[sp][llx:lux]
                 # Apply the zero-level correction if necessary
                 if len(zerlev[sp]) != 0:
                     mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
