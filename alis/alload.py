@@ -1627,7 +1627,7 @@ def load_subpixels(slf, parin):
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
             if np.count_nonzero(1.0-slf._contfull[sp][ll:lu]) == 0: # No continuum is provided -- no interpolation is necessary
-                contspx[sp] = np.append(contspx[sp], np.zeros(np.size(wavs)))
+                contspx[sp] = np.append(contspx[sp], np.ones(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
                 gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
