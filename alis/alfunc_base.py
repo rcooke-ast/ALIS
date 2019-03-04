@@ -582,7 +582,9 @@ class Base :
                     for j in range(len(mp['mlnk'])):
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                            exec(cmd)
+                            namespace = dict({'p': p})
+                            exec(cmd, namespace)
+                            lnkprm = namespace['lnkprm']
                 levadd += 1
             else:
                 getid = level+levadd
@@ -639,6 +641,7 @@ from alis import alfunc_variable
 from alis import alfunc_voigt
 # Convolution routines
 from alis import alfunc_afwhm
+from alis import alfunc_apod
 from alis import alfunc_lsf
 from alis import alfunc_vfwhm
 from alis import alfunc_vsigma
@@ -655,6 +658,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
     sendatomic = ['voigt', 'lineemission', 'phionxs']
     # Add your new function to the following:
     fd = dict({ 'Afwhm'          : alfunc_afwhm.AFWHM,
+                'apod'           : alfunc_apod.APOD,
                 'Ashift'         : alshift.Ashift,
                 'brokenpowerlaw' : alfunc_brokenpowerlaw.BrokenPowerLaw,
                 'chebyshev'      : alfunc_chebyshev.Chebyshev,

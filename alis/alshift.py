@@ -191,7 +191,9 @@ class Ashift(alfunc_base.Base) :
                     for j in range(len(mp['mlnk'])):
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                            exec(cmd)
+                            namespace = dict({'p': p})
+                            exec(cmd, namespace)
+                            lnkprm = namespace['lnkprm']
                 levadd += 1
             else:
                 getid = level+levadd
@@ -406,7 +408,9 @@ class vshift(alfunc_base.Base) :
                     for j in range(len(mp['mlnk'])):
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                            exec(cmd)
+                            namespace = dict({'p': p})
+                            exec(cmd, namespace)
+                            lnkprm = namespace['lnkprm']
                 levadd += 1
             else:
                 getid = level+levadd

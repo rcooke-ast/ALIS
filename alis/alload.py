@@ -163,10 +163,9 @@ def optarg(pathname, argv=None, verbose=2):
         msgs.warn("You must set the 'fits' flag if you want to"+msgs.newline()+"produce a SuperMongo file",verbose=verbose)
         msgs.info("Setting the fits flag",verbose=verbose)
         argflag['out']['fits'] = True
-
     return argflag
 
-def set_params(lines, argflag, setstr=""):
+def set_params(lines, argflag, setstr="", verbose=None):
     """
     Adjust settings parameters.
     lines    : an array of settings with the same format as the default 'settings.alis'
@@ -179,6 +178,9 @@ def set_params(lines, argflag, setstr=""):
         linspl = lines[i].split()
         if linspl[0] in list(argflag.keys()):
             if linspl[1] in argflag[linspl[0]].keys():
+                if linspl[0] == 'out' and linspl[1] == 'verbose' and verbose is not None:
+                    # Don't override a user-specified verbosity
+                    continue
                 try:
                     if type(argflag[linspl[0]][linspl[1]]) is int:
                         argflag[linspl[0]][linspl[1]] = int(linspl[2])
@@ -230,9 +232,11 @@ def load_settings(fname,verbose=2):
     # Read in the default settings
     msgs.info("Loading the default settings", verbose=verbose)
     argflag = initialise()
+    if verbose != argflag['out']['verbose']:
+        argflag['out']['verbose'] = verbose
     infile = open(fname, 'r')
     lines = infile.readlines()
-    argflag = set_params(lines, argflag, setstr="Default ")
+    argflag = set_params(lines, argflag, setstr="Default ", verbose=verbose)
     return argflag
 
 def check_argflag(argflag, curcpu=None):
@@ -551,7 +555,7 @@ def load_data(slf, datlines, data=None):
 #								if defn not in dir(usrmod): msgs.error("Systematics module {0:s} must contain function {1:s}".format(module,defn))
                             systload.append(kwdspl[1])
                 elif kwdspl[0] == 'bintype':
-                    if kwdspl[1] not in ['km/s','A']: msgs.error("Bintype "+kwdspl[1]+" is not allowed")
+                    if kwdspl[1] not in ['km/s','A','Hz']: msgs.error("Bintype "+kwdspl[1]+" is not allowed")
             if fitspl == ['columns'] and not fitfromcol:
                 msgs.error("You must specify which column fitrange is in")
             if loadspl == ['columns'] and not loadfromcol:
@@ -743,6 +747,13 @@ def load_data(slf, datlines, data=None):
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
                         contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
+                    elif bntyp == 'Hz':
+                        npix = 1.0 + np.ceil((lwavemax - lwavemin) / slf._argflag['generate']['pixelsize'])
+                        wavein = lwavemin + slf._argflag['generate']['pixelsize'] * np.arange(npix)
+                        fluxin = np.zeros(wavein.size)
+                        fluein = np.zeros(wavein.size)
+                        contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(
+                            wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     else:
                         msgs.error("Sorry, I do not know the bintype: {0:s}".format(bntyp))
             # Is this a onefits file?
@@ -1374,12 +1385,16 @@ def load_links(slf, lnklines):
                 mtc = 0
                 for ka in range(len(slf._modpass['mtie'])):
                     for kb in range(len(slf._modpass['mtie'][ka])):
+                        if slf._modpass['mtie'][ka][kb] >= 0:
+                            # Tied parameter is not included in tpar[*][1]
+                            continue
                         if mtc == slf._modpass['tpar'][j][1]-lnkcnt: # You need to subtract lnkcnt here because modpass['mtie'] is being updated during the for loop and changes a -1 to a more negative number
                             slf._modpass['mtie'][ka][kb] = -2-lnkcnt
                             mtc = -1
+                            # elif slf._modpass['mtie'][ka][kb] == slf._modpass['tpar'][j][1]: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
+                        elif slf._modpass['mtie'][ka][kb] == mtc and mtc != -1: slf._modpass['mtie'][ka][kb] = -2 - lnkcnt
+                        #elif mtc != -1: mtc += 1
                         elif slf._modpass['mtie'][ka][kb] == -1 and mtc != -1: mtc += 1
-                        #elif slf._modpass['mtie'][ka][kb] == slf._modpass['tpar'][j][1]: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
-                        elif slf._modpass['mtie'][ka][kb] == mtc and mtc != -1: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
             for k in range(len(varB)):
                 if slf._modpass['tpar'][j][0] == varB[k]:
                     foundB[k] = True
@@ -1566,7 +1581,11 @@ def load_subpixels(slf, parin):
                     if modtyp[sp][sn][iea[sn]][0] == '': modtyp[sp][sn][iea[sn]] = np.delete(modtyp[sp][sn][iea[sn]], 0)
                 mid = np.where(mtyp==modtyp[sp][sn][iea[sn]])[0][0]
                 slf._funcarray[2][mtyp]._keywd = slf._modpass['mkey'][i]
-                params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
+                try:
+                    params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
+                except:
+                    import pdb
+                    pdb.set_trace()
                 if len(params) == 0: continue
                 if nbn > nexbins[sp][sn]:
                     if nbn > slf._argflag['run']['nsubmax']:
@@ -1600,21 +1619,25 @@ def load_subpixels(slf, parin):
             elif slf._datopt['bintype'][sp][sn] == "A":
                 interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
+            elif slf._datopt['bintype'][sp][sn] == "Hz":
+                binlen = 1.0 / np.float64(nexbins[sp][sn])
+                interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
+                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
             else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
-            if np.all(1.0-slf._contfull[sp][ll:lu]): # No continuum is provided -- no interpolation is necessary
-                contspx[sp] = np.append(contspx[sp], np.zeros(np.size(wavs)))
+            if np.count_nonzero(1.0-slf._contfull[sp][ll:lu]) == 0: # No continuum is provided -- no interpolation is necessary
+                contspx[sp] = np.append(contspx[sp], np.ones(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
-                gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),np.array([(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])])).reshape(lu-ll,1)
+                gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
                 contspx[sp] = np.append(contspx[sp], (slf._contfull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten(0))
-            if np.all(1.0-slf._zerofull[sp][ll:lu]): # No zero-level is provided -- no interpolation is necessary
+            if np.count_nonzero(slf._zerofull[sp][ll:lu]) == 0: # No zero-level is provided -- no interpolation is necessary
                 zerospx[sp] = np.append(zerospx[sp], np.zeros(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._zerofull[sp][lu-1]-slf._zerofull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
-                gradB = np.append( np.array([(slf._zerofull[sp][ll+1]-slf._zerofull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),np.array([(slf._zerofull[sp][lu-1]-slf._zerofull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])])).reshape(lu-ll,1)
+                gradB = np.append( np.array([(slf._zerofull[sp][ll+1]-slf._zerofull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
                 zerospx[sp] = np.append(zerospx[sp], (slf._zerofull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten(0))
         posnspx[sp].append(wavespx[sp].size)
@@ -1719,6 +1742,7 @@ def get_binsize(wave, bintype="km/s", maxonly=True, verbose=2):
     binsizet = wave[1:] - wave[:-1]
     if bintype == "km/s": binsizet *= 2.99792458E5/wave[:-1]
     elif bintype == "A" : pass
+    elif bintype == "Hz" : pass
     else: msgs.bug("Bintype "+bintype+" is unknown",verbose=verbose)
     maxbin  = np.max(binsizet)
     binsize[0,:-1], binsize[1,1:] = binsizet, binsizet
@@ -1770,7 +1794,9 @@ def load_tied(p, ptied=None, infl=None):
                 continue
             cmd = 'p[' + str(i) + '] = ' + ptied[i]
             try:
-                exec(cmd)
+                namespace = dict({'p':p})
+                exec(cmd, namespace)
+                p = namespace['p']
             except:
                 msgs.error("Unable to set a tied parameter to the expression:"+msgs.newline()+ptied[i]+msgs.newline()+"There may be an undefined variable in the links")
     else:
@@ -1780,7 +1806,9 @@ def load_tied(p, ptied=None, infl=None):
             ival, pstr = getis(ptied[i], i, infl)
             cmd = 'p[' + str(ival) + '] = ' + pstr
             try:
-                exec(cmd)
+                namespace = dict({'p':p})
+                exec(cmd, namespace)
+                p = namespace['p']
             except:
                 msgs.error("Unable to set a tied parameter to the expression:"+msgs.newline()+ptied[i]+msgs.newline()+"There may be an undefined variable in the links")
     return p

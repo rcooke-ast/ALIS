@@ -99,7 +99,9 @@ class Constant(alfunc_base.Base) :
                     for j in range(len(mp['mlnk'])):
                         if mp['mlnk'][j][0] == mp['mtie'][ival][i]:
                             cmd = 'lnkprm = ' + mp['mlnk'][j][1]
-                            exec(cmd)
+                            namespace = dict({'p': p})
+                            exec(cmd, namespace)
+                            lnkprm = namespace['lnkprm']
                 levadd += 1
             else:
                 getid = level+levadd
@@ -114,6 +116,7 @@ class Constant(alfunc_base.Base) :
         if nexbin is not None:
             if nexbin[0] == "km/s": return params, 1
             elif nexbin[0] == "A" : return params, 1
+            elif nexbin[0] == "Hz" : return params, 1
             else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params

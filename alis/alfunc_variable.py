@@ -13,9 +13,9 @@ class Variable(alfunc_base.Base):
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'variable'								# ID string for this class
         self._pnumr   = 1										# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':""})			# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'step':0.0})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'step':0})		# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'step':""})	# Format for the keyword. "" is the Default setting
         self._parid   = ['value']								# Name of each parameter
         self._defpar  = [ 0.0 ]									# Default values for parameters that are not provided
         self._fixpar  = [ None ]								# By default, should these parameters be fixed?
@@ -55,6 +55,50 @@ class Variable(alfunc_base.Base):
         """
         if   i == 0: pin = par
         return pin
+
+
+    def set_pinfo(self, pinfo, level, mp, lnk, mnum):
+        """
+        Place limits on the functions parameters (as specified in init)
+        Nothing should be changed here.
+        """
+        add = self._pnumr
+        levadd = 0
+        for i in range(self._pnumr):
+            # First Check if there are any operations/links to perform on this parameter
+            if len(lnk['opA']) != 0:
+                breakit=False
+                for j in range(len(mp['tpar'])):
+                    if breakit: break
+                    if mp['tpar'][j][1] == level+levadd: # then this is a tied parameter
+                        # Check if this tied parameter is to be linked to another parameter
+                        for k in range(len(lnk['opA'])):
+                            if mp['tpar'][j][0] == lnk['opA'][k]:
+                                ttext = lnk['exp'][k]
+                                for l in lnk['opB'][k]:
+                                    for m in range(len(mp['tpar'])):
+                                        if mp['tpar'][m][0] == l:
+                                            pn = mp['tpar'][m][1]
+                                            break
+                                    ttext = ttext.replace(l,'p[{0:d}]'.format(pn))
+                                pinfo[level+levadd]['tied'] = ttext
+                                breakit = True
+                                break
+            # Now set limits and fixed values
+            if mp['mtie'][mnum][i] >= 0: add -= 1
+            elif mp['mtie'][mnum][i] <= -2:
+                pinfo[level+levadd]['step'] = mp['mkey'][mnum]['step']
+                pinfo[level+levadd]['limited'] = [0 if o is None else 1 for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if o is None else np.float64(o) for o in mp['mlim'][mnum][i]]
+                mp['mfix'][mnum][i] = -1
+                levadd += 1
+            else:
+                pinfo[level+levadd]['step'] = mp['mkey'][mnum]['step']
+                pinfo[level+levadd]['limited'] = [0 if o is None else 1 for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if o is None else np.float64(o) for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
+                levadd += 1
+        return pinfo, add
 
 
     def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):

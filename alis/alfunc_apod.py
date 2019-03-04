@@ -1,31 +1,26 @@
 import numpy as np
 from alis import almsgs
 from alis import alfunc_base
-import astropy.units as u
-msgs = almsgs.msgs()
-try:
-    from linetools.spectra.lsf import LSF as ltLSF
-except ImportError:
-    msgs.warn("linetools is not installed. Install it if you wish to use LSF")
+from scipy.signal import convolve
+msgs=almsgs.msgs()
 
-
-class LSF(alfunc_base.Base) :
+class APOD(alfunc_base.Base) :
     """
-    Convolves the spectrum with a line spread function from linetools.
-    The only input parameter is a dummy parameter at this moment.
+    Convolves the spectrum with a Gaussian with full-width at half-maxium AFWHM (in Angstroms):
+    p[0] = AFWHM
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
-        self._idstr   = 'lsf'			# ID string for this class
+        self._idstr   = 'apod'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'name':'COS', 'grating':'G130M', 'life_position':1,  'cen_wave':'1309', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'name':1,     'grating':0,       'life_position':0,  'cen_wave':0,      'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'name':"",    'grating':"",      'life_position':"", 'cen_wave':"",     'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keywd   = dict({'kind':'uniform', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'kind':1,         'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'kind':"", 'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
         self._parid   = ['scale']		# Name of each parameter
         self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ True ]		# By default, should these parameters be fixed?
-        self._limited = [ [1  ,0  ] ]	# Should any of these parameters be limited from below or above
+        self._limited = [ [0  ,0  ] ]	# Should any of these parameters be limited from below or above
         self._limits  = [ [0.0,0.0] ]	# What should these limiting values be
-        self._svfmt   = [ "{0:.3g}" ]	# Specify the format used to print or save output
+        self._svfmt   = [ "{0:s}" ]	# Specify the format used to print or save output
         self._prekw   = []				# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
         tempinput = self._parid+list(self._keych.keys())                             #
@@ -45,29 +40,63 @@ class LSF(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        if p[0] > 0.0:
-            ysize = y.size
-            lsf_dict = dict(name=self._keywd['name'],
-                            grating=self._keywd['grating'],
-                            life_position=str(self._keywd['life_position']),
-                            cen_wave=self._keywd['cen_wave'])
-            try:
-                lsf_val = ltLSF(lsf_dict, scalefactor=p[0])
-            except:
-                lsf_val = ltLSF(lsf_dict)
-            tab = lsf_val.interpolate_to_wv_array(x * u.AA)
-            lsfk = tab["kernel"].data
-            size = ysize + lsfk.size - 1
-            fsize = 2 ** np.int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
-            conv = np.fft.fft(y, fsize)
-            conv *= np.fft.fft(lsfk/lsfk.sum(), fsize)
-            ret = np.fft.ifft(conv).real.copy()
-            del conv
-            return ret[ysize//2:ysize//2+ysize]
+        midval = x[x.size // 2]
+        deltaF = np.mean(x[1:]-x[:-1])
+        kvals = (x - midval) / deltaF
+        # Determine which apodization function to use
+        kind = self._keywd['kind']
+        # Calculate the apodization function
+        if kind == 'uniform':
+            instfunc = np.sinc(kvals)
+        elif kind == 'hanning':
+            instfunc = (np.sinc(kvals) + 0.5 * np.sinc(kvals - 1.0) + 0.5 * np.sinc(kvals + 1.0))
+        elif kind == 'hamming':
+            fact = (27 - 16 * (kvals / 2.0) ** 2) / 25
+            instfunc = fact * (np.sinc(kvals) + 0.5 * np.sinc(kvals - 1.0) + 0.5 * np.sinc(kvals + 1.0))
+        elif kind == 'bartlett':
+            instfunc = np.sinc(kvals / 2.0) ** 2
+        elif kind == 'blackmann':
+            fact = (21 - 9 * (kvals / 2.0) ** 2) / 25
+            instfunc = (fact / (1.0 - (kvals / 2.0) ** 2)) * (
+                        np.sinc(kvals) + 0.5 * np.sinc(kvals - 1.0) + 0.5 * np.sinc(kvals + 1.0))
+        elif kind == 'welch':
+            pk = np.pi * kvals
+            instfunc = 4.0 * (np.sin(pk) - pk * np.cos(pk)) / (2.0 * pk ** 3)
+            ww = np.where(pk == 0.0)
+            if ww[0].size != 0:
+                instfunc[ww] = 0.5 * (instfunc[ww[0] - 1] + instfunc[ww[0] + 1])
+        elif kind == 'new':
+            pk = np.pi * kvals
+            instfunc = np.cos(pk) / pk ** 2
+            ww = np.where(pk == 0.0)
+            if ww[0].size != 0:
+                instfunc[ww] = 0.5 * (instfunc[ww[0] - 1] + instfunc[ww[0] + 1])
         else:
             return y
+        # Normalise
+        instfunc = instfunc / instfunc.sum()
+        # Convolve the data with the instrument function
+        yb = convolve(y, instfunc, mode='same', method='fft')
+        return yb
 
-    def getminmax(self, par, fitrng, Nsig=30.0):
+    def getfwhm(self):
+        kind = self._keywd['kind']
+        if kind == 'uniform':
+            return 1.20671
+        elif kind == 'hanning':
+            return 2.0
+        elif kind == 'hamming':
+            return 1.81522
+        elif kind == 'bartlett':
+            return 1.77179
+        elif kind == 'blackmann':
+            return 2.29880
+        elif kind == 'welch':
+            return 1.59044
+        elif kind == 'new':
+            return 0.0
+
+    def getminmax(self, par, fitrng, Nsig=20.0):
         """
         This definition is only used for specifying the
         FWHM Resolution of the data.
@@ -83,21 +112,11 @@ class LSF(alfunc_base.Base) :
         Nsig   : Width in number of sigma to extract either side of
                  fitrange
         """
-        lsf_dict = dict(name=self._keywd['name'],
-                        grating=self._keywd['grating'],
-                        life_position=str(self._keywd['life_position']),
-                        cen_wave=self._keywd['cen_wave'])
-        lsf_val = ltLSF(lsf_dict)
-        tab = lsf_val.interpolate_to_wv0(float(self._keywd['cen_wave']) * u.AA)
-        # Roughly estimate the FWHM
-        w = np.where(tab["kernel"].data >= 0.5 * np.max(tab["kernel"].data))
-        dwav = np.max(tab["wv"].data[w]) - np.min(tab["wv"].data[w])
-        fwhmv = 299792.458 * dwav / 1309.0
         # Use the parameters to now calculate the sigma width
-        sigd = fwhmv / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
+        frac = 0.1
         # Calculate the min and max extraction wavelengths
-        wmin = fitrng[0]*(1.0 - Nsig*sigd)
-        wmax = fitrng[1]*(1.0 + Nsig*sigd)
+        wmin = fitrng[0]*(1.0 - frac)
+        wmax = fitrng[1]*(1.0 + frac)
         return wmin, wmax
 
     def load(self, instr, cntr, mp, specid, forcefix=False):
@@ -233,7 +252,7 @@ class LSF(alfunc_base.Base) :
         if   i == 0: pin = par
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, getinfl=False, ddpid=None, getstdd=None):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False, getstdd=None):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
@@ -268,12 +287,13 @@ class LSF(alfunc_base.Base) :
             if ddpid not in parinf: return []
         if nexbin is not None:
             if params[0] == 0: return params, 1
-            if nexbin[0] == "km/s": return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*nexbin[1]/params[0] + 0.5))
-            elif nexbin[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
+            if nexbin[0] == "km/s": msgs.error("bintype is set to 'km/s', when FWHM is specified in Hz.")
+            elif nexbin[0] == "A" : msgs.error("bintype is set to 'A', when FWHM is specified in Hz.")
+            elif nexbin[0] == "Hz" : return params, nexbin[1]
             else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getstdd is not None:
             fact = 2.0*np.sqrt(2.0*np.log(2.0))
-            return getstdd[1]*(1.0+getstdd[0]*params[0]/(fact*299792.458)), getstdd[2]*(1.0-getstdd[0]*params[0]/(fact*299792.458))
+            return getstdd[1]*(1.0+getstdd[0]*self.getfwhm()/fact), getstdd[2]*(1.0-getstdd[0]*self.getfwhm()/fact)
         elif getinfl: return params, parinf
         else: return params
 
