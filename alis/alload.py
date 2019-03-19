@@ -960,7 +960,7 @@ def load_ascii(filename, colspl, wfe, wfek, verbose=2):
                 msgs.info("The {0:s} will be output for the above file".format(wfek[j]), verbose=verbose)
     if wavein is None or fluxin is None or fluein is None:
         msgs.error("Wavelength, flux or error array was not provided for -"+msgs.newline()+filename)
-    if contin is None: contin = np.zeros(wavein.size)
+    if contin is None: contin = np.ones(wavein.size)
     if zeroin is None: zeroin = np.zeros(wavein.size)
     if systin is None: systin = np.zeros(wavein.size)
     if fitrin is None: fitrin = np.ones(wavein.size).astype(np.int32)
