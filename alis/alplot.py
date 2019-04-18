@@ -4,6 +4,7 @@ from matplotlib import ticker
 from alis import almsgs
 msgs=almsgs.msgs()
 
+
 def get_fitregions(wave,cont,fitted,disp,size=None):
     fsize = 40.0
     xfr, yfr = [], []
@@ -440,7 +441,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
         fig.append(plt.figure(figsize=(12.5,10), dpi=80))
         fig[pgnum].subplots_adjust(hspace=0.1, wspace=0.1, bottom=0.07, top=0.98, left=0.04, right=0.98)
         for i in range(pgcnt[pg]):
-            w = np.where(wfemcarr[3][pg][i] > -0.5)
+            w = np.where(wfemcarr[3][pg][i] > -9.999999999E8)
             modl_min, modl_max = np.min(wfemcarr[3][pg][i][w]), np.max(wfemcarr[3][pg][i][w])
             modl_min = min(0.0, modl_min)
             flue_med = 3.0*np.median(wfemcarr[2][pg][i])
@@ -482,7 +483,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                 ax.plot(wfemcarr[0][pg][i][w],wfemcarr[4][pg][i][w], 'b--')
                 # Plot the residuals
                 incfit = wfemcarr[8][pg][i]
-                ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w],incfit*(wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
+                ax.plot(wfemcarr[0][pg][i][w]+disp[pg][i][w], incfit*(wfemcarr[1][pg][i][w]-wfemcarr[3][pg][i][w])*res_size/wfemcarr[2][pg][i][w] + shift, 'b-', drawstyle='steps', alpha=0.5)
                 # Plot the zero level
                 ax.plot(wfemcarr[0][pg][i],errcen, 'g--')
 #			if argx == 2: # For velocity:
@@ -575,7 +576,7 @@ def plot_drawresiduals(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None,
         fig.append(plt.figure(figsize=(12.5,10), dpi=80))
         fig[pgnum].subplots_adjust(hspace=0.1, wspace=0.1, bottom=0.07, top=0.98, left=0.04, right=0.98)
         for i in range(pgcnt[pg]):
-            w = np.where(wfemcarr[3][pg][i] > -0.5)
+            w = np.where(wfemcarr[3][pg][i] > -9.999999999E8)
             if np.size(w[0]) == 0:
 #				msgs.warn("There was no model data found for plot page {0:d}, panel {1:d}".format(pg+1,i+1), verbose=argflag['out']['verbose'])
                 modl_min, modl_max = np.min(wfemcarr[1][pg][i]), np.max(wfemcarr[1][pg][i])
