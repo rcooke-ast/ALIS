@@ -740,19 +740,19 @@ def load_data(slf, datlines, data=None):
                         wavein = lwavemin*(1.0+slf._argflag['generate']['pixelsize']/299792.458)**np.arange(npix)
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
-                        contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
+                        contin, zeroin, systin, fitrin, loadin = np.ones(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     elif bntyp == 'A':
                         npix = 1.0 + np.ceil((lwavemax-lwavemin)/slf._argflag['generate']['pixelsize'])
                         wavein = lwavemin + slf._argflag['generate']['pixelsize']*np.arange(npix)
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
-                        contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
+                        contin, zeroin, systin, fitrin, loadin = np.ones(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     elif bntyp == 'Hz':
                         npix = 1.0 + np.ceil((lwavemax - lwavemin) / slf._argflag['generate']['pixelsize'])
                         wavein = lwavemin + slf._argflag['generate']['pixelsize'] * np.arange(npix)
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
-                        contin, zeroin, systin, fitrin, loadin = np.zeros(wavein.size), np.zeros(wavein.size), np.zeros(
+                        contin, zeroin, systin, fitrin, loadin = np.ones(wavein.size), np.zeros(wavein.size), np.zeros(
                             wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     else:
                         msgs.error("Sorry, I do not know the bintype: {0:s}".format(bntyp))
@@ -877,8 +877,8 @@ def load_userdata(data, colspl, wfe, verbose=2):
             contin = datain[ucind['continuum'],:]
         except:
             msgs.warn("A continuum was not provided as input", verbose=verbose)
-            contin = np.zeros(wavein.size)
-    else: contin = np.zeros(wavein.size)
+            contin = np.ones(wavein.size)
+    else: contin = np.ones(wavein.size)
     # Read the zero-level data
     if wfe['zerolevel'] != -1:
         try:
