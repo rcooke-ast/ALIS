@@ -1,10 +1,11 @@
 # ALIS
 Absorption (and emission) LIne Software
 
-ALIS is a versatile software package that allows you to perform a model fit to spectroscopic data.
+ALIS is a versatile software package that allows you to
+perform a model fit to spectroscopic data.
 
 # Requirements
-* python
+* python3
 * numpy
 * scipy
 * matplotlib
