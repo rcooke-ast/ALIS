@@ -1046,7 +1046,7 @@ class alfit(object):
             return
         else:
             prstr, cvstr = print_model(x, modpass, verbose=verbose, funcarray=funcarray)
-            print(prstr+cvstr[0]+cvstr[2])
+            print(prstr+cvstr[0]+cvstr[2]+cvstr[4])
             return 0
 
 

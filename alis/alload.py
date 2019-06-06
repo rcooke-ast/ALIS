@@ -467,7 +467,7 @@ def load_data(slf, datlines, data=None):
     specid=np.array([])
     slf._snipid=[]
     datopt = dict({'specid':[],'fitrange':[],'loadrange':[],'plotone':[],'nsubpix':[],'bintype':[],'columns':[],'systematics':[],'systmodule':[],'label':[],'yrange':[]})
-    keywords = ['specid','fitrange','loadrange','systematics','systmodule','resolution','shift','columns','plotone','nsubpix','bintype','loadall','label','yrange']
+    keywords = ['specid','fitrange','loadrange','systematics','systmodule','resolution','shift','wavescale','columns','plotone','nsubpix','bintype','loadall','label','yrange']
     colallow = np.array(['wave','flux','error','continuum','zerolevel','fitrange','loadrange','systematics','resolution'])
     columns  = np.array(['wave','flux','error'])
     systload = [None, 'continuumpoly']
@@ -568,7 +568,7 @@ def load_data(slf, datlines, data=None):
             if 'None' not in specid: specid = np.append(specid, 'None')
             slf._snipid.append('None')
     # Prepare the data arrays
-    snipnames, resn, shft, posnfull, posnfit, plotone = [], [], [], [], [], []
+    snipnames, resn, shft, scal, posnfull, posnfit, plotone = [], [], [], [], [], [], []
     wavefull, fluxfull, fluefull, contfull, zerofull, systfull = [], [], [], [], [], []
     wavefit, fluxfit, fluefit, contfit, zerofit = [], [], [], [], []
     for i in range(specid.size):
@@ -593,6 +593,7 @@ def load_data(slf, datlines, data=None):
         systfull.append( np.array([]) )
         resn.append( np.array([]) )
         shft.append( np.array([]) )
+        scal.append( np.array([]) )
         posnfit.append([])
         wavefit.append( np.array([]) )
         fluxfit.append( np.array([]) )
@@ -625,7 +626,8 @@ def load_data(slf, datlines, data=None):
         nspix = slf._argflag['run']['nsubpix']
         bntyp = slf._argflag['run']['bintype']
         tempresn = 'vfwhm(0.0)' # If Resolution not specified set it to zero and make it not tied to anything
-        tempshft = 'none' # By default, apply no shift
+        tempshft = 'none'  # By default, apply no shift
+        tempscal = 'none'  # By default, apply no wavescale
         systfile = ''
         systval = None
         if len(linspl) > 1:
@@ -646,6 +648,11 @@ def load_data(slf, datlines, data=None):
                         tempshft = 'none'
                     else:
                         tempshft = kwdspl[1]
+                elif kwdspl[0] == 'wavescale':
+                    if kwdspl[1].lower() == 'none':
+                        tempscal = 'none'
+                    else:
+                        tempscal = kwdspl[1]
                 elif kwdspl[0] == 'nsubpix':
                     if int(kwdspl[1]) > 0: nspix = int(kwdspl[1])
                     else: msgs.error("nsubpix must be greater than 0")
@@ -771,6 +778,7 @@ def load_data(slf, datlines, data=None):
         snipnames[sind].append(filename)
         resn[sind] = np.append(resn[sind], tempresn)
         shft[sind] = np.append(shft[sind], tempshft)
+        scal[sind] = np.append(scal[sind], tempscal)
         datopt['specid'][sind].append(specidtxt)
         datopt['plotone'][sind].append(setplot)
         datopt['label'][sind].append(uselabel)
@@ -848,7 +856,7 @@ def load_data(slf, datlines, data=None):
     for i in range(specid.size):
         posnfull[i].append(wavefull[i].size)
     # Update the slf class with the loaded data
-    slf._snipnames, slf._resn, slf._shft, slf._datlines, slf._specid, slf._datopt = snipnames, resn, shft, datlines, specid, datopt
+    slf._snipnames, slf._resn, slf._shft, slf._scal, slf._datlines, slf._specid, slf._datopt = snipnames, resn, shft, scal, datlines, specid, datopt
     slf._posnfull, slf._posnfit = posnfull, posnfit
     slf._wavefull, slf._fluxfull, slf._fluefull, slf._contfull, slf._zerofull, slf._systfull = wavefull, fluxfull, fluefull, contfull, zerofull, systfull
     slf._wavefit, slf._fluxfit, slf._fluefit, slf._contfit, slf._zerofit = wavefit, fluxfit, fluefit, contfit, zerofit
@@ -1169,6 +1177,22 @@ def load_model(slf, modlines, updateself=True):
                 parid.append(paridt)
                 #pnumlin.append("shift="+slf._shft[i][j])
             cntr += 1
+    # Load the functional form of the wavelength scaling
+    for i in range(len(slf._scal)):
+        for j in range(len(slf._scal[i])):
+            if slf._scal[i][j] == "none":
+                fspln, fsplv = "constant", "1.0"
+                modpass, paridt = slf._funcarray[1][fspln].load(slf._funcarray[2][fspln], fsplv, cntr, modpass, slf._specid, forcefix=True)
+                modpass['emab'].append('sc')
+                parid.append(paridt)
+                #pnumlin.append("scale="+slf._scal[i][j])
+            else:
+                fspl = slf._scal[i][j].strip(')').split('(')
+                modpass, paridt = slf._funcarray[1][fspl[0]].load(slf._funcarray[2][fspl[0]], fspl[1], cntr, modpass, slf._specid)
+                modpass['emab'].append('sc')
+                parid.append(paridt)
+                #pnumlin.append("scale="+slf._scal[i][j])
+            cntr += 1
     # Now go through modlines again and make the appropriate changes to the modpass dictionary
     cntr = 0
     fixparid=[]
@@ -1243,6 +1267,21 @@ def load_model(slf, modlines, updateself=True):
                 fspl = ["Ashift", 0.0]
             else:
                 fspl = slf._shft[i][j].strip(')').split('(')
+            for k in range(len(parid[cntr])):
+                if slf._funcarray[2][fspl[0]]._fixpar[parid[cntr][k]] is None: pass
+                else: slf._funcarray[1][fspl[0]].adjust_fix(slf._funcarray[2][fspl[0]], modpass, cntr, k, parid[cntr][k])
+                if slf._funcarray[2][fspl[0]]._limited[parid[cntr][k]][0] == (None if modpass['mlim'][cntr][k][0]==0 else 1): pass
+                else: slf._funcarray[1][fspl[0]].adjust_lim(slf._funcarray[2][fspl[0]], modpass, cntr, k, 0, parid[cntr][k])
+                if slf._funcarray[2][fspl[0]]._limited[parid[cntr][k]][1] == (None if modpass['mlim'][cntr][k][1]==0 else 1): pass
+                else: slf._funcarray[1][fspl[0]].adjust_lim(slf._funcarray[2][fspl[0]], modpass, cntr, k, 1, parid[cntr][k])
+            cntr += 1
+    # Now go through and adjust the parameters of the wavelength scaling
+    for i in range(len(slf._scal)):
+        for j in range(len(slf._scal[i])):
+            if slf._scal[i][j] == "none":
+                fspl = ["constant", 1.0]
+            else:
+                fspl = slf._scal[i][j].strip(')').split('(')
             for k in range(len(parid[cntr])):
                 if slf._funcarray[2][fspl[0]]._fixpar[parid[cntr][k]] is None: pass
                 else: slf._funcarray[1][fspl[0]].adjust_fix(slf._funcarray[2][fspl[0]], modpass, cntr, k, parid[cntr][k])

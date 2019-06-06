@@ -368,7 +368,10 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
     shstring  = ""
     shastring = ""
     shestring = "# Errors:\n#\n"
-    donecv, donesh, donezl = [], [], []
+    scstring  = ""
+    scastring = ""
+    scestring = "# Errors:\n#\n"
+    donecv, donesh, donesc, donezl = [], [], [], []
     lastemab=""
     for i in range(len(mp['mtyp'])):
         #if errs is not None and mp['emab'][i] == "cv": continue
@@ -378,6 +381,7 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
             elif mp['emab'][i]=="ab": aetag = "absorption"
             elif mp['emab'][i]=="cv": aetag = "Convolution"
             elif mp['emab'][i]=="sh": aetag = "Shift"
+            elif mp['emab'][i]=="sc": aetag = "Scale"
             elif mp['emab'][i]=="zl": aetag = "zerolevel"
             # Place the model details into a string
             if mp['emab'][i] == "cv":
@@ -386,6 +390,9 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
             elif mp['emab'][i] == "sh":
                 shstring  += " "+aetag+"\n"
                 shestring += "#"+aetag+"\n"
+            elif mp['emab'][i] == "sc":
+                scstring += " " + aetag + "\n"
+                scestring += "#" + aetag + "\n"
             elif mp['emab'][i] == "va":
                 pass
             else:
@@ -399,15 +406,20 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
                 cvastring += outstr
             elif mp['emab'][i] == "sh":
                 shastring += outstr
-            if outstr in donecv or outstr in donesh or outstr in donezl: continue
+            elif mp['emab'][i] == "sc":
+                scastring += outstr
+            if outstr in donecv or outstr in donesh or outstr in donesc or outstr in donezl: continue
             if mp['emab'][i] == "cv": donecv.append(outstr) # Make sure we don't print convolution parameters more than once.
             elif mp['emab'][i] == "sh": donesh.append(outstr) # Make sure we don't print shift parameters more than once.
+            elif mp['emab'][i] == "sc": donesh.append(outstr) # Make sure we don't print scale parameters more than once.
             elif mp['emab'][i] == "zl": donezl.append(outstr) # Make sure we don't print zerolevel more than once.
             # Place the model details into a string
             if mp['emab'][i] == "cv":
                 cvstring  += outstr
             elif mp['emab'][i] == "sh":
                 shstring  += outstr
+            elif mp['emab'][i] == "sc":
+                scstring += outstr
             else:
                 outstring += outstr
         else:
@@ -417,9 +429,12 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
                 cvastring += outstr
             elif mp['emab'][i] == "sh":
                 shastring += outstr
-            if outstr in donecv or outstr in donesh or outstr in donezl: continue
+            elif mp['emab'][i] == "sc":
+                scastring += outstr
+            if outstr in donecv or outstr in donesh or outstr in donesc or outstr in donezl: continue
             if mp['emab'][i] == "cv": donecv.append(outstr) # Make sure we don't print convolution parameters more than once.
             elif mp['emab'][i] == "sh": donesh.append(outstr) # Make sure we don't print shift parameters more than once.
+            elif mp['emab'][i] == "sc": donesh.append(outstr) # Make sure we don't print scale parameters more than once.
             elif mp['emab'][i] == "zl": donezl.append(outstr) # Make sure we don't print zerolevel more than once.
             # Place the model details into a string
             if mp['emab'][i] == "cv":
@@ -428,19 +443,22 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
             elif mp['emab'][i] == "sh":
                 shstring  += outstr
                 shestring += errstr
+            elif mp['emab'][i] == "sc":
+                scstring += outstr
+                scestring += errstr
             else:
                 outstring += outstr
                 errstring += errstr
     if blind: return outstring
     if getlines:
         if errs is None:
-            return outstring.split("\n"), [cvstring.split("\n"),cvastring.split("\n"),shstring.split("\n"),shastring.split("\n")]
+            return outstring.split("\n"), [cvstring.split("\n"), cvastring.split("\n"), shstring.split("\n"), shastring.split("\n"), scstring.split("\n"), scastring.split("\n")]
         else:
-            return outstring.split("\n"), errstring.split("\n"), [cvstring.split("\n"),cvestring.split("\n"),cvastring.split("\n"),shstring.split("\n"),shestring.split("\n"),shastring.split("\n")]
+            return outstring.split("\n"), errstring.split("\n"), [cvstring.split("\n"), cvestring.split("\n"), cvastring.split("\n"), shstring.split("\n"), shestring.split("\n"), shastring.split("\n"), scstring.split("\n"), scestring.split("\n"), scastring.split("\n")]
     if errs is None:
-        return outstring, [cvstring,cvastring,shstring,shastring]
+        return outstring, [cvstring, cvastring, shstring, shastring, scstring, scastring]
     else:
-        return outstring, errstring, [cvstring,cvestring,cvastring,shstring,shestring,shastring]
+        return outstring, errstring, [cvstring, cvestring, cvastring, shstring, shestring, shastring, scstring, scestring, scastring]
 
 
 def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=None,getlines=False,save=True):
@@ -487,6 +505,7 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     outstring, errstring, arrstring = print_model(params,slf._modpass,errs=errors,verbose=slf._argflag['out']['verbose'],funcarray=slf._funcarray)
     cvstring, cvestring, cvastring = arrstring[0], arrstring[1], arrstring[2]
     shstring, shestring, shastring = arrstring[3], arrstring[4], arrstring[5]
+    scstring, scestring, scastring = arrstring[6], arrstring[7], arrstring[8]
     if printout and slf._argflag['out']['verbose'] != -1:
         print("\n####################################################")
         print(outstring)
@@ -495,6 +514,8 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
         print(cvestring.replace("#Convolution\n",""))
         print("#"+"\n#".join(shstring.replace("Shift","Shift Models:").split("\n")))
         print(shestring.replace("#Shift\n","")+"\n")
+        print("#"+"\n#".join(scstring.replace("Scale","Scale Models:").split("\n")))
+        print(scestring.replace("#Scale\n","")+"\n")
         print("####################################################\n")
     # Reinsert the comments at the original locations
     outstrspl = (toutstring+outstring).split('\n')
@@ -511,6 +532,7 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     # Update datlines for the newly derived instrument resolution
     cnum=0
     snum=0
+    wsnum=0
     dstrarr = ["" for all in slf._datlines]
     for sp in range(len(slf._specid)):
         for i in range(len(slf._datlines)):
@@ -525,8 +547,9 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
                         spmatch = True
                     break
             if not spmatch: continue
-            gotres=False
-            gotshf=False
+            gotres = False
+            gotshf = False
+            gotscl = False
             for j in range(1,len(datspl)):
                 dspl = datspl[j].split("=")
                 if dspl[0] == "resolution":
@@ -539,8 +562,14 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
                     spars = ",".join(sspl[1:])
                     datspl[j] = "shift={0:s}({1:s})".format(sspl[0],spars)
                     gotshf = True
+                elif dspl[0] == "scale":
+                    wsspl = shastring.split("\n")[wsnum].split()
+                    spars = ",".join(wsspl[1:])
+                    datspl[j] = "scale={0:s}({1:s})".format(wsspl[0], spars)
+                    gotscl = True
             cnum += 1
             snum += 1
+            wsnum += 1
 
 #			if not gotres:
 #				dstrarr[i] += slf._datlines[i]
@@ -571,6 +600,8 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
             infile.write("\n"+cvestring.replace("#Convolution\n","")+"\n")
             infile.write("#"+"\n#".join(shstring.replace("Shift","Shift Models:").split("\n")))
             infile.write("\n"+shestring.replace("#Shift\n","")+"\n")
+            infile.write("#"+"\n#".join(scstring.replace("Scale","Scale Models:").split("\n")))
+            infile.write("\n"+scestring.replace("#Scale\n","")+"\n")
             infile.write("\n###################################################")
             infile.write("\n#                                                 #")
             infile.write("\n#          HERE IS A COPY OF THE INPUT MODEL      #")
@@ -585,6 +616,8 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
         sendstr += "\n"+cvestring.replace("#Convolution\n","")+"\n"
         sendstr += "#"+"\n#".join(shstring.replace("Shift","Shift Models:").split("\n"))
         sendstr += "\n"+shestring.replace("#Shift\n","")+"\n"
+        sendstr += "#"+"\n#".join(scstring.replace("Scale","Scale Models:").split("\n"))
+        sendstr += "\n"+scestring.replace("#Scale\n","")+"\n"
         return sendstr
 
 
