@@ -28,7 +28,7 @@ class Voigt(alfunc_base.Base) :
         self._fixpar  = [ None,        None,       None,      None,          True,       True ]				# By default, should these parameters be fixed?
         self._limited = [ [0  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,0],        [0  ,0 ],   [0  ,0  ] ]		# Should any of these parameters be limited from below or above
         self._limits  = [ [0.0,0.0],  [0.0,0.0],  [0.5,0.0], [0.0,0.0],      [0.0,0.0],  [0.0,0.0] ]		# What should these limiting values be
-        self._svfmt   = [ "{0:.7g}", "{0:.10g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}",  "{0:.7g}"]			# Specify the format used to print or save output
+        self._svfmt   = [ "{0:.7g}", "{0:.12g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}",  "{0:.7g}"]			# Specify the format used to print or save output
         self._prekw   = [ 'ion' ]																			# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
         tempinput = self._parid+list(self._keych.keys())                             #

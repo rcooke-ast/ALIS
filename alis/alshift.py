@@ -255,7 +255,7 @@ class vshift(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        return x*(1.0 - p[0]/299792.458)
+        return x / (1.0 + p[0]/299792.458)
 
 
     def load(self, instr, cntr, mp, specid, forcefix=False):
