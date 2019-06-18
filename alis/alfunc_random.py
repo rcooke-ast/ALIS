@@ -56,8 +56,8 @@ class Random(alfunc_base.Base):
         """
         if self._keywd['start']:
             if i == 0:
-                namespace = dict({})
-                exec("pin = np.random."+parb["cmd"], namespace)
+                namespace = dict({'numpy':np})
+                exec("pin = numpy.random."+parb["cmd"], namespace)
                 pin = namespace['pin']
             self._keywd['start'] = False
         else:
