@@ -511,7 +511,8 @@ class Base :
                 insind += 1
         if mp['mkey'][istart]['blind'] and conv is None:
             retout = "       ------ BLIND MODEL ------\n"
-            reterr = "       ------ BLIND MODEL ------\n"
+            #reterr = "       ------ BLIND MODEL ------\n"
+            reterr = '  '.join(errstring) + '\n'
         else:
             retout = '  '.join(outstring) + '\n'
             reterr = '  '.join(errstring) + '\n'
