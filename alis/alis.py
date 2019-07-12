@@ -320,8 +320,8 @@ class ClassMain:
 #                            modelem[sp][ll:lu] += mout
 #                        else: # absorption
 #                            modelab[sp][ll:lu] *= mout
-                    if ea == 0:
-                        mcont[sp][ll:lu] += modelem[sp][ll:lu].copy()
+                    if ea == 0 and np.count_nonzero(mcont[sp][ll:lu]) == 0:
+                        mcont[sp][ll:lu] = modelem[sp][ll:lu].copy()
 
         # Convolve the data with the appropriate instrumental profile
         stf, enf = [0 for all in pos], [0 for all in pos]
