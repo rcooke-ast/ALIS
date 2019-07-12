@@ -309,7 +309,7 @@ class vSigma(alfunc_base.Base) :
                 levadd+=1
             if lnkprm is None:
                 params[i] = self.parin(i, p[getid])
-                if mp['mfix'][ival][i] == 0: parinf.append(level+levadd) # If parameter not fixed, append it to the influence array
+                if mp['mfix'][ival][i] == 0: parinf.append(getid) # If parameter not fixed, append it to the influence array
             else:
                 params[i] = lnkprm
         if ddpid is not None:
