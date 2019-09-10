@@ -449,6 +449,7 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
             shift = np.min([modl_min-2.0*res_size, np.min(wfemcarr[5][pg][i])-np.max(wfemcarr[2][pg][i][w])-2.0*res_size])
             # Determine the effective zero level (i.e. zero/(zero+cont)  note: this is the general case)
             errcen = wfemcarr[5][pg][i]/(wfemcarr[4][pg][i]+wfemcarr[5][pg][i])
+            errcen[np.isnan(errcen)] = 0.0
             if np.size(w[0]) == 0:
 #				msgs.warn("There was no model data found for plot page {0:d}, panel {1:d}".format(pg+1,i+1), verbose=argflag['out']['verbose'])
                 modl_min, modl_max = np.min(wfemcarr[1][pg][i]), np.max(wfemcarr[1][pg][i])
