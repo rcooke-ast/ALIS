@@ -9,6 +9,7 @@ def get_fitregions(wave,cont,fitted,disp,size=None):
     fsize = 40.0
     xfr, yfr = [], []
     nval = 0
+    flag = False
     for i in range(wave.size):
         if fitted[i]:
             if nval == 0:

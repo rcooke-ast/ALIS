@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
-import os, sys, imp
+import os, sys
 import copy
 from alis import almsgs
 from multiprocessing import cpu_count
@@ -808,6 +808,7 @@ def load_data(slf, datlines, data=None):
             tmpmin = min(wvmnres, lwavemin)
             tmpmax = max(wvmxres, lwavemax)
             w  = np.where((wavein >= tmpmin) & (wavein <= tmpmax))
+            lwavemin, lwavemax = tmpmin, tmpmax
             del wli
         else:
             # Perform a check on the loaded wavelength range
@@ -815,18 +816,30 @@ def load_data(slf, datlines, data=None):
                 lwavemin = wavemin
                 lwavemax = wavemax
             if lwavemin > wavemin:
-                msgs.warn("The minimum wavelength loaded should be less than the minimum fitted wavelength")
-                lwavemin = wavemin
+                msgs.warn("The minimum wavelength loaded should probably be less than the minimum fitted wavelength", verbose=slf._argflag['out']['verbose'])
+                #lwavemin = wavemin
             if lwavemax < wavemax:
-                msgs.warn("The maximum wavelength loaded should be greater than the maximum fitted wavelength")
-                lwavemax = wavemax
+                msgs.warn("The maximum wavelength loaded should probably be greater than the maximum fitted wavelength", verbose=slf._argflag['out']['verbose'])
+                #lwavemax = wavemax
             fspl = tempresn.strip(')').split('(')
             pars=fspl[1].split(',')
             wvmnres, wvmxres = slf._funcarray[1][fspl[0]].getminmax(slf._funcarray[2][fspl[0]], pars, [lwavemin,lwavemax])
             w  = np.where((wavein >= wvmnres) & (wavein <= wvmxres))
+            lwavemin, lwavemax = wvmnres, wvmxres
 #		if loadall: w = np.arange(wavein.size) # If this keyword was set, load all data from this file
         if np.size(w) == 0:
             msgs.error("No data was found within the fitrange limits for the file -"+msgs.newline()+filename)
+        # trim wavemin and wavemax if loadrange is more constrained
+        redo_wf = False
+        if lwavemin > wavemin:
+            wavemin = lwavemin
+            redo_wf = True
+        if lwavemax < wavemax:
+            wavemax = lwavemax
+            redo_wf = True
+        if redo_wf:
+            wf = np.where((wavein >= wavemin) & (wavein <= wavemax) & np.in1d(wavein,wavein[wf]))
+        # Store the data
         datopt['nsubpix'][sind].append( nspix*get_binsize(wavein[w],bintype=bntyp,verbose=slf._argflag['out']['verbose']) )
         posnfit[sind].append(wavemin)
         posnfit[sind].append(wavemax)
