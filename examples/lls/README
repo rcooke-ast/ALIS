@@ -1,0 +1,7 @@
+To run this example execute the following commands in a terminal window
+
+cd model
+run_alis generate_spectra.mod
+run_alis fit_spectra.mod
+
+The second command was used to generate fake data. This fake data was then used as input in the third command and an absorption line profile was fit to the data. If you have your own data you would like to fit, the second step is unnecessary (of course).
