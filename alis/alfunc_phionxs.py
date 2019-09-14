@@ -260,7 +260,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
         info = load_data(dict({}))
         print info["C IV"]
         """
-        import alutils
+        from alis import alutils
         datname = "/".join(__file__.split("/")[:-1])+"/data/phionxsec.dat"
         data = np.loadtxt(datname)
         for i in range(data.shape[0]):
