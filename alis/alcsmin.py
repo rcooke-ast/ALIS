@@ -752,7 +752,7 @@ class alfit(object):
                         for pqt in range(npar):
                             if self.ptied[pqt] == '': continue
                             cmd = "parval = "+parinfo[pqt]['tied'].replace("p[","xcopy[")
-                            namespace = dict({'xcopy':xcopy})
+                            namespace = dict({'xcopy':xcopy, 'numpy':numpy})
                             exec(cmd, namespace)
                             parval = namespace['parval']
                             # Check if this parameter is lower than the enforced limit
@@ -763,7 +763,7 @@ class alfit(object):
                                         xcopyB = self.params.copy()
                                         xcopyB[ifree] = x + arrom[nts]*wa1
                                         cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                        namespace = dict({'xcopyB': xcopyB})
+                                        namespace = dict({'xcopyB': xcopyB, 'numpy':numpy})
                                         exec(cmd, namespace)
                                         tmpval = namespace['tmpval']
                                         if tmpval > parinfo[pqt]['limits'][0]: # Then we shouldn't scale the parameters by more than arrom[nts]
@@ -772,7 +772,7 @@ class alfit(object):
                                             for ntsB in range(1,arromB.size):
                                                 xcopyB[ifree] = x + arromB[ntsB]*wa1
                                                 cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                                namespace = dict({'xcopyB': xcopyB})
+                                                namespace = dict({'xcopyB': xcopyB, 'numpy':numpy})
                                                 exec(cmd, namespace)
                                                 tmpval = namespace['tmpval']
                                                 if tmpval > parinfo[pqt]['limits'][0]:
@@ -796,7 +796,7 @@ class alfit(object):
                                         xcopyB = self.params.copy()
                                         xcopyB[ifree] = x + arrom[nts]*wa1*alpha
                                         cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                        namespace = dict({'xcopyB': xcopyB})
+                                        namespace = dict({'xcopyB': xcopyB, 'numpy':numpy})
                                         exec(cmd, namespace)
                                         tmpval = namespace['tmpval']
                                         if tmpval < parinfo[pqt]['limits'][1]: # Then we shouldn't scale the parameters by more than arrom[nts]
@@ -805,7 +805,7 @@ class alfit(object):
                                             for ntsB in range(1,arromB.size):
                                                 xcopyB[ifree] = x + arromB[ntsB]*wa1*alpha
                                                 cmd = "tmpval = "+parinfo[pqt]['tied'].replace("p[","xcopyB[")
-                                                namespace = dict({'xcopyB': xcopyB})
+                                                namespace = dict({'xcopyB': xcopyB, 'numpy':numpy})
                                                 exec(cmd, namespace)
                                                 tmpval = namespace['tmpval']
                                                 if tmpval < parinfo[pqt]['limits'][1]:
@@ -1523,7 +1523,7 @@ class alfit(object):
             if ptied[i] == '':
                 continue
             cmd = 'p[' + str(i) + '] = ' + ptied[i]
-            namespace = dict({'p': p})
+            namespace = dict({'p': p, 'numpy':numpy})
             exec(cmd, namespace)
             p = namespace['p']
         return p

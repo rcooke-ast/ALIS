@@ -1807,7 +1807,7 @@ def load_tied(p, ptied=None, infl=None):
                 continue
             cmd = 'p[' + str(i) + '] = ' + ptied[i]
             try:
-                namespace = dict({'p':p})
+                namespace = dict({'p':p, 'np':np})
                 exec(cmd, namespace)
                 p = namespace['p']
             except:
@@ -1819,7 +1819,7 @@ def load_tied(p, ptied=None, infl=None):
             ival, pstr = getis(ptied[i], i, infl)
             cmd = 'p[' + str(ival) + '] = ' + pstr
             try:
-                namespace = dict({'p':p})
+                namespace = dict({'p':p, 'np':np})
                 exec(cmd, namespace)
                 p = namespace['p']
             except:
