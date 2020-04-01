@@ -1528,14 +1528,11 @@ class alfit(object):
             p = namespace['p']
         return p
 
-
-
-
     def calc_covar(self, rr, ipvt=None, tol=1.e-14):
 
         if self.debug:
             print('Entering calc_covar...')
-        if numpy.rank(rr) != 2:
+        if numpy.ndim(rr) != 2:
             print('r must be a two-dimensional matrix')
             return -1
         s = rr.shape
