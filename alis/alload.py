@@ -1628,14 +1628,14 @@ def load_subpixels(slf, parin):
             binlen = 1.0/np.float64(nexbins[sp][sn])
             if slf._datopt['bintype'][sp][sn] == "km/s":
                 interpwav = (1.0+((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis]/2.99792458E5))
-                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1)*interpwav).flatten(0)
+                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1)*interpwav).flatten()
             elif slf._datopt['bintype'][sp][sn] == "A":
                 interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
-                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
+                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
             elif slf._datopt['bintype'][sp][sn] == "Hz":
                 binlen = 1.0 / np.float64(nexbins[sp][sn])
                 interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
-                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten(0)
+                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
             else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
@@ -1645,14 +1645,14 @@ def load_subpixels(slf, parin):
                 gradA = np.append((slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
                 gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
-                contspx[sp] = np.append(contspx[sp], (slf._contfull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten(0))
+                contspx[sp] = np.append(contspx[sp], (slf._contfull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten())
             if np.count_nonzero(slf._zerofull[sp][ll:lu]) == 0: # No zero-level is provided -- no interpolation is necessary
                 zerospx[sp] = np.append(zerospx[sp], np.zeros(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._zerofull[sp][lu-1]-slf._zerofull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
                 gradB = np.append( np.array([(slf._zerofull[sp][ll+1]-slf._zerofull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
-                zerospx[sp] = np.append(zerospx[sp], (slf._zerofull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten(0))
+                zerospx[sp] = np.append(zerospx[sp], (slf._zerofull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten())
         posnspx[sp].append(wavespx[sp].size)
 #	slf._wavespx, slf._posnspx = wavespx, posnspx
 #	slf._nexbins = nexbins
