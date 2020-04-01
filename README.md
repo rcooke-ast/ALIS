@@ -6,7 +6,7 @@ perform a model fit to spectroscopic data.
 
 # Requirements
 * python3
-* numpy
+* numpy (>1.18)
 * scipy
 * matplotlib
 * astropy
