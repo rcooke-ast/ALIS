@@ -1,0 +1,6 @@
+This example will help you to prepare more complicated fits with ALIS.
+In particular, this example opens a GUI that allows you to manually
+select the fitting regions and save "snips" of the data that can be
+used as input to ALIS (the idea is that this should make your ALIS
+fits a bit quicker to set up, and a bit quicker to run).
+

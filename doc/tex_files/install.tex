@@ -1,0 +1,57 @@
+\section{Installing and Updating \alis}
+
+\alis\ is written in the \python\ software environment,
+it can be used (at least in principle) either as it comes
+(recommended), on the python command line, or can be
+imported into your own \python\ code. Check it out from
+Github:
+
+\vspace{0.2cm}
+\url{https://github.com/rcooke-ast/ALIS}
+\vspace{0.2cm}
+
+Use the master branch only (this is where I will place the most up-to-date version of \alis).
+
+\subsection{Software Requirements}
+I tried to use as few ``additional'' packages as possible
+when writing \alis, but you really can't beat the following
+\python\ essentials (in fact, they are probably already
+installed on your system, and if not, they should be!).
+If you want to use \alis, you will need to download and
+install the following packages:
+
+\begin{itemize}
+\item \textsc{python} (required, version $3$)
+\item \textsc{numpy} (required)
+\item \textsc{matplotlib} (required)
+\item \textsc{astropy} (required)
+\item \textsc{cuda} (optional --- only needed if you want to use GPU multiprocessing)
+\item \textsc{pycuda} (optional --- only needed if you want to use GPU multiprocessing)
+\end{itemize}
+
+Follow the installation instructions on the GitHub page:
+
+\url{https://github.com/rcooke-ast/ALIS/blob/master/doc/installing.rst}
+
+\subsection{Updating \alis}
+
+It is also very easy to update \alis. I recommend that you
+do this every so often, as I have a chance to fix bugs and
+add new features. \textbf{NOTE: If you make any changes
+to the code yourself, you run the risk of overwriting your
+changes or breaking the code if you update}. Or if you are
+a git user, you can merge conflicts yourself! By all means
+update the code yourself, but if you find a bug and know
+how to fix it, please let me know so that I can help to
+implement the required change for all users.
+To update the code, change directory to where you have
+installed \alis\ and issue the following on a command line:
+
+\vspace{0.4cm}
+\begin{myenv}
+git pull\\
+python setup.py install\\
+\end{myenv}
+\vspace{0.3cm}
+
+You should now have a working, updated version of the code.

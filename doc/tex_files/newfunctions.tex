@@ -1,0 +1,93 @@
+\section{Writing your own function}
+\label{sec:newfunctions}
+
+\textbf{XXX --- Ryan, describe here the separate module that should be
+used to load user functions}.
+
+\subsection{The Base function}
+
+When writing a function from the bare bones, you need to understand
+how \alis\ is written. If you don't care for that (and I don't blame you!),
+you can (and should) use the \texttt{Base} functionality to write your
+own functions.
+
+\subsection{Writing your own arbitrary function}
+
+Before getting started, if you wish to write a polynomial function,
+or a function with an arbitrary number of parameters, you should
+read Section~\ref{sec:wrtpoly}.
+
+The best way to learn how to use the \texttt{Base} function is to look at
+the \texttt{gaussian} model function that comes built-in with \alis. In
+summary, by specifying \texttt{alfunc\_base.Base} as the first and only
+argument in the \texttt{python class} environment (see line 6 of the
+\texttt{gaussian} model function code), you're function will use all of
+the predefined routines that are outlined in \texttt{alfunc\_base.Base},
+meaning that all you need to do is write only a few lines of \texttt{python}
+code, as discussed below.
+
+The first thing you need to do is change the setup for the model. This
+includes changing the text string for what your model function will be
+called, how many parameters you wish the model to have, the names and
+default values for any keywords that are specified, the names and default
+values of the model parameters (including their default limits and if they
+should be fixed by default), and the format for how your parameters or
+keywords should be printed to screen. You can also specify which keywords
+should be printed before the parameters. For an example of the values
+you could enter, see lines 14--25 of the \texttt{gaussian} model function.
+\textbf{NOTE:} If you are writing your own model function, you
+\underline{cannot} use the keyword \texttt{input} as one of your keywords.
+This is reserved by \alis\ and cannot be changed.
+
+You will also need to change the models functional form
+in the \texttt{def model(par)} section (see lines 41-45 of
+the \texttt{gaussian} model function code). Use the variable
+\texttt{x} as the wavelength array, and the array \texttt{par}
+to define the parameters (\texttt{par[0]} is the first model
+parameter, \texttt{par[1]} is the second model parameter
+and so forth).
+
+Apart from specifying the functional form of your model, you also
+need to tell \alis\ how the input parameters (i.e. the parameters
+specified in a user's \dmod\ file) relate to the model parameters
+you just specified above in your model function. You should do
+this for each of the parameters in your model (see line 63--65
+of the \texttt{gaussian} model function for an example).
+If you want to combine keywords with model parameters, or you
+want to combine several parameters into a single parameter, you
+should use the \texttt{parb} variable which is specified in
+\texttt{def set\_vars} (see line 78 of the \texttt{gaussian} model
+function for an example of passing both a keyword [\texttt{wave}]
+and a parameter [the redshift]).
+
+You may also need to change the \texttt{nexbin} parameters (see
+the example provided on lines 86--90 of the \texttt{gaussian} model
+function) if you want to make sure any subpixellation that's applied
+(where \texttt{nexbin[0]}$\equiv$\texttt{run+bintype} and
+\texttt{nexbin[1]}$\equiv$\texttt{run+nsubpix}) samples your
+model function accurately. For the \texttt{gaussian} model function
+that we are using as our example here, two arguments are returned:
+The first argument is \texttt{params}, and this should not be changed.
+The second argument is the number of subpixels to use for this model.
+The definition of \texttt{run+nsubpix} is the number of subpixels per
+standard deviation, so \texttt{nexbin[1]/params[2]}, with some corrections
+to rounding, gives the desired return value. If you don't wish to implement
+this for your function, you can simply return the integer value 1 after
+\texttt{params} (i.e. \texttt{return params, 1}).
+
+\subsection{Writing your own polynomial function}
+\label{sec:wrtpoly}
+
+This section will help you to write your own arbitrary
+polynomial function of your interest. Since polynomials
+in \alis\ have the added functionality of specifying
+an arbitrary number of coefficients, you can very easily
+use the \texttt{Polynomial} base, instead of the \texttt{Base}
+base.  All you need to do then is specify the form of the
+function that should be multiplied by each of the coefficients
+in a definition called \texttt{call\_CPU}.
+
+If you are planning to write your own polynomial function,
+I recommend you copy the design of the \texttt{chebyshev}
+or \texttt{legendre} model functions that come built-in with \alis,
+rather than writing your own polynomial function from scratch.

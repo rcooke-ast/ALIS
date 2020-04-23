@@ -1,0 +1,525 @@
+\section{Built-in functions}
+\label{sec:functions}
+
+There are several built-in functions that come as standard with
+\alis. If this suite of functions is not sufficient, then you can (easily)
+write your own and read it into \alis\ (for more details on how to
+do this, refer to Section~\ref{sec:newfunctions}). Please, if you write
+a function that you believe will be useful to the wider community,
+let me know and I'll include it in the next release! It is worth noting
+that all functions in the source code directory have the prefix
+\texttt{alfunc\_<function name>.py}.
+
+It is worth reiterating at this point that you do not have to specify
+every parameter of the model. However, if you decide to not
+set a parameter, \alis\ will use the default value, and will fix this
+value.
+
+In the following subsections, each built-in function is described
+in alphabetical order in more detail. Below is an incomplete list of
+the current model functions. To see the full list, please check the
+source code --- all functions have a filename of the form
+\texttt{alfunc\_<function\_name>.py}, where \texttt{<function\_name>.py}
+includes one of the following:
+\begin{multicols}{2}
+\begin{itemize}
+\item Afwhm
+\item base
+\item brokenpowerlaw
+\item chebyshev
+\item constant
+\item gaussian
+\item legendre
+\item linear
+\item polynomial
+\item powerlaw
+\item random
+\item tophat
+\item vfwhm
+\item voigt
+\item vsigma
+\end{itemize}
+\end{multicols}
+
+
+\subsection{Afwhm}
+
+The \texttt{Afwhm} function is a model that describes the
+instrumental broadening as a Normal Distribution function
+with standard deviation (in Angstroms) given by:
+\begin{equation}
+\sigma({\rm \AA})=2\sqrt{2\,\ln\,2}\,p_0
+\end{equation}
+where the description of this single parameter is:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{value} --- The full-width at half-maximum in Angstroms (Default = 0.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+This function is specifically designed for convolving the
+model spectrum with the instrumental broadening function.
+The convolution is performed with a fast fourier transform.
+
+
+\subsection{base}
+
+\textbf{\underline{You should not change anything in this file}}.
+Moreover, this function should not be used for any model
+definition. It contains the guts for defining a model, and as the
+name suggests, it is the base from which all other models are
+defined. The benefit of this file is that you can easily write your
+own functions by importing some definitions that have already
+been written for you!
+
+\subsection{brokenpowerlaw}
+
+The \texttt{brokenpowerlaw} model is given by the following equation:
+\begin{equation}
+{\rm model}=\frac{p_0}{(\lambda/p_{3})^{p_{1}}(1.0+(\lambda/p_{3})^{p_{4}})^{(p_{2}-p_{1})/p_{4}}}
+\end{equation}
+I'm not sure if (or where) this style of function has been defined before,
+but the idea is that this model will have a power-law form at both blue
+and red wavelengths, where the power-law index is different for the
+blue and red. There are five parameters which are given
+the names:
+
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{coefficient} --- A scaling coefficient for the model (Default = 0.0).
+\item \textbf{blueindex} --- The power-law index for blue wavelengths (Default = 0.0).
+\item \textbf{redindex} --- The power-law index for red wavelengths (Default = 0.0).
+\item \textbf{location} --- The location of the break (Default = 5000.0).
+\item \textbf{strength} --- The sharpness of the break. Higher values provide a sharper break, whereas lower values provide a more gradual transition (Default = 1.0).
+\end{enumerate}
+
+The corresponding keywords are:
+
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+
+
+\subsection{chebyshev}
+
+The \texttt{chebyshev} model is a Chebyshev polynomial of the first kind:
+\begin{equation}
+{\rm model}=p_0 + p_1\lambda + p_2(2\lambda^2 - 1) + \ldots
+\end{equation}
+You can specify as many parameters as you like (well, up to 10 --- you can
+only fit a Chebyshev polynomial of order 9 and below). The `downside' of
+having an arbitrary number of parameters is that you cannot specify the
+\texttt{parid}, \texttt{fixpar}, \texttt{limited}, or \texttt{limits} parameters. Although
+these commands will work, the limits you place will be applied to all coefficients,
+which may not be so bad, if you use the \texttt{scale} keyword to scale your
+coefficients to be of the same magnitude. If you want the ability to limit your
+polynomial coefficients, another way around this would be to write your own
+Chebyshev function for the  order that interests you. Every coefficient is given
+a non-unique \texttt{parid}:
+
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{coefficient} --- The coefficient for the $n^{\rm th}$ Chebyshev polynomial (Default = 0.0).
+\end{enumerate}
+
+The corresponding keywords are:
+
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\item \textbf{scale} --- An array that scales each of the coefficients If you use this keyword, you
+must provide an array  of comma-separated numbers, with the same number of elements as
+coefficients, of the form: \texttt{scale=[1.0,0.1,0.001,1.0E-6]}. This example would yield a third
+order Chebyshev polynomial of the first kind.
+\end{itemize}
+
+
+\subsection{constant}
+
+The \texttt{constant} model is just that --- a constant. The model equation is given by:
+\begin{equation}
+{\rm model}=p_0
+\end{equation}
+where the description of this parameter is:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{value} --- The value of the constant (Default = 1.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+
+
+\subsection{gaussian}
+
+The \texttt{gaussian} model is a Gaussian function of the form:
+\begin{equation}
+{\rm model}=p_0 \exp\left(-\frac{(\lambda-{\rm wave}\times(1.0+p_1))^2}{2.0p_{2}^{2}}\right)
+\end{equation}
+where the parameters are given by:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{amplitude} --- The amplitude of the Gaussian feature (Default = 0.0).
+\item \textbf{redshift} --- The emission redshift (Default = 0.0).
+\item \textbf{dispersion} --- One standard deviation (in km s$^{-1}$) (Default = 100.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\item \textbf{wave} --- Specify the ion+wavelength (or just a numerical wavelength) of the transition. This is a required parameter since it is used in the model calculation.
+\end{itemize}
+
+
+\subsection{legendre}
+
+The \texttt{legendre} model is a Legendre polynomial of the first kind:
+\begin{equation}
+{\rm model}=p_0 + p_1\lambda + p_2\frac{3\lambda^2 - 1}{2} + \ldots
+\end{equation}
+You can specify as many parameters as you like (well, up to 10 --- you can
+only fit a Legendre polynomial of order 10 and below). The `downside' of
+having an arbitrary number of parameters is that you cannot specify the
+\texttt{parid}, \texttt{fixpar}, \texttt{limited}, or \texttt{limits} parameters. Although
+these commands will work, the limits you place will be applied to all coefficients,
+which may not be so bad, if you use the \texttt{scale} keyword to scale your
+coefficients to be of the same magnitude. If you want the ability to limit your
+polynomial coefficients, another way around this would be to write your own
+Legendre function for the order that interests you. Every coefficient is given
+a non-unique \texttt{parid}:
+
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{coefficient} --- The coefficient for the $n^{\rm th}$ Legendre polynomial (Default = 0.0).
+\end{enumerate}
+
+The corresponding keywords are:
+
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\item \textbf{scale} --- An array that scales each of the coefficients If you use this keyword, you
+must provide an array  of comma-separated numbers, with the same number of elements as
+coefficients, of the form: \texttt{scale=[1.0,0.1,1.0E-3]}. This example would yield a second
+order Legendre polynomial of the first kind.
+\end{itemize}
+
+
+\subsection{linear}
+
+The \texttt{linear} function is a straight line. The model equation is given by:
+\begin{equation}
+{\rm model}=p_0 + p_1 \lambda
+\end{equation}
+where the description of these parameters are:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{intercept} --- The value of the function when $\lambda=0$ (Default = 1.0).
+\item \textbf{gradient} --- The slope of the line (Default = 0.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+
+
+\subsection{polynomial}
+
+The \texttt{polynomial} model is a standard polynomial of the form:
+\begin{equation}
+{\rm model}=p_0 + p_1\lambda + p_2\lambda^2 + \ldots
+\end{equation}
+You can specify as many parameters as you like. The `downside' of
+having an arbitrary number of parameters is that you cannot specify the
+\texttt{parid}, \texttt{fixpar}, \texttt{limited}, or \texttt{limits} parameters. Although
+these commands will work, the limits you place will be applied to all coefficients,
+which may not be so bad, if you use the \texttt{scale} keyword to scale your
+coefficients to be of the same magnitude. If you want the ability to limit your
+polynomial coefficients, another way around this would be to write your own
+Polynomial function for the order that interests you. Every coefficient is given
+a non-unique \texttt{parid}:
+
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{coefficient} --- The coefficient for the $n^{\rm th}$ term of the polynomial (Default = 0.0).
+\end{enumerate}
+
+The corresponding keywords are:
+
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\item \textbf{scale} --- An array that scales each of the coefficients If you use this keyword, you
+must provide an array  of comma-separated numbers, with the same number of elements as
+coefficients, of the form: \texttt{scale=[10.0,0.1,1.0E-3]}. This example would yield a second
+order polynomial (i.e. a quadratic).
+\end{itemize}
+
+
+\subsection{powerlaw}
+
+The \texttt{powerlaw} function is a single powerlaw. The model equation is given by:
+\begin{equation}
+{\rm model}=p_0\lambda^{p_1}
+\end{equation}
+where the description of these parameters are:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{coefficient} --- A multiplicative (or scaling) constant (Default = 0.0).
+\item \textbf{index} --- The index of the powerlaw (Default = 0.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+
+
+\subsection{random}
+
+The \texttt{random} function forces the starting parameter value to be a random number drawn from a distribution specified by the `\texttt{command}' keyword argument. You will need to do some linking as
+well, to tell the \texttt{random} function which variable to apply the randomly generated value to. For
+example, if you know that the logarithm of the column density in your voigt profile is somewhere
+between 13.0 and 14.0, you might specify the following model:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant 1.0CONST\\
+absorption\\
+voigt ion=1Ly\_a    13.2lra   redshift=0.47567    4.0   1.0E4TA\\
+random 0.0lrb  command=uniform(13.0,14.0)\\
+model end\\
+
+\vspace{0.1cm}
+
+\noindent
+link read\\
+lra(lrb) = lrb\\
+link end\\
+\end{mdframed}
+\vspace{0.2cm}
+
+The \texttt{uniform} distribution is just one of the allowed values. You could
+also choose, for example, a normal distribution with centroid 13.5 and width
+0.3. In this case, you would have \texttt{command=normal(13.5,0.3)}. A list of
+all the permitted distributions are specified on the following website:
+
+\url{http://docs.scipy.org/doc/numpy/reference/routines.random.html}
+
+\textbf{\underline{NOTE:}} Be warned, placing a prior on a starting parameter's value should
+be considered carefully; you should almost always use a uniform prior with two extreme
+boundaries (that are considered as the limits of all possible values), unless you know what
+you're doing.
+
+\subsection{tophat}
+
+The \texttt{tophat} function is a rectangular function. The model equation is given by:
+\begin{equation}
+  {\rm model}=\begin{cases}
+    0, & \text{if $\lambda < p_1 - p_2/2$}.\\
+    p_0, & \text{if $p_1 - p_2/2 \le \lambda < p_1 + p_2/2$}.\\
+    0, & \text{if $\lambda \ge p_1 + p_2/2$}.
+  \end{cases}
+\end{equation}
+where the description of these parameters are:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{height} --- The amplitude of the tophat function in the specified interval (Default = 1.0).
+\item \textbf{centroid} --- The centroid of the tophat function (Default = 0.0).
+\item \textbf{width} --- The width of the tophat function (Default = 1.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\item \textbf{hstep} --- The step size to be used when calculating the partial derivative of the model with respect to the  \texttt{centroid} (should be of order \texttt{width}).
+\item \textbf{wstep} --- The step size to be used when calculating the partial derivative of the model with respect to the  \texttt{width} (should be of order \texttt{width}).
+\end{itemize}
+
+
+\subsection{variable}
+
+The \texttt{variable} function creates a dummy variable that can be used to connect two parameters through the \texttt{link} command. Suppose you know that a parameter is exactly a constant times another parameter (but you don't know what either parameter is, nor the cosntant scaling). For example, suppose you want to fit a two component Voigt model, where silicon and sulphur are tied to have the same relative abundance, but you don't know the column density of Si\,\textsc{ii} or S\,\textsc{ii} or the relative abundance. In this case, you could specify the model
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant 1.0CONST\\
+absorption\\
+voigt ion=28Si\_II    13.2colsia   redshift=0.475686ra    4.0da   1.0E4TA\\
+voigt ion=28Si\_II    13.0colsib   redshift=0.475705rb    3.0db   1.0E4TB\\
+voigt ion=32S\_II    12.2colsa   redshift=0.475686ra    4.0da   1.0E4TA\\
+voigt ion=32S\_II    12.0colsb   redshift=0.475705rb    3.0db   1.0E4TB\\
+variable -1.0lnksis \\
+model end\\
+
+\vspace{0.1cm}
+
+\noindent
+link read\\
+colsa(colsia,lnksis) = colsia+lnksis\\
+colsb(colsib,lnksis) = colsib+lnksis\\
+link end\\
+\end{mdframed}
+\vspace{0.2cm}
+
+which forces the S\,\textsc{ii} column densities to be set by the Si\,\textsc{ii} column densities $+$ some fitted constant value called \texttt{lnksis}. Another example, is that you can use a variable to find the error on the summed column density for a given ion. Here is an example of that for Si:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant 1.0CONST\\
+absorption\\
+voigt ion=28Si\_II    13.2colsia   redshift=0.475686ra    4.0da   1.0E4TA\\
+voigt ion=28Si\_II    13.0colsib   redshift=0.475705rb    3.0db   1.0E4TB\\
+variable 13.5lnksis \\
+model end\\
+
+\vspace{0.1cm}
+
+\noindent
+link read\\
+colsib(lnksis,colsia) = numpy.log10(10.0**lnksis - 10.0**colsia)\\
+link end\\
+\end{mdframed}
+\vspace{0.2cm}
+
+In this last case, \texttt{lnksis} is the total (summed) column density. \textbf{NOTE:} It is generally a good idea to specify \texttt{colsib} as the lowest column density component of the absorption.
+
+\subsection{vfwhm}
+
+The \texttt{vfwhm} function is a model that describes the
+instrumental broadening as a Normal Distribution function
+with standard deviation (in velocity) given by:
+\begin{equation}
+\sigma(v)=2\sqrt{2\,\ln\,2}\,p_0
+\end{equation}
+where the description of this single parameter is:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{value} --- The velocity full-width at half-maximum (Default = 0.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+This function is specifically designed for convolving the
+model spectrum with the instrumental broadening function.
+The convolution is performed with a fast fourier transform.
+
+
+\subsection{voigt}
+
+The \texttt{voigt} function describes the absorption line profile for a group
+of atoms that obey a Maxwell-Boltzmann distribution. The functional form
+is the convolution of the intrinsic line profile (i.e. a Lorentzian) with a
+Maxwell-Boltzmann distribution. This profile involves a very numerically
+expensive calculation. To avoid this time-consuming operation, \alis\
+uses a tabulated form of the Voigt profile which expands the following
+functional form into a Taylor series. The implementation that is used in
+\alis\ is the same as that used in \texttt{vpfit}, prepared by Julian King
+(which is an extension from the work by others), and is correct to
+within 1 part in $10^5$. For reference, the functional form of the Voigt
+profile is as follows:
+\begin{equation}
+{\rm model}=I(\lambda)_0 e^{-p_0\,\sigma_{\lambda}}
+\end{equation}
+where $I(\lambda)_0$ is the continuum intensity, and $\sigma_{\lambda}$ is given by:
+\begin{equation}
+\sigma_{\lambda}=a_{0}\,H(a,x)
+\end{equation}
+For a given transition, $a_{0}$ contains the atomic parameters
+and $H(a,x)$ is known as the Voigt integral. These are given by:
+\begin{eqnarray}
+H(a,x) & = & \frac{a}{\pi}\int_{-\infty}^{\infty}\frac{\exp(-y^2)\,{\rm d}y}{(x-y)^2+a^2}
+\\           
+\nonumber
+\\
+a_{0} & = &\frac{\sqrt{\pi}\,e^2}{m_{e}\,c^{2}}\frac{f}{\Delta\nu_{D}}
+\end{eqnarray}
+where the oscillator strength, $f$, is read in from the \texttt{atomic.xml} file.
+The damping parameter of  the intrinsic line shape, $a$, and the
+Doppler frequency, $\Delta\nu_{D}$, have the form
+\begin{eqnarray}
+a & = &\frac{\Gamma}{4\pi\,\Delta\nu_{D}}
+\\
+\nonumber
+\\
+\Delta\nu_{D} & = & \frac{b}{\lambda_{0}} \,\, = \,\, \frac{1}{\lambda_{0}}\sqrt{b_{th}^{2}+p_{2}^{2}},
+\end{eqnarray}
+where $\Gamma$ and $\lambda_{0}$ are respectively the
+transition rate and the rest wavelength of the transition
+(both are read in from \texttt{atomic.xml}). To convert the
+rest wavelength into the observed frame, the observed
+wavelength if $\lambda_{\rm obs}=\lambda_{0}(1+p_{1})$.
+$b_{th}$ is the thermal Doppler parameter (describing the 
+thermal broadening of the line profile) which is given by
+\begin{eqnarray}
+b_{th} & = & \sqrt{\frac{2\,k\,p_{3}}{m_{atom}}}
+\end{eqnarray}
+Finally, the dimensionless parameter $x$ in the Voigt integral
+describes the frequency offset from the line centre, in units 
+of the Doppler frequency,
+\begin{eqnarray}
+x & = & \frac{\nu-\nu_{0}}{\Delta\nu_{D}}.
+\end{eqnarray}
+and $y$ is the convolution parameter. If you are estimating a
+possible variation in the fine-structure constant, the rest
+wavenumber, $w_{0}\equiv1/\lambda_{0}$ is shifted by:
+\begin{eqnarray}
+w_{z} = w_{0} + q([1 + p_{4}]^{2} - 1)
+\end{eqnarray}
+where $q$ is as a number that describes how sensitive a given
+atomic transition is to changes in the fine-structure constant, and
+is read in from the \texttt{atomic.xml} file (for a small handful of
+transitions).
+\textbf{DESCRIBE VARIATION IN PROTON-TO-ELECTRON MASS RATIO HERE}
+In summary, the parameters are given by:
+\begin{enumerate}
+\setcounter{enumi}{-1}
+\item \textbf{ColDens} --- The column density (in cm$^{-2}$), where by default the logarithmic value of the column density is calculated, but see keywords (Default = 8.1).
+\item \textbf{redshift} --- The absorption redshift (Default = 0.0).
+\item \textbf{bturb} --- The turbulent Doppler parameter (in km s$^{-1}$) (Default = 7.0).
+\item \textbf{temperature} --- The kinetic temperature of the gas (in K) (Default = 100.0).
+\item \textbf{DELTAa/a} --- The relative variation of the fine-structure constant (Default = 0.0).
+\item \textbf{DELTAmu/mu} --- The relative variation of the proton-to-electron mass ratio (Default = 0.0).
+\end{enumerate}
+The corresponding keywords are:
+\begin{itemize}
+\item \textbf{specid} --- The set of specid's that this model should be applied to.
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\item \textbf{ion} --- Specify the element+ionization stage (separated by an underscore). The
+first letter of the element should be a uppercase letter. This is a required parameter since it is
+used in the model calculation.
+\item \textbf{logn} --- A True or False argument will respectively calculate the log or linear
+value of the column density for this one model. For weak lines with large errors, you should
+always use linear (i.e. \texttt{logn=False}), it will give you a more reliable estimate of your
+errors. Any column density that is well-measured (with a low error), can use either, but in
+this case, I recommend using the logarithmic value of the column density (i.e. \texttt{logn=True}).
+\end{itemize}
+
+
+\subsection{vsigma}
+
+The \texttt{vsigma} function is a model that describes the
+instrumental broadening as a Normal Distribution function
+with standard deviation given by the only parameter of this
+model, $p_0$, which is called \texttt{value}.
+The keywords for this function are:
+\begin{itemize}
+\item \textbf{blind} --- If you would like to blind yourself from this model, set \texttt{blind=True}.
+\end{itemize}
+This function is specifically designed for convolving the
+model spectrum with the instrumental broadening function.
+The convolution is performed with a fast fourier transform.
+

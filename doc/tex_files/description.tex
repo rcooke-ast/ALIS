@@ -1,0 +1,1190 @@
+\section{How \alis\ works}
+\label{sec:description}
+
+This section is designed to give you a brief overview of how
+the software works behind the scenes, and provides some
+suggestions for how you can change/modify aspects of
+the code (without harming \alis!).
+
+In general, you will need to create a \dmod\ model file
+(e.g. \texttt{myfirstfit.mod}) which tells \alis\ how to run.
+You will then execute the code by typing the following
+on a command line\footnote{Yes, a GUI is on the cards... eventually.}:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+run\_alis myfirstfit.mod
+\end{mdframed}
+\vspace{0.2cm}
+
+From here, \alis\ will read in the default settings, change these
+settings as you specify in the \texttt{.mod} file, load the data,
+load the model, fit the model to the data, and provide a bunch
+of output (which you can turn on/off as you require). I'll now
+briefly describe each of these separately in the following sections.
+
+At this point, I wish to acknowledge that I have used the \textsc{mpfit}
+software package \citep{Mar09}, which I have modified for the purposes
+of \alis. \textsc{mpfit} was originally called \textsc{lmfit} when it was a
+\textsc{fortran} code long, long ago. From here, it was rewritten in
+\textsc{idl} by \textbf{Craig Markwardt} (and received the new name
+\textsc{mpfit}), and was then converted into \python\ by \textbf{Mark Rivers}.
+Finally, \textbf{Sergey Koposov} updated the \python\ version of \textsc{mpfit}
+to use \textsc{numpy}, rather than its predecessor (\textsc{numeric}).
+The current (and all preceding versions) of \textsc{mpfit} uses a
+Levenberg-Marquardt least-squares minimisation algorithm to
+derive the model parameters that best fit the data (i.e. the parameters
+that minimise the difference between the data and the model, weighted
+by the error in the data). The underlying assumption here is that the
+data are normally-distributed. The relevant updates that I have
+made to \textsc{mpfit} includes CPU multiprocessing, a more
+informative screen output that is suited to the \alis\ software, and
+a few (almost) inconsequential fixes.
+
+\subsection{The settings.alis file}\label{sec:settings}
+
+This file contains the default settings that \alis\ needs in order to
+run. I do not recommend that you change the parameters in this
+file (since you can change each and every setting in your
+\dmod\ file). But if you insist on changing something,
+here is a brief description of what you can/can't do. This
+file contains a three-argument command. The first argument
+is just a name (or identifier) that \alis\ uses. The second
+argument is the name given to a particular setting. The
+third argument is the value of this setting.
+
+The first argument can take the following values:
+\texttt{run} (which tells \alis\ how to run), 
+\texttt{chisq} (to set the details of the chi-squared minimisation, including convergence properties), 
+\texttt{plot} (to describe how the data/model should be prepared for plotting), 
+\texttt{out} (the information you want to output), 
+\texttt{sim} (to perform Monte Carlo simulations), 
+and
+\texttt{generate} (to generate fake data).
+
+Table~\ref{tab:settings} provides a summary of the
+permitted arguments/values\footnote{Unfortunately, this list is probably incomplete, but has the most useful commands that you're likely to need -- feel free to dig into the code to find the other arguments as I update the code!}, and includes a description
+for each of the parameters. As mentioned earlier, you
+can also change these parameters manually for each
+fit that you perform, by including the same three argument
+commands (separated by whitespace or tabs) in your
+\texttt{.mod} input model file.
+
+\begin{center}
+\begin{longtable}{p{1.5cm}p{2.5cm}p{2.0cm}p{2.0cm}p{5.0cm}}
+\caption[]{\textsc{The allowed parameter settings for \alis}}\label{tab:settings} \\
+
+\toprule
+\multicolumn{1}{p{1.5cm}}{Arg. 1} &
+\multicolumn{1}{p{2.5cm}}{Arg. 2} &
+\multicolumn{1}{p{2.0cm}}{Default} &
+\multicolumn{1}{p{2.0cm}}{Allowed} &
+\multicolumn{1}{p{5.0cm}}{Description}\\
+&
+&
+\multicolumn{1}{p{2.0cm}}{Value} &
+\multicolumn{1}{p{2.0cm}}{Values} & \\ \midrule
+\endfirsthead
+
+\multicolumn{5}{c}%
+{{\tablename\ \thetable{} -- continued from previous page}} \\
+\toprule
+\multicolumn{1}{p{1.5cm}}{Arg. 1} &
+\multicolumn{1}{p{2.5cm}}{Arg. 2} &
+\multicolumn{1}{p{2.0cm}}{Default} &
+\multicolumn{1}{p{2.0cm}}{Allowed} &
+\multicolumn{1}{p{5.0cm}}{Description}\\
+&
+&
+\multicolumn{1}{p{2.0cm}}{Value} &
+\multicolumn{1}{p{2.0cm}}{Values} &
+\\ \midrule
+\endhead
+
+\bottomrule \multicolumn{5}{R}{Continued on next page...} \\
+\endfoot
+
+\bottomrule \multicolumn{5}{p{13.0cm}}{where int, float and str respectively refer to an integer, floating point, and character string value.}
+\endlastfoot
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{atomic}} &
+\multicolumn{1}{p{2.0cm}}{atomic.xml} &
+\multicolumn{1}{p{2.0cm}}{str} &
+\multicolumn{1}{p{5.0cm}}{The name of the table that contains the relevant atomic transitions (must be a VOTable with suffix \texttt{.xml})} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{bintype}} &
+\multicolumn{1}{p{2.0cm}}{km/s} &
+\multicolumn{1}{p{2.0cm}}{km/s, A} &
+\multicolumn{1}{p{5.0cm}}{Set the type of pixels to use -- If pixels have constant velocity use ``km/s'', if pixels have constant Angstroms use ``A'' } \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{blind}} &
+\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Run a blind analysis -- In order to print out the best-fitting model, this must be set to False} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{capvalue}} &
+\multicolumn{1}{p{2.0cm}}{None} &
+\multicolumn{1}{p{2.0cm}}{None, float $>0.0$} &
+\multicolumn{1}{p{5.0cm}}{If not None, set the model value to be the capvalue everywhere the model exceeds the capvalue} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{convergence}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Run a convergence check} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{convnostop}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Continue to reduce the chi-squared stopping criteria until the parameters have converged} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{convcriteria}} &
+\multicolumn{1}{p{2.0cm}}{0.2} &
+\multicolumn{1}{p{2.0cm}}{float $>0.0$} &
+\multicolumn{1}{p{5.0cm}}{Convergence criteria in units of the parameter error} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{datatype}} &
+\multicolumn{1}{p{2.0cm}}{default} &
+\multicolumn{1}{p{2.0cm}}{string} &
+\multicolumn{1}{p{5.0cm}}{Specify the type of data being read in (the default is the IRAF standard). \texttt{HIRESredux} will read in data reduced by \textsc{HIRES\_redux}. \texttt{UVESpopler} will read in data combined with \textsc{UVES\_popler}.} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{limpar}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{If an initial parameter's value is outside the model limits, set the initial value to the limit. Otherwise, an error is raised.} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{ncpus}} &
+\multicolumn{1}{p{2.0cm}}{-1} &
+\multicolumn{1}{p{2.0cm}}{int} &
+\multicolumn{1}{p{5.0cm}}{Number of CPUs to use (-1 means all bar one CPU, -2 means all bar two CPUs)} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{ngpus}} &
+\multicolumn{1}{p{2.0cm}}{0} &
+\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{5.0cm}}{Number of processes to send to the GPU/GPUs (must be $\ge0$)} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubpix}} &
+\multicolumn{1}{p{2.0cm}}{5} &
+\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{5.0cm}}{Number of sub-pixels per 1 standard deviation to interpolate all models over -- higher values give higher precision} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubmin}} &
+\multicolumn{1}{p{2.0cm}}{5} &
+\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{5.0cm}}{Minimum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubmax}} &
+\multicolumn{1}{p{2.0cm}}{21} &
+\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{5.0cm}}{Maximum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{renew\_subpix}} &
+\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{If True, the subpixellation will be calculated after every iteration} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{warn\_subpix}} &
+\multicolumn{1}{p{2.0cm}}{100} &
+\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{5.0cm}}{If the number of sub-pixels exceeds this amount, the user will be warned} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{atol}} &
+\multicolumn{1}{p{2.0cm}}{0.001} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{Termination criteria -- this measures the absolute change desired in the sum of squares} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{ftol}} &
+\multicolumn{1}{p{2.0cm}}{1.0E-10} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{Termination criteria -- this measures the relative error desired in the sum of squares} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{gtol}} &
+\multicolumn{1}{p{2.0cm}}{1.0E-10} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{Termination criteria -- this measures the orthogonality desired between the function vector and the columns of the Jacobian} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{xtol}} &
+\multicolumn{1}{p{2.0cm}}{1.0E-10} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{Termination criteria -- this measures the relative error desired in the approximate solution} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{fstep}} &
+\multicolumn{1}{p{2.0cm}}{20.0} &
+\multicolumn{1}{p{2.0cm}}{float $>0.0$} &
+\multicolumn{1}{p{5.0cm}}{Factor above machine-precision to use for step size} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{maxiter}} &
+\multicolumn{1}{p{2.0cm}}{20000} &
+\multicolumn{1}{p{2.0cm}}{int $>1$} &
+\multicolumn{1}{p{5.0cm}}{Maximum number of iterations before giving up} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{miniter}} &
+\multicolumn{1}{p{2.0cm}}{1} &
+\multicolumn{1}{p{2.0cm}}{int $>1$} &
+\multicolumn{1}{p{5.0cm}}{Minimum number of iterations before checking convergence criteria} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{fits}} &
+\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Plot the best-fitting model with the data?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{residuals}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Plot the residuals for the best-fitting model?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{only}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Don't fit the data, just plot the input data and model} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{pages}} &
+\multicolumn{1}{p{2.0cm}}{all} &
+\multicolumn{1}{p{2.0cm}}{int, all} &
+\multicolumn{1}{p{5.0cm}}{Which pages to plot? Either provide comma-separated integers or the text string `all'} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{dims}} &
+\multicolumn{1}{p{2.0cm}}{3x3} &
+\multicolumn{1}{p{2.0cm}}{(int)x(int)} &
+\multicolumn{1}{p{5.0cm}}{Specify the plotting dimensions (ROWSxCOLUMNS)} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{fitregions}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Indicate the regions of data that are being used in the chi-squared minimation (i.e. that specified by fitrange)?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{ticks}} &
+\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Plot tick marks above the spectrum to indicate model components?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{plot}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{ticklabels}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Plot labels above the tick marks to identify model components?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{covar}} &
+\multicolumn{1}{p{2.0cm}}{``''} &
+\multicolumn{1}{p{2.0cm}}{str} &
+\multicolumn{1}{p{5.0cm}}{Output the covariance matrix, to a file with name given by third argument (No output if the argument is ``'')} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{convtest}} &
+\multicolumn{1}{p{2.0cm}}{``''} &
+\multicolumn{1}{p{2.0cm}}{str} &
+\multicolumn{1}{p{5.0cm}}{Output the details of the convergence test, to a file with name given by third argument (No output if the argument is ``'')} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{fits}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Output the best fitting model fits?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{onefits}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Output the best fitting models to a single fits file?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{model}} &
+\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Output the best fitting model parameters?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{overwrite}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Overwrite existing files when writing out?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{plots}} &
+\multicolumn{1}{p{2.0cm}}{``''} &
+\multicolumn{1}{p{2.0cm}}{str} &
+\multicolumn{1}{p{5.0cm}}{Save the output plots to a pdf file, to a file with name given by third argument (No output if the argument is ``'')} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{sm}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Generate a SuperMongo plotting script?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{reletter}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Set to True if you want \alis\ to reletter the tied/fixed parameters starting from `A'} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{out}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{verbose}} &
+\multicolumn{1}{p{2.0cm}}{2} &
+\multicolumn{1}{p{2.0cm}}{0, 1, 2} &
+\multicolumn{1}{p{5.0cm}}{Level of screen output (0 is for no screen output, 1 is low level output, 2 is output everything)} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{random}} &
+\multicolumn{1}{p{2.0cm}}{None} &
+\multicolumn{1}{p{2.0cm}}{int $> 0$} &
+\multicolumn{1}{p{5.0cm}}{Number of random simulations to perform} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{perturb}} &
+\multicolumn{1}{p{2.0cm}}{None} &
+\multicolumn{1}{p{2.0cm}}{int $> 0$} &
+\multicolumn{1}{p{5.0cm}}{Number of simulations to perform where the starting parameters are perturbed} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{systematics}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{In addition to running random simulations, do you want to run systematics simulations? \texttt{sim+random} must be $> 0$ to run systematics simulations.} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{beginfrom}} &
+\multicolumn{1}{p{2.0cm}}{``''} &
+\multicolumn{1}{p{2.0cm}}{str} &
+\multicolumn{1}{p{5.0cm}}{An input file called \texttt{<filename>.mod.out} that contains the starting parameters and errors for the simulations (\textsc{note}: you will need to also output the corresponding covariance matrix for these parameters, with a filename \texttt{<filename>.mod.covar})} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{startid}} &
+\multicolumn{1}{p{2.0cm}}{0} &
+\multicolumn{1}{p{2.0cm}}{int $\ge 0$} &
+\multicolumn{1}{p{5.0cm}}{A starting ID label for the Monte Carlo simulations. This will be incremented by 1 for each new simulation until \texttt{sim+random} simulations have been performed.} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{systmodule}} &
+\multicolumn{1}{p{2.0cm}}{None} &
+\multicolumn{1}{p{2.0cm}}{str, None} &
+\multicolumn{1}{p{5.0cm}}{If the user writes their own module to deal with systematics, specify the name of this module here. None will use the default, built-in systematics} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{newstart}} &
+\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Generate a new set of starting parameters from the best-fitting covariance matrix?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{dirname}} &
+\multicolumn{1}{p{2.0cm}}{sims} &
+\multicolumn{1}{p{2.0cm}}{str} &
+\multicolumn{1}{p{5.0cm}}{Name of the folder to dump the output from the Monte Carlo runs} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{sim}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{edgecut}} &
+\multicolumn{1}{p{2.0cm}}{4.0} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{Number of standard deviations (based on instrumental FWHM) to reject from generated data (due to edge effects)} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{generate}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{data}} &
+\multicolumn{1}{p{2.0cm}}{False} &
+\multicolumn{1}{p{2.0cm}}{True, False} &
+\multicolumn{1}{p{5.0cm}}{Generate fake data (instead of fit)?} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{generate}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{pixelsize}} &
+\multicolumn{1}{p{2.0cm}}{2.5} &
+\multicolumn{1}{p{2.0cm}}{float $>0.0$} &
+\multicolumn{1}{p{5.0cm}}{Pixel size (in units of \texttt{run+bintype}) for the generated wavelength array} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{generate}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{peaksnr}} &
+\multicolumn{1}{p{2.0cm}}{0.0} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{Signal-to-noise ratio (at the peak of the model) for the generated data (0.0 is used for perfect data)} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{generate}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{skyfrac}} &
+\multicolumn{1}{p{2.0cm}}{0.0} &
+\multicolumn{1}{p{2.0cm}}{float $\ge0.0$} &
+\multicolumn{1}{p{5.0cm}}{What is the fractional contribution of the sky (relative to the peak of the model). The condition \texttt{skyfrac} $<$ (peak of model / \texttt{peaksnr}) must hold.} \\ \midrule
+
+\multicolumn{1}{p{1.5cm}}{\texttt{iterate}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{model}} &
+\multicolumn{1}{p{2.0cm}}{None} &
+\multicolumn{1}{p{2.0cm}}{str, None} &
+\multicolumn{1}{p{5.0cm}}{Make dynamic changes to the model using a user-specified function ('None' means do not iterate). Two arguments (separated by a comma - no spaces) are allowed, but not necessary. The first argument is the name of the module, the second is any text string that you want passed to the module.} \\ \midrule
+
+%\multicolumn{1}{p{1.5cm}}{\texttt{iterate}} &
+%\multicolumn{1}{p{2.5cm}}{\texttt{data}} &
+%\multicolumn{1}{p{2.0cm}}{None} &
+%\multicolumn{1}{p{2.0cm}}{str, None} &
+%\multicolumn{1}{p{5.0cm}}{} \\ \midrule
+
+
+
+
+%\multicolumn{1}{p{1.5cm}}{\texttt{}} &
+%\multicolumn{1}{p{2.5cm}}{} &
+%\multicolumn{1}{p{2.0cm}}{} &
+%\multicolumn{1}{p{2.0cm}}{} &
+%\multicolumn{1}{p{5.0cm}}{} \\ \midrule
+
+\end{longtable}
+\end{center}
+
+\subsection{The atomic.xml file}
+
+This file may never concern you, but it is good to know what it
+does, just in case you ever need it. This file contains all of the
+atomic data for a given list of atomic transitions that I think will
+be useful to you. It is largely derived from the compilation by
+Bob Carswell, and is used in \textsc{vpfit} (with a few updates
+that I've found useful). This is a file that is continuously updated
+to include the latest laboratory measurements and additional
+transitions that others find useful. If you would like to easily view,
+update, or add new values to this table, I would recommend
+\textsc{topcat}. However, I suggest that you make your own
+copy of this file, make changes to it, and load \textit{your}
+version of the atomic data file into \textsc{alis}. This can be
+done by either changing the default atomic data file listed
+in \texttt{settings.alis} (i.e. \texttt{run atomic atomic.xml}), or
+you can change this setting in your \dmod\ file. That said, if
+you have data for new transitions that I have not included,
+(and you think they may also be of use to someone else),
+please let me know, and I will update the default version too.
+The column data in atomic.xml are as follows:\\
+
+\indent (1) Mass Number\\
+\indent (2) Atomic Mass (in amu)\\
+\indent (3) Solar Isotopic \textbf{Number/Mass --- TBC} Abundance\\
+\indent (4) Element Name\\
+\indent (5) Ionization stage\\
+\indent (6) Vacuum Wavelength (in \AA)\\
+\indent (7) Oscillator Strength\\
+\indent (8) Transition Probability (in s$^{-1}$)\\
+\indent (9) The $q$-value of the transition (for use with fine-structure constant variation)\\
+\indent (10) The $K$-value of the transition (for use with proton-to-electron mass ratio variation)\\
+
+\subsection{The \dmod\ model file}
+\label{sec:dmod}
+
+The \dmod\ file contains all of the information that \alis\ needs in order
+to perform a fit. In short, you need to include three sections to your
+\dmod\ file, the first section is where you can adjust the default settings
+of \alis\ (for example, change the number of CPUs that the code uses
+to find the best-fitting solution). The second section provides the details
+of a given data file that you want \alis\ to read in. The third section contains
+the details of the model you wish to fit to the data. There's an optional fourth
+section, which tells \alis\ to link a model parameter to another parameter,
+through some expression. Therefore, your \dmod\ file should look something
+like the following:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+\#\ \alis\ will ignore all text to the right of a `\#' symbol.\\
+\#\ This is a comment line.\\
+
+\vspace{0.1cm}
+
+\noindent
+\#- -$>$\\
+\alis\ will also ignore all script between these
+comment \&\ arrow symbols.\\
+$<$- -\#\\
+
+\vspace{0.1cm}
+
+\noindent
+{\bfseries $<$three parameter arguments$>$}\\
+
+\vspace{0.1cm}
+
+\noindent
+data read\\
+{\bfseries $<$tell \alis\ where the data are and what to do with it$>$}\\
+data end\\
+
+\vspace{0.1cm}
+
+\noindent
+model read\\
+{\bfseries $<$tell \alis\ what model you want to fit to the data$>$}\\
+model end\\
+
+\vspace{0.1cm}
+
+\noindent
+link read\\
+{\bfseries $<$tell \alis\ what links to enforce between model parameters$>$}\\
+link end
+\end{mdframed}
+\vspace{0.2cm}
+
+\noindent
+where the bold arguments in angle brackets are to be chosen from a list
+of commands that are described in the following three subsections.
+
+\subsubsection{Three parameter arguments in your \dmod\ file}
+
+The first thing to decide is how you want to change the default settings
+that were described in Section \ref{sec:settings}. You would do this in
+the same way as you would define/change the commands in the
+\texttt{settings.alis} file. For example, if you wanted to change the number of
+CPUs that \alis\ uses for the calculation to 8, and you would like
+to output the best-fitting model fits and be sure that old fits were
+overwritten (without being prompted by \alis), you would need to
+include the following three parameter commands at the top of your
+\dmod\ file:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+\noindent
+run ncpus 8\\
+out fits True\\
+out overwrite True
+\end{mdframed}
+\vspace{0.2cm}
+
+\subsubsection{How to read in a data file}
+\label{sec:readdata}
+
+Once you've set the details of how \alis\ should run,
+you need to specify the data, and a list of the
+corresponding properties of that data. The first
+argument on every new line must be the pathname
+to the datafile (you can either specify the absolute
+path [e.g. \texttt{/home/data/datafile.fits}] or the
+relative path [e.g. \texttt{../work/datafile.fits}] from the
+\dmod\ file). If you specify nothing more on this line,
+\alis\ will assign this datafile the default properties
+(which is probably not what you want!). It is recommended
+that you manually assign the properties of this datafile on
+the remainder of the line. The allowed properties you can
+set (along with a brief description --- see later for more
+details on these properties) are the following:
+
+\begin{itemize}
+\item \texttt{specid} --- An ID number that links the data and model (\alis\ will fit data of a given \texttt{specid} with the corresponding model of the same \texttt{specid})
+\item \texttt{fitrange} --- The wavelength range of the input data that should be used for the fit
+\item \texttt{loadrange} --- The wavelength range of the input data that should be loaded and used to generate the model (\textbf{NOTE:} this command specifies the wavelength range where the model should generated, whereas \texttt{fitrange} tells \alis\ where to calculate the chi-squared)
+\item \texttt{resolution} --- Defines the model for the instrumental broadening profile
+\item \texttt{shift} --- Defines the model for the relative shift between two different spectra
+\item \texttt{systematics} --- define where \alis\ should obtain systematics information from (only if you want to calculate systematics -- see Section~\ref{sec:systematics})
+\item \texttt{systmodule} --- A user-defined module to deal with systematics (only if you're doing systematics -- see Section~\ref{sec:systematics})
+\item \texttt{columns} --- The columns of the datafile that should be read by \alis\
+\item \texttt{loadall} --- Load all of the data (not just the fitted region)
+\item \texttt{bintype} --- This parameter allows you to override the default \texttt{run+bintype} for a given set of data
+\item \texttt{nsubpix} --- This parameter allows you to override the default \texttt{run+nsubpix} for a given set of data.
+\item \texttt{plotone} --- Set to True if you want to plot this data in its own panel (rather than what is specified by \texttt{plot+dims})
+\item \texttt{label} --- A label that you would like to have plotted on the lower left corner of the plot
+\item \texttt{yrange} --- An optional command if you're unsatisfied with the automatic y-axis range of the plotted data
+\end{itemize}
+
+Note that every line
+in your \dmod\ file between the \texttt{data read}
+and \texttt{data end} commands is considered
+independently of all previous lines. This means
+that you need to specify the data properties on
+every line (or you will just get the default settings).
+In general, to set a keyword property type the
+keyword followed by an `=' sign, followed by the
+value to give that keyword with no spaces! For
+example, to set \texttt{specid} to 1, you would
+type \texttt{specid=1}. All of the above options
+are now described in more detail.
+
+\textbf{\underline{specid}} --- Any model with the corresponding
+   \texttt{specid} parameter will be applied to this data. \alis\ reads
+   this parameter as a character string, so it can be any value. Note
+   that you can specify the same \texttt{specid} for several datafiles.
+   In this instance, the model with the corresponding \texttt{specid}
+   will be applied to both datafiles. The only instance where this
+   parameter is not needed is when you want every specified model
+   to be applied to all of the datafiles.
+
+\textbf{\underline{fitrange}} --- This is a required (... well, not really, but it is highly
+     recommended that you do!!) parameter
+     which tells \alis\ where to fit the model to the data. It can take three arguments.
+     The first is the string `all' (which is the default -- without quotation marks), and
+     will fit the model to all of the data. This is not recommended if you are convolving
+     the data, since your model will contain spurious edge effects. If you want to fit
+     only a certain wavelength interval, you can specify the minimum (e.g. 3500.0 \AA)
+     and the maximum (e.g. 3600.0 \AA) by typing \texttt{fitrange=[3500.0,3600.0]} where
+     the comma is required (no spaces!). The final argument you are allowed to pass in
+     is the string `columns' (without quotation marks), which tells \alis\ to obtain the
+     wavelengths to be fitted from the datafile itself. If you specify \texttt{fitrange=columns},
+     you will need to also specify the column number in the parameter \texttt{columns}
+     (see below). The column data needs to be a series of 1's and 0's, where a 1 indicates
+     that you would like to include a pixel in the fit, and a 0 tells \alis\ not to use that pixel
+     during the fitting process.
+
+\textbf{\underline{loadrange}} --- This is a highly recommended input parameter
+     which tells \alis\ over what wavelength range should the model be generated. It can take two arguments.
+     The first is the string `all' (which is the default -- without quotation marks, i.e. \texttt{loadrange=all}), and
+     will generate a model over the entire wavelength range (this can be slow if you're reading in a large file!).
+     This option is not recommended if you are convolving
+     the data, since your model will contain spurious edge effects. If you want to generate
+     the model within a certain wavelength interval, you can alternatively specify the minimum (e.g. 3480.0 \AA)
+     and the maximum (e.g. 3620.0 \AA) by typing \texttt{loadrange=[3480.0,3620.0]} where
+     the comma is required (no spaces!).
+
+\textbf{\underline{resolution}} --- This keyword is required, and you should
+     always explicitly define it. \alis\ presently has three built-in functions
+     for an instrumental profile (\texttt{Afwhm}, \texttt{vfwhm} and \texttt{vsigma}). These functions
+     convolve the model with a Gaussian profile: Use \texttt{Afwhm} if you want to
+     specifiy the full-width at half-maximum resolution in Angstroms, or use \texttt{vfwhm} if you want to
+     specifiy the full-width at half-maximum velocity resolution (i.e. $c/R$), or use
+     \texttt{vsigma} is you want to specify the standard deviation. Since the argument
+     of this parameter is a function, you will also need to specify the parameters of
+     the function. At present, these functions take a single
+     argument (which is a constant). For example, if the instrumental resolution is
+     known to have FWHM velocity of 7.0 km s$^{-1}$, you should use the command
+     \texttt{resolution=vfwhm(7.0)} with no spaces. Since this is a function, the parameters
+     of this function are allowed to be a free parameter of the model. In Section~\ref{sec:specifymodel},
+     you can find out how to fix, tie, or limit the parameters of this function.
+     If you need an instrumental profile that is not built-in, (e.g. if the resolution changes
+     linearly with wavelength), or you want to define some arbitrary function for the profile,
+     you can do this by (straightforwardly) writing your own function, and loading it into \alis.
+     For more details on writing your own functions, see Section~\ref{sec:newfunctions}. The
+     \texttt{resolution} parameter can also be set to the string `columns', to read the instrumental
+     resolution from a column in the input datafile. In this case, you must specify the velocity
+     full-width at half-maximum at every pixel. If you do not want to convolve the data with an instrumental
+     profile, just use either \texttt{vfwhm} or \texttt{vsigma} with an argument of 0.0 (and be
+     sure to fix the resolution to this value later when specifying the model --- see
+     Section~\ref{sec:specifymodel}). In Section~\ref{sec:specifymodel}, there is a
+     description for how you can fix and tie the parameters of the instrumental resolution
+     profile with uppercase and lowercase letters respectively.
+
+\textbf{\underline{shift}} --- This keyword is not required, but is used to specify (or fit) a relative shift
+     between two spectra (for example, if you want to fit for the heliocentric correction).
+     \alis\ presently has two built-in functions that allow you to specify the shift
+     (\texttt{Ashift}, \texttt{vshift} and \texttt{vsigma}). Use \texttt{Ashift} if you want to
+     shift this spectrum by a constant amount in Angstroms, or use \texttt{vshift} if you want to
+     set the shift to be a constant velocity shift. Since the argument
+     of this parameter is a function, you will also need to specify the parameters of
+     the function. At present, these functions take a single
+     argument (which is a constant). For example, if the velocity shift is
+     estimated to be +30.0 km s$^{-1}$, you should use the command
+     \texttt{shift=vshift(30.0)} with no spaces. Since this is a function, the parameters
+     of this function are allowed to be a free parameter of the model. In Section~\ref{sec:specifymodel},
+     you can find out how to fix, tie, or limit the parameters of this function.
+     If you need to specify a shift that is not built-in, (e.g. if the shift changes
+     as a function of wavelength), or you want to define some arbitrary function for the shift,
+     you can do this by (straightforwardly) writing your own function, and loading it into \alis.
+     For more details on writing your own functions, see Section~\ref{sec:newfunctions}.
+     In Section~\ref{sec:specifymodel}, there is a
+     description for how you can fix and tie the parameters of the shift
+     with uppercase and lowercase letters respectively.
+
+\textbf{\underline{systematics}} --- This keyword is to be used if you want to quantify the
+     systematics that affect your data. It can (essentially) take one of three arguments for
+     this version of \alis. Specifying the string `columns' will tell \alis\ that the relevant
+     systematics information is located in one of the columns of the datafile. To set the
+     column number of the systematics information, use the \texttt{columns} keyword below.
+     You can also specify the string `None' which implies that no `extra' information is required.
+     Finally, you can specify the path (absolute or relative), where a datafile with the relevant
+     systematics can be found.
+
+\textbf{\underline{systmodule}} --- If none of the built-in systematics routines fit your purpose,
+     you can (fairly easily) write your own module to deal with systematics. If you want to do this,
+     the argument should provide the name of the \py\ file followed by a comma, followed by a
+     string which you can use as an identifier. For example, you would type
+     \texttt{systmodule=mysystfile.py,myidstring} to load \texttt{mysystfile.py} with an identifier string
+     \texttt{myidstring}. Two arguments, separated by a comma -- with no spaces -- are
+     \textit{required} for this parameter. If you want to write your own systematics module,
+     please see Section~\ref{sec:montecarlo} for the relevant details.
+
+\textbf{\underline{columns}} --- The columns keyword is required, and informs \alis\ which
+     columns of the datafile contain the relevant information. Within square brackets, you can
+     include the following information:
+     \texttt{wave}, \texttt{flux}, \texttt{error}, \texttt{continuum}, \texttt{fitrange}, \texttt{systematics}.
+     \alis\ uses zero-indexed data, so if your wavelength array is the first column of data, you
+     will need to specify \texttt{wave:0}. The minimum keywords that you need to specify are
+     \texttt{wave}, \texttt{flux}, and \texttt{error} (if you're using \fits\ files, you only need to specify
+     the flux and error columns, since the wavelength array is read from the header). If you
+     gave the keyword `columns' to either \texttt{fitrange} or \texttt{systematics} (see above),
+     then you should specify here which column of data to obtain it from. For example, if the
+     wavelength, flux, and error arrays are in the first, second and third columns, whilst the
+     fitrange is in the fifth column, you would need to set (without any spaces!) \texttt{columns=[wave:0,flux:1,error:2,fitrange:4]}.
+     The keyword \texttt{continuum} will multiply the final model by a fractional amount of the
+     continuum. I \textit{do not} recommend that you use your own continuum fits, but rather,
+     you should model the continuum self-consistently with \alis\ (yes, you can do this!). The
+     \texttt{continuum} option should only be used if you \textit{really} need it.
+
+\textbf{\underline{loadall}} --- \alis\ will try to load only the data that it needs for accurate fitting
+     (i.e. it will take the fitted regions you specify plus a bit more so that edge effects from
+     convolution does not affect your model profile). If you want to, you can force \alis\ to
+     load all of the data in this file (it will slow things down only slightly --- depending on how big
+     your data are!). \texttt{True} and \texttt{False} are the only two arguments that are allowed for
+     this parameter. To load all of the data, use the command \texttt{loadall=True}.
+
+\textbf{\underline{bintype}} --- This parameter accepts the strings (without quotation marks)
+     `km/s' (if your wavelength bins have a constant velocity) or
+     `A' (if your wavelength bins have a constant Angstroms).
+     This is an optional keyword which, if not specified, will assume the default
+     value set by \texttt{run+bintype}. Conversely, if you choose to specify \texttt{bintype}
+     for a given datafile, this will override the default setting for \textit{just this datafile}.
+
+\textbf{\underline{nsubpix}} --- This parameter is an optional keyword which is used by
+     \alis\ to subpixelate the spectrum (one standard deviation for the model is sampled
+     by the number of pixels specified with this keyword). If you do not specify this keyword,
+     \alis\ will assume the default value given by \texttt{run+nsubpix}. If you choose to specify
+     \texttt{nsubpix} for a given datafile, this will override the default setting for \textit{just this datafile}.
+
+\textbf{\underline{plotone}} --- If you are plotting your results, \alis\ will use the default \texttt{plot+dims}
+     arguments toplot your data in different panels. \texttt{plotone} is an optional parameter which allows
+     you to override the default plotting panels, and instead plot this datafile and the best-fitting model
+     with a single plot. This parameter takes \texttt{True} or \texttt{False} arguments; to plot a given datafile
+     in its own window, use the command \texttt{plotone=True}.
+
+\textbf{\underline{label}} --- If you would like to plot a label on a given panel to easily recognize the plot,
+     provide a label here, with no spaces and no quotation marks. If you wanted spaces, use the underscore
+     character (i.e. $\_$). For example, if you want to highlight that a given panel is Si\,\textsc{ii} $\lambda1808$,
+     you would use the command \texttt{label=Si$\_$II$\_$1808}.
+
+\textbf{\underline{yrange}} --- \alis\ will usually derive a reasonable y-axis range for plotting, but you
+     can also specify it manually if you prefer. For example, you can specify the minimum value of the
+     y plotting axis (e.g. $-0.3$) and the maximum (e.g. $1.5$) by typing \texttt{yrange=[$-0.3,1.5$]} where
+     the comma is required (and there are no spaces!).
+
+
+\subsubsection{How to specify your model}
+\label{sec:specifymodel}
+
+Now that the data have been specified, you need to provide the model
+that is fitted to the data. The entire model must be specified between the
+\texttt{model read} and \texttt{model end} commands. There are several
+sections that you need to fill out in order to appropriately specify the model.
+The first step is defines the global properties of the model (i.e. what parameters
+should be globally fixed (or not), and what the appropriate limits are for the
+parameters etc.) In most cases, the default values for the models are sufficient,
+but if you want to change them for this \dmod\ file, you can do it here. The next
+step is to define the model for emission, then absorption (if you want to fit
+absorption features!), and finally, you can perform a fit to the zero-level of the
+data (but this feature should probably not be used unless you know
+it well (and can fix it to a known value), or you have strong (saturated) absorption
+features where you can accurately determine, or fit to, the zero-level). These
+sections are now described separately.
+
+\textbf{\underline{A quick note on specifying model parameters}} --- Each model
+contains a number of parameters, and a number of keywords. Not all parameters
+and keywords are required, but some are. If you don't specify all parameters for
+a given model, \alis\ will take the default values (which are sensible -- but may not
+be what you're after!). Some keywords are absolutely required (don't worry, \alis\
+will flag an error if you don't specify them!). If you want to run a blind analysis
+(i.e. you only see the fits and do not see the results) you can globally specify
+the \texttt{run+blind} command (this will force the entire run to be
+blind --- see Table~\ref{tab:settings}), or you can specify \texttt{blind=True}
+on a given model line to blind just that model.
+
+\textbf{\underline{A quick note on fixing and tying model parameters}} --- \alis\
+has the ability to tie and/or fix parameters that should be the same. A good example
+is a series of Gaussian emission lines that you want to tie together so that they have
+the same redshift, and this redshift is a free parameter. In order to tie the redshift of
+these two Gaussians together, \alis\ requires a text string that immediately follows
+the parameter. If your initial model guess of the redshift is, say, 0.5 then the parameter
+you would use could be 0.5tieit (where `tieit' is an arbitrary length (user-defined) string
+of lowercase letters only --- you could also use `skfg'). Every model parameter
+(with the string `tieit' after the model parameter) that is encountered by \alis\ after
+this first instance, will inherit the first instance of `tieit'
+(in this case 0.5 --- \underline{regardless} of the model type/parameter).
+In other words, `tieit' is thereafter reserved as 0.5, and once fitting has commenced,
+all values with `tieit' will change together. If you instead want to fix parameters, use
+UPPERCASE letters only. Note that uppercase letters, while fixed, are also tied.
+For example, if you had instead set the redshift  above to 0.5R, and you later had
+defined a model with the parameter 10.0R, this second model parameter will still
+be a fixed number, but it will fixed at 0.5, rather than 10.0. More details (including
+examples) for fixing and tying parameters are provided below.
+
+\textbf{\underline{Specifying the emission model}} --- For every set of data that
+you want to fit, you must specify a model that describes the emission. For this
+example, I will use three Gaussian functions and a constant function. Since it is
+emission, it doesn't matter what order we specify these models. Also, we decide
+(for a good reason) that we want to tie the redshift for these three gaussians, and
+we know that the data are offset by a constant of 1.0. The first thing that needs to
+specified is that all of these models are emission. This is achieved by issuing a
+line with the text \texttt{emission} (and nothing else). Every subsequent line of
+the model will be interpreted as emission. The model definition would be
+(explicitly) given by:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant value=1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+In this example, the value of 1.0 used for the constant is fixed with
+the text string `CONST', and the redshift of the three Gaussians are
+tied (but free) with the string `tval'. For more details on all of the
+built-in models available with \alis, see Section~\ref{sec:functions}. For now,
+note that every model has a number of keywords (some are absolutely
+required) in addition to the ``required'' parameters (whilst not formally
+required, if you don't specify the ``required'' parameters, defaults will
+be used, which is not advised!). Default values cannot (or rather, will not)
+be used for the keyword arguments. The function called \texttt{constant}
+in the above example has a single parameter (called \texttt{value}),
+and one keyword argument (called \texttt{specid}).
+
+In the above example, \alis\ thinks you have not specified a
+\texttt{specid} for the data, and will therefore apply all four of
+these models to all of the data. If you do not wish for this to
+happen, simply set the keyword argument \texttt{specid=1}
+(with no spaces!) Commas can be used to separate different
+values of \texttt{specid}. Therefore, to apply a given model to
+the data where \texttt{specid} is 1, 2, and 3, you would use the
+keyword argument \texttt{specid=1,2,3} again with no spaces.
+
+To avoid confusion, I have explicitly defined the single parameter
+for the \texttt{constant} model as \texttt{value=1.0CONST}. I could
+have instead simply used \texttt{1.0CONST} and remove the
+`value=' part of the parameter definition. This is because \alis\
+expects to read in the model parameters in a certain order. If you
+do not explicity tell \alis\ what the parameter name is that a given
+number should be assigned to, it will do this automatically. Note
+that keywords do not work in the same way. You must specify the
+entire keyword as shown above for \texttt{specid}. For further
+detail, see Section~\ref{sec:functions} for the order of parameters that is
+used in the built-in functions. If you explicitly give the parameter
+name, order is not a problem. If you only provide some of the
+parameter names explicitly, \alis\ will assign these first, and then
+assign the remaining keywords in the appropriate order.
+
+\textbf{\underline{Specifying the absorption model}} --- Once the emission
+model is defined, you can then specify the absorption that is superimposed
+on top of this emission. The first step is to write the keyword `absorption' on
+a new line by itself, followed by the models you wish to define as absorption.
+In the following example I will assume there is a damped Lyman-$\alpha$
+system providing the absorption on top of the Gaussian emission that I defined
+above
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant 1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+absorption\\
+voigt ion=1H\_I    20.5   redshift=0.47567RA    4.0DA   1.0E4TA\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+In this particular instance, a DLA with an H\,{\sc i} column density of
+$10^{20.5}$ atoms cm$^{-2}$ at redshift $0.47567$, with a turbulent
+Doppler parameter of 4.0 km s$^{-1}$ and kinetic temperate of $10^4$ K
+will be used. The only free parameter is the column density (which I haven't
+explicitly given the parameter name). I have only explicitly given the parameter
+name for the redshift (although this wasn't necessary).
+
+In principle, I can now continue to define an emission feature on top of this
+absorption feature (for example, Ly$\alpha$ emission in the DLA's trough),
+and absorption on top of this emission+absorption+emission (for example,
+from another nearby DLA), and so forth. This can be done as follows:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant 1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+absorption\\
+voigt ion=1H\_I    20.5   redshift=0.47567RA    4.0DA   1.0E4TA\\
+emission\\
+gaussian 0.1 redshift=0.47567RA dispersion=10.0 wave=H\_I\_1215\\
+absorption\\
+\ldots\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+You might think that this functionality (of being able to indefinitely specify the emission
+then absorption etc.) has limited application (and I agree, if you use it for the above
+application!). However, a simple (common) example where this functionality might
+prove to be useful is if you have several data with different \texttt{specid}. You might
+want to use the first set of emission+absorption commands to define the model for
+\texttt{specid=1}, the second set of emission+absorption commands to define the
+model for \texttt{specid=2}, and so forth. You could equally well define the entire
+model for all \texttt{specid} in a single emission+absorption command (although
+it would be less well-organised). Usually, I would recommend sticking to a single
+set of emission+absorption commands -- it's more guaranteed to work as you expect!
+
+\textbf{\underline{Specifying the zero-level}} --- The zero-level can be fitted for in
+the same way that the emission and absorption models are fitted. Simply issue
+the command \texttt{zerolevel} on a new line, and follow the same procedures
+above. For the current example, we can fit a constant to the zerolevel as follows:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+constant 1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+absorption\\
+voigt ion=1H\_I    20.5   redshift=0.47567RA    4.0DA   1.0E4TA\\
+emission\\
+gaussian 0.1 redshift=0.47567RA dispersion=10.0 wave=H\_I\_1215\\
+absorption\\
+\ldots\\
+zerolevel\\
+constant 0.01\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+\textbf{\underline{change the default model specifications}} --- You can easily
+adjust the limiting values of the models you wish to use for a given fit. To do this,
+you can use a series of four parameter arguments. To fix a given parameter from
+a model, the first argument is \texttt{fix}. To limit a given parameter from a model,
+the first argument is \texttt{lim}. For the second argument, you need to provide the
+name of the model function. \alis\ comes built-in with a series of useful functions
+(for a full list see Section~\ref{sec:}, and to write your own, see Section~\ref{sec:}).
+For the current example we are following, I will use the \texttt{gaussian} function.
+This name is used as the second argument. The \texttt{gaussian} function
+(as defined by \alis) takes three parameters which are given the (fairly obvious)
+name identifiers, \texttt{amplitude}, \texttt{redshift}, and \texttt{dispersion}.
+Using the above example, let's assume that we had good reason to expect the
+redshift of the emission lines to be exactly (or very close to) 0.5 and we do not
+want this to be a free parameter anymore. If you want this parameter to be fixed
+(without explicitly changing `tval' to uppercase letters), you can issue the four
+argument command \texttt{fix gaussian redshift True} just after the
+\texttt{model read} command. Similarly, if you wanted to allow the parameter
+\texttt{value} of the function \texttt{constant} to vary (without explicitly changing
+`CONST' to lowercase), you would issue \texttt{fix constant value False}.
+Other than `True' or `False', you can also use `None' (which will keep the
+parameter as is), or you can specify a floating point number that should be
+used in place of the current value.
+
+For this example, I'm going to assume that the instrumental resolution profile
+was defined by the user as the function \texttt{vfwhm} in the \texttt{data read}
+section. This function takes one parameter, called \texttt{value}. To fix (and change)
+this value to 4.3, you could issue the command \texttt{fix vfwhm value 4.3}, without
+having to explicitly change the \texttt{vfwhm} parameter arguments specified in the
+\texttt{data read} section.
+
+As a side note, although the function used as the instrumental profile (see
+Section~\ref{sec:readdata} for more details) should not be defined in the
+\texttt{model read} section, you can still fix or limit it's value in this section
+(in fact, if you want to \textit{change} whether the model parameters from
+the instrumental resolution function are fixed or limited, you can only do
+it here --- after the \texttt{model read} command). In this case, I will assume
+
+Finally, if you want to limit the amplitude of the Gaussian emission lines
+to be between 0.0 and 10.0 you would issue the command
+\texttt{lim gaussian amplitude [0.0,10.0]} with no spaces for the final
+argument. If you instead feel that the emission should \textit{only} be
+limited from below, such that the minimum value is 0.0 and there is
+no maximum value, you would instead issue the command
+\texttt{lim gaussian amplitude [0.0,None]}, where `None' indicates that
+you do not want to specify a limiting value. As such, the model that we
+have defined up until this point is the following:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+fix gaussian redshift True\\
+fix constant value False\\
+lim gaussian amplitude [0.0,None]\\
+emission\\
+constant 1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+absorption\\
+voigt ion=1H\_I    20.5   redshift=0.47567RA    4.0DA   1.0E4TA\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+\textit{Note that all models of a given type \underline{after} the }\texttt{fix}\textit{ and }\texttt{lim}\textit{ declaration
+will inherit the }\texttt{fix}\textit{ and }\texttt{lim}\textit{ commands you issue}.
+For example, if we now decide that we want to fix the \texttt{dispersion}
+parameter for the model function called \texttt{gaussian}, but we only
+want to fix the value for the first Gaussian (i.e. with \texttt{dispersion=1000.0}),
+without fixing the dispersion for the other two Gaussians
+(i.e. with \texttt{dispersion=500.0}), we can place the fix
+command at the appropriate location in the \texttt{model read}
+section, to free the \texttt{dispersion} parameter for all subsequent
+definitions of the \texttt{gaussian} model.
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+fix gaussian redshift True\\
+fix gaussian dispersion True\\
+fix constant value False\\
+lim gaussian amplitude [0.0,None]\\
+emission\\
+constant 1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+fix gaussian dispersion False\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+absorption\\
+voigt ion=1H\_I    20.5   redshift=0.47567RA    4.0DA   1.0E4TA\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+If you instead want to place a limit on just a \textit{single} parameter, you can
+do so by giving that parameter an ID tag (`\texttt{jc}' in the example below),
+and specifying the limit with the command \texttt{lim param jc [20.0,21.0]}
+which is of the same form as described above. Similarly, you can fix a single
+parameter with the command \texttt{fix param tval True} or free a single
+parameter with \texttt{fix param DA False} or fix a parameter to a given
+value with \texttt{fix param tval 0.51}.
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+fix gaussian redshift True\\
+fix param tval True\\
+fix gaussian dispersion True\\
+fix constant value False\\
+lim param jc [20.0,21.0]\\
+lim gaussian amplitude [0.0,None]\\
+emission\\
+constant 1.0CONST\\
+gaussian amplitude=9.0 redshift=0.5tval dispersion=1000.0 wave=H\_I\_1215\\
+fix gaussian dispersion False\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1238\\
+gaussian amplitude=6.0 redshift=0.5tval dispersion=500.0 wave=N\_V\_1242\\
+absorption\\
+voigt ion=1H\_I    20.5jc   redshift=0.47567RA    4.0DA   1.0E4TA\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+\textbf{\underline{NOTE:}} Be careful when limiting or fixing
+parameters with the same ID tag. If you want to place the same
+limit on \textit{two} parameters that are supposed to have different
+values, you will need to specify this separately, as follows
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+lim param jc [20.0,21.0]\\
+lim param jd [20.0,21.0]\\
+$\vdots$\\
+voigt ion=1H\_I    20.7jc   redshift=0.47567RA    4.0DA   1.0E4TA\\
+voigt ion=1H\_I    20.2jd   redshift=0.52324RB    3.0DB   1.0E4TA\\
+$\vdots$\\
+model end
+\end{mdframed}
+\vspace{0.2cm}
+
+\subsubsection{How to specify your links}
+\label{sec:specifylinks}
+
+Links are useful if you know that there is some well-defined relation between two
+of your model parameters. For example if you have a good physical reason to believe
+that the ratio between two parameters should be fixed, or you want the sum of several
+parameters to be a constant value. Linking works very similar to tying parameters, so
+you should attach lowercase letters to the right of the parameters in your model that
+you want to link.
+
+As a first example, consider the two emission lines [O\,\textsc{iii}]\,$\lambda5007$\,\AA\
+and [O\,\textsc{iii}]\,$\lambda4959$\,\AA. In some environments, it is reasonable to assume
+that their integrated flux ratio is locked 3:1. To enforce this criteria, we introduce the variable
+`\texttt{va}' after specifying the value of the integrated flux for [O\,\textsc{iii}]\,$\lambda5007$\,\AA,
+and we also place a \textit{different} variable, in this case `\texttt{vb}', after specifying the value of
+the integrated flux for [O\,\textsc{iii}]\,$\lambda4959$\,\AA. Running such a model without
+including the \texttt{link} section of the model, would cause both integrated fluxes to be free
+parameters. To force their ratio to be 3:1, one must include the link section, explicitly telling
+\alis\ that the parameter \texttt{vb} as a function of \texttt{va} is equal to \texttt{va} divide by 3
+(i.e. \texttt{vb(va) = va / 3.0}). The model will therefore look something like the following:
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+line\_emission ion=16O\_III\_5007     IntFlux=9.0va         0.03ra       7.0ba\\
+line\_emission ion=16O\_III\_4959     IntFlux=3.0vb         0.03ra       7.0ba\\
+model end\\
+
+\vspace{0.1cm}
+
+\noindent
+link read\\
+vb(va) = va / 3.0\\
+link end\\
+\end{mdframed}
+\vspace{0.2cm}
+
+As another example, suppose you wanted to make sure the total integrated flux
+from 3 emission lines is equal to 10, you would need to write something like the
+model below. In this case, both \texttt{vb} and \texttt{vc} are allowed to vary, but
+the variable \texttt{va} will be adjusted such that \texttt{va=10-vb-vc}.
+
+\vspace{0.3cm}
+\begin{mdframed}[style=MyFrame]
+model read\\
+emission\\
+line\_emission ion=1H\_I\_6563     IntFlux=5.0va         0.03ra       7.0ba\\
+line\_emission ion=1H\_I\_4861     IntFlux=3.0vb         0.03ra       7.0ba\\
+line\_emission ion=1H\_I\_4341     IntFlux=2.0vc         0.03ra       7.0ba\\
+model end\\
+
+\vspace{0.1cm}
+
+\noindent
+link read\\
+va(vb,vc) = 10.0 - vb - vc\\
+link end\\
+\end{mdframed}
+\vspace{0.2cm}
+
+
+\alis\ is fairly able to interpret the expression to the right of the `\texttt{=}' sign, provided that
+it contains only numbers (with and without a floating decimal point), and any combination
+of the following symbols: \texttt{`+', `-', `*', `/', `**', `(', and `)'}, where the standard order of operations
+applies (note that \texttt{`**'} means `to the power of'), and any number of variable strings that are
+defined anywhere in the model section. Finally, note that any variable listed on the left hand side
+of any linking equation will not be assigned an error. This is because it is related to other parameters,
+and by imposing some restriction on this parameter's value, you are removing 1 degree of freedom
+from the minimization process. If you specify a link twice for a given parameter (e.g. for the model
+above you specified \texttt{va(vb,vc) = 10.0-vb-vc} on one line and \texttt{va(vc) = 5.0-vc} on another
+line), the first equation read by \alis\ will be used, and the remaining cases will be ignored.
+
+In the context of linking, the function `\texttt{variable}' can be very useful if you want to calculate
+the value and associated error on a combination of model parameters. The `\texttt{variable}'
+function takes just one parameter, and this should be tied to a value in the links section of the
+model specification. Using the links section can also be useful if you want to start a parameter
+value with a random value (drawn from a user-specified distribution).
+See Section~\ref{sec:functions} for more details on this functionality.
+
+\textbf{\underline{Note:}} you cannot tie `\texttt{resolution}' variables within \alis.

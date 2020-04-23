@@ -1,0 +1,37 @@
+\section{Generate Fake Data}
+
+One of the functions that I find very useful with \alis\ is the ability
+to straightforwardly generate perfect data (i.e. without noise) and
+fake data (with noise). To do so, you specify the desired model
+as described in Section~\ref{sec:specifymodel}.
+
+There are essentially two more steps in order to generate perfect/fake data.
+The first step involves telling \alis\ that you want to generate data from the model
+you've specified. You can do this with the three parameter arguments that
+are specified at the beginning of your \dmod\ file. For a description of how
+to do this, refer to their corresponding entries in Table~\ref{tab:settings}.
+
+The final step is to specify some details in the \texttt{data read} section. Again,
+this works in the same way as described in Section~\ref{sec:readdata}. If you
+provide a filename that exists, \alis\ will attempt to read in the wavelength
+array and the error spectrum. The model will be generated and noise will be
+applied to the model based on the error spectrum that is read in from the
+specified file. The output file is given the suffix `\_model' before the extension
+type.
+
+If you instead provide a filename that doesn't exist, \alis\ will generate a
+wavelength array based on the wavelength range provided by \texttt{fitrange},
+in steps of \texttt{generate+pixelsize} and in units of \texttt{run+bintype}. If
+noise is to be applied to the model, \alis\ will derive the appropriate error
+spectrum based on \texttt{generate+peaksnr} and \texttt{generate+skyfrac}.
+Finally, \alis\ will output the generated data to the specified filename.
+
+\textbf{NOTE:} If you are generating perfect/fake data, and you are convolving
+your data with an instrumental resolution profile, the model may be subject to
+edge effects. If you are loading a file that already exists and you want to avoid
+these edge effects, make sure \texttt{fitrange} is well within the wavelength range
+of the generated data, and you probably want to specify \texttt{loadall=True}.
+If you ask \alis\ to generate data from scratch (i.e. the filename you specify does
+not exist), make sure that \texttt{fitrange} covers a larger wavelength range
+than the range you want, so that you can later reject the edge effects, if that's
+what you want to do!

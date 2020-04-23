@@ -1,0 +1,92 @@
+\documentclass[12pt, oneside]{article}   	% use "amsart" instead of "article" for AMSLaTeX format
+%\usepackage{geometry}                		% See geometry.pdf to learn the layout options. There are lots.
+%\geometry{letterpaper}                   		% ... or a4paper or a5paper or ... 
+%\geometry{landscape}                		% Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    		% Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}				% Use pdf, png, jpg, or eps with pdflatex; use eps in DVI mode
+								% TeX will automatically convert eps --> pdf in pdflatex		
+\usepackage{array}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{multirow}
+\usepackage{longtable}\usepackage{booktabs}
+\usepackage[round]{natbib}
+\usepackage[framemethod=TikZ]{mdframed}
+\usepackage{multicol}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[paper=letterpaper, top=1.5cm, left=1.5cm, right=1.5cm , bottom=1.5cm, includehead=true, includefoot=true]{geometry}
+% Vertical Settings
+%\voffset 0.0in
+%\topmargin 0.69in
+%\headheight 0.2in
+\headsep 0.1cm
+\textheight 24.0cm
+\footskip 0.25cm
+% Horizontal Settings
+%\hoffset 0.0in
+%\oddsidemargin 0.0in
+%\evensidemargin 0.0in
+%\marginparwidth 0.0in
+%\textwidth 6.5in
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Some useful Commands
+\newcommand{\alis}{{\sc alis}}
+\newcommand{\python}{{\sc python}}
+\newcommand{\dmod}{{\tt .mod}}
+\newcommand{\py}{{\tt .py}}
+\newcommand{\fits}{{\tt .fits}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Define the box for code
+\mdfdefinestyle{MyFrame}{%
+    linecolor=black,
+    outerlinewidth=1.5pt,
+    roundcorner=5pt,
+    innertopmargin=\baselineskip,
+    innerbottommargin=\baselineskip,
+    innerrightmargin=20pt,
+    innerleftmargin=20pt,
+    backgroundcolor=gray!25!white}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newenvironment{myenv}[1][]
+  {\noindent\begin{minipage}{\linewidth}\begin{mdframed}[style=MyFrame,font=\small,#1]\begin{tabbing}}
+  {\end{tabbing}\end{mdframed}\end{minipage}}
+
+\newcolumntype{R}{>{\raggedleft\arraybackslash}p{13.0cm}}
+
+\title{\textbf{A}bsorption \textbf{LI}ne \textbf{S}oftware\\\alis, version 1.0}
+\author{Ryan J. Cooke}
+\date{\today}							% Activate to display a given date or no date
+
+\begin{document}
+
+\maketitle
+
+\clearpage
+\setcounter{tocdepth}{3}
+\tableofcontents
+
+\clearpage
+\input{introduction}
+\clearpage
+%\input{acknowledgements}
+\input{install}
+\input{description}
+%\input{fitting}
+\input{plotting}
+\input{examples}
+\input{generatedata}
+\input{montecarlo}
+\input{functions}
+\input{newfunctions}
+\input{troubleshoot}
+\input{comments}
+\input{bibliography}
+
+%\vspace{0.3cm}
+%\begin{mdframed}[style=MyFrame]
+%This is just an example box
+%\end{mdframed}
+%\vspace{0.2cm}
+
+\end{document}  

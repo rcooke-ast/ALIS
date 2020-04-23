@@ -1,0 +1,107 @@
+\section{Troubleshooting}
+\label{sec:troubleshoot}
+
+\subsection{List of Error Messages}
+
+To be completed
+
+\subsection{List of Warning Messages}
+
+To be completed
+
+\subsection{Frequently Asked Questions}
+
+Based on the questions I've received so far (asked by other
+users and myself!),I've compiled a list of `frequently asked
+questions'. If I've ever encountered a problem, it is usually
+listed here to remind me how to solve it! Please look through
+here to find if you're problem already has a solution.
+
+\subsubsection{What should the tolerances be?}
+Whatever you like! The general rule, is that an \textit{absolute}
+change in the $\chi^{2}$ value of 0.001 means that the solution
+is converged, and any change in the parameter values are not
+physical. Given that \alis\ finds a local minimum, rather than a
+global minimum, I would suggest you aim for the above level
+in $\chi^{2}$. Therefore, if you want nothing more, set \texttt{xtol}
+and \texttt{gtol} to be equal to \texttt{0.0}, and set \texttt{ftol} to be
+something small --- of order (or slightly less than) \texttt{0.001/dof},
+where \texttt{dof} is the number of degrees of freedom. If you're
+running a convergence check, you might want to set \texttt{ftol}
+to be \texttt{0.01/dof}, since the convergence check will decrease
+\texttt{ftol} by an order of magnitude. Another common practise is
+to set \texttt{xtol}, \texttt{gtol}, and \texttt{ftol} to be equal to \texttt{0.0},
+and set \texttt{atol} to be 0.001 (which is the tolerance for the
+absolute difference between iterations)
+
+\subsubsection{My eye can see a better fit than \alis, what's going wrong?}
+There's no simple, gauranteed solution to this problem, but here are a list of
+possibilities that you might want to try.
+
+\begin{itemize}
+
+\item Check the reason for convergence (this should be printed in the output file).
+If you're doing a blind analysis, the reason for convergence is printed on screen.
+If \alis\ has only taken 1 iteration, and then returned, you can be almost certain
+that the solution is bad.
+
+\item Check the value of `fstep'. \alis\ works by calculating the
+numerical derivatives with the finite difference method. If \texttt{fstep}
+is close to 1.0, then the parameters are adjusted by the value of the
+parameter multiplied by the machine precision (i.e. hardly at all).
+Low values of \texttt{fstep} are preferred, since the derivatives are
+better, and the convergence is quicker. If it is too low, some
+parameters (depending on how the model is specified), aren't very
+sensitive to such a low change (the code thinks that $f$($x$) and
+$f$($x+\delta x$) are equal). Try increasing the value of \texttt{fstep}
+by an order of magnitude or more.
+
+\item Check the maximum number of iterations is $>1$, and
+set the minimum number of iterations to $>1$.
+
+\item Check the maximum number of iterations has not been reached.
+If you've reached the maximum number of iterations, the solution has
+probably not converged.
+
+\item If \alis\ returns before the minimum number of iterations is reached, then
+the machine precision was reached first (unless you received an error message!).
+(you probably have a lot of parameters and/or a large dynamic range in these parameters). 
+If you have a large number of parameters, try a slightly different set of starting
+parameters. Sometimes, if the fit is too good for some parameters and terrible
+for others, \alis\ may think it's closer to convergence than it really is.
+
+\item If your model is discretized (i.e. a tabulated model), then the software
+can get stuck between two grid points. This can be overcome by interpolation,
+or define a model with finer grid sizes.
+
+\item \alis\ does not derive the global minimum, but rather, the local minimum
+that is based on the user starting parameters. Try a different set of starting
+parameters that is a closer representation to the data.
+
+\end{itemize}
+
+\subsubsection{\alis\ is taking too long to converge}
+
+In general, I really wouldn't expect that your fit will need
+more than a couple of hundred iterations (for extreme
+examples!). More generally, the number of iterations
+should be less than about 100 (and certainly less than
+1000!). If \alis\ takes a long time to converge and you're
+at less than 100 iterations, you must
+either have a complicated model function
+(or your model is poorly defined -- make sure you
+are using \texttt{numpy} to speed up array operations),
+or you have a large number of parameters. Try increasing
+the number of cpus that \alis\ uses to speed things up.
+However, if you are really doing such a calculation, you
+must have a higher-than-average level of patience!
+
+\subsubsection{My model function is not working}
+
+In general, this is something that I'm not able to help you with,
+other than suggesting that you read carefully through
+Section~\ref{sec:newfunctions}, and make sure that your models
+are well-defined (i.e. no discontinuities), and the derivatives can
+be numerically calculated fairly easily (for example, absolute
+values of free parameters will probably have trouble).
+

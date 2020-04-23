@@ -1,0 +1,17 @@
+Throughout -- fix grey box width/placement
+
+Section 1: Write a journal and reference
+
+Table 1: Check if this needs to be updated
+
+Section 3.2 Update the atomic.xml file and correct the TBC note.
+
+Section 4 --- Your first fit
+
+Section 5 --- Do the examples and put them in the manual
+
+Section 8 --- In function Voigt, describe the implementation of the proton-to-electron mass rastio.
+
+Section 9 --- Describe the file that a user should use if they want to incorporate their own model functions.
+
+Section 10.1 and 10.2 --- Write a list of warning and error messages and describe what they mean.

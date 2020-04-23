@@ -1,0 +1,108 @@
+\section{Monte Carlo Simulations}
+\label{sec:montecarlo}
+
+It is also straightforward to perform Monte Carlo simulations with \alis.
+You can tell \alis\ to perform Monte Carlo simulations by using the
+appropriate three parameter arguments in your \dmod\ file
+(see Section~\ref{sec:dmod} and Table~\ref{tab:settings}).
+\textbf{NOTE:} This feature is not currently supported, and hasn't
+been tested in a *long* time.
+
+\subsection{random}
+
+If you want to perform 1000 Monte Carlo simulations to test the
+random error of your data, simply use the three parameter
+argument: \texttt{sim random 1000}
+at the beginning of your \dmod\ file, \alis\ will do the rest and
+save the output appropriately. \textbf{NOTE:} The output will
+contain 1001 lines in this case; the first line of the output will
+always be the input model parameters (which you can discard
+if you don't want them).
+
+In the above example, the Monte Carlo runs will be assigned
+the ID number 0--999. If you want to start from a different ID number,
+say 10, you would also need to specify \texttt{sim startid 10} (and the
+simulations will now run over the ID numbers 10--1010).
+
+For each of the simulations, the best-fitting model parameter file is
+output into a directory specified by \texttt{sim+dirname}. If you want
+to output the results of your simulations to a directory called
+``my\_simulations'', you would issue the following three parameter
+argument at the beginning of your \dmod\ file:
+\texttt{sim dirname my\_simulations}.
+
+If you decide to find the best-fitting model, and after this you decide that
+some Monte Carlo simulations are needed, you do not need to refit the
+real data, provided that you have output the best-fitting model file and
+covariance matrix. To begin from the best-fitting model, issue the following
+three parameter argument \texttt{sim beginfrom myfit.mod.out}. In this
+example, from the command line you would need to issue the command
+\texttt{alis myfit.mod}. In the same directory that you run this command,
+you must have the best-fitting model file (myfit.mod.out), and the corresponding
+covariance matrix (myfit.mod.out.covar).
+
+Since fake data is being generated during the Monte Carlo process, your
+data may suffer from edge effects if you have convolved your data with the
+instrumental resolution. A warning message will be issued if the generated
+data suffer from edge effects. You can change the threshold of this warning
+using the three parameter argument \texttt{sim edgecut 4.0}, where 4.0 can
+be any floating point number. The number you specify represents the number
+of standard deviations for the instrumental profile that the fitrange values
+need to be from the wavelength edges. If you get these warnings, do not
+trust the random simulations. To avoid such warnings, you can either reduce
+the \texttt{fitrange}, or provide more wavelength coverage for the input file.
+Similarly, you can reduce this threshold (but don't trust your results, unless
+you can convince yourself that the edge effects are minimal enough).
+
+\subsection{systematics}
+
+If you have `massaged' your data before running it through \alis\
+(for example, you normalise your continuum), and you want to know
+how this might systematically affect your results, you can test this with
+\alis\ by setting the three parameter argument \texttt{sim systematics True}.
+In order to run systematics, you must also run random simulations. The idea
+here is that you want to perform the same `massaging' on the data generated
+in the random simulations, as you did to the real data. You can either use one
+of the built-in systematics modules (in this case, you must match your `massaging'
+to the routine that you select), or you can write your own systematics module
+(described below). At present, \alis\ only comes built-in with one systematics
+modile, which accounts for continuum normalisation with a polynomial.
+In order to use this module you will need to issue the three parameter argument
+\texttt{sim systmodule default} or you can also issue
+\texttt{sim systmodule continuumpoly} for the same routine.
+In this case, you must specify an additional column of data to be read in
+called \texttt{systematics}. This column of data must contain a $-1$ for every
+pixel that is not used in the polynomial fit, and $n$ (where n is unique, and is
+the order of the polynomial --- e.g. 1 would be linear) for the pixels that were
+used to normalise the continuum. Simlar warnings will be supplied if edge
+effects (see above) are important (for example, if you use pixels at the
+extremeties of the data to estimate the continuum).
+
+If you would not like to apply systematics to a given datafile that is read in
+from the \texttt{data read} section, you can issue \texttt{systmodule=None}
+on the appropriate line where you are reading in that datafile.
+
+It is very likely that no other built-in systematics functions will be implemented
+(unless you can come up with a fairly common use of this functionality that I can
+implement!). I've therefore created the flexibility for you to write your own
+systematics module to deal with the systematics that your data may suffer
+from. Here are a few details for how to write your own systematics module.
+You need to write your module in \python\ in order for it to work.
+
+First, create a \python\ script in the same directory as your \dmod\ file, for example \texttt{mysystmod.py}.
+In this file, you can do what you like (!) but you must create a function definition called \texttt{loader}
+which accepts several arguments. The first argument is an ID string, which is discussed below. The
+second, third, fourth and fifth arguments are respectively the wavelength array, flux spectrum, error spectrum
+and the column of data read in from file that has information on the systematics involved (see above).
+The sixth argument contains a two element array with the minimum (zeroth element) and maximum
+(first element) wavelengths that are free from edge effects (see above for more details). The final
+argument is the name of the data file (just incase you need it for reference or whatever).
+
+To tell \alis\ that you want to use your module for a given data file, you need to specify the name of your
+module on the corresponding line in the \texttt{date read} section of your \dmod\ file. You can do this by
+giving the command \texttt{systmodule=mysystmod.py,idstring}, where `\texttt{,idstring}' is optional, and
+can be any text string that you desire. This text string will be passed to the first argument of your
+systematics module. If you don't provide an ID string on this line, your systematics module will be passed
+a black string with zero characters (i.e. `').
+
+
