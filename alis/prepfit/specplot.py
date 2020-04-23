@@ -54,55 +54,29 @@ class SelectRegions(object):
 		for i in self.anntexts: i.remove()
 		self.annlines = []
 		self.anntexts = []
-		default=False
 		molecules=False
 		# Plot the lines
-		if default:
-			xmn, xmx = self.ax.get_xlim()
-			ymn, ymx = self.ax.get_ylim()
-			xmn /= (1.0+self.prop._zabs)
-			xmx /= (1.0+self.prop._zabs)
-			w = np.where((self.atom._atom_wvl > xmn) & (self.atom._atom_wvl < xmx))[0]
+		xmn, xmx = self.ax.get_xlim()
+		ymn, ymx = self.ax.get_ylim()
+		xmn /= (1.0+self.prop._zabs)
+		xmx /= (1.0+self.prop._zabs)
+		w = np.where((self.atom._atom_wvl > xmn) & (self.atom._atom_wvl < xmx))[0]
+		for i in range(w.size):
+			dif = i%5
+			self.annlines.append(self.ax.axvline(self.atom._atom_wvl[w[i]]*(1.0+self.prop._zabs), color='r'))
+			txt = "{0:s} {1:s} {2:.1f}".format(self.atom._atom_atm[w[i]],self.atom._atom_ion[w[i]],self.atom._atom_wvl[w[i]])
+			ylbl = ymn + (ymx-ymn)*(dif+1.5)/8.0
+			self.anntexts.append(self.ax.annotate(txt, (self.atom._atom_wvl[w[i]]*(1.0+self.prop._zabs), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
+		if molecules:
+			# Plot molecules
+			labls, lines = np.loadtxt("/Users/rcooke/Software/ALIS_dataprep/molecule.dat", dtype={'names': ('ion', 'wvl'), 'formats': ('S6', 'f8')}, unpack=True, usecols=(0,1))
+			w = np.where((lines > xmn) & (lines < xmx))[0]
 			for i in range(w.size):
 				dif = i%5
-				self.annlines.append(self.ax.axvline(self.atom._atom_wvl[w[i]]*(1.0+self.prop._zabs), color='r'))
-				txt = "{0:s} {1:s} {2:.1f}".format(self.atom._atom_atm[w[i]],self.atom._atom_ion[w[i]],self.atom._atom_wvl[w[i]])
+				self.annlines.append(self.ax.axvline(lines[w[i]]*(1.0+self.prop._zabs), color='g'))
+				txt = "{0:s} {1:.1f}".format(labls[w[i]],lines[w[i]])
 				ylbl = ymn + (ymx-ymn)*(dif+1.5)/8.0
-				self.anntexts.append(self.ax.annotate(txt, (self.atom._atom_wvl[w[i]]*(1.0+self.prop._zabs), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
-			if molecules:
-				# Plot molecules
-				labls, lines = np.loadtxt("/Users/rcooke/Software/ALIS_dataprep/molecule.dat", dtype={'names': ('ion', 'wvl'), 'formats': ('S6', 'f8')}, unpack=True, usecols=(0,1))
-				w = np.where((lines > xmn) & (lines < xmx))[0]
-				for i in range(w.size):
-					dif = i%5
-					self.annlines.append(self.ax.axvline(lines[w[i]]*(1.0+self.prop._zabs), color='g'))
-					txt = "{0:s} {1:.1f}".format(labls[w[i]],lines[w[i]])
-					ylbl = ymn + (ymx-ymn)*(dif+1.5)/8.0
-					self.anntexts.append(self.ax.annotate(txt, (lines[w[i]]*(1.0+self.prop._zabs), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
-		else:
-			zabs=np.array([0.0,0.72219,0.86431,1.15729,1.724087,1.84506,2.16797,2.30812,2.315,2.316,2.37995,2.433,2.439,2.44059,2.57813,2.57884,2.7125])
-			zabs = np.append(zabs, self.prop._zabs)
-			labls, lines = np.loadtxt("/Users/rcooke/Software/ALIS_dataprep/atomic_UV.dat", dtype={'names': ('ion', 'wvl'), 'formats': ('S6', 'f8')}, unpack=True)
-			for z in range(zabs.size):
-				xmn, xmx = self.ax.get_xlim()
-				ymn, ymx = self.ax.get_ylim()
-				xmn /= (1.0+zabs[z])
-				xmx /= (1.0+zabs[z])
-				w = np.where((self.atom._atom_wvl > xmn) & (self.atom._atom_wvl < xmx))[0]
-				for i in range(w.size):
-					dif = i%5
-					self.annlines.append(self.ax.axvline(self.atom._atom_wvl[w[i]]*(1.0+zabs[z]), color='r'))
-					txt = "{0:s} {1:s} {2:.1f}".format(self.atom._atom_atm[w[i]],self.atom._atom_ion[w[i]],self.atom._atom_wvl[w[i]])
-					ylbl = ymn + (ymx-ymn)*(dif+1.5)/8.0
-					self.anntexts.append(self.ax.annotate(txt, (self.atom._atom_wvl[w[i]]*(1.0+zabs[z]), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
-				# Do far UV list
-				w = np.where((lines > xmn) & (lines < xmx))[0]
-				for i in range(w.size):
-					dif = i%5
-					self.annlines.append(self.ax.axvline(lines[w[i]]*(1.0+zabs[z]), color='r'))
-					txt = "{0:s} {1:.1f}".format(labls[w[i]],lines[w[i]])
-					ylbl = ymn + (ymx-ymn)*(dif+1.5)/8.0
-					self.anntexts.append(self.ax.annotate(txt, (lines[w[i]]*(1.0+zabs[z]), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
+				self.anntexts.append(self.ax.annotate(txt, (lines[w[i]]*(1.0+self.prop._zabs), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
 		return
 
 	def draw_callback(self, event):
