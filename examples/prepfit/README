@@ -4,3 +4,69 @@ select the fitting regions and save "snips" of the data that can be
 used as input to ALIS (the idea is that this should make your ALIS
 fits a bit quicker to set up, and a bit quicker to run).
 
+I typically create the following two python files when preparing a
+set of fits. I encourage you to copy these example files. I use a
+directory structure such as the following:
+
+/path/to/my/project/fitting/software/
+/path/to/my/project/fitting/object1/
+/path/to/my/project/fitting/object1/data/
+/path/to/my/project/fitting/object2/
+/path/to/my/project/fitting/object2/data/
+/path/to/my/project/fitting/object3/
+/path/to/my/project/fitting/object3/data/
+
+I would then convert my input data file into an ascii file with three columns:
+wavelength, flux, error
+and store it in one of the directories, such as:
+/path/to/my/project/fitting/object1/data/object1.dat
+
+With that background, here is a step-by-step guide of how to implement
+your own version of this for a project:
+
+(0) Create a directory structure such as that above
+(1) Make a copy of myobjects.py in a directory of your choosing. I usually
+    put this in:
+    /path/to/my/project/fitting/software/myobjects.py
+    /path/to/my/project/fitting/software/select_fitting_regions.py
+(2) Edit self._path in this file to point to your working directory
+    (this doesn't have to be the same directory as myobjects.py)
+(3) Make a new definition for every object you plan to fit. Change
+    the definition name, the redshift, the object name, and the path,
+    as needed.
+(4) Update the line in select_fitting_regions.py:
+    dla = dlas("object1")
+    such that "object1" becomes the name of the object you want to prepare
+    the fitting regions for.
+(5) On a command line run the following:
+    cd /path/to/my/project/fitting/software/
+    python select_fitting_regions.py
+(6) Many of the interaction commands can be found by typing the question
+    mark key (?) when the mouse is hovering over the plotting area.
+(7) Select the regions you want to fit in the various pixels, and save
+    each individual region to file.
+(8) The newly written file will be located in the following directory:
+    /path/to/my/project/fitting/object1/data/
+(9) In ALIS, you would set
+    fitrange=columns
+    and set columns=[wave:0,flux:1,error:2,fitrange:3]
+
+Finally, you don't have to follow this procedure exactly, nor do you need
+to do this if you want to work with ALIS. I only provide this code in case
+you find it useful. If you want to prepare your own code to select fitting
+regions, all you need to do is have a column of your data that has a zero
+(0) for each pixel that you don't want to fit, and a one (1) for pixels
+that you do want to include in the fit. In the example below, all of the
+middle pixels are included in the fit, and one pixel (at wave=3004.0) is
+masked:
+
+# wave  flux  error  fitrange
+3000.0  1.0   0.1    0
+3001.0  0.9   0.1    1
+3002.0  0.8   0.1    1
+3003.0  0.9   0.1    1
+3004.0  1.7   5.0    0
+3005.0  1.0   0.1    1
+3006.0  1.0   0.1    0
+
+Good luck!
