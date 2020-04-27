@@ -262,7 +262,6 @@ class SelectRegions(object):
         std = np.std(self.prop._flux[self._start:self._end])
         med = np.median(self.prop._flue[self._start:self._end])
         mad = 1.4826 * np.median(np.abs(self.prop._flux[self._start:self._end]-np.median(self.prop._flux[self._start:self._end])))
-        print(np.mean(self.prop._wave[self._start:self._end]), std/med, mad/med)
 
     def update_waverange(self):
         self.get_current_line()
