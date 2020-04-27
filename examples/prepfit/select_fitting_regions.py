@@ -24,8 +24,4 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(figsize=(16,9), facecolor="white")
     ax.add_line(spec)
     reg = specplot.SelectRegions(fig.canvas, ax, spec, prop, atom)
-
-    ax.set_title("Press '?' to list the available options")
-    #ax.set_xlim((prop._wave.min(), prop._wave.max()))
-    ax.set_ylim((0.0, prop._flux.max()))
     plt.show()

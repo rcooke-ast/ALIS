@@ -50,6 +50,8 @@ class SelectRegions(object):
 
         self.atomic_path = "/".join(__file__.split("/")[:-2])+"/data/atomic.dat"
 
+        self.update_waverange()  # This includes a redraw of the canvas
+
     def draw_lines(self):
         #annotations = [child for child in self.ax.get_children() if isinstance(child, matplotlib.text.Annotation)]
         for i in self.annlines: i.remove()
@@ -94,6 +96,11 @@ class SelectRegions(object):
         self.fb = self.ax.fill_between(self.prop._wave, 0, 1, where=regwhr, facecolor='green', alpha=0.5, transform=trans)
         self.ax.draw_artist(self.spec)
         self.draw_lines()
+        # Set the title of the window
+        idtxt = "Current transition = {0:s} {1:s} {2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),
+                                             self.atom._atom_ion[self.linecur].strip(),
+                                             self.atom._atom_wvl[self.linecur])
+        self.ax.set_title("Press '?' to list the available options\n{0:s}".format(idtxt))
 
     def get_ind_under_point(self, event):
         """
@@ -263,7 +270,9 @@ class SelectRegions(object):
         xmn = wcen * (1.0 - self.veld/299792.458)
         xmx = wcen * (1.0 + self.veld/299792.458)
         self.ax.set_xlim([xmn, xmx])
-        medval = np.median(self.prop._flux[~np.isnan(self.prop._flux)])
+        diff = xmx-xmn
+        wdisp = ((self.prop._wave >= xmn-3*diff) & (self.prop._wave <= xmx+3*diff))
+        medval = np.percentile(self.prop._flux[~np.isnan(self.prop._flux) & wdisp], 99.5)
         self.ax.set_ylim([-0.1*medval, 1.1*medval])
         #print("Updated wavelength range:", xmn, xmx)
         self.canvas.draw()

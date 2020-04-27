@@ -43,8 +43,16 @@ your own version of this for a project:
     python select_fitting_regions.py
 (6) Many of the interaction commands can be found by typing the question
     mark key (?) when the mouse is hovering over the plotting area.
-(7) Select the regions you want to fit in the various pixels, and save
-    each individual region to file.
+(7) Select the regions you want to fit in the various pixels by click and
+    drag the left mouse button. To deselect regions, use the right mouse
+    button. Be sure to select enough pixels to represent the continuum.
+    As a good rule of thumb, the more pixels you select, the better your
+    continuum will be defined. However, it's best to select a region where
+    the continuum can be fit by a relatively low order polynomial. Once
+    you're satisfied with the continuum definitions, save each individual
+    region to file (as always, more details and functionality are in the
+    help menu, which will be printed to terminal when you press ? on the
+    main plotting window).
 (8) The newly written file will be located in the following directory:
     /path/to/my/project/fitting/object1/data/
 (9) In ALIS, you would set
