@@ -288,7 +288,10 @@ class SelectRegions(object):
         self.ax.set_xlim([xmn, xmx])
         diff = xmx-xmn
         wdisp = ((self.prop._wave >= xmn-3*diff) & (self.prop._wave <= xmx+3*diff))
-        medval = np.percentile(self.prop._flux[~np.isnan(self.prop._flux) & wdisp], 99.5)
+        try:
+            medval = np.percentile(self.prop._flux[~np.isnan(self.prop._flux) & wdisp], 99.0)
+        except IndexError:
+            medval = 1.0
         self.ax.set_ylim([-0.1*medval, 1.1*medval])
         #print("Updated wavelength range:", xmn, xmx)
         self.canvas.draw()
