@@ -7,6 +7,9 @@ from matplotlib.lines import Line2D
 import matplotlib.transforms as mtransforms
 matplotlib.use('Qt5Agg')
 
+from alis import alload
+from alis import alis as alismain
+
 
 class SelectRegions(object):
     """
@@ -34,6 +37,20 @@ class SelectRegions(object):
         self._changes = False
         self.annlines = []
         self.anntexts = []
+
+        # Unset some of the matplotlib keymaps
+        matplotlib.pyplot.rcParams['keymap.fullscreen'] = ''        # toggling fullscreen (Default: f, ctrl+f)
+        matplotlib.pyplot.rcParams['keymap.home'] = ''              # home or reset mnemonic (Default: h, r, home)
+        matplotlib.pyplot.rcParams['keymap.back'] = ''              # forward / backward keys to enable (Default: left, c, backspace)
+        matplotlib.pyplot.rcParams['keymap.forward'] = ''           # left handed quick navigation (Default: right, v)
+        matplotlib.pyplot.rcParams['keymap.pan'] = ''              # pan mnemonic (Default: p)
+        matplotlib.pyplot.rcParams['keymap.zoom'] = ''              # zoom mnemonic (Default: o)
+        matplotlib.pyplot.rcParams['keymap.save'] = ''              # saving current figure (Default: s)
+        matplotlib.pyplot.rcParams['keymap.quit'] = ''              # close the current figure (Default: ctrl+w, cmd+w)
+        matplotlib.pyplot.rcParams['keymap.grid'] = ''              # switching on/off a grid in current axes (Default: g)
+        matplotlib.pyplot.rcParams['keymap.yscale'] = ''            # toggle scaling of y-axes ('log'/'linear') (Default: l)
+        matplotlib.pyplot.rcParams['keymap.xscale'] = ''            # toggle scaling of x-axes ('log'/'linear') (Default: L, k)
+        matplotlib.pyplot.rcParams['keymap.all_axes'] = ''          # enable all axes (Default: a)
 
         canvas.mpl_connect('draw_event', self.draw_callback)
         canvas.mpl_connect('button_press_event', self.button_press_callback)
@@ -68,7 +85,7 @@ class SelectRegions(object):
         for i in range(w.size):
             dif = i%5
             self.annlines.append(self.ax.axvline(self.atom._atom_wvl[w[i]]*(1.0+self.prop._zabs), color='r'))
-            txt = "{0:s} {1:s} {2:.1f}".format(self.atom._atom_atm[w[i]],self.atom._atom_ion[w[i]],self.atom._atom_wvl[w[i]])
+            txt = "{0:} {1:} {2:.1f}".format(self.atom._atom_atm[w[i]],self.atom._atom_ion[w[i]],self.atom._atom_wvl[w[i]])
             ylbl = ymn + (ymx-ymn)*(dif+1.5)/8.0
             self.anntexts.append(self.ax.annotate(txt, (self.atom._atom_wvl[w[i]]*(1.0+self.prop._zabs), ylbl), rotation=90.0, color='b', ha='center', va='bottom'))
         if molecules:
@@ -97,7 +114,7 @@ class SelectRegions(object):
         self.ax.draw_artist(self.spec)
         self.draw_lines()
         # Set the title of the window
-        idtxt = "Current transition = {0:s} {1:s} {2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),
+        idtxt = "Current transition = {0:} {1:} {2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),
                                              self.atom._atom_ion[self.linecur].strip(),
                                              self.atom._atom_wvl[self.linecur])
         self.ax.set_title("Press '?' to list the available options\n{0:s}".format(idtxt))
@@ -192,7 +209,7 @@ class SelectRegions(object):
             print("b / n   : go to previous/next line")
             print("------------------------------------------------------------")
             print("       ATOMIC DATA OF THE CURRENT LINE")
-            print("{0:s} {1:s}  {2:f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur]))
+            print("{0:} {1:}  {2:f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur]))
             print("Observed wavelength = {0:f}".format(self.atom._atom_wvl[self.linecur]*(1.0+self.prop._zabs)))
             print("f-value = {0:f}".format(self.atom._atom_fvl[self.linecur]))
             print("------------------------------------------------------------")
@@ -245,7 +262,7 @@ class SelectRegions(object):
         self.update_waverange()
         # See if any regions need to be loaded
         self.prop._regions[:] = 0
-        idtxt = "{0:s}_{1:s}_{2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur])
+        idtxt = "{0:}_{1:}_{2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur])
         tstnm = self.prop._outp + "_" + idtxt + "_reg.dat"
         if os.path.exists(tstnm):
             wv, reg = np.loadtxt(tstnm, unpack=True, usecols=(0,3))
@@ -280,7 +297,7 @@ class SelectRegions(object):
         # Plot the lines
         xmn, xmx = self.ax.get_xlim()
         wsv = np.where((self.prop._wave>xmn) & (self.prop._wave<xmx))
-        idtxt = "{0:s}_{1:s}_{2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur])
+        idtxt = "{0:}_{1:}_{2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur])
         outnm = self.prop._outp + "_" + idtxt + "_reg.dat"
         sclfct = 1.0
         np.savetxt(outnm, np.transpose((self.prop._wave[wsv], sclfct*self.prop._flux[wsv]*self.prop._cont[wsv], sclfct*self.prop._flue[wsv]*self.prop._cont[wsv], self.prop._regions[wsv])))
@@ -337,8 +354,7 @@ class atomic:
         self._molecule_wvl=[]
         self._molecule_fvl=[]
         self._molecule_gam=[]
-        filename = "/".join(__file__.split("/")[:-2])+"/data/atomic.dat"
-        self.load_lines(filename)
+        self.load_lines()
 
     def solar(self):
         elem = np.array(['H ', 'He','Li','Be','B ', 'C ', 'N ', 'O ', 'F ', 'Ne','Na','Mg','Al','Si','P ', 'S ', 'Cl','Ar','K ', 'Ca','Sc','Ti','V ', 'Cr','Mn','Fe','Co','Ni','Cu','Zn'])
@@ -351,40 +367,36 @@ class atomic:
         self.solar = solar
         return
 
-    def load_lines(self, filename):
+    def load_lines(self, verbose=1):
         # Load the lines file
         print("Loading a list of atomic transitions...")
-        try:
-            infile = open(filename, "r")
-        except IOError:
-            print("The atomic data file:\n" +filename+"\ndoes not exist!")
-            sys.exit()
-        atom_list = infile.readlines()
-        leninfile = len(atom_list)
-        infile.close()
-        infile = open(filename, "r")
-        for i in range(0, leninfile):
-            nam = infile.read(2)
-            if nam.strip() == "#":
-                null = infile.readline()
-                continue
-            self._atom_atm.append(nam)
-            self._atom_ion.append(infile.read(4))
-            self._atom_lbl.append((self._atom_atm[-1]+self._atom_ion[-1]).strip())
-#			self._atom_lbl[i].strip()
-            line2 = infile.readline()
-            wfg = line2.split()
-            self._atom_wvl.append(eval(wfg[0]))
-            self._atom_fvl.append(eval(wfg[1]))
-            self._atom_gam.append(eval(wfg[2]))
+        alispath = __file__#"/".join(__file__.split("/")[:-2])#+"/data/atomic.dat"
+        argflag = alload.optarg(alispath, verbose=verbose)
+        slf = alismain.ClassMain(argflag, getinst=True)
+        slf._argflag = argflag
+        atmdata = alload.load_atomic(slf)
 
-        # Convert to numpy array
+        # Convert to numpy arrays
+        numtrans = atmdata['Wavelength'].size
+        ionspl = np.char.split(atmdata['Ion'], sep ='_')
+        self._atom_atm, self._atom_ion = [], []
+        keep = np.ones(numtrans, dtype=np.bool)
+        for ss in range(numtrans):
+            if str(ionspl[ss][0]) in ['1Ly', 'FAKE']: keep[ss] = False
+            if str(ionspl[ss][1]) in ['IB']: keep[ss] = False
+            if keep[ss]:
+                self._atom_atm.append(str(ionspl[ss][0]))
+                self._atom_ion.append(str(ionspl[ss][1]))
         self._atom_atm = np.array(self._atom_atm)
         self._atom_ion = np.array(self._atom_ion)
-        self._atom_lbl = np.array(self._atom_lbl)
-        self._atom_wvl = np.array(self._atom_wvl)
-        self._atom_fvl = np.array(self._atom_fvl)
-        self._atom_gam = np.array(self._atom_gam)
+        self._atom_lbl = atmdata['Ion'][keep]
+        self._atom_wvl = atmdata['Wavelength'][keep]
+        self._atom_fvl = atmdata['fvalue'][keep]
+        self._atom_gam = atmdata['Gamma'][keep]
+        # seen = set()
+        # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(np.str)
+        # seen = set()
+        # atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
 
         # Ignore lines outside of the specified wavelength range
         if self._wmin is not None:
