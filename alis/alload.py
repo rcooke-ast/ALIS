@@ -1667,7 +1667,7 @@ def load_subpixels(slf, parin, use_waveend=False):
                     # This is not quite correct, but it is very, very close.
                     # It is incorrect because the average is taken in wavelength instead of velocity.
                     interpwav = (1.0 + binsize[:, np.newaxis] * binlen / 299792.458) ** np.arange(nexbins[sp][sn] + 1)
-                    wavs = (self._wavefull[sp][ll:lu].reshape(lu-ll, 1)*interpwav)
+                    wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll, 1)*interpwav)
                     wavs = 0.5 * (wavs[:, 1:] + wavs[:, :-1]).flatten()
                 elif slf._datopt['bintype'][sp][sn] == "A":
                     msgs.error("Angstrom bintype is not implemented with waveend")
@@ -1690,7 +1690,7 @@ def load_subpixels(slf, parin, use_waveend=False):
                     # This is still not quite correct, but it is very, very close.
                     # It is incorrect because the average is taken in wavelength instead of velocity.
                     interpwav = (1.0 + binsize[:, np.newaxis] * binlen / 299792.458) ** np.arange(nexbins[sp][sn] + 1)
-                    wavs = (self._wavefull[sp][ll:lu].reshape(lu-ll, 1)*interpwav)
+                    wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll, 1)*interpwav)
                     wavs = 0.5 * (wavs[:, 1:] + wavs[:, :-1]).flatten()
                 elif slf._datopt['bintype'][sp][sn] == "A":
                     interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
