@@ -1652,7 +1652,7 @@ class alfit(object):
         msgs.info("Checking GPU functionality")
         for ll in range(len(self.alisdict._modpass['mtyp'])):
             if self.alisdict._modpass['mtyp'][ll] not in self._gpunames:
-                msgs.error("Function {0:s} is not GPU enabled, and a GPU chi-squared was requested."+msgs.newline()+
+                msgs.error("Function {0:s} is not GPU enabled, and a GPU chi-squared was requested.".format(self.alisdict._modpass['mtyp'][ll])+msgs.newline()+
                            "Either turn off GPU runs, or implement a function that can run on a CUDA GPU.")
         msgs.info("All functions are GPU enabled!")
 
