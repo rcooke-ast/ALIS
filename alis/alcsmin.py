@@ -1854,6 +1854,12 @@ class alfit(object):
                 modelem[sp][ll:lu] = self.gpu_dict[modemstr].copy_to_host()
                 modelab[sp][ll:lu] = self.gpu_dict[modabstr].copy_to_host()
 
+        # TODO :: Once this works to here, we should implement the convolution and
+        # zerolevel corrections into GPU, and during the chi-squared, only return
+        # the chi-squared value (not the vector of chi-squared values). This should
+        # significantly speed up the computation, as you only transfer one number
+        # back from the GPU.
+
         # Convolve the data with the appropriate instrumental profile
         stf, enf = [0 for all in pos], [0 for all in pos]
         cvind = numpy.where(numpy.array(self.alisdict._modpass['emab'])=='cv')[0][0]
