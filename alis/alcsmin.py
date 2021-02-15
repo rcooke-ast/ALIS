@@ -30,15 +30,24 @@ RJC: This is a modified version of MPFIT, which allows CPU multiprocessing
     Updated versions can be found at http://code.google.com/p/astrolibpy/source/browse/trunk/
 """
 
+# Needed for GPU stuff
+from math import cos, sin, floor, exp, copysign, nan, inf, isnan, isinf
+import math
+from numba import cuda
+from numba import types
+# Needed by all functions
+import copy
 import numpy
 import types
 import signal
-#import scipy.linalg
+# ALIS specific stuff
 from alis import almsgs
 from alis.alsave import print_model
+from alis import alload
+# CPU multiprocessing
 from multiprocessing import Pool as mpPool
 from multiprocessing.pool import ApplyResult
-msgs=almsgs.msgs()
+msgs = almsgs.msgs()
 
 
 try:
@@ -48,11 +57,13 @@ except:
 
 from types import MethodType
 
+
 def _pickle_method(method):
     func_name = method.im_func.__name__
     obj = method.im_self
     cls = method.im_class
     return _unpickle_method, (func_name, obj, cls)
+
 
 def _unpickle_method(func_name, obj, cls):
     for cls in cls.mro():
@@ -64,265 +75,254 @@ def _unpickle_method(func_name, obj, cls):
             break
     return func.__get__(obj, cls)
 
-#def _pickle_fortran(fortran):
-#	return _unpickle_fortran, ()
-
-#def _unpickle_fortran():
-#	return
 
 class alfit(object):
 
-#	blas_enorm32, = scipy.linalg.get_blas_funcs(['nrm2'],numpy.array([0],dtype=numpy.float32))
-#	blas_enorm64, = scipy.linalg.get_blas_funcs(['nrm2'],numpy.array([0],dtype=numpy.float64))
-
-
-    def __init__(self, fcn, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
+    def __init__(self, alisdict, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
                  ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
                  damp=0., miniter=0, maxiter=200, factor=100., nprint=1,
                  iterfunct='default', iterkw={}, nocovar=0, limpar=False,
                  rescale=0, autoderivative=1, verbose=2, modpass=None,
-                 diag=None, epsfcn=None, ncpus=None, fstep=1.0, debug=0, convtest=False):
+                 diag=None, epsfcn=None, ncpus=None, ngpus=None, fstep=1.0, debug=0,
+                 convtest=False, dofit=True):
         """
-  Inputs:
-    fcn:
-       The function to be minimized.  The function should return the weighted
-       deviations between the model and the data, as described above.
+        Inputs:
+         xall:
+           An array of starting values for each of the parameters of the model.
+           The number of parameters should be fewer than the number of measurements.
 
-    xall:
-       An array of starting values for each of the parameters of the model.
-       The number of parameters should be fewer than the number of measurements.
+           This parameter is optional if the parinfo keyword is used (but see
+           parinfo).  The parinfo keyword provides a mechanism to fix or constrain
+           individual parameters.
 
-       This parameter is optional if the parinfo keyword is used (but see
-       parinfo).  The parinfo keyword provides a mechanism to fix or constrain
-       individual parameters.
+        Keywords:
 
-  Keywords:
+         autoderivative:
+            If this is set, derivatives of the function will be computed
+            automatically via a finite differencing procedure.  If not set, then
+            fcn must provide the (analytical) derivatives.
+               Default: set (=1)
+               NOTE: to supply your own analytical derivatives,
+                     explicitly pass autoderivative=0
 
-     autoderivative:
-        If this is set, derivatives of the function will be computed
-        automatically via a finite differencing procedure.  If not set, then
-        fcn must provide the (analytical) derivatives.
-           Default: set (=1)
-           NOTE: to supply your own analytical derivatives,
-                 explicitly pass autoderivative=0
+         ftol:
+            A nonnegative input variable. Termination occurs when both the actual
+            and predicted relative reductions in the sum of squares are at most
+            ftol (and status is accordingly set to 1 or 3).  Therefore, ftol
+            measures the relative error desired in the sum of squares.
+               Default: 1E-10
 
-     ftol:
-        A nonnegative input variable. Termination occurs when both the actual
-        and predicted relative reductions in the sum of squares are at most
-        ftol (and status is accordingly set to 1 or 3).  Therefore, ftol
-        measures the relative error desired in the sum of squares.
-           Default: 1E-10
+         functkw:
+            A dictionary which contains the parameters to be passed to the
+            user-supplied function specified by fcn via the standard Python
+            keyword dictionary mechanism.  This is the way you can pass additional
+            data to your user-supplied function without using global variables.
 
-     functkw:
-        A dictionary which contains the parameters to be passed to the
-        user-supplied function specified by fcn via the standard Python
-        keyword dictionary mechanism.  This is the way you can pass additional
-        data to your user-supplied function without using global variables.
+            Consider the following example:
+               if functkw = {'xval':[1.,2.,3.], 'yval':[1.,4.,9.],
+                             'errval':[1.,1.,1.] }
+            then the user supplied function should be declared like this:
+               def myfunct(p, fjac=None, xval=None, yval=None, errval=None):
 
-        Consider the following example:
-           if functkw = {'xval':[1.,2.,3.], 'yval':[1.,4.,9.],
-                         'errval':[1.,1.,1.] }
-        then the user supplied function should be declared like this:
-           def myfunct(p, fjac=None, xval=None, yval=None, errval=None):
+            Default: {}   No extra parameters are passed to the user-supplied
+                          function.
 
-        Default: {}   No extra parameters are passed to the user-supplied
-                      function.
+         gtol:
+            A nonnegative input variable. Termination occurs when the cosine of
+            the angle between fvec and any column of the jacobian is at most gtol
+            in absolute value (and status is accordingly set to 4). Therefore,
+            gtol measures the orthogonality desired between the function vector
+            and the columns of the jacobian.
+               Default: 1e-10
 
-     gtol:
-        A nonnegative input variable. Termination occurs when the cosine of
-        the angle between fvec and any column of the jacobian is at most gtol
-        in absolute value (and status is accordingly set to 4). Therefore,
-        gtol measures the orthogonality desired between the function vector
-        and the columns of the jacobian.
-           Default: 1e-10
+         iterkw:
+            The keyword arguments to be passed to iterfunct via the dictionary
+            keyword mechanism.  This should be a dictionary and is similar in
+            operation to FUNCTKW.
+               Default: {}  No arguments are passed.
 
-     iterkw:
-        The keyword arguments to be passed to iterfunct via the dictionary
-        keyword mechanism.  This should be a dictionary and is similar in
-        operation to FUNCTKW.
-           Default: {}  No arguments are passed.
+         iterfunct:
+            The name of a function to be called upon each NPRINT iteration of the
+            ALFIT routine.  It should be declared in the following way:
+               def iterfunct(myfunct, p, iter, fnorm, functkw=None,
+                             parinfo=None, quiet=0, dof=None, [iterkw keywords here])
+               # perform custom iteration update
 
-     iterfunct:
-        The name of a function to be called upon each NPRINT iteration of the
-        ALFIT routine.  It should be declared in the following way:
-           def iterfunct(myfunct, p, iter, fnorm, functkw=None,
-                         parinfo=None, quiet=0, dof=None, [iterkw keywords here])
-           # perform custom iteration update
+            iterfunct must accept all three keyword parameters (FUNCTKW, PARINFO
+            and QUIET).
 
-        iterfunct must accept all three keyword parameters (FUNCTKW, PARINFO
-        and QUIET).
+            myfunct:  The user-supplied function to be minimized,
+            p:		The current set of model parameters
+            iter:	 The iteration number
+            functkw:  The arguments to be passed to myfunct.
+            fnorm:	The chi-squared value.
+            quiet:	Set when no textual output should be printed.
+            dof:	  The number of degrees of freedom, normally the number of points
+                      less the number of free parameters.
+            See below for documentation of parinfo.
 
-        myfunct:  The user-supplied function to be minimized,
-        p:		The current set of model parameters
-        iter:	 The iteration number
-        functkw:  The arguments to be passed to myfunct.
-        fnorm:	The chi-squared value.
-        quiet:	Set when no textual output should be printed.
-        dof:	  The number of degrees of freedom, normally the number of points
-                  less the number of free parameters.
-        See below for documentation of parinfo.
+            In implementation, iterfunct can perform updates to the terminal or
+            graphical user interface, to provide feedback while the fit proceeds.
+            If the fit is to be stopped for any reason, then iterfunct should return a
+            a status value between -15 and -1.  Otherwise it should return None
+            (e.g. no return statement) or 0.
+            In principle, iterfunct should probably not modify the parameter values,
+            because it may interfere with the algorithm's stability.  In practice it
+            is allowed.
 
-        In implementation, iterfunct can perform updates to the terminal or
-        graphical user interface, to provide feedback while the fit proceeds.
-        If the fit is to be stopped for any reason, then iterfunct should return a
-        a status value between -15 and -1.  Otherwise it should return None
-        (e.g. no return statement) or 0.
-        In principle, iterfunct should probably not modify the parameter values,
-        because it may interfere with the algorithm's stability.  In practice it
-        is allowed.
+            Default: an internal routine is used to print the parameter values.
 
-        Default: an internal routine is used to print the parameter values.
+            Set iterfunct=None if there is no user-defined routine and you don't
+            want the internal default routine be called.
 
-        Set iterfunct=None if there is no user-defined routine and you don't
-        want the internal default routine be called.
+         maxiter:
+            The maximum number of iterations to perform.  If the number is exceeded,
+            then the status value is set to 5 and ALFIT returns.
+            Default: 200 iterations
 
-     maxiter:
-        The maximum number of iterations to perform.  If the number is exceeded,
-        then the status value is set to 5 and ALFIT returns.
-        Default: 200 iterations
+         nocovar:
+            Set this keyword to prevent the calculation of the covariance matrix
+            before returning (see COVAR)
+            Default: clear (=0)  The covariance matrix is returned
 
-     nocovar:
-        Set this keyword to prevent the calculation of the covariance matrix
-        before returning (see COVAR)
-        Default: clear (=0)  The covariance matrix is returned
+         nprint:
+            The frequency with which iterfunct is called.  A value of 1 indicates
+            that iterfunct is called with every iteration, while 2 indicates every
+            other iteration, etc.  Note that several Levenberg-Marquardt attempts
+            can be made in a single iteration.
+            Default value: 1
 
-     nprint:
-        The frequency with which iterfunct is called.  A value of 1 indicates
-        that iterfunct is called with every iteration, while 2 indicates every
-        other iteration, etc.  Note that several Levenberg-Marquardt attempts
-        can be made in a single iteration.
-        Default value: 1
+         ncpus:
+            Number of CPUs to use during parallel processing
+            Default value: None  (This means use all CPUs)
 
-     ncpus:
-        Number of CPUs to use during parallel processing
-        Default value: None  (This means use all CPUs)
+         parinfo
+            Provides a mechanism for more sophisticated constraints to be placed on
+            parameter values.  When parinfo is not passed, then it is assumed that
+            all parameters are free and unconstrained.  Values in parinfo are never
+            modified during a call to ALFIT.
 
-     parinfo
-        Provides a mechanism for more sophisticated constraints to be placed on
-        parameter values.  When parinfo is not passed, then it is assumed that
-        all parameters are free and unconstrained.  Values in parinfo are never
-        modified during a call to ALFIT.
+            See description above for the structure of PARINFO.
 
-        See description above for the structure of PARINFO.
+            Default value: None  All parameters are free and unconstrained.
 
-        Default value: None  All parameters are free and unconstrained.
+         quiet:
+            Set this keyword when no textual output should be printed by ALFIT
 
-     quiet:
-        Set this keyword when no textual output should be printed by ALFIT
+         damp:
+            A scalar number, indicating the cut-off value of residuals where
+            "damping" will occur.  Residuals with magnitudes greater than this
+            number will be replaced by their hyperbolic tangent.  This partially
+            mitigates the so-called large residual problem inherent in
+            least-squares solvers (as for the test problem CURVI,
+            http://www.maxthis.com/curviex.htm).
+            A value of 0 indicates no damping.
+               Default: 0
 
-     damp:
-        A scalar number, indicating the cut-off value of residuals where
-        "damping" will occur.  Residuals with magnitudes greater than this
-        number will be replaced by their hyperbolic tangent.  This partially
-        mitigates the so-called large residual problem inherent in
-        least-squares solvers (as for the test problem CURVI,
-        http://www.maxthis.com/curviex.htm).
-        A value of 0 indicates no damping.
-           Default: 0
+            Note: DAMP doesn't work with autoderivative=0
 
-        Note: DAMP doesn't work with autoderivative=0
+         xtol:
+            A nonnegative input variable. Termination occurs when the relative error
+            between two consecutive iterates is at most xtol (and status is
+            accordingly set to 2 or 3).  Therefore, xtol measures the relative error
+            desired in the approximate solution.
+            Default: 1E-10
 
-     xtol:
-        A nonnegative input variable. Termination occurs when the relative error
-        between two consecutive iterates is at most xtol (and status is
-        accordingly set to 2 or 3).  Therefore, xtol measures the relative error
-        desired in the approximate solution.
-        Default: 1E-10
+        Outputs:
 
-   Outputs:
+         Returns an object of type alfit.  The results are attributes of this class,
+         e.g. alfit.status, alfit.errmsg, alfit.params, npfit.niter, alfit.covar.
 
-     Returns an object of type alfit.  The results are attributes of this class,
-     e.g. alfit.status, alfit.errmsg, alfit.params, npfit.niter, alfit.covar.
+         .status
+            An integer status code is returned.  All values greater than zero can
+            represent success (however .status == 5 may indicate failure to
+            converge). It can have one of the following values:
 
-     .status
-        An integer status code is returned.  All values greater than zero can
-        represent success (however .status == 5 may indicate failure to
-        converge). It can have one of the following values:
+            -16
+               A parameter or function value has become infinite or an undefined
+               number.  This is usually a consequence of numerical overflow in the
+               user's model function, which must be avoided.
 
-        -16
-           A parameter or function value has become infinite or an undefined
-           number.  This is usually a consequence of numerical overflow in the
-           user's model function, which must be avoided.
+            -15 to -1
+               These are error codes that either MYFUNCT or iterfunct may return to
+               terminate the fitting process.  Values from -15 to -1 are reserved
+               for the user functions and will not clash with ALIS.
 
-        -15 to -1
-           These are error codes that either MYFUNCT or iterfunct may return to
-           terminate the fitting process.  Values from -15 to -1 are reserved
-           for the user functions and will not clash with ALIS.
+            0  Improper input parameters.
 
-        0  Improper input parameters.
+            1  Both actual and predicted relative reductions in the sum of squares
+               are at most ftol.
 
-        1  Both actual and predicted relative reductions in the sum of squares
-           are at most ftol.
+            2  Relative error between two consecutive iterates is at most xtol
 
-        2  Relative error between two consecutive iterates is at most xtol
+            3  Conditions for status = 1 and status = 2 both hold.
 
-        3  Conditions for status = 1 and status = 2 both hold.
+            4  The cosine of the angle between fvec and any column of the jacobian
+               is at most gtol in absolute value.
 
-        4  The cosine of the angle between fvec and any column of the jacobian
-           is at most gtol in absolute value.
+            5  The maximum number of iterations has been reached.
 
-        5  The maximum number of iterations has been reached.
+            6  ftol is too small. No further reduction in the sum of squares is
+               possible.
 
-        6  ftol is too small. No further reduction in the sum of squares is
-           possible.
+            7  xtol is too small. No further improvement in the approximate solution
+               x is possible.
 
-        7  xtol is too small. No further improvement in the approximate solution
-           x is possible.
+            8  gtol is too small. fvec is orthogonal to the columns of the jacobian
+               to machine precision.
 
-        8  gtol is too small. fvec is orthogonal to the columns of the jacobian
-           to machine precision.
+            9  The absolute difference in the chi-squared between successive iterations is less than atol
 
-        9  The absolute difference in the chi-squared between successive iterations is less than atol
+         .fnorm
+            The value of the summed squared residuals for the returned parameter
+            values.
 
-     .fnorm
-        The value of the summed squared residuals for the returned parameter
-        values.
+         .covar
+            The covariance matrix for the set of parameters returned by ALFIT.
+            The matrix is NxN where N is the number of  parameters.  The square root
+            of the diagonal elements gives the formal 1-sigma statistical errors on
+            the parameters if errors were treated "properly" in fcn.
+            Parameter errors are also returned in .perror.
 
-     .covar
-        The covariance matrix for the set of parameters returned by ALFIT.
-        The matrix is NxN where N is the number of  parameters.  The square root
-        of the diagonal elements gives the formal 1-sigma statistical errors on
-        the parameters if errors were treated "properly" in fcn.
-        Parameter errors are also returned in .perror.
+            To compute the correlation matrix, pcor, use this example:
+               cov = alfit.covar
+               pcor = cov * 0.
+               for i in range(n):
+                  for j in range(n):
+                     pcor[i,j] = cov[i,j]/sqrt(cov[i,i]*cov[j,j])
 
-        To compute the correlation matrix, pcor, use this example:
-           cov = alfit.covar
-           pcor = cov * 0.
-           for i in range(n):
-              for j in range(n):
-                 pcor[i,j] = cov[i,j]/sqrt(cov[i,i]*cov[j,j])
+            If nocovar is set or ALFIT terminated abnormally, then .covar is set to
+            a scalar with value None.
 
-        If nocovar is set or ALFIT terminated abnormally, then .covar is set to
-        a scalar with value None.
+         .errmsg
+            A string error or warning message is returned.
 
-     .errmsg
-        A string error or warning message is returned.
+         .nfev
+            The number of calls to MYFUNCT performed.
 
-     .nfev
-        The number of calls to MYFUNCT performed.
+         .niter
+            The number of iterations completed.
 
-     .niter
-        The number of iterations completed.
+         .perror
+            The formal 1-sigma errors in each parameter, computed from the
+            covariance matrix.  If a parameter is held fixed, or if it touches a
+            boundary, then the error is reported as zero.
 
-     .perror
-        The formal 1-sigma errors in each parameter, computed from the
-        covariance matrix.  If a parameter is held fixed, or if it touches a
-        boundary, then the error is reported as zero.
+            If the fit is unweighted (i.e. no errors were given, or the weights
+            were uniformly set to unity), then .perror will probably not represent
+            the true parameter uncertainties.
 
-        If the fit is unweighted (i.e. no errors were given, or the weights
-        were uniformly set to unity), then .perror will probably not represent
-        the true parameter uncertainties.
+            *If* you can assume that the true reduced chi-squared value is unity --
+            meaning that the fit is implicitly assumed to be of good quality --
+            then the estimated parameter uncertainties can be computed by scaling
+            .perror by the measured chi-squared value.
 
-        *If* you can assume that the true reduced chi-squared value is unity --
-        meaning that the fit is implicitly assumed to be of good quality --
-        then the estimated parameter uncertainties can be computed by scaling
-        .perror by the measured chi-squared value.
-
-           dof = len(x) - len(alfit.params) # deg of freedom
-           # scaled uncertainties
-           pcerror = alfit.perror * sqrt(alfit.fnorm / dof)
+               dof = len(x) - len(alfit.params) # deg of freedom
+               # scaled uncertainties
+               pcerror = alfit.perror * sqrt(alfit.fnorm / dof)
 
         """
+        self.alisdict = alisdict
         self.niter = 0
         self.params = None
         self.covar = None
@@ -335,14 +335,17 @@ class alfit(object):
         self.dof=0
         self.ncpus = ncpus
         self.fstep = fstep
+        self.gpurun = False
+
+        # Get all GPU_enabled routines
+        self.get_gpu_funcs()
+
+        # Return if we're not fitting
+        if not dofit: return
 
         # Include a function to deal with signal interruptions
         self.handler=True
         signal.signal(signal.SIGQUIT, self.signal_handler)
-
-        if fcn==None:
-            self.errmsg = "Usage: parms = alfit('myfunct', ... )"
-            return
 
         if iterfunct == 'default':
             iterfunct = self.defiter
@@ -430,6 +433,54 @@ class alfit(object):
             self.errmsg = 'No free parameters'
             return
 
+        # If doing a GPU run, check that all functions are GPU enabled
+        self.gpu_dict = None
+        if ngpus is not None:
+            self.check_gpu_funcs()
+            self.gpurun = True
+            numdiv = 16  # should be power of 2
+            # If we've made it this far, let's pass some data over to the GPU to speed up the minimisation process
+            if self.alisdict._argflag['run']['renew_subpix']:
+                msgs.warn("Cannot renew subpixels during a GPU run:" +msgs.newline()+
+                          "once your fit is converged, rerun with the best-fitting parameters if subpixels are important")
+            msgs.info("Generating subpixels based on input parameters")
+            wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, p) # recalculate the sub-pixellation of the spectrum
+            for sp in range(len(posnspx)):
+                for sn in range(len(posnspx[sp])-1):
+                    ll = posnspx[sp][sn]
+                    lu = posnspx[sp][sn+1]
+                    wave = wavespx[sp][ll:lu]
+                    gpustr = "{0:d}_{1:d}".format(sp, sn)
+                    self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave)
+                    self.gpu_dict["blocks_" + gpustr] = 1 + wave.size // numdiv
+                    self.gpu_dict["thr/blk_" + gpustr] = numdiv
+                    # Include an emission & absorption array for each free parameter of the model
+                    for ff in range(nfree):
+                        parstr = "{0:d}_".format(ff)
+                        self.gpu_dict["modelem_" + parstr + gpustr] = cuda.to_device(numpy.zeros(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modelab_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modcont_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
+            # Setup some variables for the GPU
+            expa2n2 = numpy.array(
+                [7.64405281671221563e-01, 3.41424527166548425e-01, 8.91072646929412548e-02, 1.35887299055460086e-02,
+                 1.21085455253437481e-03, 6.30452613933449404e-05, 1.91805156577114683e-06, 3.40969447714832381e-08,
+                 3.54175089099469393e-10, 2.14965079583260682e-12, 7.62368911833724354e-15, 1.57982797110681093e-17,
+                 1.91294189103582677e-20, 1.35344656764205340e-23, 5.59535712428588720e-27, 1.35164257972401769e-30,
+                 1.90784582843501167e-34, 1.57351920291442930e-38, 7.58312432328032845e-43, 2.13536275438697082e-47,
+                 3.51352063787195769e-52, 3.37800830266396920e-57, 1.89769439468301000e-62, 6.22929926072668851e-68,
+                 1.19481172006938722e-73, 1.33908181133005953e-79, 8.76924303483223939e-86, 3.35555576166254986e-92,
+                 7.50264110688173024e-99, 9.80192200745410268e-106, 7.48265412822268959e-113, 3.33770122566809425e-120,
+                 8.69934598159861140e-128, 1.32486951484088852e-135, 1.17898144201315253e-143, 6.13039120236180012e-152,
+                 1.86258785950822098e-160, 3.30668408201432783e-169, 3.43017280887946235e-178, 2.07915397775808219e-187,
+                 7.36384545323984966e-197, 1.52394760394085741e-206, 1.84281935046532100e-216, 1.30209553802992923e-226,
+                 5.37588903521080531e-237, 1.29689584599763145e-247, 1.82813078022866562e-258, 1.50576355348684241e-269,
+                 7.24692320799294194e-281, 2.03797051314726829e-292, 3.34880215927873807e-304, 0.0],
+                dtype=numpy.float64)
+            datadir = alload.get_datadir(self.alisdict._argflag)
+            erfcx_cc = numpy.loadtxt(datadir + "erfcx_coeffs.dat", delimiter=',').astype(numpy.float64)
+            self.gpu_dict["erfcx_cc"] = cuda.to_device(erfcx_cc)
+            self.gpu_dict["expa2n2"] = cuda.to_device(expa2n2)
+
         # Compose only VARYING parameters
         self.params = xall.copy()	  # self.params is the set of parameters to be returned
         x = self.params[ifree]  # x is the set of free parameters
@@ -495,10 +546,10 @@ class alfit(object):
                 return
             self.errmsg = ''
 
-        [self.status, fvec, emab] = self.call(fcn, self.params, functkw, getemab=True)
+        [self.status, fvec, emab] = self.call(self.params, functkw, getemab=True)
 
         if self.status < 0:
-            self.errmsg = 'first call to "'+str(fcn)+'" failed'
+            self.errmsg = 'first call to the fitting function failed'
             return
         # If the returned fvec has more than four bits I assume that we have
         # double precision
@@ -545,7 +596,7 @@ class alfit(object):
                     xnew0 = self.params.copy()
 
                     dof = numpy.max([len(fvec) - len(x), 0])
-                    status = iterfunct(fcn, self.params, self.niter, self.fnorm**2,
+                    status = iterfunct(self.params, self.niter, self.fnorm**2,
                       functkw=functkw, parinfo=parinfo, verbose=verbose,
                       modpass=modpass, convtest=convtest, dof=dof, funcarray=funcarray, **iterkw)
                     if status is not None:
@@ -566,10 +617,10 @@ class alfit(object):
             # Calculate the jacobian matrix
             self.status = 2
             catch_msg = 'calling ALFIT_FDJAC2'
-            fjac = self.fdjac2(fcn, x, fvec, step, qulim, ulim, dside,
-                          epsfcn=epsfcn, emab=emab,
-                          autoderivative=autoderivative, dstep=dstep,
-                          functkw=functkw, ifree=ifree, xall=self.params)
+            fjac = self.fdjac2(x, fvec, step, qulim, ulim, dside,
+                               epsfcn=epsfcn, emab=emab,
+                               autoderivative=autoderivative, dstep=dstep,
+                               functkw=functkw, ifree=ifree, xall=self.params)
             if fjac is None:
                 self.errmsg = 'WARNING: premature termination by FDJAC2'
                 return
@@ -835,11 +886,10 @@ class alfit(object):
 
                 # Evaluate the function at x+p and calculate its norm
                 mperr = 0
-                catch_msg = 'calling '+str(fcn)
-                [self.status, wa4, emab] = self.call(fcn, self.params, functkw, getemab=True)
-                #[self.status, wa4] = self.call(fcn, self.params, functkw)
+                catch_msg = 'calling fitting function'
+                [self.status, wa4, emab] = self.call(self.params, functkw, getemab=True)
                 if self.status < 0:
-                    self.errmsg = 'WARNING: premature termination by "'+fcn+'"'
+                    self.errmsg = 'WARNING: premature termination by the fitting function'
                     return
                 fnorm1 = self.enorm(wa4)
 
@@ -963,8 +1013,8 @@ class alfit(object):
         else:
             self.params[ifree] = x
         if (nprint > 0) and (self.status > 0):
-            catch_msg = 'calling ' + str(fcn)
-            [status, fvec] = self.call(fcn, self.params, functkw)
+            catch_msg = 'calling fitting function'
+            [status, fvec] = self.call(self.params, functkw)
             catch_msg = 'in the termination phase'
             self.fnorm = self.enorm(fvec)
 
@@ -1024,17 +1074,17 @@ class alfit(object):
 
     # Default procedure to be called every iteration.  It simply prints
     # the parameter values.
-    def defiter(self, fcn, x, iter, fnorm=None, functkw=None,
-                       verbose=2, iterstop=None, parinfo=None,
-                       format=None, pformat='%.10g', dof=1,
-                       modpass=None, convtest=False, funcarray=[None,None,None]):
+    def defiter(self, x, iter, fnorm=None, functkw=None,
+                verbose=2, iterstop=None, parinfo=None,
+                format=None, pformat='%.10g', dof=1,
+                modpass=None, convtest=False, funcarray=[None,None,None]):
 
         if self.debug:
             print('Entering defiter...')
         if verbose == 0:
             return
         if fnorm is None:
-            [status, fvec] = self.call(fcn, x, functkw)
+            [status, fvec] = self.call(x, functkw)
             fnorm = self.enorm(fvec)**2
 
         # Determine which parameters to print
@@ -1080,7 +1130,7 @@ class alfit(object):
 
     # Call user function or procedure, with _EXTRA or not, with
     # derivatives or not.
-    def call(self, fcn, x, functkw, fjac=None, ddpid=None, pp=None, emab=None, getemab=False):
+    def call(self, x, functkw, fjac=None, ddpid=None, pp=None, emab=None, getemab=False):
         if self.debug:
             print('Entering call...')
         if self.qanytied:
@@ -1091,23 +1141,22 @@ class alfit(object):
                 # Apply the damping if requested.  This replaces the residuals
                 # with their hyperbolic tangent.  Thus residuals larger than
                 # DAMP are essentially clipped.
-                [status, f] = fcn(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
+                [status, f] = self.myfunct(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
                 f = numpy.tanh(f/self.damp)
                 return [status, f]
-            return fcn(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
+            return self.myfunct(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
         else:
-            return fcn(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
-
+            return self.myfunct(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
 
     def enorm(self, vec):
         #ans = self.blas_enorm(vec)
         ans = numpy.sqrt(numpy.dot(vec.T, vec))
         return ans
 
-    def funcderiv(self, fcn, fvec, functkw, j, xp, ifree, hj, emab, oneside):
+    def funcderiv(self, fvec, functkw, j, xp, ifree, hj, emab, oneside):
         pp = xp.copy()
         pp[ifree] += hj
-        [status, fp] = self.call(fcn, xp, functkw, ddpid=j, pp=pp, emab=emab)
+        [status, fp] = self.call(xp, functkw, ddpid=j, pp=pp, emab=emab)
         if status < 0:
             return None
         if oneside:
@@ -1116,13 +1165,13 @@ class alfit(object):
         else:
             # COMPUTE THE TWO-SIDED DERIVATIVE
             pp[ifree] -= 2.0*hj # There's a 2.0 here because hj was recently added to pp (see second line of funcderiv)
-            [status, fm] = self.call(fcn, xp, functkw, ddpid=j, pp=pp, emab=emab)
+            [status, fm] = self.call(xp, functkw, ddpid=j, pp=pp, emab=emab)
             if status < 0:
                 return None
             fjac = (fp-fm)/(2.0*hj)
         return [j,fjac]
 
-    def fdjac2(self, fcn, x, fvec, step=None, ulimited=None, ulimit=None, dside=None,
+    def fdjac2(self, x, fvec, step=None, ulimited=None, ulimit=None, dside=None,
                epsfcn=None, emab=None, autoderivative=1,
                functkw=None, xall=None, ifree=None, dstep=None):
 
@@ -1148,7 +1197,7 @@ class alfit(object):
             mperr = 0
             fjac = numpy.zeros(nall, dtype=float)
             fjac[ifree] = 1.0  # Specify which parameters need derivatives
-            [status, fp, fjac] = self.call(fcn, xall, functkw, fjac=fjac)
+            [status, fp, fjac] = self.call(xall, functkw, fjac=fjac)
 
             if fjac.size != m*nall:
                 print('Derivative matrix was not computed properly.')
@@ -1208,10 +1257,10 @@ class alfit(object):
         for j in range(n):
             if numpy.abs(dside[ifree[j]]) <= 1:
                 # COMPUTE THE ONE-SIDED DERIVATIVE
-                async_results.append(pool.apply_async(self.funcderiv, (fcn,fvec,functkw,j,xall,ifree[j],h[j],emab,True)))
+                async_results.append(pool.apply_async(self.funcderiv, (fvec,functkw,j,xall,ifree[j],h[j],emab,True)))
             else:
                 # COMPUTE THE TWO-SIDED DERIVATIVE
-                async_results.append(pool.apply_async(self.funcderiv, (fcn,fvec,functkw,j,xall,ifree[j],h[j],emab,False)))
+                async_results.append(pool.apply_async(self.funcderiv, (fvec,functkw,j,xall,ifree[j],h[j],emab,False)))
         pool.close()
         pool.join()
         map(ApplyResult.wait, async_results)
@@ -1592,6 +1641,611 @@ class alfit(object):
 
         return r
 
+    def get_gpu_funcs(self):
+        all_funcs = dir(self)
+        self._gpunames = []
+        for ll in range(len(all_funcs)):
+            if (all_funcs[ll][:4] == "gpu_"):
+                self._gpunames.append(all_funcs[ll][4:])
+
+    def check_gpu_funcs(self):
+        msgs.info("Checking GPU functionality")
+        for ll in range(len(self.alisdict._modpass['mtyp'])):
+            if self.alisdict._modpass['mtyp'][ll] not in self._gpunames:
+                msgs.error("Function {0:s} is not GPU enabled, and a GPU chi-squared was requested."+msgs.newline()+
+                           "Either turn off GPU runs, or implement a function that can run on a CUDA GPU.")
+        msgs.info("All functions are GPU enabled!")
+
+    def model_func_GPU(self, x, p, pos, ddpid=None, getemab=False, output=0):
+        wavespx, contspx, zerospx, posnspx, nexbins = self.alisdict._wavespx, self.alisdict._contspx, self.alisdict._zerospx, self.alisdict._posnspx, self.alisdict._nexbins
+
+        # Select the correct parstr for the parameter being varied
+        if ddpid is None:
+            parstr = "{0:d}_".format(0)
+            self.alisdict._pinfl = alload.load_par_influence(self.alisdict, p) # Determine which parameters influence each sp and sn
+        else:
+            parstr = "{0:d}_".format(ddpid)
+
+        # Clear the values on the GPU
+        for sp in range(0, len(pos)):
+            for sn in range(len(pos[sp]) - 1):
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
+                self.gpu_clearflux(parstr, gpustr)
+
+#		if ddpid is not None and self._qanytied:
+#			p = alload.load_tied(p, self._ptied, infl=self._pinfl)
+#			msgs.bug("since na is not a free parameter, this does not need to be applied here, and the extra functionality getis and part of load_tied can be removed. You need to make sure that all functions are picking up on the linked (i.e. tied) parameters")
+        modelem, modelab, mzero, mcont, modcv, modcvf = [], [], copy.deepcopy(zerospx), [], [], []
+        self.alisdict._modfinal, self.alisdict._contfinal, self.alisdict._zerofinal = [], [], []
+        # Setup of the data <---> model arrays
+        pararr = [[] for all in pos]
+        keyarr = [[] for all in pos]
+        modtyp = [[] for all in pos]
+        zerlev = [[] for all in pos]
+#		print pos
+#		print self._snipid
+#		print self._specid
+        shind = numpy.where(numpy.array(self.alisdict._modpass['emab']) == 'sh')[0][0]
+        for sp in range(0,len(pos)):
+            modelem.append(numpy.zeros(wavespx[sp].size))
+            modelab.append(numpy.ones(wavespx[sp].size))
+#			mzero.append(zerospx[sp])
+#			mcont.append(contspx[sp])
+            mcont.append(numpy.zeros(wavespx[sp].size))
+            modcv.append(numpy.zeros(x[sp].size))
+            modcvf.append(numpy.zeros(self.alisdict._wavefit[sp].size))
+            self.alisdict._modfinal.append(-9.999999999E9*numpy.ones(x[sp].size))
+            self.alisdict._contfinal.append(-9.999999999E9*numpy.ones(x[sp].size))
+            self.alisdict._zerofinal.append(-9.999999999E9*numpy.ones(x[sp].size))
+            lastemab, iea = ['' for all in pos[sp][:-1]], [-1 for all in pos[sp][:-1]]
+            for sn in range(len(pos[sp])-1):
+                ll = pos[sp][sn]
+                lu = pos[sp][sn+1]
+#				w = numpy.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
+#				if sn == 0: self._modfinal.append(-1.0*numpy.ones(numpy.size(w)))
+#				else: self._modfinal[sp] = numpy.append(self._modfinal[sp], -1.0*numpy.ones(numpy.size(w)))
+                # Calculate the spectrum shift
+                shmtyp = self.alisdict._modpass['mtyp'][shind]
+                self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
+                shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                wvrngt = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], x[sp][ll:lu], shparams)
+                shind += 1
+                wvrng = [wvrngt.min(),wvrngt.max()]
+                pararr[sp].append([])
+                keyarr[sp].append([])
+                modtyp[sp].append([])
+                for i in range(0,len(self.alisdict._modpass['mtyp'])):
+                    print(self.alisdict._modpass['mtyp'][i])
+                    if self.alisdict._modpass['emab'][i] in ['cv','sh']: continue # This is a convolution or a shift (not emission or absorption)
+                    if self.alisdict._specid[sp] not in self.alisdict._modpass['mkey'][i]['specid']: continue # Don't apply this model to this data
+                    if self.alisdict._modpass['emab'][i] == 'zl': # Get the parameters of the zerolevel
+                        if sn != 0: continue
+                        if len(zerlev[sp]) != 0:
+                            msgs.error("You can only specify the zero-level once for each specid.")
+                        mtyp=self.alisdict._modpass['mtyp'][i]
+                        self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][i]
+                        params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[i], self.alisdict._modpass, i, spid=self.alisdict._specid[sp], levid=self.alisdict._levadd)
+                        if len(params) == 0: continue
+                        zerlev[sp].append(mtyp)
+                        zerlev[sp].append(numpy.array([params]))
+                        zerlev[sp].append(self.alisdict._modpass['mkey'][i])
+                        continue
+                    if lastemab[sn] == '' and self.alisdict._modpass['emab'][i] != 'em':
+                        if self.alisdict._modpass['emab'][i] != 'va':
+                            msgs.error("Model for specid={0:s} must specify emission before absorption".format(self.alisdict._snipid[sp])) # BUG: Not quoting the correct specid...
+                    if lastemab[sn] != self.alisdict._modpass['emab'][i] and self.alisdict._modpass['emab'][i] != 'va':
+                        pararr[sp][sn].append([])
+                        keyarr[sp][sn].append([])
+                        modtyp[sp][sn].append(numpy.array(['']))
+                        iea[sn] += 1
+                        lastemab[sn] = self.alisdict._modpass['emab'][i]
+                    # If this parameter doesn't influence the sp+sn, don't go any further.
+                    if ddpid is not None:
+                        if ddpid not in self.alisdict._pinfl[0][sp][sn]: continue
+                    mtyp=self.alisdict._modpass['mtyp'][i]
+#					if mtyp not in modgpu: modgpu.append(mtyp)
+                    if numpy.where(mtyp==modtyp[sp][sn][iea[sn]])[0].size != 1:
+                        pararr[sp][sn][iea[sn]].append([])
+                        keyarr[sp][sn][iea[sn]].append([])
+                        modtyp[sp][sn][iea[sn]] = numpy.append(modtyp[sp][sn][iea[sn]],mtyp)
+                        if modtyp[sp][sn][iea[sn]][0] == '': modtyp[sp][sn][iea[sn]] = numpy.delete(modtyp[sp][sn][iea[sn]], 0)
+                    mid = numpy.where(mtyp==modtyp[sp][sn][iea[sn]])[0][0]
+                    self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][i]
+                    #print "1.", sp, mtyp, wvrng
+                    params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[i], self.alisdict._modpass, i, wvrng=wvrng, spid=self.alisdict._specid[sp], levid=self.alisdict._levadd)
+                    if len(params) == 0: continue
+                    #if ddpid == 4:
+                    #	print "2.", numpy.shape(params)
+                    #	print params
+                    if numpy.size(numpy.shape(params)) == 1:
+                        if numpy.size(pararr[sp][sn][iea[sn]][mid]) == 0:
+                            pararr[sp][sn][iea[sn]][mid] = numpy.array([params])
+                        else:
+                            if numpy.shape(pararr[sp][sn][iea[sn]][mid])[1] != numpy.shape(numpy.array([params]))[1]:
+                                msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
+                            pararr[sp][sn][iea[sn]][mid] = numpy.append(pararr[sp][sn][iea[sn]][mid],numpy.array([params]),axis=0)
+                        keyarr[sp][sn][iea[sn]][mid].append(self.alisdict._modpass['mkey'][i])
+                    else:
+                        if numpy.size(pararr[sp][sn][iea[sn]][mid]) == 0:
+                            pararr[sp][sn][iea[sn]][mid] = params
+                        else:
+                            if numpy.shape(pararr[sp][sn][iea[sn]][mid])[1] != numpy.shape(params)[1]:
+                                msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
+                            pararr[sp][sn][iea[sn]][mid] = numpy.append(pararr[sp][sn][iea[sn]][mid],params,axis=0)
+                        for all in range(numpy.shape(params)[0]): keyarr[sp][sn][iea[sn]][mid].append(self.alisdict._modpass['mkey'][i])
+
+        # Calculate the model
+        shind = numpy.where(numpy.array(self.alisdict._modpass['emab']) == 'sh')[0][0]
+        for sp in range(len(pararr)):
+            for sn in range(len(pararr[sp])):
+                if ddpid is not None: # If this parameter doesn't influence the sp+sn, don't calculate it.
+                    if ddpid not in self.alisdict._pinfl[0][sp][sn]:
+                        shind += 1
+                        continue
+                # Extract some useful information
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
+                ll = posnspx[sp][sn]
+                lu = posnspx[sp][sn+1]
+                # Calculate the spectrum shift
+                shmtyp = self.alisdict._modpass['mtyp'][shind]
+                self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
+                shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                shind += 1
+                shift_vel = 0.0  # x / (1.0 + p[0]/299792.458)
+                shift_ang = 0.0  # x-p[0]
+                if shmtyp == "vshift": shift_vel = shparams[0]
+                elif shmtyp == "Ashift": shift_ang = shparams[0]
+                else:
+                    msgs.error("Not ready for this kind of wavelength shift: {0:s}".format(shmtyp))
+                # Need to think about GPU implementation of zero level - we could then delete this call...
+                wave = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], wavespx[sp][ll:lu], shparams)
+#				wave = wavespx[sp][ll:lu]
+                # First subtract the zero-level from the data
+                if len(zerlev[sp]) != 0:
+                    mtyp = zerlev[sp][0]
+                    zpar = zerlev[sp][1]
+                    zkey = zerlev[sp][2]
+                    mzero[sp][ll:lu] += self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, zpar, ae='zl', mkey=zkey)
+                if len(pararr[sp][sn]) >= 3:
+                    msgs.error("Only one emission and absorption allowed!")
+                for ea in range(len(pararr[sp][sn])):
+                    if ea%2 == 0: aetag = 'em'
+                    else: aetag = 'ab'
+                    for md in range(0,len(pararr[sp][sn][ea])):
+                        mtyp = modtyp[sp][sn][ea][md]
+                        if mtyp in ["variable","random"]: continue
+                        if len(pararr[sp][sn][ea][md]) == 0: continue # OR PARAMETER NOT BEING VARIED!!!
+                        # Multiprocess here and send to either the CPU or GPU
+#						if self.alisdict._argflag['run']['ngpus'] != 0:
+##							pf.append([wave, pararr[sp][sn][ea][md], aetag])
+#							npix, nprof = wave.size, pararr[sp][sn][ea][md].shape[0]
+#							mout = numpy.zeros((npix,nprof))
+#							if mtyp == "voigt": gpuvoigt(cuda.Out(mout), cuda.In(wave.copy()), cuda.In(pararr[sp][sn][ea][md]), cuda.In(hA), cuda.In(hB), cuda.In(hC), cuda.In(hD), block=(1,1,1), grid=(npix,nprof))
+#							elif mtyp == "const": gpuconst(cuda.Out(mout), cuda.In(wave.copy()), cuda.In(pararr[sp][sn][ea][md]), block=(1,1,1), grid=(npix,nprof))
+#							if ea%2 == 0: # emission
+#								model[sp][ll:lu] += mout.sum(1)
+#							else: # absorption
+#								model[sp][ll:lu] *= mout.prod(1)
+#						else:
+                        #mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md], ae=aetag, mkey=keyarr[sp][sn][ea][md])
+                        for mm in range(0,pararr[sp][sn][ea][md].shape[0]):
+                            if mtyp == "voigt":
+                                gpu_voigt(parstr, gpustr, pararr[sp][sn][ea][md][mm,:].reshape(1, -1),
+                                          ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]],
+                                          shift_vel=shift_vel, shift_ang=shift_ang,
+                                          cont=keyarr[sp][sn][ea][md][mm]['continuum'])
+                            else:
+                                msgs.error("Function not implemented: {0:s}".format(mtyp))
+
+                            # mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md][mm,:].reshape(1,-1), ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]])
+                            # if ea%2 == 0: # emission
+                            #     modelem[sp][ll:lu] += mout.copy()
+                            #     if keyarr[sp][sn][ea][md][mm]['continuum']: mcont[sp][ll:lu] += mout.copy()
+                            # else: # absorption
+                            #     modelab[sp][ll:lu] *= mout
+                            #     if keyarr[sp][sn][ea][md][mm]['continuum']: mcont[sp][ll:lu] *= mout.copy()
+#                     if ea == 0 and numpy.count_nonzero(mcont[sp][ll:lu]) == 0:
+#                         mcont[sp][ll:lu] = modelem[sp][ll:lu].copy()
+
+        # Now pull the data back from the GPU
+
+
+
+        
+
+        # Convolve the data with the appropriate instrumental profile
+        stf, enf = [0 for all in pos], [0 for all in pos]
+        cvind = numpy.where(numpy.array(self.alisdict._modpass['emab'])=='cv')[0][0]
+        shind = numpy.where(numpy.array(self.alisdict._modpass['emab'])=='sh')[0][0]
+        for sp in range(len(pos)):
+            for sn in range(len(pos[sp])-1):
+                if self.alisdict._modpass['emab'][cvind] != 'cv': # Check that this is indeed a convolution
+                    msgs.bug("Convolution cannot be performed with model "+self.alisdict._modpass['mtyp'][cvind],verbose=self.alisdict._argflag['out']['verbose'])
+                # If this parameter doesn't influence the sp+sn, don't go any further.
+                if ddpid is not None:
+                    if ddpid not in self.alisdict._pinfl[0][sp][sn]:
+                        ll = pos[sp][sn]
+                        lu = pos[sp][sn+1]
+                        w = numpy.where((x[sp][ll:lu] >= self.alisdict._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self.alisdict._posnfit[sp][2*sn+1]))
+                        wA= numpy.in1d(x[sp][ll:lu][w], self.alisdict._wavefit[sp])
+                        wB= numpy.where(wA==True)
+                        enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
+                        stf[sp] = enf[sp]
+                        cvind += 1
+                        shind += 1
+                        continue
+                llx = posnspx[sp][sn]
+                lux = posnspx[sp][sn+1]
+                ll = pos[sp][sn]
+                lu = pos[sp][sn+1]
+                mtyp = self.alisdict._modpass['mtyp'][cvind]
+                self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][cvind]
+                params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[cvind], self.alisdict._modpass, cvind)
+                # Obtain the shift parameters
+                shmtyp = self.alisdict._modpass['mtyp'][shind]
+                self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
+                shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                shwave = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], wavespx[sp][llx:lux], shparams)
+                mdtmp = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                mdtmp *= contspx[sp][llx:lux]
+                # Apply the zero-level correction if necessary
+                if len(zerlev[sp]) != 0:
+                    mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
+#					mdtmp = mdtmp +  mzero[sp][llx:lux]*(1.0-mdtmp)/mcont[sp][llx:lux]
+                modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/numpy.float64(nexbins[sp][sn])
+                # Make sure this model shouldn't be capped
+                if self.alisdict._argflag['run']['capvalue'] is not None:
+                    wc = numpy.where(modcv[sp][ll:lu] >= self.alisdict._argflag['run']['capvalue'])[0]
+                    if numpy.size(wc) != 0:
+                        modcv[sp][ll:lu][wc] = self.alisdict._argflag['run']['capvalue']
+                # Finally, apply the user-specified continuum (if it's not 1.0)
+#				modcv[sp][ll:lu] *= self.alisdict._contfull[sp][ll:lu]
+                # Extract the fitted part of the model.
+                w = numpy.where((x[sp][ll:lu] >= self.alisdict._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self.alisdict._posnfit[sp][2*sn+1]))
+                wA= numpy.in1d(x[sp][ll:lu][w], self.alisdict._wavefit[sp])
+                wB= numpy.where(wA==True)
+                enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
+                modcvf[sp][stf[sp]:enf[sp]] = modcv[sp][ll:lu][w][wB]
+                self.alisdict._modfinal[sp][ll:lu][w] = modcv[sp][ll:lu][w]
+                self.alisdict._contfinal[sp][ll:lu][w] = (mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/numpy.float64(nexbins[sp][sn]))[w]
+                self.alisdict._zerofinal[sp][ll:lu] = (mzero[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/numpy.float64(nexbins[sp][sn]))
+                stf[sp] = enf[sp]
+                cvind += 1
+                shind += 1
+        del wavespx, posnspx, nexbins
+        del mzero, mcont
+#		if output == 0: return modcvf
+        if output == 0:
+            if getemab:
+                return modcvf, [modelem, modelab]
+            else:
+                return modcvf
+        elif output == 1: return modcv
+        elif output == 2: return modcvf
+        elif output == 3: return self.alisdict._modfinal
+        else: msgs.bug("The value {0:d} for keyword 'output' is not allowed".format(output),verbose=self.alisdict._argflag['out']['verbose'])
+
+    def model_func_CPU(self, x, p, pos, ddpid=None, getemab=False, output=0):
+        if self.alisdict._argflag['run']['renew_subpix']:
+            wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, p) # recalculate the sub-pixellation of the spectrum
+        else:
+            wavespx, contspx, zerospx, posnspx, nexbins = self.alisdict._wavespx, self.alisdict._contspx, self.alisdict._zerospx, self.alisdict._posnspx, self.alisdict._nexbins
+        if ddpid is None:
+            self.alisdict._pinfl = alload.load_par_influence(self.alisdict, p) # Determine which parameters influence each sp and sn
+#		print ddpid, self._pinfl
+#		if ddpid is not None and self._qanytied:
+#			p = alload.load_tied(p, self._ptied, infl=self._pinfl)
+#			msgs.bug("since na is not a free parameter, this does not need to be applied here, and the extra functionality getis and part of load_tied can be removed. You need to make sure that all functions are picking up on the linked (i.e. tied) parameters")
+#		modgpu=[]
+        modelem, modelab, mzero, mcont, modcv, modcvf = [], [], copy.deepcopy(zerospx), [], [], []
+        self.alisdict._modfinal, self.alisdict._contfinal, self.alisdict._zerofinal = [], [], []
+        # Setup of the data <---> model arrays
+        pararr = [[] for all in pos]
+        keyarr = [[] for all in pos]
+        modtyp = [[] for all in pos]
+        zerlev = [[] for all in pos]
+#		print pos
+#		print self._snipid
+#		print self._specid
+        shind = numpy.where(numpy.array(self.alisdict._modpass['emab']) == 'sh')[0][0]
+        for sp in range(0,len(pos)):
+            modelem.append(numpy.zeros(wavespx[sp].size))
+            modelab.append(numpy.ones(wavespx[sp].size))
+#			mzero.append(zerospx[sp])
+#			mcont.append(contspx[sp])
+            mcont.append(numpy.zeros(wavespx[sp].size))
+            modcv.append(numpy.zeros(x[sp].size))
+            modcvf.append(numpy.zeros(self.alisdict._wavefit[sp].size))
+            self.alisdict._modfinal.append(-9.999999999E9*numpy.ones(x[sp].size))
+            self.alisdict._contfinal.append(-9.999999999E9*numpy.ones(x[sp].size))
+            self.alisdict._zerofinal.append(-9.999999999E9*numpy.ones(x[sp].size))
+            lastemab, iea = ['' for all in pos[sp][:-1]], [-1 for all in pos[sp][:-1]]
+            for sn in range(len(pos[sp])-1):
+                ll = pos[sp][sn]
+                lu = pos[sp][sn+1]
+#				w = numpy.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
+#				if sn == 0: self._modfinal.append(-1.0*numpy.ones(numpy.size(w)))
+#				else: self._modfinal[sp] = numpy.append(self._modfinal[sp], -1.0*numpy.ones(numpy.size(w)))
+                # Calculate the spectrum shift
+                shmtyp = self.alisdict._modpass['mtyp'][shind]
+                self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
+                shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                wvrngt = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], x[sp][ll:lu], shparams)
+                shind += 1
+                wvrng = [wvrngt.min(),wvrngt.max()]
+                pararr[sp].append([])
+                keyarr[sp].append([])
+                modtyp[sp].append([])
+                for i in range(0,len(self.alisdict._modpass['mtyp'])):
+                    print(self.alisdict._modpass['mtyp'][i])
+                    if self.alisdict._modpass['emab'][i] in ['cv','sh']: continue # This is a convolution or a shift (not emission or absorption)
+                    if self.alisdict._specid[sp] not in self.alisdict._modpass['mkey'][i]['specid']: continue # Don't apply this model to this data
+                    if self.alisdict._modpass['emab'][i] == 'zl': # Get the parameters of the zerolevel
+                        if sn != 0: continue
+                        if len(zerlev[sp]) != 0:
+                            msgs.error("You can only specify the zero-level once for each specid.")
+                        mtyp=self.alisdict._modpass['mtyp'][i]
+                        self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][i]
+                        params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[i], self.alisdict._modpass, i, spid=self.alisdict._specid[sp], levid=self.alisdict._levadd)
+                        if len(params) == 0: continue
+                        zerlev[sp].append(mtyp)
+                        zerlev[sp].append(numpy.array([params]))
+                        zerlev[sp].append(self.alisdict._modpass['mkey'][i])
+                        continue
+                    if lastemab[sn] == '' and self.alisdict._modpass['emab'][i] != 'em':
+                        if self.alisdict._modpass['emab'][i] != 'va':
+                            msgs.error("Model for specid={0:s} must specify emission before absorption".format(self.alisdict._snipid[sp])) # BUG: Not quoting the correct specid...
+                    if lastemab[sn] != self.alisdict._modpass['emab'][i] and self.alisdict._modpass['emab'][i] != 'va':
+                        pararr[sp][sn].append([])
+                        keyarr[sp][sn].append([])
+                        modtyp[sp][sn].append(numpy.array(['']))
+                        iea[sn] += 1
+                        lastemab[sn] = self.alisdict._modpass['emab'][i]
+                    # If this parameter doesn't influence the sp+sn, don't go any further.
+                    if ddpid is not None:
+                        if ddpid not in self.alisdict._pinfl[0][sp][sn]: continue
+                    mtyp=self.alisdict._modpass['mtyp'][i]
+#					if mtyp not in modgpu: modgpu.append(mtyp)
+                    if numpy.where(mtyp==modtyp[sp][sn][iea[sn]])[0].size != 1:
+                        pararr[sp][sn][iea[sn]].append([])
+                        keyarr[sp][sn][iea[sn]].append([])
+                        modtyp[sp][sn][iea[sn]] = numpy.append(modtyp[sp][sn][iea[sn]],mtyp)
+                        if modtyp[sp][sn][iea[sn]][0] == '': modtyp[sp][sn][iea[sn]] = numpy.delete(modtyp[sp][sn][iea[sn]], 0)
+                    mid = numpy.where(mtyp==modtyp[sp][sn][iea[sn]])[0][0]
+                    self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][i]
+                    #print "1.", sp, mtyp, wvrng
+                    params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[i], self.alisdict._modpass, i, wvrng=wvrng, spid=self.alisdict._specid[sp], levid=self.alisdict._levadd)
+                    if len(params) == 0: continue
+                    #if ddpid == 4:
+                    #	print "2.", numpy.shape(params)
+                    #	print params
+                    if numpy.size(numpy.shape(params)) == 1:
+                        if numpy.size(pararr[sp][sn][iea[sn]][mid]) == 0:
+                            pararr[sp][sn][iea[sn]][mid] = numpy.array([params])
+                        else:
+                            if numpy.shape(pararr[sp][sn][iea[sn]][mid])[1] != numpy.shape(numpy.array([params]))[1]:
+                                msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
+                            pararr[sp][sn][iea[sn]][mid] = numpy.append(pararr[sp][sn][iea[sn]][mid],numpy.array([params]),axis=0)
+                        keyarr[sp][sn][iea[sn]][mid].append(self.alisdict._modpass['mkey'][i])
+                    else:
+                        if numpy.size(pararr[sp][sn][iea[sn]][mid]) == 0:
+                            pararr[sp][sn][iea[sn]][mid] = params
+                        else:
+                            if numpy.shape(pararr[sp][sn][iea[sn]][mid])[1] != numpy.shape(params)[1]:
+                                msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
+                            pararr[sp][sn][iea[sn]][mid] = numpy.append(pararr[sp][sn][iea[sn]][mid],params,axis=0)
+                        for all in range(numpy.shape(params)[0]): keyarr[sp][sn][iea[sn]][mid].append(self.alisdict._modpass['mkey'][i])
+
+        # Calculate the model
+        shind = numpy.where(numpy.array(self.alisdict._modpass['emab']) == 'sh')[0][0]
+        for sp in range(len(pararr)):
+            for sn in range(len(pararr[sp])):
+                if ddpid is not None: # If this parameter doesn't influence the sp+sn, don't calculate it.
+                    if ddpid not in self.alisdict._pinfl[0][sp][sn]:
+                        shind += 1
+                        continue
+                ll = posnspx[sp][sn]
+                lu = posnspx[sp][sn+1]
+                # Calculate the spectrum shift
+                shmtyp = self.alisdict._modpass['mtyp'][shind]
+                self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
+                shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                shind += 1
+                wave = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], wavespx[sp][ll:lu], shparams)
+#				wave = wavespx[sp][ll:lu]
+                # First subtract the zero-level from the data
+                if len(zerlev[sp]) != 0:
+                    mtyp = zerlev[sp][0]
+                    zpar = zerlev[sp][1]
+                    zkey = zerlev[sp][2]
+                    mzero[sp][ll:lu] += self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, zpar, ae='zl', mkey=zkey)
+                for ea in range(len(pararr[sp][sn])):
+                    if ea%2 == 0: aetag = 'em'
+                    else: aetag = 'ab'
+                    for md in range(0,len(pararr[sp][sn][ea])):
+                        mtyp = modtyp[sp][sn][ea][md]
+                        if mtyp in ["variable","random"]: continue
+                        if len(pararr[sp][sn][ea][md]) == 0: continue # OR PARAMETER NOT BEING VARIED!!!
+                        # Multiprocess here and send to either the CPU or GPU
+#						if self.alisdict._argflag['run']['ngpus'] != 0:
+##							pf.append([wave, pararr[sp][sn][ea][md], aetag])
+#							npix, nprof = wave.size, pararr[sp][sn][ea][md].shape[0]
+#							mout = numpy.zeros((npix,nprof))
+#							if mtyp == "voigt": gpuvoigt(cuda.Out(mout), cuda.In(wave.copy()), cuda.In(pararr[sp][sn][ea][md]), cuda.In(hA), cuda.In(hB), cuda.In(hC), cuda.In(hD), block=(1,1,1), grid=(npix,nprof))
+#							elif mtyp == "const": gpuconst(cuda.Out(mout), cuda.In(wave.copy()), cuda.In(pararr[sp][sn][ea][md]), block=(1,1,1), grid=(npix,nprof))
+#							if ea%2 == 0: # emission
+#								model[sp][ll:lu] += mout.sum(1)
+#							else: # absorption
+#								model[sp][ll:lu] *= mout.prod(1)
+#						else:
+                        #mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md], ae=aetag, mkey=keyarr[sp][sn][ea][md])
+                        for mm in range(0,pararr[sp][sn][ea][md].shape[0]):
+                            mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md][mm,:].reshape(1,-1), ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]])
+                            if ea%2 == 0: # emission
+                                modelem[sp][ll:lu] += mout.copy()
+                                if keyarr[sp][sn][ea][md][mm]['continuum']: mcont[sp][ll:lu] += mout.copy()
+                            else: # absorption
+                                modelab[sp][ll:lu] *= mout
+                                if keyarr[sp][sn][ea][md][mm]['continuum']: mcont[sp][ll:lu] *= mout.copy()
+#                        if ea%2 == 0: # emission
+#                            modelem[sp][ll:lu] += mout
+#                        else: # absorption
+#                            modelab[sp][ll:lu] *= mout
+                    if ea == 0 and numpy.count_nonzero(mcont[sp][ll:lu]) == 0:
+                        mcont[sp][ll:lu] = modelem[sp][ll:lu].copy()
+
+        # Convolve the data with the appropriate instrumental profile
+        stf, enf = [0 for all in pos], [0 for all in pos]
+        cvind = numpy.where(numpy.array(self.alisdict._modpass['emab'])=='cv')[0][0]
+        shind = numpy.where(numpy.array(self.alisdict._modpass['emab'])=='sh')[0][0]
+        for sp in range(len(pos)):
+            for sn in range(len(pos[sp])-1):
+                if self.alisdict._modpass['emab'][cvind] != 'cv': # Check that this is indeed a convolution
+                    msgs.bug("Convolution cannot be performed with model "+self.alisdict._modpass['mtyp'][cvind],verbose=self.alisdict._argflag['out']['verbose'])
+                # If this parameter doesn't influence the sp+sn, don't go any further.
+                if ddpid is not None:
+                    if ddpid not in self.alisdict._pinfl[0][sp][sn]:
+                        ll = pos[sp][sn]
+                        lu = pos[sp][sn+1]
+                        w = numpy.where((x[sp][ll:lu] >= self.alisdict._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self.alisdict._posnfit[sp][2*sn+1]))
+                        wA= numpy.in1d(x[sp][ll:lu][w], self.alisdict._wavefit[sp])
+                        wB= numpy.where(wA==True)
+                        enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
+                        stf[sp] = enf[sp]
+                        cvind += 1
+                        shind += 1
+                        continue
+                llx = posnspx[sp][sn]
+                lux = posnspx[sp][sn+1]
+                ll = pos[sp][sn]
+                lu = pos[sp][sn+1]
+                mtyp = self.alisdict._modpass['mtyp'][cvind]
+                self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][cvind]
+                params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[cvind], self.alisdict._modpass, cvind)
+                # Obtain the shift parameters
+                shmtyp = self.alisdict._modpass['mtyp'][shind]
+                self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
+                shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                shwave = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], wavespx[sp][llx:lux], shparams)
+                mdtmp = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                mdtmp *= contspx[sp][llx:lux]
+                # Apply the zero-level correction if necessary
+                if len(zerlev[sp]) != 0:
+                    mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
+#					mdtmp = mdtmp +  mzero[sp][llx:lux]*(1.0-mdtmp)/mcont[sp][llx:lux]
+                modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/numpy.float64(nexbins[sp][sn])
+                # Make sure this model shouldn't be capped
+                if self.alisdict._argflag['run']['capvalue'] is not None:
+                    wc = numpy.where(modcv[sp][ll:lu] >= self.alisdict._argflag['run']['capvalue'])[0]
+                    if numpy.size(wc) != 0:
+                        modcv[sp][ll:lu][wc] = self.alisdict._argflag['run']['capvalue']
+                # Finally, apply the user-specified continuum (if it's not 1.0)
+#				modcv[sp][ll:lu] *= self.alisdict._contfull[sp][ll:lu]
+                # Extract the fitted part of the model.
+                w = numpy.where((x[sp][ll:lu] >= self.alisdict._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self.alisdict._posnfit[sp][2*sn+1]))
+                wA= numpy.in1d(x[sp][ll:lu][w], self.alisdict._wavefit[sp])
+                wB= numpy.where(wA==True)
+                enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
+                modcvf[sp][stf[sp]:enf[sp]] = modcv[sp][ll:lu][w][wB]
+                self.alisdict._modfinal[sp][ll:lu][w] = modcv[sp][ll:lu][w]
+                self.alisdict._contfinal[sp][ll:lu][w] = (mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/numpy.float64(nexbins[sp][sn]))[w]
+                self.alisdict._zerofinal[sp][ll:lu] = (mzero[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/numpy.float64(nexbins[sp][sn]))
+                stf[sp] = enf[sp]
+                cvind += 1
+                shind += 1
+        del wavespx, posnspx, nexbins
+        del mzero, mcont
+#		if output == 0: return modcvf
+        if output == 0:
+            if getemab:
+                return modcvf, [modelem, modelab]
+            else:
+                return modcvf
+        elif output == 1: return modcv
+        elif output == 2: return modcvf
+        elif output == 3: return self.alisdict._modfinal
+        else: msgs.bug("The value {0:d} for keyword 'output' is not allowed".format(output),verbose=self.alisdict._argflag['out']['verbose'])
+
+    def myfunct(self, p, fjac=None, x=None, y=None, err=None, output=0, ddpid=None, pp=None, getemab=False, emab=None, **kwargs):
+        """
+        output = 0 : Return the model for just the fitted region
+               = 1 : Return the model for the entire data
+               = 2 : Return the model for just the fitted region with -1 set to data outside the fitted region
+        """
+        if ddpid is None:
+            if getemab:
+                if self.gpurun:
+                    modconv_fit, emabv = self.model_func_GPU(self.alisdict._wavefull, p, self.alisdict._posnfull,
+                                                             ddpid=ddpid, output=output, getemab=getemab)
+                else:
+                    if self.gpurun:
+                        modconv_fit, emabv = self.model_func_GPU(self.alisdict._wavefull, p, self.alisdict._posnfull,
+                                                                 ddpid=ddpid, output=output, getemab=getemab)
+                    else:
+                        modconv_fit, emabv = self.model_func_CPU(self.alisdict._wavefull, p, self.alisdict._posnfull, ddpid=ddpid, output=output, getemab=getemab)
+            else:
+                if self.gpurun:
+                    modconv_fit = self.model_func_GPU(self.alisdict._wavefull, p, self.alisdict._posnfull, ddpid=ddpid,
+                                                      output=output)
+                else:
+                    modconv_fit = self.model_func_CPU(self.alisdict._wavefull, p, self.alisdict._posnfull, ddpid=ddpid, output=output)
+        else:
+            # If not running the speed-up use:
+            if self.gpurun:
+                modconv_fit = self.model_func_GPU(self.alisdict._wavefull, pp, self.alisdict._posnfull, ddpid=ddpid,
+                                                  output=output, getemab=getemab)
+            else:
+                modconv_fit = self.model_func_CPU(self.alisdict._wavefull, pp, self.alisdict._posnfull, ddpid=ddpid, output=output, getemab=getemab)
+            # Otherwise, you should use the following to speed-up the calculation:
+            #modconv_fit = self.model_func_ddp(self.alisdict._wavefull, p, pp, self.alisdict._posnfull, ddpid=ddpid, output=output, emab=emab)
+        status = 0
+        modf = numpy.array([])
+        for sp in range(len(self.alisdict._posnfull)):
+            modf = numpy.append(modf, modconv_fit[sp])
+        if output == 1:
+            self.alisdict._modconv_all = modconv_fit
+            return modf
+        elif output == 2:
+            return modf
+        elif output == 3:
+            return modconv_fit
+        if (fjac) == None:
+            if getemab:
+                return [status, (y-modf)/err, emabv]
+            else:
+                return [status, (y-modf)/err]
+
+    ##################################
+    # Start of all GPU functions
+    # All of the following MUST be prefixed with "gpu_
+
+    def gpu_clearflux(self, parstr, gpustr):
+        blocks = self.gpu_dict["blocks_" + gpustr]
+        threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
+        clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
+                                                 self.gpu_dict["modelab_" + parstr + gpustr],
+                                                 self.gpu_dict["modcont_" + parstr + gpustr])
+
+    def gpu_voigt(self, parstr, gpustr, pin, ae='ab', mkey=None, shift_vel=0.0, shift_ang=0.0, cont=False, ncpus=1):
+        # Emission of absorption, and continuum
+        aeint = 0
+        if ae == 'ab': aeint = 0
+        ctint = 0
+        if cont: ctint = 1
+        # Grab model values
+        modelstr = "model{0:s}_".format(aetag) + parstr + gpustr
+        modcont = "modcont_" + parstr + gpustr
+        # Get GPU stuff
+        blocks = self.gpu_dict["blocks_" + gpustr]
+        threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
+        # Make the call
+        voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
+                                             pin[0], pin[1], pin[2], pin[3], pin[4], pin[5],
+                                             self.gpu_dict["erfcx_cc"], self.gpu_dict["expa2n2"],
+                                             shift_vel, shift_ang,
+                                             aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
+
+
 class machar:
     def __init__(self, double=1):
         if double == 0:
@@ -1608,3 +2262,263 @@ class machar:
         self.rdwarf = numpy.sqrt(self.minnum*1.5) * 10
         self.rgiant = numpy.sqrt(self.maxnum) * 0.1
 
+##########################
+# Calls to GPU functions are outside of the chi-squared minimisation
+# First, here are some function dependencies
+
+@cuda.jit(device=True)
+def erfcx_y100(y100, erfcx_cc):
+    iy100 = int(y100)
+    if iy100 == 100:
+        return 1.0
+    else:
+        t = 2.0 * y100 - (2 * types.float32(iy100) + 1.0)
+        return erfcx_cc[iy100, 0] + (erfcx_cc[iy100, 1] + (erfcx_cc[iy100, 2] + (erfcx_cc[iy100, 3] + (
+                    erfcx_cc[iy100, 4] + (erfcx_cc[iy100, 5] + erfcx_cc[iy100, 6] * t) * t) * t) * t) * t) * t
+
+
+@cuda.jit(device=True)
+def sincomplex(x, sinx):
+    if abs(x) < 1e-4:
+        return 1 - (0.1666666666666666666667) * x * x
+    else:
+        return sinx / x
+
+
+@cuda.jit(device=True)
+def sinh_taylor(x):
+    return x * (1 + (x * x) * (0.1666666666666666666667 + 0.00833333333333333333333 * (x * x)))
+
+
+@cuda.jit(device=True)
+def sqr(x):
+    return x * x
+
+
+@cuda.jit(device=True)
+def faddeeva_re(x, erfcx_cc):
+    if (x >= 0):
+        if (x > 50):  # continued-fraction expansion is faster
+            ispi = 0.56418958354775628694807945156  # 1 / sqrt(pi)
+            if (x > 5e7):  # 1-term expansion, important to avoid overflow
+                return ispi / x
+            return ispi * ((x * x) * (x * x + 4.5) + 2) / (x * ((x * x) * (x * x + 5) + 3.75))
+        return erfcx_y100(400.0 / (4.0 + x), erfcx_cc)
+    else:
+        if x < -26.7:
+            return inf
+        else:
+            if x < -6.1:
+                return 2 * exp(x * x)
+            else:
+                return 2 * exp(x * x) - erfcx_y100(400.0 / (4.0 - x), erfcx_cc)
+
+
+@cuda.jit(device=True)
+def faddeeva_real(z, erfcx_cc, expa2n2):
+    relerr = 1.0E-7
+    a = 0.518321480430085929872  # pi / sqrt(-log(eps*0.5))
+    c = 0.329973702884629072537  # (2/pi) * a;
+    a2 = 0.268657157075235951582  # a^2
+    x = abs(z.real)
+    y = z.imag
+    ya = abs(y)
+
+    sum1, sum2, sum3, sum4, sum5 = 0, 0, 0, 0, 0
+
+    if (ya > 7 or (x > 6 and (ya > 0.1 or (x > 8 and ya > 1e-10) or x > 28))):
+        ispi = 0.56418958354775628694807945156  # 1 / sqrt(pi)
+        if y < 0:
+            xs = -z.real
+        else:
+            xs = z.real
+        if (x + ya > 4000):  # nu <= 2
+            if (x + ya > 1e7):  # nu == 1, w(z) = i/sqrt(pi) / z
+                if (x > ya):
+                    yax = ya / xs
+                    denom = ispi / (xs + yax * ya)
+                    ret = denom * yax
+                elif isinf(ya):
+                    if isnan(x) or y < 0:
+                        return nan
+                    else:
+                        return 0
+                else:
+                    xya = xs / ya
+                    denom = ispi / (xya * xs + ya)
+                    ret = denom
+            else:  # nu == 2, w(z) = i/sqrt(pi) * z / (z*z - 0.5)
+                dr = xs * xs - ya * ya - 0.5
+                di = 2 * xs * ya
+                denom = ispi / (dr * dr + di * di)
+                ret = denom * (xs * di - ya * dr)
+        else:  # compute nu(z) estimate and do general continued fraction
+            c0, c1, c2, c3, c4 = 3.9, 11.398, 0.08254, 0.1421, 0.2023  # fit
+            nu = floor(c0 + c1 / (c2 * x + c3 * ya + c4))
+            wr = xs
+            wi = ya
+            nu = 0.5 * (nu - 1)
+            while nu > 0.4:
+                #            for (nu = 0.5 * (nu - 1); nu > 0.4; nu -= 0.5):
+                denom = nu / (wr * wr + wi * wi)
+                wr = xs - wr * denom
+                wi = ya + wi * denom
+                nu -= 0.5
+            """
+            { // w(z) = i/sqrt(pi) / w:
+                denom = ispi / (wr*wr + wi*wi)
+                ret = complex(denom*wi, denom*wr)
+            }
+            """
+            denom = ispi / (wr * wr + wi * wi)
+            ret = denom * wi
+        if (y < 0):
+            val = 2.0 * exp((ya - xs) * (xs + ya))
+            if val == 0.0:
+                return -ret
+            else:
+                return val * cos(2 * xs * y) - ret
+        else:
+            return ret
+    elif (x < 10):
+        prod2ax, prodm2ax = 1.0, 1.0
+        if (isnan(y)):
+            return y
+
+        if (x < 5e-4):
+            x2 = x * x
+            expx2 = 1 - x2 * (1 - 0.5 * x2)  # exp(-x*x) via Taylor
+            # compute exp(2*a*x) and exp(-2*a*x) via Taylor, to double precision
+            ax2 = 1.036642960860171859744 * x  # 2*a*x
+            exp2ax = 1 + ax2 * (1 + ax2 * (0.5 + 0.166666666666666666667 * ax2))
+            expm2ax = 1 - ax2 * (1 - ax2 * (0.5 - 0.166666666666666666667 * ax2))
+            n = 1
+            while True:
+                #                for (int n = 1; 1; ++n) {
+                coef = expa2n2[n - 1] * expx2 / (a2 * (n * n) + y * y)
+                prod2ax *= exp2ax
+                prodm2ax *= expm2ax
+                sum1 += coef
+                sum2 += coef * prodm2ax
+                sum3 += coef * prod2ax
+
+                # really = sum5 - sum4
+                sum5 += coef * (2 * a) * n * sinh_taylor((2 * a) * n * x)
+
+                # test convergence via sum3
+                if (coef * prod2ax < relerr * sum3):
+                    break
+                n += 1
+        else:  # x > 5e-4, compute sum4 and sum5 separately
+            expx2 = exp(-x * x)
+            exp2ax = exp((2 * a) * x)
+            expm2ax = 1 / exp2ax
+            n = 1
+            while True:
+                #                for (int n = 1; 1; ++n) {
+                coef = expa2n2[n - 1] * expx2 / (a2 * (n * n) + y * y)
+                prod2ax *= exp2ax
+                prodm2ax *= expm2ax
+                sum1 += coef
+                sum2 += coef * prodm2ax
+                sum4 += (coef * prodm2ax) * (a * n)
+                sum3 += coef * prod2ax
+                sum5 += (coef * prod2ax) * (a * n)
+                # test convergence via sum5, since this sum has the slowest decay
+                if ((coef * prod2ax) * (a * n) < relerr * sum5):
+                    break
+                n += 1
+        if y > -6:
+            expx2erfcxy = expx2 * faddeeva_re(y, erfcx_cc)
+        else:
+            expx2erfcxy = 2 * exp(y * y - x * x)
+        if (y > 5):  # imaginary terms cancel
+            sinxy = sin(x * y)
+            ret = (expx2erfcxy - c * y * sum1) * cos(2 * x * y) + (c * x * expx2) * sinxy * sincomplex(x * y, sinxy)
+        else:
+            xs = z.real
+            sinxy = sin(xs * y)
+            sin2xy = sin(2 * xs * y)
+            cos2xy = cos(2 * xs * y)
+            coef1 = expx2erfcxy - c * y * sum1
+            coef2 = c * xs * expx2
+            ret = coef1 * cos2xy + coef2 * sinxy * sincomplex(xs * y, sinxy)
+    else:  # x large: only sum3 & sum5 contribute (see above note)
+        if (isnan(x)):
+            return x
+        if (isnan(y)):
+            return y
+
+        ret = exp(-x * x)  # |y| < 1e-10, so we only need exp(-x*x) term
+        # (round instead of ceil as in original paper; note that x/a > 1 here)
+        n0 = floor(x / a + 0.5)  # sum in both directions, starting at n0
+        dx = a * n0 - x
+        sum3 = exp(-dx * dx) / (a2 * (n0 * n0) + y * y)
+        sum5 = a * n0 * sum3
+        exp1 = exp(4 * a * dx)
+        exp1dn = 1
+        dn = 1
+        while n0 - dn > 0:
+            #        for (dn = 1; n0 - dn > 0; ++dn):  # loop over n0-dn and n0+dn terms
+            np = n0 + dn
+            nm = n0 - dn
+            tp = exp(-sqr(a * dn + dx))
+            exp1dn *= exp1
+            tm = tp * exp1dn  # trick to get tm from tp
+            tp /= (a2 * (np * np) + y * y)
+            tm /= (a2 * (nm * nm) + y * y)
+            sum3 += tp + tm
+            sum5 += a * (np * tp + nm * tm)
+            if (a * (np * tp + nm * tm) < relerr * sum5):
+                return ret + (0.5 * c) * y * (sum2 + sum3)
+            dn += 1
+        while True:  # loop over n0+dn terms only (since n0-dn <= 0)
+            np = n0 + (dn + 1)
+            tp = exp(-sqr(a * dn + dx)) / (a2 * (np * np) + y * y)
+            sum3 += tp
+            sum5 += a * np * tp
+            if (a * np * tp < relerr * sum5):
+                return ret + (0.5 * c) * y * (sum2 + sum3)
+    return ret + (0.5 * c) * y * (sum2 + sum3)
+
+################################
+# Now for the model calls to the GPU functions
+
+@cuda.jit
+def clearflux_gpu(em, ab, cn):
+    idx = cuda.grid(1)
+    em[idx] = 0.0
+    ab[idx] = 1.0
+    cn[idx] = 0.0
+
+@cuda.jit
+def voigt_gpu(wave, p0, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shift_ang, ae, ct, model, cont):
+    # Get the CUDA index
+    idx = cuda.grid(1)
+    # Shift the wavelength
+    newwave = wave[idx] / (1.0 + shift_vel/299792.458)
+    newwave -= shift_ang
+    # Prepare voigt params
+    cold = 10.0**p0
+    zp1 = p1+1.0
+    wv = lam*1.0e-8
+    bl = p2*wv/2.99792458E5
+    a = gam*wv*wv/(3.76730313461770655E11*bl)
+    cns = wv*wv*fvl/(bl*2.002134602291006E12)
+    cne = cold*cns
+    ww = (newwave*1.0e-8)/zp1
+    v = wv*ww*((1.0/ww)-(1.0/wv))/bl
+    z = types.complex128(v + 1j * a)
+    tau = cne*faddeeva_real(z, erfcx_cc, expa2n2)
+    modval = math.exp(-1.0 * tau)
+    if ae == 0:
+        # Emission
+        model[idx] += modval
+        if ct == 1: cont += modval
+    else:
+        # Absorption
+        model[idx] *= modval
+        if ct == 1: cont *= modval
+
+
+################################

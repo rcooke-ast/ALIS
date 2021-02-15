@@ -1,10 +1,9 @@
 import numpy as np
+from numba import cuda
 from alis import almsgs
 from alis import alfunc_base
-#import pycuda.driver as cuda
-#import pycuda.autoinit
-#from pycuda.compiler import SourceModule
 msgs=almsgs.msgs()
+
 
 class Constant(alfunc_base.Base) :
     """
@@ -33,19 +32,6 @@ class Constant(alfunc_base.Base) :
         # Set the atomic data
         self._atomic = atomic
         if getinst: return
-
-    def GPU_kernal(self):
-        return SourceModule("""
-
-            __global__ void cnst(double *model, double *wave, double *params)
-            {
-            int idx = blockIdx.x + blockIdx.y*gridDim.x + threadIdx.x*gridDim.x*gridDim.y;
-            int pidx = blockIdx.y;
-
-            model[idx] = params[pidx];
-
-            }
-            """)
 
     def call_CPU(self, x, p, ae='em', mkey=None, ncpus=1):
         """
@@ -122,3 +108,25 @@ class Constant(alfunc_base.Base) :
         else: return params
 
 
+@cuda.jit
+def model_GPU(x, p):
+    """
+    Define the model here
+    """
+    return par[0]
+
+
+def call_GPU(x, p, ae=0):
+    """
+    Define the functional form of the model
+    --------------------------------------------------------
+    x  : array of wavelengths
+    p  : array of parameters for this model
+    ae : 0 = emission, 1 = absorption
+    --------------------------------------------------------
+    """
+    yout = np.zeros((p.shape[0],x.size))
+    for i in range(p.shape[0]):
+        yout[i,:] = model(p[i,:])
+    if ae == 0: return yout.sum(axis=0)
+    else: return yout.prod(axis=0)

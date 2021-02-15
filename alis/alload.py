@@ -403,18 +403,25 @@ def load_input(slf, filename=None, textstr=None, updateself=True):
         slf._argflag = argflag
     return parlines, datlines, modlines, lnklines
 
+
+def get_datadir(argflag):
+    prgname = argflag['run']['prognm']
+    prgn_spl = prgname.split('/')
+    fname = ""
+    for i in range(0,len(prgn_spl)-1): fname += prgn_spl[i]+"/"
+    fname += "data/"
+    return fname
+
+
 def load_atomic(slf):
     """
     Load the atomic transitions data
     """
     from astropy.io.votable import parse_single_table
 
-    prgname, atmname = slf._argflag['run']['prognm'], slf._argflag['run']['atomic']
+    fname = get_datadir(slf._argflag)
+    atmname = slf._argflag['run']['atomic']
     msgs.info("Loading atomic data", verbose=slf._argflag['out']['verbose'])
-    prgn_spl = prgname.split('/')
-    fname = ""
-    for i in range(0,len(prgn_spl)-1): fname += prgn_spl[i]+"/"
-    fname += "data/"
     # If the user specifies the atomic data file, make sure that it exists
     if os.path.exists(fname+atmname):
         msgs.info("Using atomic datafile:"+msgs.newline()+fname+atmname, verbose=slf._argflag['out']['verbose'])
@@ -468,7 +475,7 @@ def load_data(slf, datlines, data=None):
     slf._snipid=[]
     datopt = dict({'specid':[],'fitrange':[],'loadrange':[],'plotone':[],'nsubpix':[],'bintype':[],'columns':[],'systematics':[],'systmodule':[],'label':[],'yrange':[]})
     keywords = ['specid','fitrange','loadrange','systematics','systmodule','resolution','shift','columns','plotone','nsubpix','bintype','loadall','label','yrange']
-    colallow = np.array(['wave','flux','error','continuum','zerolevel','fitrange','loadrange','systematics','resolution'])
+    colallow = np.array(['wave','flux','error','wend','continuum','zerolevel','fitrange','loadrange','systematics','resolution'])
     columns  = np.array(['wave','flux','error'])
     systload = [None, 'continuumpoly']
     # Get all SpecIDs and check if input is correct
@@ -569,8 +576,8 @@ def load_data(slf, datlines, data=None):
             slf._snipid.append('None')
     # Prepare the data arrays
     snipnames, resn, shft, posnfull, posnfit, plotone = [], [], [], [], [], []
-    wavefull, fluxfull, fluefull, contfull, zerofull, systfull = [], [], [], [], [], []
-    wavefit, fluxfit, fluefit, contfit, zerofit = [], [], [], [], []
+    wavefull, fluxfull, fluefull, wendfull, contfull, zerofull, systfull = [], [], [], [], [], [], []
+    wavefit, fluxfit, fluefit, wendfit, contfit, zerofit = [], [], [], [], [], []
     for i in range(specid.size):
         datopt['plotone'].append([])
         datopt['columns'].append([])
@@ -586,6 +593,7 @@ def load_data(slf, datlines, data=None):
         snipnames.append([])
         posnfull.append([])
         wavefull.append( np.array([]) )
+        wendfull.append( np.array([]) )
         fluxfull.append( np.array([]) )
         fluefull.append( np.array([]) )
         contfull.append( np.array([]) )
@@ -595,6 +603,7 @@ def load_data(slf, datlines, data=None):
         shft.append( np.array([]) )
         posnfit.append([])
         wavefit.append( np.array([]) )
+        wendfit.append( np.array([]) )
         fluxfit.append( np.array([]) )
         fluefit.append( np.array([]) )
         contfit.append( np.array([]) )
@@ -606,7 +615,7 @@ def load_data(slf, datlines, data=None):
         if len(datlines[i].strip()) == 0 : continue # Nothing on a line
         nocoms = datlines[i].lstrip().split('#')[0] # Remove everything on a line after the first instance of a comment symbol: #
         if len(nocoms) == 0: continue # A comment line
-        wfe = dict({'wave':0, 'flux':1, 'error':2, 'continuum':-1, 'zerolevel':-1, 'systematics':-1, 'fitrange':-1, 'loadrange':-1, 'resolution':-1})
+        wfe = dict({'wave':0, 'flux':1, 'error':2, 'wend':-1, 'continuum':-1, 'zerolevel':-1, 'systematics':-1, 'fitrange':-1, 'loadrange':-1, 'resolution':-1})
         fitrange = 'all'
         linspl = nocoms.split()
         if data is None:
@@ -715,7 +724,7 @@ def load_data(slf, datlines, data=None):
             if slf._argflag['generate']['data']:
                 if os.path.exists(filename) and not slf._argflag['generate']['overwrite']:
                     msgs.info("Reading in the following file to generate data:"+msgs.newline()+filename,verbose=slf._argflag['out']['verbose'])
-                    wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin = load_datafile(filename, colspl, wfe, verbose=slf._argflag['out']['verbose'])
+                    wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin = load_datafile(filename, colspl, wfe, verbose=slf._argflag['out']['verbose'])
                 else:
                     if os.path.exists(filename) and slf._argflag['generate']['overwrite']:
                         msgs.warn("Overwriting the following file:"+msgs.newline()+filename,verbose=slf._argflag['out']['verbose'])
@@ -738,18 +747,21 @@ def load_data(slf, datlines, data=None):
                     if bntyp == 'km/s':
                         npix = 1.0+np.ceil(np.log10(lwavemax/lwavemin)/np.log10(1.0+slf._argflag['generate']['pixelsize']/299792.458))
                         wavein = lwavemin*(1.0+slf._argflag['generate']['pixelsize']/299792.458)**np.arange(npix)
+                        wendin = wavein[1]*(1.0+slf._argflag['generate']['pixelsize']/299792.458)**np.arange(npix)
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
                         contin, zeroin, systin, fitrin, loadin = np.ones(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     elif bntyp == 'A':
                         npix = 1.0 + np.ceil((lwavemax-lwavemin)/slf._argflag['generate']['pixelsize'])
                         wavein = lwavemin + slf._argflag['generate']['pixelsize']*np.arange(npix)
+                        wendin = wavein[1] + slf._argflag['generate']['pixelsize']*np.arange(npix)
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
                         contin, zeroin, systin, fitrin, loadin = np.ones(wavein.size), np.zeros(wavein.size), np.zeros(wavein.size), np.ones(wavein.size), np.ones(wavein.size)
                     elif bntyp == 'Hz':
                         npix = 1.0 + np.ceil((lwavemax - lwavemin) / slf._argflag['generate']['pixelsize'])
                         wavein = lwavemin + slf._argflag['generate']['pixelsize'] * np.arange(npix)
+                        wendin = wavein[0] + slf._argflag['generate']['pixelsize'] * np.arange(npix)
                         fluxin = np.zeros(wavein.size)
                         fluein = np.zeros(wavein.size)
                         contin, zeroin, systin, fitrin, loadin = np.ones(wavein.size), np.zeros(wavein.size), np.zeros(
@@ -758,13 +770,13 @@ def load_data(slf, datlines, data=None):
                         msgs.error("Sorry, I do not know the bintype: {0:s}".format(bntyp))
             # Is this a onefits file?
             elif slf._isonefits:
-                wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin = load_fits(slf._argflag['run']['modname'], colspl, wfe, verbose=slf._argflag['out']['verbose'], ext=datnum)
+                wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin = load_fits(slf._argflag['run']['modname'], colspl, wfe, verbose=slf._argflag['out']['verbose'], ext=datnum)
             # Has the user passed in their own data array?
             elif data is not None:
-                wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin = load_userdata(data, colspl, wfe, verbose=slf._argflag['out']['verbose'])
+                wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin = load_userdata(data, colspl, wfe, verbose=slf._argflag['out']['verbose'])
             # Otherwise, load the data from a file
             else:
-                wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin = load_datafile(filename, colspl, wfe, verbose=slf._argflag['out']['verbose'], datatype=slf._argflag['run']['datatype'])
+                wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin = load_datafile(filename, colspl, wfe, verbose=slf._argflag['out']['verbose'], datatype=slf._argflag['run']['datatype'])
         except:
             msgs.error("Error reading in file -"+msgs.newline()+filename)
         # Store the filename for later
@@ -844,6 +856,7 @@ def load_data(slf, datlines, data=None):
         posnfit[sind].append(wavemin)
         posnfit[sind].append(wavemax)
         wavefit[sind] = np.append(wavefit[sind], wavein[wf])
+        wendfit[sind] = np.append(wendfit[sind], wendin[wf])
         fluxfit[sind] = np.append(fluxfit[sind], fluxin[wf])
         fluefit[sind] = np.append(fluefit[sind], fluein[wf])
         contfit[sind] = np.append(contfit[sind], contin[wf])
@@ -851,6 +864,7 @@ def load_data(slf, datlines, data=None):
         # Put the full data in separate array
         posnfull[sind].append(wavefull[sind].size)
         wavefull[sind] = np.append(wavefull[sind], wavein[w])
+        wendfull[sind] = np.append(wendfull[sind], wendin[w])
         fluxfull[sind] = np.append(fluxfull[sind], fluxin[w])
         fluefull[sind] = np.append(fluefull[sind], fluein[w])
         contfull[sind] = np.append(contfull[sind], contin[w])
@@ -863,8 +877,8 @@ def load_data(slf, datlines, data=None):
     # Update the slf class with the loaded data
     slf._snipnames, slf._resn, slf._shft, slf._datlines, slf._specid, slf._datopt = snipnames, resn, shft, datlines, specid, datopt
     slf._posnfull, slf._posnfit = posnfull, posnfit
-    slf._wavefull, slf._fluxfull, slf._fluefull, slf._contfull, slf._zerofull, slf._systfull = wavefull, fluxfull, fluefull, contfull, zerofull, systfull
-    slf._wavefit, slf._fluxfit, slf._fluefit, slf._contfit, slf._zerofit = wavefit, fluxfit, fluefit, contfit, zerofit
+    slf._wavefull, slf._fluxfull, slf._fluefull, slf._wendfull, slf._contfull, slf._zerofull, slf._systfull = wavefull, fluxfull, fluefull, wendfull, contfull, zerofull, systfull
+    slf._wavefit, slf._fluxfit, slf._fluefit, slf._wendfit, slf._contfit, slf._zerofit = wavefit, fluxfit, fluefit, wendfit, contfit, zerofit
     msgs.info("Data loaded successfully",verbose=slf._argflag['out']['verbose'])
     return
 
@@ -884,6 +898,14 @@ def load_userdata(data, colspl, wfe, verbose=2):
     ncols = datain.shape[1]
     if len(colspl) > ncols:
         msgs.error("The data only have {0:d} columns. Have you specified too many".format(ncols)+msgs.newline()+"columns with the 'columns' keyword?")
+    # Read the ending wavelength data
+    if wfe['waveend'] != -1:
+        try:
+            wendin = datain[ucind['waveend'],:]
+        except:
+            msgs.warn("An ending wavelength was not provided as input", verbose=verbose)
+            wendin = np.zeros(wavein.size)
+    else: wendin = np.zeros(wavein.size)
     # Read the continuum data
     if wfe['continuum'] != -1:
         try:
@@ -925,7 +947,7 @@ def load_userdata(data, colspl, wfe, verbose=2):
             loadin = np.ones(wavein.size).astype(np.int32)
     else: loadin = np.ones(wavein.size).astype(np.int32)
     # Now return
-    return wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin
+    return wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin
 
 
 def load_datafile(filename, colspl, wfe, verbose=2, datatype="default"):
@@ -952,7 +974,7 @@ def load_ascii(filename, colspl, wfe, wfek, verbose=2):
 #	try:
 #		datain = np.loadtxt(filename, dtype=np.float64, usecols=usecols).transpose()
 #	except:
-    wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin = None, None, None, None, None, None, None, None
+    wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin = None, None, None, None, None, None, None, None, None
     for j in range(len(wfek)):
         if wfe[wfek[j]] == -1: continue
         try:
@@ -960,6 +982,7 @@ def load_ascii(filename, colspl, wfe, wfek, verbose=2):
             if   wfek[j] == 'wave':        wavein = onecol
             elif wfek[j] == 'flux':        fluxin = onecol
             elif wfek[j] == 'error':       fluein = onecol
+            elif wfek[j] == 'waveend':     wendin = onecol
             elif wfek[j] == 'continuum':   contin = onecol
             elif wfek[j] == 'zerolevel':   zeroin = onecol
             elif wfek[j] == 'systematics': systin = onecol
@@ -973,13 +996,14 @@ def load_ascii(filename, colspl, wfe, wfek, verbose=2):
                 msgs.info("The {0:s} will be output for the above file".format(wfek[j]), verbose=verbose)
     if wavein is None or fluxin is None or fluein is None:
         msgs.error("Wavelength, flux or error array was not provided for -"+msgs.newline()+filename)
+    if wendin is None: wendin = np.zeros(wavein.size)
     if contin is None: contin = np.ones(wavein.size)
     if zeroin is None: zeroin = np.zeros(wavein.size)
     if systin is None: systin = np.zeros(wavein.size)
     if fitrin is None: fitrin = np.ones(wavein.size).astype(np.int32)
     if loadin is None: loadin = np.ones(wavein.size).astype(np.int32)
     # Now return
-    return wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin
+    return wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin
 
 
 def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
@@ -1009,6 +1033,7 @@ def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
                 pixscalea=infile[ext].header['cdelt1']
                 wrng = np.arange(datain.shape[1])
                 wavein = 10.0**(((wrng - (crpixa - 1))*cdelta)+crvala)
+                wendin = 10.0**(((1+wrng - (crpixa - 1))*cdelta)+crvala)
                 fluxin, fluein = datain[wfe['flux'],:], datain[wfe['error'],:]
                 foundtype = True
             except:
@@ -1022,6 +1047,7 @@ def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
                 pixscalea=infile[ext].header['cdelt1']
                 wrng = np.arange(infile[ext].header['naxis1'])
                 wavein = 10.0**((wrng*cdelta)+crvala)
+                wendin = 10.0**(((wrng+1)*cdelta)+crvala)
                 fluxin = datain[:]
                 if os.path.exists(".".join(filename.split(".")[:-1])[:-1]+"e." + filename.split(".")[-1]):
                     reduxfn = ".".join(filename.split(".")[:-1])[:-1]+"e." + filename.split(".")[-1]
@@ -1045,6 +1071,15 @@ def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
     else: ncols = 1
     if len(colspl) > ncols and datatype.lower() not in ["hiresredux","hiredux"]:
         msgs.error("The following file -"+msgs.newline()+filename+msgs.newline()+"only has "+str(ncols)+" columns")
+    # Read in the ending wavelength
+    if wfe['waveend'] != -1:
+        try:
+            wendin = datain[wfe['waveend'],:].astype(np.float64)
+        except:
+            msgs.warn("An ending wavelength was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
+            msgs.info("The ending wavelength will not be considered", verbose=verbose)
+            wendin = np.zeros(wavein.size).astype(np.float64)
+    else: wendin = np.zeros(wavein.size).astype(np.float64)
     # Read in the continuum
     if wfe['continuum'] != -1:
         try:
@@ -1094,7 +1129,7 @@ def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
             loadin = np.ones(wavein.size).astype(np.float64)
     else: loadin = np.ones(wavein.size).astype(np.float64)
     # Now return
-    return wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin
+    return wavein, fluxin, fluein, wendin, contin, zeroin, systin, fitrin, loadin
 
 
 def load_model(slf, modlines, updateself=True):
@@ -1560,7 +1595,7 @@ def load_onefits(slf,loadname):
         msgs.error("Sorry - option {0:d} is not implemented yet".format(ans))
 
 
-def load_subpixels(slf, parin):
+def load_subpixels(slf, parin, use_waveend=False):
     nexbins = []
     modtyp=[[] for all in slf._posnfull]
     shind = np.where(np.array(slf._modpass['emab'])=='sh')[0][0]
@@ -1624,19 +1659,47 @@ def load_subpixels(slf, parin):
             if nexbins[sp][sn] > slf._argflag['run']['warn_subpix']: msgs.warn("sub-pixellation scale ({0:d}) has exceeded the warning level of: {1:d}".format(nexbins[sp][sn],slf._argflag['run']['warn_subpix']),verbose=slf._argflag['out']['verbose'])
             ll = slf._posnfull[sp][sn]
             lu = slf._posnfull[sp][sn+1]
-            binsize=get_binsize(slf._wavefull[sp][ll:lu], bintype=slf._datopt['bintype'][sp][sn], maxonly=False, verbose=slf._argflag['out']['verbose'])
-            binlen = 1.0/np.float64(nexbins[sp][sn])
-            if slf._datopt['bintype'][sp][sn] == "km/s":
-                interpwav = (1.0+((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis]/2.99792458E5))
-                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1)*interpwav).flatten()
-            elif slf._datopt['bintype'][sp][sn] == "A":
-                interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
-                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
-            elif slf._datopt['bintype'][sp][sn] == "Hz":
+            if use_waveend:
+                binsize = get_binsize(slf._wavefull[sp][ll:lu], bintype=slf._datopt['bintype'][sp][sn], maxonly=False,
+                                      waveend=slf._wendfull[sp][ll:lu],verbose=slf._argflag['out']['verbose'])
                 binlen = 1.0 / np.float64(nexbins[sp][sn])
-                interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
-                wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
-            else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
+                if slf._datopt['bintype'][sp][sn] == "km/s":
+                    # This is not quite correct, but it is very, very close.
+                    # It is incorrect because the average is taken in wavelength instead of velocity.
+                    interpwav = (1.0 + binsize[:, np.newaxis] * binlen / 299792.458) ** np.arange(nexbins[sp][sn] + 1)
+                    wavs = (self._wavefull[sp][ll:lu].reshape(lu-ll, 1)*interpwav)
+                    wavs = 0.5 * (wavs[:, 1:] + wavs[:, :-1]).flatten()
+                elif slf._datopt['bintype'][sp][sn] == "A":
+                    msgs.error("Angstrom bintype is not implemented with waveend")
+                    # interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
+                    # wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
+                elif slf._datopt['bintype'][sp][sn] == "Hz":
+                    msgs.error("Frequency bintype is not implemented with waveend")
+                    # binlen = 1.0 / np.float64(nexbins[sp][sn])
+                    # interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
+                    # wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
+                else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
+            else:
+                binsize=get_binsize(slf._wavefull[sp][ll:lu], bintype=slf._datopt['bintype'][sp][sn], maxonly=False, verbose=slf._argflag['out']['verbose'])
+                binlen = 1.0/np.float64(nexbins[sp][sn])
+                if slf._datopt['bintype'][sp][sn] == "km/s":
+                    # This is the old version which takes the wavefull values to be in the centre of the pixel, which is not quite correct
+                    # interpwav = (1.0+((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis]/2.99792458E5))
+                    # wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1)*interpwav).flatten()
+
+                    # This is still not quite correct, but it is very, very close.
+                    # It is incorrect because the average is taken in wavelength instead of velocity.
+                    interpwav = (1.0 + binsize[:, np.newaxis] * binlen / 299792.458) ** np.arange(nexbins[sp][sn] + 1)
+                    wavs = (self._wavefull[sp][ll:lu].reshape(lu-ll, 1)*interpwav)
+                    wavs = 0.5 * (wavs[:, 1:] + wavs[:, :-1]).flatten()
+                elif slf._datopt['bintype'][sp][sn] == "A":
+                    interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
+                    wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
+                elif slf._datopt['bintype'][sp][sn] == "Hz":
+                    binlen = 1.0 / np.float64(nexbins[sp][sn])
+                    interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
+                    wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
+                else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
             wavespx[sp] = np.append(wavespx[sp], wavs)
             if np.count_nonzero(1.0-slf._contfull[sp][ll:lu]) == 0: # No continuum is provided -- no interpolation is necessary
@@ -1750,17 +1813,27 @@ def load_par_influence(slf, parin):
     return [opinfl,pinfl]
 
 
-def get_binsize(wave, bintype="km/s", maxonly=True, verbose=2):
+def get_binsize(wave, bintype="km/s", waveend=None, maxonly=True, verbose=2):
     binsize  = np.zeros((2,wave.size))
-    binsizet = wave[1:] - wave[:-1]
-    if bintype == "km/s": binsizet *= 2.99792458E5/wave[:-1]
-    elif bintype == "A" : pass
-    elif bintype == "Hz" : pass
-    else: msgs.bug("Bintype "+bintype+" is unknown",verbose=verbose)
-    maxbin  = np.max(binsizet)
-    binsize[0,:-1], binsize[1,1:] = binsizet, binsizet
-    binsize[0,-1], binsize[1,0] = maxbin, maxbin
-    binsize = binsize.min(0)
+    if waveend is None:
+        binsizet = wave[1:] - wave[:-1]
+        if bintype == "km/s": binsizet *= 2.99792458E5/wave[:-1]
+        elif bintype == "A" : pass
+        elif bintype == "Hz" : pass
+        else: msgs.bug("Bintype "+bintype+" is unknown",verbose=verbose)
+        maxbin  = np.max(binsizet)
+        binsize[0,:-1], binsize[1,1:] = binsizet, binsizet
+        binsize[0,-1], binsize[1,0] = maxbin, maxbin
+        binsize = binsize.min(0)
+    else:
+        binsizet = waveend-wave
+        if bintype == "km/s": binsizet *= 2.99792458E5 / wave
+        elif bintype == "A": pass
+        elif bintype == "Hz": pass
+        else: msgs.bug("Bintype " + bintype + " is unknown", verbose=verbose)
+        maxbin = np.max(binsizet)
+        binsize[0,:], binsize[1,:] = binsizet, binsizet
+        binsize = binsize.min(0)
     if maxonly: return np.max(binsize)
     else: return binsize
 
