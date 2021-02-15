@@ -1811,9 +1811,9 @@ class alfit(object):
                 for ea in range(len(pararr[sp][sn])):
                     if ea%2 == 0: aetag = 'em'
                     else: aetag = 'ab'
-                    for md in range(0,len(pararr[sp][sn][ea])):
+                    for md in range(0, len(pararr[sp][sn][ea])):
                         mtyp = modtyp[sp][sn][ea][md]
-                        if mtyp in ["variable","random"]: continue
+                        if mtyp in ["variable", "random"]: continue
                         if len(pararr[sp][sn][ea][md]) == 0: continue # OR PARAMETER NOT BEING VARIED!!!
                         # Multiprocess here and send to either the CPU or GPU
 #						if self.alisdict._argflag['run']['ngpus'] != 0:
@@ -1828,15 +1828,11 @@ class alfit(object):
 #								model[sp][ll:lu] *= mout.prod(1)
 #						else:
                         #mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md], ae=aetag, mkey=keyarr[sp][sn][ea][md])
-                        for mm in range(0,pararr[sp][sn][ea][md].shape[0]):
-                            if mtyp == "voigt":
-                                gpu_voigt(parstr, gpustr, pararr[sp][sn][ea][md][mm,:].reshape(1, -1),
-                                          ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]],
-                                          shift_vel=shift_vel, shift_ang=shift_ang,
-                                          cont=keyarr[sp][sn][ea][md][mm]['continuum'])
-                            else:
-                                msgs.error("Function not implemented: {0:s}".format(mtyp))
-
+                        for mm in range(0, pararr[sp][sn][ea][md].shape[0]):
+                            self.gpu_prepare(mtyp, parstr, gpustr, pin,
+                                             ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]],
+                                             shift_vel=shift_vel, shift_ang=shift_ang,
+                                             cont=keyarr[sp][sn][ea][md][mm]['continuum'], ncpus=1)
                             # mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md][mm,:].reshape(1,-1), ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]])
                             # if ea%2 == 0: # emission
                             #     modelem[sp][ll:lu] += mout.copy()
@@ -1848,10 +1844,15 @@ class alfit(object):
 #                         mcont[sp][ll:lu] = modelem[sp][ll:lu].copy()
 
         # Now pull the data back from the GPU
-
-
-
-        
+        for sp in range(0, len(pos)):
+            for sn in range(len(pos[sp]) - 1):
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
+                ll = posnspx[sp][sn]
+                lu = posnspx[sp][sn+1]
+                modemstr = "modelem_" + parstr + gpustr
+                modabstr = "modelem_" + parstr + gpustr
+                modelem[sp][ll:lu] = self.gpu_dict[modemstr].copy_to_host()
+                modelab[sp][ll:lu] = self.gpu_dict[modabstr].copy_to_host()
 
         # Convolve the data with the appropriate instrumental profile
         stf, enf = [0 for all in pos], [0 for all in pos]
@@ -2219,15 +2220,8 @@ class alfit(object):
     # Start of all GPU functions
     # All of the following MUST be prefixed with "gpu_
 
-    def gpu_clearflux(self, parstr, gpustr):
-        blocks = self.gpu_dict["blocks_" + gpustr]
-        threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
-        clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
-                                                 self.gpu_dict["modelab_" + parstr + gpustr],
-                                                 self.gpu_dict["modcont_" + parstr + gpustr])
-
-    def gpu_voigt(self, parstr, gpustr, pin, ae='ab', mkey=None, shift_vel=0.0, shift_ang=0.0, cont=False, ncpus=1):
-        # Emission of absorption, and continuum
+    def gpu_prepare(self, funccall, parstr, gpustr, pin, ae='ab', mkey=None, shift_vel=0.0, shift_ang=0.0, cont=False, ncpus=1):
+        # Emission or absorption, and continuum
         aeint = 0
         if ae == 'ab': aeint = 0
         ctint = 0
@@ -2238,6 +2232,31 @@ class alfit(object):
         # Get GPU stuff
         blocks = self.gpu_dict["blocks_" + gpustr]
         threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
+        if funccall == "constant":
+            gpu_constant(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
+                         shift_vel=shift_vel, shift_ang=shift_ang,
+                         aeint=aeint, ctint=ctint)
+        elif funccall == "voigt":
+            gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
+                      shift_vel=shift_vel, shift_ang=shift_ang,
+                      aeint=aeint, ctint=ctint)
+        else:
+            msgs.error("Function not implemented for GPU analysis: {0:s}".format(funccall))
+
+    def gpu_clearflux(self, parstr, gpustr):
+        blocks = self.gpu_dict["blocks_" + gpustr]
+        threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
+        clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
+                                                 self.gpu_dict["modelab_" + parstr + gpustr],
+                                                 self.gpu_dict["modcont_" + parstr + gpustr])
+
+    def gpu_constant(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
+        # Make the call
+        constant_gpu[blocks, threads_per_block](pin[0],
+                                                aeint, ctint,
+                                                self.gpu_dict[modelstr], self.gpu_dict[modcont])
+
+    def gpu_voigt(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
         # Make the call
         voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
                                              pin[0], pin[1], pin[2], pin[3], pin[4], pin[5],
@@ -2490,6 +2509,20 @@ def clearflux_gpu(em, ab, cn):
     em[idx] = 0.0
     ab[idx] = 1.0
     cn[idx] = 0.0
+
+@cuda.jit
+def constant_gpu(p0, ae, ct, model, cont):
+    # Get the CUDA index
+    idx = cuda.grid(1)
+    if ae == 0:
+        # Emission
+        model[idx] += p0
+        if ct == 1: cont += p0
+    else:
+        # Absorption
+        model[idx] *= p0
+        if ct == 1: cont *= p0
+
 
 @cuda.jit
 def voigt_gpu(wave, p0, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shift_ang, ae, ct, model, cont):
