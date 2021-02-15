@@ -1983,7 +1983,6 @@ class alfit(object):
                 keyarr[sp].append([])
                 modtyp[sp].append([])
                 for i in range(0,len(self.alisdict._modpass['mtyp'])):
-                    print(self.alisdict._modpass['mtyp'][i])
                     if self.alisdict._modpass['emab'][i] in ['cv','sh']: continue # This is a convolution or a shift (not emission or absorption)
                     if self.alisdict._specid[sp] not in self.alisdict._modpass['mkey'][i]['specid']: continue # Don't apply this model to this data
                     if self.alisdict._modpass['emab'][i] == 'zl': # Get the parameters of the zerolevel

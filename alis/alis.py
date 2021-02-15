@@ -272,9 +272,10 @@ class ClassMain:
         else:
             msgs.info("Commencing chi-squared minimisation",verbose=self._argflag['out']['verbose'])
             m = alfit(self, self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
-                        verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
-                        atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                        ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
+                      verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
+                      atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
+                      ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'],
+                      ngpus=self._argflag['run']['ngpus'])
             self._tend=time.time()
             niter=m.niter
             if (m.status <= 0):
