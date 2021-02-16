@@ -453,8 +453,8 @@ class alfit(object):
                     wave = wavespx[sp][ll:lu]
                     gpustr = "{0:d}_{1:d}".format(sp, sn)
                     self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave.copy())
-                    self.gpu_dict["minx_" + gpustr] = np.min(wave)
-                    self.gpu_dict["maxx_" + gpustr] = np.max(wave)
+                    self.gpu_dict["minx_" + gpustr] = numpy.min(wave)
+                    self.gpu_dict["maxx_" + gpustr] = numpy.max(wave)
                     self.gpu_dict["blocks_" + gpustr] = 1 + wave.size // numdiv
                     self.gpu_dict["thr/blk_" + gpustr] = numdiv
                     # Include an emission & absorption array for each free parameter of the model
