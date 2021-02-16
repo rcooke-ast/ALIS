@@ -2242,17 +2242,17 @@ class alfit(object):
         blocks = self.gpu_dict["blocks_" + gpustr]
         threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
         if funccall == "constant":
-            gpu_constant(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
-                         shift_vel=shift_vel, shift_ang=shift_ang,
-                         aeint=aeint, ctint=ctint)
-        elif funccall == "voigt":
-            gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
-                      shift_vel=shift_vel, shift_ang=shift_ang,
-                      aeint=aeint, ctint=ctint)
+            self.gpu_constant(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
+                              shift_vel=shift_vel, shift_ang=shift_ang,
+                              aeint=aeint, ctint=ctint)
         elif funccall == "legendre":
-            gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
-                      shift_vel=shift_vel, shift_ang=shift_ang,
-                      aeint=aeint, ctint=ctint)
+            self.gpu_legendre(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
+                              shift_vel=shift_vel, shift_ang=shift_ang,
+                              aeint=aeint, ctint=ctint)
+        elif funccall == "voigt":
+            self.gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
+                           shift_vel=shift_vel, shift_ang=shift_ang,
+                           aeint=aeint, ctint=ctint)
         else:
             msgs.error("Function not implemented for GPU analysis: {0:s}".format(funccall))
 
