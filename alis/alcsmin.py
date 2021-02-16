@@ -2557,11 +2557,11 @@ def constant_gpu(p0, ae, ct, model, cont):
     if ae == 0:
         # Emission
         model[idx] += p0
-        if ct == 1: cont += p0
+        if ct == 1: cont[idx] += p0
     else:
         # Absorption
         model[idx] *= p0
-        if ct == 1: cont *= p0
+        if ct == 1: cont[idx] *= p0
 
 @cuda.jit
 def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
@@ -2594,11 +2594,11 @@ def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
     if ae == 0:
         # Emission
         model[idx] += modval
-        if ct == 1: cont += modval
+        if ct == 1: cont[idx] += modval
     else:
         # Absorption
         model[idx] *= modval
-        if ct == 1: cont *= modval
+        if ct == 1: cont[idx] *= modval
 
 
 @cuda.jit
@@ -2624,11 +2624,11 @@ def voigt_gpu(wave, p0, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shi
     if ae == 0:
         # Emission
         model[idx] += modval
-        if ct == 1: cont += modval
+        if ct == 1: cont[idx] += modval
     else:
         # Absorption
         model[idx] *= modval
-        if ct == 1: cont *= modval
+        if ct == 1: cont[idx] *= modval
 
 
 ################################
