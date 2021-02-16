@@ -434,7 +434,7 @@ class alfit(object):
             return
 
         # If doing a GPU run, check that all functions are GPU enabled
-        self.gpu_dict = None
+        self.gpu_dict = dict()
         if ngpus is not None:
             self.check_gpu_funcs()
             self.gpurun = True
