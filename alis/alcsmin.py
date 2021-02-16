@@ -2272,7 +2272,7 @@ class alfit(object):
                                                 self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
     def gpu_legendre(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
-        p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 = pin[0], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 = pin[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         for m in range(1, len(pin)):
             if m == 1: p1 = pin[m]
             elif m == 2: p2 = pin[m]
