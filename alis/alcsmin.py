@@ -2231,10 +2231,12 @@ class alfit(object):
         # Emission or absorption, and continuum
         aeint = 0
         if ae == 'ab': aeint = 0
+        elif ae != 'em':
+            msgs.error("Cannot prepare the data for the GPU - ae tag is set to: {0:s}".format(ae))
         ctint = 0
         if cont: ctint = 1
         # Grab model values
-        modelstr = "model{0:s}_".format(aetag) + parstr + gpustr
+        modelstr = "model{0:s}_".format(ae) + parstr + gpustr
         modcont = "modcont_" + parstr + gpustr
         # Get GPU stuff
         blocks = self.gpu_dict["blocks_" + gpustr]
