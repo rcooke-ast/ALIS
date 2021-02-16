@@ -2256,6 +2256,9 @@ class alfit(object):
                                                  self.gpu_dict["modelab_" + parstr + gpustr],
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
 
+    def gpu_Ashift(self):
+        pass
+
     def gpu_constant(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
         constant_gpu[blocks, threads_per_block](pin[0],
                                                 aeint, ctint,
