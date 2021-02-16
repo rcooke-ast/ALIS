@@ -444,7 +444,8 @@ class alfit(object):
                 msgs.warn("Cannot renew subpixels during a GPU run:" +msgs.newline()+
                           "once your fit is converged, rerun with the best-fitting parameters if subpixels are important")
             msgs.info("Generating subpixels based on input parameters")
-            wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, p) # recalculate the sub-pixellation of the spectrum
+            # Calculate the sub-pixellation of the spectrum
+            wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, xall.copy())
             for sp in range(len(posnspx)):
                 for sn in range(len(posnspx[sp])-1):
                     ll = posnspx[sp][sn]
