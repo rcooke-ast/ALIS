@@ -2249,6 +2249,10 @@ class alfit(object):
             gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
                       shift_vel=shift_vel, shift_ang=shift_ang,
                       aeint=aeint, ctint=ctint)
+        elif funccall == "legendre":
+            gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
+                      shift_vel=shift_vel, shift_ang=shift_ang,
+                      aeint=aeint, ctint=ctint)
         else:
             msgs.error("Function not implemented for GPU analysis: {0:s}".format(funccall))
 
