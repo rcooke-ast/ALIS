@@ -2284,6 +2284,9 @@ class alfit(object):
                                                 maxx, minx, shift_vel, shift_ang,
                                                 aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
+    def gpu_vfwhm(self):
+        pass
+
     def gpu_voigt(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
         voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
                                              pin[0], pin[1], pin[2], pin[3], pin[4], pin[5],
