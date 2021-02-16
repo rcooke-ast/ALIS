@@ -451,7 +451,9 @@ class alfit(object):
                     lu = posnspx[sp][sn+1]
                     wave = wavespx[sp][ll:lu]
                     gpustr = "{0:d}_{1:d}".format(sp, sn)
-                    self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave)
+                    self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave.copy())
+                    self.gpu_dict["minx_" + gpustr] = np.min(wave)
+                    self.gpu_dict["maxx_" + gpustr] = np.max(wave)
                     self.gpu_dict["blocks_" + gpustr] = 1 + wave.size // numdiv
                     self.gpu_dict["thr/blk_" + gpustr] = numdiv
                     # Include an emission & absorption array for each free parameter of the model
@@ -2255,13 +2257,34 @@ class alfit(object):
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
 
     def gpu_constant(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
-        # Make the call
         constant_gpu[blocks, threads_per_block](pin[0],
                                                 aeint, ctint,
                                                 self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
+    def gpu_legendre(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
+        p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 = pin[0], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+        for m in range(1, len(pin)):
+            if m == 1: p1 = pin[m]
+            elif m == 2: p2 = pin[m]
+            elif m == 3: p3 = pin[m]
+            elif m == 4: p4 = pin[m]
+            elif m == 5: p5 = pin[m]
+            elif m == 6: p6 = pin[m]
+            elif m == 7: p7 = pin[m]
+            elif m == 8: p8 = pin[m]
+            elif m == 9: p9 = pin[m]
+            elif m == 10: p10 = pin[m]
+            else:
+                msgs.bug("Legendre polynomials of order 11 and above are not implemented")
+                sys.exit()
+        minx = self.gpu_dict["minx_" + gpustr]
+        maxx = self.gpu_dict["maxx_" + gpustr]
+        legendre_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
+                                                p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
+                                                maxx, minx, shift_vel, shift_ang,
+                                                aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
+
     def gpu_voigt(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
-        # Make the call
         voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
                                              pin[0], pin[1], pin[2], pin[3], pin[4], pin[5],
                                              self.gpu_dict["erfcx_cc"], self.gpu_dict["expa2n2"],
@@ -2526,6 +2549,43 @@ def constant_gpu(p0, ae, ct, model, cont):
         # Absorption
         model[idx] *= p0
         if ct == 1: cont *= p0
+
+@cuda.jit
+def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
+                 maxx, minx, shift_vel, shift_ang, ae, ct, model, cont):
+    # Get the CUDA index
+    idx = cuda.grid(1)
+    # Shift the wavelength
+    x = wave[idx] / (1.0 + shift_vel/299792.458)
+    x -= shift_ang
+    # Shift the minimum and maximum values
+    mxx = maxx / (1.0 + shift_vel/299792.458)
+    mxx -= shift_ang
+    mnx = minx / (1.0 + shift_vel/299792.458)
+    mnx -= shift_ang
+    # Rescale
+    xt = 2.0 * (x - mnx) / (mxx - mnx) - 1.0
+    # Generate model
+    modval = p0
+    modval += p1 * (xt)
+    modval += p2 * (1.5 * xt ** 2 - 0.5)
+    modval += p3 * (2.5 * xt ** 3 - 1.5 * xt)
+    modval += p4 * (35.0 * xt ** 4 - 30.0 * xt ** 2 + 3.0) / 8.0
+    modval += p5 * (63.0 * xt ** 5 - 70.0 * xt ** 3 + 15.0 * xt) / 8.0
+    modval += p6 * (231.0 * xt ** 6 - 315.0 * xt ** 4 + 105.0 * xt ** 2 - 5.0) / 16.0
+    modval += p7 * (429.0 * xt ** 7 - 693.0 * xt ** 5 + 315.0 * xt ** 3 - 35.0 * xt) / 16.0
+    modval += p8 * (6435.0 * xt ** 8 - 12012.0 * xt ** 6 + 6930.0 * xt ** 4 - 1260.0 * xt ** 2 + 35.0) / 128.0
+    modval += p9 * (12155.0 * xt ** 9 - 25740.0 * xt ** 7 + 18018.0 * xt ** 5 - 4620.0 * xt ** 3 + 315.0 * xt) / 128.0
+    modval += p10 * (46189.0 * xt ** 10 - 109395.0 * xt ** 8 + 90090.0 * xt ** 6 - 30030.0 * xt ** 4 + 3465.0 * xt ** 2 - 63.0) / 256.0
+    # Emission/Absorption
+    if ae == 0:
+        # Emission
+        model[idx] += modval
+        if ct == 1: cont += modval
+    else:
+        # Absorption
+        model[idx] *= modval
+        if ct == 1: cont *= modval
 
 
 @cuda.jit
