@@ -34,7 +34,7 @@ RJC: This is a modified version of MPFIT, which allows CPU multiprocessing
 from math import cos, sin, floor, exp, copysign, nan, inf, isnan, isinf
 import math
 from numba import cuda
-from numba import types
+from numba import types as nbtypes
 # Needed by all functions
 import copy
 import numpy
@@ -2331,7 +2331,7 @@ def erfcx_y100(y100, erfcx_cc):
     if iy100 == 100:
         return 1.0
     else:
-        t = 2.0 * y100 - (2 * types.float32(iy100) + 1.0)
+        t = 2.0 * y100 - (2 * nbtypes.float32(iy100) + 1.0)
         return erfcx_cc[iy100, 0] + (erfcx_cc[iy100, 1] + (erfcx_cc[iy100, 2] + (erfcx_cc[iy100, 3] + (
                     erfcx_cc[iy100, 4] + (erfcx_cc[iy100, 5] + erfcx_cc[iy100, 6] * t) * t) * t) * t) * t) * t
 
@@ -2618,7 +2618,7 @@ def voigt_gpu(wave, p0, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shi
     cne = cold*cns
     ww = (newwave*1.0e-8)/zp1
     v = wv*ww*((1.0/ww)-(1.0/wv))/bl
-    z = types.complex128(v + 1j * a)
+    z = nbtypes.complex128(v + 1j * a)
     tau = cne*faddeeva_real(z, erfcx_cc, expa2n2)
     modval = math.exp(-1.0 * tau)
     if ae == 0:
