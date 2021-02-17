@@ -1281,10 +1281,10 @@ class alfit(object):
         for j in range(n):
             if numpy.abs(dside[ifree[j]]) <= 1:
                 # COMPUTE THE ONE-SIDED DERIVATIVE
-                async_results.append(self.funcderiv(fcn,fvec,functkw,j,xall,ifree[j],h[j],emab,True))
+                async_results.append(self.funcderiv(fvec,functkw,j,xall,ifree[j],h[j],emab,True))
             else:
                 # COMPUTE THE TWO-SIDED DERIVATIVE
-                async_results.append(self.funcderiv(fcn,fvec,functkw,j,xall,ifree[j],h[j],emab,False))
+                async_results.append(self.funcderiv(fvec,functkw,j,xall,ifree[j],h[j],emab,False))
         for j in range(n):
             getVal = async_results[j]
             if getVal == None: return None
