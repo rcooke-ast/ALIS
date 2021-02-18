@@ -2310,9 +2310,6 @@ class alfit(object):
         else:
             cold = pin[0]
         # Now make the call
-        print("----")
-        print(cold, pin[1], pin[2], pin[3], pin[4], pin[5])
-        print(shift_vel, shift_ang, aeint, ctint, frint)
         voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
                                              cold, pin[1], pin[2], pin[3], pin[4], pin[5],
                                              self.gpu_dict["erfcx_cc"], self.gpu_dict["expa2n2"],
@@ -2621,7 +2618,7 @@ def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, s
     # Get the CUDA index
     idx = cuda.grid(1)
     # Check for frequency or wavelength
-    if frint == 1:
+    if fr == 1:
         wavein = 1.0E10 * 299792458.0 / wave[idx]
         wv = 29979245800.0 / lam
     else:
