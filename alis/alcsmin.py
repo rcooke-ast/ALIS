@@ -2234,7 +2234,7 @@ class alfit(object):
     def gpu_prepare(self, funccall, parstr, gpustr, pin, ae='ab', mkey=None, shift_vel=0.0, shift_ang=0.0, cont=False, ncpus=1):
         # Emission or absorption, and continuum
         aeint = 0
-        if ae == 'ab': aeint = 0
+        if ae == 'ab': aeint = 1
         elif ae != 'em':
             msgs.error("Cannot prepare the data for the GPU - ae tag is set to: {0:s}".format(ae))
         ctint = 0
