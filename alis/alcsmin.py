@@ -1834,7 +1834,7 @@ class alfit(object):
                         #mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md], ae=aetag, mkey=keyarr[sp][sn][ea][md])
                         for mm in range(0, pararr[sp][sn][ea][md].shape[0]):
                             self.gpu_prepare(mtyp, parstr, gpustr, pararr[sp][sn][ea][md][mm,:],
-                                             ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]],
+                                             ae=aetag, mkey=keyarr[sp][sn][ea][md][mm],
                                              shift_vel=shift_vel, shift_ang=shift_ang,
                                              cont=keyarr[sp][sn][ea][md][mm]['continuum'], ncpus=1)
                             # mout = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md][mm,:].reshape(1,-1), ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]])
