@@ -438,7 +438,7 @@ class alfit(object):
         if ngpus is not None:
             self.check_gpu_funcs()
             self.gpurun = True
-            numdiv = 16  # should be power of 2
+            numdiv = 16  # should be a power of 2
             # If we've made it this far, let's pass some data over to the GPU to speed up the minimisation process
             if self.alisdict._argflag['run']['renew_subpix']:
                 msgs.warn("Cannot renew subpixels during a GPU run:" +msgs.newline()+
@@ -1855,8 +1855,10 @@ class alfit(object):
                 lu = posnspx[sp][sn+1]
                 modemstr = "modelem_" + parstr + gpustr
                 modabstr = "modelab_" + parstr + gpustr
+                modcont = "modcont_" + parstr + gpustr
                 modelem[sp][ll:lu] = self.gpu_dict[modemstr].copy_to_host()
                 modelab[sp][ll:lu] = self.gpu_dict[modabstr].copy_to_host()
+                mcont[sp][ll:lu] = self.gpu_dict[modcont].copy_to_host()
 
         # TODO :: Once this works to here, we should implement the convolution and
         # zerolevel corrections into GPU, and during the chi-squared, only return
@@ -2253,7 +2255,7 @@ class alfit(object):
                               aeint=aeint, ctint=ctint)
         elif funccall == "voigt":
             self.gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
-                           shift_vel=shift_vel, shift_ang=shift_ang,
+                           shift_vel=shift_vel, shift_ang=shift_ang, karr=mkey,
                            aeint=aeint, ctint=ctint)
         else:
             msgs.error("Function not implemented for GPU analysis: {0:s}".format(funccall))
@@ -2299,12 +2301,23 @@ class alfit(object):
     def gpu_vfwhm(self):
         pass
 
-    def gpu_voigt(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
+    def gpu_voigt(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, karr=None, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
+        # Prepare the parameters
+        frint = 0
+        if karr['freq']: frint = 1
+        if karr['logN']:
+            cold = 10.0 ** pin[0]
+        else:
+            cold = pin[0]
+        # Now make the call
+        print("----")
+        print(cold, pin[1], pin[2], pin[3], pin[4], pin[5])
+        print(shift_vel, shift_ang, aeint, ctint, frint)
         voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
-                                             pin[0], pin[1], pin[2], pin[3], pin[4], pin[5],
+                                             cold, pin[1], pin[2], pin[3], pin[4], pin[5],
                                              self.gpu_dict["erfcx_cc"], self.gpu_dict["expa2n2"],
                                              shift_vel, shift_ang,
-                                             aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
+                                             aeint, ctint, frint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
 
 class machar:
@@ -2604,16 +2617,30 @@ def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
 
 
 @cuda.jit
-def voigt_gpu(wave, p0, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shift_ang, ae, ct, model, cont):
+def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shift_ang, ae, ct, fr, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
+    # Check for frequency or wavelength
+    if frint == 1:
+        wavein = 1.0E10 * 299792458.0 / wave[idx]
+        wv = 29979245800.0 / lam
+    else:
+        wavein = wave[idx]
+        wv = lam * 1.0e-8
+    # zp1 = par[1] + 1.0
+    # bl = par[2] * wv / 2.99792458E5
+    # a = par[5] * wv * wv / (3.76730313461770655E11 * bl)
+    # cns = wv * wv * par[4] / (bl * 2.002134602291006E12)
+    # cne = cold * cns
+    # ww = (wavein * 1.0e-8) / zp1
+    # v = wv * ww * ((1.0 / ww) - (1.0 / wv)) / bl
+    # tau = cne * wofz(v + 1j * a).real
+
     # Shift the wavelength
-    newwave = wave[idx] / (1.0 + shift_vel/299792.458)
+    newwave = wavein / (1.0 + shift_vel/299792.458)
     newwave -= shift_ang
     # Prepare voigt params
-    cold = 10.0**p0
     zp1 = p1+1.0
-    wv = lam*1.0e-8
     bl = p2*wv/2.99792458E5
     a = gam*wv*wv/(3.76730313461770655E11*bl)
     cns = wv*wv*fvl/(bl*2.002134602291006E12)
