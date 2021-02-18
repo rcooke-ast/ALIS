@@ -1854,7 +1854,7 @@ class alfit(object):
                 ll = posnspx[sp][sn]
                 lu = posnspx[sp][sn+1]
                 modemstr = "modelem_" + parstr + gpustr
-                modabstr = "modelem_" + parstr + gpustr
+                modabstr = "modelab_" + parstr + gpustr
                 modelem[sp][ll:lu] = self.gpu_dict[modemstr].copy_to_host()
                 modelab[sp][ll:lu] = self.gpu_dict[modabstr].copy_to_host()
 
