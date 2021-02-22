@@ -270,6 +270,8 @@ class ClassMain:
                     null=input(msgs.input()+"Press enter to view the fits -")
                     alplot.plot_showall()
         else:
+            if self._argflag['run']['ngpus'] is not None:
+                msgs.info("Performing a GPU accelerated analysis")
             msgs.info("Commencing chi-squared minimisation",verbose=self._argflag['out']['verbose'])
             m = alfit(self, self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                       verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
