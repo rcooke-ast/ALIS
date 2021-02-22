@@ -2293,8 +2293,8 @@ class alfit(object):
         if modelem is not None: get_em = True
         if modelab is not None: get_ab = True
         if mcont is not None: get_cont = True
-        for sp in range(0, len(pos)):
-            for sn in range(len(pos[sp]) - 1):
+        for sp in range(0, len(posnspx)):
+            for sn in range(len(posnspx[sp]) - 1):
                 gpustr = "{0:d}_{1:d}".format(sp, sn)
                 ll = posnspx[sp][sn]
                 lu = posnspx[sp][sn+1]
