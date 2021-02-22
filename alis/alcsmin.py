@@ -1941,7 +1941,7 @@ class alfit(object):
 #		if output == 0: return modcvf
         if output == 0:
             if getemab:
-                modelem, modelab = self.gpu_getemab(posnspx, modelem=modelem, modelab=modelab)
+                modelem, modelab = self.gpu_getemab(parstr, posnspx, modelem=modelem, modelab=modelab)
                 return modcvf, [modelem, modelab]
             else:
                 return modcvf
@@ -2285,7 +2285,7 @@ class alfit(object):
                                                  self.gpu_dict["modelab_" + parstr + gpustr],
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
 
-    def gpu_getemab(self, posnspx, modelem=None, modelab=None, mcont=None):
+    def gpu_getemab(self, parstr, posnspx, modelem=None, modelab=None, mcont=None):
         # Pull the data back from the GPU
         get_em = False
         get_ab = False
