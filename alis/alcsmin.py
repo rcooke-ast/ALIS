@@ -2705,7 +2705,7 @@ def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
 
 
 @cuda.jit
-def vfwhm_gpu(wave, sigd, shift_vel, shift_ang, modem, modab, model, cont)
+def vfwhm_gpu(wave, sigd, shift_vel, shift_ang, modem, modab, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
     wavein = wave[idx]
