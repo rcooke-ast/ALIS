@@ -435,7 +435,7 @@ class alfit(object):
 
         # If doing a GPU run, check that all functions are GPU enabled
         self.gpu_dict = dict()
-        if ngpus is not None:
+        if ngpus is not None and ngpus != 0:
             self.check_gpu_funcs()
             self.gpurun = True
             numdiv = 16  # should be a power of 2
