@@ -458,9 +458,9 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     else:
         mins = 60.0*info[0]
         if mins >= 1.0:
-            prestringA += "#   Running Time (mins)  = {0:f}\n".format(mins)
+            prestringA += "#   Running Time (mins) = {0:f}\n".format(mins)
         else:
-            prestringA += "#   Running Time (secs)  = {0:f}\n".format(info[0]*3600.0)
+            prestringA += "#   Running Time (secs) = {0:f}\n".format(info[0]*3600.0)
 
     prestringA += "#   Initial Chi-Squared = {0:f}\n".format(slf._chisq_init)
     prestringA += "#   Bestfit Chi-Squared = {0:f}\n".format(info[1])
