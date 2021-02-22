@@ -455,6 +455,7 @@ class alfit(object):
                     self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave.copy())
                     self.gpu_dict["minx_" + gpustr] = numpy.min(wave)
                     self.gpu_dict["maxx_" + gpustr] = numpy.max(wave)
+                    self.gpu_dict["contspx_" + gpustr] = cuda.to_device(contspx[sp][ll:lu].copy())
                     self.gpu_dict["blocks_" + gpustr] = 1 + wave.size // numdiv
                     self.gpu_dict["thr/blk_" + gpustr] = numdiv
                     # Include an emission & absorption array for each free parameter of the model
@@ -463,6 +464,8 @@ class alfit(object):
                         self.gpu_dict["modelem_" + parstr + gpustr] = cuda.to_device(numpy.zeros(shape=wave.shape, dtype=numpy.float64))
                         self.gpu_dict["modelab_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
                         self.gpu_dict["modcont_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modfull_" + parstr + gpustr] = cuda.to_device(
+                            numpy.zeros(shape=wave.shape, dtype=numpy.float64))
             # Setup some variables for the GPU
             expa2n2 = numpy.array(
                 [7.64405281671221563e-01, 3.41424527166548425e-01, 8.91072646929412548e-02, 1.35887299055460086e-02,
@@ -1680,7 +1683,7 @@ class alfit(object):
 #		if ddpid is not None and self._qanytied:
 #			p = alload.load_tied(p, self._ptied, infl=self._pinfl)
 #			msgs.bug("since na is not a free parameter, this does not need to be applied here, and the extra functionality getis and part of load_tied can be removed. You need to make sure that all functions are picking up on the linked (i.e. tied) parameters")
-        modelem, modelab, mzero, mcont, modcv, modcvf = [], [], copy.deepcopy(zerospx), [], [], []
+        modelem, modelab, modelfull, mzero, mcont, modcv, modcvf = [], [], [], copy.deepcopy(zerospx), [], [], []
         self.alisdict._modfinal, self.alisdict._contfinal, self.alisdict._zerofinal = [], [], []
         # Setup of the data <---> model arrays
         pararr = [[] for all in pos]
@@ -1694,6 +1697,7 @@ class alfit(object):
         for sp in range(0,len(pos)):
             modelem.append(numpy.zeros(wavespx[sp].size))
             modelab.append(numpy.ones(wavespx[sp].size))
+            modelfull.append(numpy.zeros(wavespx[sp].size))
 #			mzero.append(zerospx[sp])
 #			mcont.append(contspx[sp])
             mcont.append(numpy.zeros(wavespx[sp].size))
@@ -1847,18 +1851,8 @@ class alfit(object):
 #                     if ea == 0 and numpy.count_nonzero(mcont[sp][ll:lu]) == 0:
 #                         mcont[sp][ll:lu] = modelem[sp][ll:lu].copy()
 
-        # Now pull the data back from the GPU
-        for sp in range(0, len(pos)):
-            for sn in range(len(pos[sp]) - 1):
-                gpustr = "{0:d}_{1:d}".format(sp, sn)
-                ll = posnspx[sp][sn]
-                lu = posnspx[sp][sn+1]
-                modemstr = "modelem_" + parstr + gpustr
-                modabstr = "modelab_" + parstr + gpustr
-                modcont = "modcont_" + parstr + gpustr
-                modelem[sp][ll:lu] = self.gpu_dict[modemstr].copy_to_host()
-                modelab[sp][ll:lu] = self.gpu_dict[modabstr].copy_to_host()
-                mcont[sp][ll:lu] = self.gpu_dict[modcont].copy_to_host()
+        self.gpu_checkcont(parstr)
+        modelfull = self.gpu_makemodel(parstr, posnspx, modelfull)
 
         # TODO :: Once this works to here, we should implement the convolution and
         # zerolevel corrections into GPU, and during the chi-squared, only return
@@ -1887,6 +1881,7 @@ class alfit(object):
                         cvind += 1
                         shind += 1
                         continue
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
                 llx = posnspx[sp][sn]
                 lux = posnspx[sp][sn+1]
                 ll = pos[sp][sn]
@@ -1895,12 +1890,28 @@ class alfit(object):
                 self.alisdict._funcarray[2][mtyp]._keywd = self.alisdict._modpass['mkey'][cvind]
                 params = self.alisdict._funcarray[1][mtyp].set_vars(self.alisdict._funcarray[2][mtyp], p, self.alisdict._levadd[cvind], self.alisdict._modpass, cvind)
                 # Obtain the shift parameters
+                #############
+                # CPU implementation
                 shmtyp = self.alisdict._modpass['mtyp'][shind]
                 self.alisdict._funcarray[2][shmtyp]._keywd = self.alisdict._modpass['mkey'][shind]
                 shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
                 shwave = self.alisdict._funcarray[1][shmtyp].call_CPU(self.alisdict._funcarray[2][shmtyp], wavespx[sp][llx:lux], shparams)
-                mdtmp = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                mdtmp = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], shwave, modelfull[sp][llx:lux], params)
                 mdtmp *= contspx[sp][llx:lux]
+                #############
+                # GPU implementation
+                # shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
+                # shift_vel = 0.0  # x / (1.0 + p[0]/299792.458)
+                # shift_ang = 0.0  # x-p[0]
+                # if shmtyp == "vshift": shift_vel = shparams[0]
+                # elif shmtyp == "Ashift": shift_ang = shparams[0]
+                # else:
+                #     msgs.error("Not ready for this kind of wavelength shift: {0:s}".format(shmtyp))
+                # self.gpu_prepare(mtyp, parstr, gpustr, params, ae="cv",
+                #                  shift_vel=shift_vel, shift_ang=shift_ang)
+                # mdtmp = self.alisdict._funcarray[1][mtyp].call_CPU(self.alisdict._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                # mdtmp *= contspx[sp][llx:lux]
+                #############
                 # Apply the zero-level correction if necessary
                 if len(zerlev[sp]) != 0:
                     mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
@@ -1930,6 +1941,7 @@ class alfit(object):
 #		if output == 0: return modcvf
         if output == 0:
             if getemab:
+                modelem, modelab = self.gpu_getemab(modelem=modelem, modelab=modelab)
                 return modcvf, [modelem, modelab]
             else:
                 return modcvf
@@ -2257,6 +2269,12 @@ class alfit(object):
             self.gpu_voigt(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
                            shift_vel=shift_vel, shift_ang=shift_ang, karr=mkey,
                            aeint=aeint, ctint=ctint)
+        elif funccall == "vfwhm":
+            modelem = "modelem_" + parstr + gpustr
+            modelab = "modelab_" + parstr + gpustr
+            modfull = "modfull_" + parstr + gpustr
+            self.gpu_vfwhm(gpustr, modelem, modelab, modfull, pin, blocks, threads_per_block,
+                           shift_vel=shift_vel, shift_ang=shift_ang)
         else:
             msgs.error("Function not implemented for GPU analysis: {0:s}".format(funccall))
 
@@ -2266,6 +2284,62 @@ class alfit(object):
         clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
                                                  self.gpu_dict["modelab_" + parstr + gpustr],
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
+
+    def gpu_getemab(self, posnspx, modelem=None, modelab=None, mcont=None):
+        # Pull the data back from the GPU
+        get_em = False
+        get_ab = False
+        get_cont = False
+        if modelem is not None: get_em = True
+        if modelab is not None: get_ab = True
+        if mcont is not None: get_cont = True
+        for sp in range(0, len(pos)):
+            for sn in range(len(pos[sp]) - 1):
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
+                ll = posnspx[sp][sn]
+                lu = posnspx[sp][sn+1]
+                if get_em:
+                    modemstr = "modelem_" + parstr + gpustr
+                    modelem[sp][ll:lu] = self.gpu_dict[modemstr].copy_to_host()
+                if get_ab:
+                    modabstr = "modelab_" + parstr + gpustr
+                    modelab[sp][ll:lu] = self.gpu_dict[modabstr].copy_to_host()
+                if get_cont:
+                    modcont = "modcont_" + parstr + gpustr
+                    mcont[sp][ll:lu] = self.gpu_dict[modcont].copy_to_host()
+        retval = []
+        if get_em: retval.append(modelem)
+        if get_ab: retval.append(modelab)
+        if get_cont: retval.append(mcont)
+        return retval
+
+    def gpu_checkcont(self, parstr):
+        for sp in range(0, len(pos)):
+            for sn in range(len(pos[sp]) - 1):
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
+                modemstr = "modelem_" + parstr + gpustr
+                modcont = "modcont_" + parstr + gpustr
+                blocks = self.gpu_dict["blocks_" + gpustr]
+                threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
+                checkcont_gpu[blocks, threads_per_block](self.gpu_dict[modemstr],
+                                                         self.gpu_dict[modcont])
+
+    def gpu_makemodel(self, parstr, posnspx, modelfull):
+        for sp in range(0, len(pos)):
+            for sn in range(len(pos[sp]) - 1):
+                gpustr = "{0:d}_{1:d}".format(sp, sn)
+                ll = posnspx[sp][sn]
+                lu = posnspx[sp][sn+1]
+                modemstr = "modelem_" + parstr + gpustr
+                modabstr = "modabem_" + parstr + gpustr
+                modflstr = "modfull_" + parstr + gpustr
+                blocks = self.gpu_dict["blocks_" + gpustr]
+                threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
+                makemodel_gpu[blocks, threads_per_block](self.gpu_dict[modemstr],
+                                                         self.gpu_dict[modabstr],
+                                                         self.gpu_dict[modflstr])
+                modelfull[sp][ll:lu] = self.gpu_dict[modflstr].copy_to_host()
+        return modelfull
 
     def gpu_Ashift(self):
         pass
@@ -2298,7 +2372,12 @@ class alfit(object):
                                                 maxx, minx, shift_vel, shift_ang,
                                                 aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
-    def gpu_vfwhm(self):
+    def gpu_vfwhm(self, gpustr, modelem, modelab, modfull, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0):
+        # Now make the call
+        # vfwhm_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr], pin[0],
+        #                                      shift_vel, shift_ang,
+        #                                      self.gpu_dict[modelem], self.gpu_dict[modelab],
+        #                                      self.gpu_dict[modfull], self.gpu_dict["contspx_" + gpustr])
         pass
 
     def gpu_voigt(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, karr=None, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
@@ -2563,6 +2642,18 @@ def clearflux_gpu(em, ab, cn):
     cn[idx] = 0.0
 
 @cuda.jit
+def checkcont_gpu(em, cn):
+    idx = cuda.grid(1)
+    if cn[idx] == 0.0:
+        cn[idx] = em[idx]
+
+
+@cuda.jit
+def makemodel_gpu(em, ab, mod):
+    idx = cuda.grid(1)
+    mod[idx] = em[idx]*ab[idx]
+
+@cuda.jit
 def constant_gpu(p0, ae, ct, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
@@ -2611,6 +2702,14 @@ def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
         # Absorption
         model[idx] *= modval
         if ct == 1: cont[idx] *= modval
+
+
+@cuda.jit
+def vfwhm_gpu[blocks, threads_per_block](wave, sigd, shift_vel, shift_ang,
+                                         modem, modab, model, cont)
+    # Get the CUDA index
+    idx = cuda.grid(1)
+    wavein = wave[idx]
 
 
 @cuda.jit
