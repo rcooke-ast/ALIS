@@ -2401,6 +2401,9 @@ class alfit(object):
                                              shift_vel, shift_ang,
                                              aeint, ctint, frint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
+    def gpu_vshift(self):
+        pass
+
 
 class machar:
     def __init__(self, double=1):
