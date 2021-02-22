@@ -1936,12 +1936,12 @@ class alfit(object):
                 stf[sp] = enf[sp]
                 cvind += 1
                 shind += 1
-        del wavespx, posnspx, nexbins
-        del mzero, mcont
+        #del wavespx, posnspx, nexbins
+        #del mzero, mcont
 #		if output == 0: return modcvf
         if output == 0:
             if getemab:
-                modelem, modelab = self.gpu_getemab(modelem=modelem, modelab=modelab)
+                modelem, modelab = self.gpu_getemab(posnspx, modelem=modelem, modelab=modelab)
                 return modcvf, [modelem, modelab]
             else:
                 return modcvf
