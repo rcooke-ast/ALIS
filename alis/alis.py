@@ -430,7 +430,7 @@ class ClassMain:
 #				alplot.make_plots_all(self)
 #				fileend=input(msgs.input()+"Press enter to view the fits -")
 #				alplot.plot_showall()
-            msgs.info("Total fitting time in hours: %s" % ((self._tend - self._tstart)/3600.0),verbose=self._argflag['out']['verbose'])
+            self.print_runtime()
             # If simulations were requested, do them now
             if self._argflag['sim']['random'] != None:
                 from alis import alsims
@@ -446,6 +446,20 @@ class ClassMain:
                     alsims.perturb(self, m.covar, m.params, parinfo)
         if self._retself == True:
             return self
+
+    def print_runtime(self):
+        hours = (self._tend - self._tstart) / 3600.0
+        if hours >= 1.0:
+            msgs.info("Total fitting time in hours: %s" % (hours),
+                      verbose=self._argflag['out']['verbose'])
+        else:
+            mins = (self._tend - self._tstart) / 60.0
+            if mins >= 1.0:
+                msgs.info("Total fitting time in minutes: %s" % (mins),
+                          verbose=self._argflag['out']['verbose'])
+            else:
+                msgs.info("Total fitting time in seconds: %s" % (self._tend - self._tstart),
+                          verbose=self._argflag['out']['verbose'])
 
 #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
