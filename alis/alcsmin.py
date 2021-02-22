@@ -1851,7 +1851,7 @@ class alfit(object):
 #                     if ea == 0 and numpy.count_nonzero(mcont[sp][ll:lu]) == 0:
 #                         mcont[sp][ll:lu] = modelem[sp][ll:lu].copy()
 
-        self.gpu_checkcont(parstr)
+        self.gpu_checkcont(parstr, posnspx)
         modelfull = self.gpu_makemodel(parstr, posnspx, modelfull)
 
         # TODO :: Once this works to here, we should implement the convolution and
@@ -2313,7 +2313,7 @@ class alfit(object):
         if get_cont: retval.append(mcont)
         return retval
 
-    def gpu_checkcont(self, parstr):
+    def gpu_checkcont(self, parstr, pos):
         for sp in range(0, len(pos)):
             for sn in range(len(pos[sp]) - 1):
                 gpustr = "{0:d}_{1:d}".format(sp, sn)
