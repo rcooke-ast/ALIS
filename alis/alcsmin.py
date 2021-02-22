@@ -2331,7 +2331,7 @@ class alfit(object):
                 ll = posnspx[sp][sn]
                 lu = posnspx[sp][sn+1]
                 modemstr = "modelem_" + parstr + gpustr
-                modabstr = "modabem_" + parstr + gpustr
+                modabstr = "modelab_" + parstr + gpustr
                 modflstr = "modfull_" + parstr + gpustr
                 blocks = self.gpu_dict["blocks_" + gpustr]
                 threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
