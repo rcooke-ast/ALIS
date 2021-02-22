@@ -2372,6 +2372,9 @@ class alfit(object):
                                                 maxx, minx, shift_vel, shift_ang,
                                                 aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
 
+    def gpu_random(self):
+        pass
+
     def gpu_vfwhm(self, gpustr, modelem, modelab, modfull, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0):
         # Now make the call
         # vfwhm_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr], pin[0],
