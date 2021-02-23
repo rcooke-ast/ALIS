@@ -446,8 +446,7 @@ class alfit(object):
                         self.gpu_dict["modelem_" + parstr + gpustr] = cuda.to_device(numpy.zeros(shape=wave.shape, dtype=numpy.float64))
                         self.gpu_dict["modelab_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
                         self.gpu_dict["modcont_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
-                        self.gpu_dict["modfull_" + parstr + gpustr] = cuda.to_device(
-                            numpy.zeros(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modfull_" + parstr + gpustr] = cuda.to_device(numpy.zeros(shape=wave.shape, dtype=numpy.float64))
             # Setup some variables for the GPU
             expa2n2 = numpy.array(
                 [7.64405281671221563e-01, 3.41424527166548425e-01, 8.91072646929412548e-02, 1.35887299055460086e-02,
@@ -1926,6 +1925,13 @@ class alfit(object):
 
         self.gpu_checkcont(parstr, posnspx)
         modelfull = self.gpu_makemodel(parstr, posnspx, modelfull)
+        modelem, modelab = self.gpu_getemab(parstr, posnspx, modelem=modelem, modelab=modelab)
+        print("---")
+        print("em=", modelem)
+        print("ab=", modelab)
+        print("em100=", modelem[0][:100])
+        print("ab100=", modelab[0][:100])
+        print("===")
 
         # TODO :: Once this works to here, we should implement the convolution and
         # zerolevel corrections into GPU, and during the chi-squared, only return
