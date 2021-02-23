@@ -78,7 +78,7 @@ def _unpickle_method(func_name, obj, cls):
 
 class alfit(object):
     def __init__(self, alisdict, xall=None, parinfo=None, damp=0., autoderivative=1,
-                 ncpus=None, ngpus=None, fstep=1.0, debug=0, dofit=True):
+                 ncpus=None, ngpus=None, fstep=1.0, debug=0):
         """
         Inputs:
          xall:
@@ -469,9 +469,6 @@ class alfit(object):
             self.gpu_dict["expa2n2"] = cuda.to_device(expa2n2)
             msgs.info("Completed GPU data transfer")
 
-        # Return if we're not fitting
-        if not dofit: return
-
     def minimise(self, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
                  ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
                  miniter=0, maxiter=200, factor=100., nprint=1,
@@ -485,7 +482,7 @@ class alfit(object):
         # Parameter damping doesn't work when user is providing their own
         # gradients.
         if (self.damp != 0) and (autoderivative == 0):
-            self.errmsg =  'keywords DAMP and AUTODERIVATIVE are mutually exclusive'
+            self.errmsg = 'keywords DAMP and AUTODERIVATIVE are mutually exclusive'
             return
 
         # Parameters can either be stored in parinfo, or x. x takes precedence if it exists

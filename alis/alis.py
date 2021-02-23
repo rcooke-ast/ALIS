@@ -153,10 +153,12 @@ class ClassMain:
         fa = {'x':wavf, 'y':fluf, 'err':errf, 'fdict':fdict}
         if self._argflag['run']['ngpus'] is not None and self._argflag['run']['ngpus'] != 0:
             msgs.info("Performing a GPU accelerated analysis")
+        print(self._argflag['run']['ngpus'], type(self._argflag['run']['ngpus']))
+        print(self._argflag['run']['ngpus'] is not None, self._argflag['run']['ngpus'] != 0)
         # Calculate the initial Chi-Squared
         msgs.info("Calculating the starting chi-squared",verbose=self._argflag['out']['verbose'])
         # Calculate the starting function
-        init_fit = alfit(self, self._modpass['p0'], dofit=False, parinfo=parinfo,
+        init_fit = alfit(self, self._modpass['p0'], parinfo=parinfo,
                          ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'],
                          fstep=self._argflag['chisq']['fstep'])
         start_func = init_fit.myfunct(self._modpass['p0'], output=2)
@@ -277,7 +279,6 @@ class ClassMain:
                       atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
                       limpar=self._argflag['run']['limpar'])
             self._tend=time.time()
-            niter=init_fit.niter
             if (init_fit.status <= 0):
                 if init_fit.status == -20: # Interrupted fit
                     msgs.info("Fitting routine was interrupted",verbose=self._argflag['out']['verbose'])
