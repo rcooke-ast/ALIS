@@ -78,7 +78,7 @@ def _unpickle_method(func_name, obj, cls):
 
 class alfit(object):
     def __init__(self, alisdict, xall=None, parinfo=None, damp=0., autoderivative=1,
-                 ncpus=None, ngpus=None, fstep=1.0, debug=0):
+                 ncpus=None, ngpus=None, fstep=1.0, debug=0, verbose=2):
         """
         Inputs:
          xall:
@@ -330,6 +330,7 @@ class alfit(object):
         self.ncpus = ncpus
         self.fstep = fstep
         self.gpurun = False
+        self.verbose = verbose
 
         # Get all GPU_enabled routines
         self.get_gpu_funcs()
@@ -422,11 +423,11 @@ class alfit(object):
             # If we've made it this far, let's pass some data over to the GPU to speed up the minimisation process
             if self.alisdict._argflag['run']['renew_subpix']:
                 msgs.warn("Cannot renew subpixels during a GPU run:" +msgs.newline()+
-                          "once your fit is converged, rerun with the best-fitting parameters if subpixels are important")
-            msgs.info("Generating subpixels based on input parameters")
+                          "once your fit is converged, rerun with the best-fitting parameters if subpixels are important", verbose=self.verbose)
+            msgs.info("Generating subpixels based on input parameters", verbose=self.verbose)
             # Calculate the sub-pixellation of the spectrum
             wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, xall.copy())
-            msgs.info("Sending data to GPU")
+            msgs.info("Sending data to GPU", verbose=self.verbose)
             for sp in range(len(posnspx)):
                 for sn in range(len(posnspx[sp])-1):
                     ll = posnspx[sp][sn]
@@ -467,7 +468,7 @@ class alfit(object):
             erfcx_cc = numpy.loadtxt(datadir + "erfcx_coeffs.dat", delimiter=',').astype(numpy.float64)
             self.gpu_dict["erfcx_cc"] = cuda.to_device(erfcx_cc)
             self.gpu_dict["expa2n2"] = cuda.to_device(expa2n2)
-            msgs.info("Completed GPU data transfer")
+            msgs.info("Completed GPU data transfer", verbose=self.verbose)
 
     def minimise(self, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
                  ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
