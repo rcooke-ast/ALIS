@@ -157,7 +157,8 @@ class ClassMain:
         msgs.info("Calculating the starting chi-squared",verbose=self._argflag['out']['verbose'])
         # Calculate the starting function
         init_fit = alfit(self, self._modpass['p0'], dofit=False, parinfo=parinfo,
-                         ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'])
+                         ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'],
+                         fstep=self._argflag['chisq']['fstep'])
         start_func = init_fit.myfunct(self._modpass['p0'], output=2)
         if not self._argflag['generate']['data'] and self._argflag['sim']['beginfrom'] == "":
             self._chisq_init = np.sum(((fluf-start_func)/errf)**2)
