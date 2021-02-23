@@ -77,14 +77,8 @@ def _unpickle_method(func_name, obj, cls):
 
 
 class alfit(object):
-
-    def __init__(self, alisdict, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
-                 ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
-                 damp=0., miniter=0, maxiter=200, factor=100., nprint=1,
-                 iterfunct='default', iterkw={}, nocovar=0, limpar=False,
-                 rescale=0, autoderivative=1, verbose=2, modpass=None,
-                 diag=None, epsfcn=None, ncpus=None, ngpus=None, fstep=1.0, debug=0,
-                 convtest=False, dofit=True):
+    def __init__(self, alisdict, xall=None, parinfo=None, damp=0., autoderivative=1,
+                 ncpus=None, ngpus=None, fstep=1.0, debug=0, dofit=True):
         """
         Inputs:
          xall:
@@ -340,12 +334,150 @@ class alfit(object):
         # Get all GPU_enabled routines
         self.get_gpu_funcs()
 
-        # Return if we're not fitting
-        if not dofit: return
-
         # Include a function to deal with signal interruptions
         self.handler=True
         signal.signal(signal.SIGQUIT, self.signal_handler)
+
+        # Parameter damping doesn't work when user is providing their own
+        # gradients.
+        if (self.damp != 0) and (autoderivative == 0):
+            self.errmsg =  'keywords DAMP and AUTODERIVATIVE are mutually exclusive'
+            return
+
+        # Parameters can either be stored in parinfo, or x. x takes precedence if it exists
+        if (xall is None) and (parinfo is None):
+            self.errmsg = 'must pass parameters in P or PARINFO'
+            return
+
+        # Be sure that PARINFO is of the right type
+        if parinfo is not None:
+            #if type(parinfo) != types.ListType:
+            if not isinstance(parinfo, list):
+                self.errmsg = 'PARINFO must be a list of dictionaries.'
+                return
+            else:
+                if not isinstance(parinfo[0], dict): #type(parinfo[0]) != types.DictionaryType:
+                    self.errmsg = 'PARINFO must be a list of dictionaries.'
+                    return
+            if (xall is not None) and (len(xall) != len(parinfo)):
+                self.errmsg = 'number of elements in PARINFO and P must agree'
+                return
+
+        # If the parameters were not specified at the command line, then
+        # extract them from PARINFO
+        if xall is None:
+            xall = self.parinfo(parinfo, 'value')
+            if xall is None:
+                self.errmsg = 'either P or PARINFO(*)["value"] must be supplied.'
+                return
+
+        # Make sure parameters are numpy arrays
+        xall = numpy.asarray(xall)
+        # In the case if the xall is not float or if is float but has less
+        # than 64 bits we do convert it into double
+        if xall.dtype.kind != 'f' or xall.dtype.itemsize<=4:
+            xall = xall.astype(numpy.float)
+
+        npar = len(xall)
+        self.fnorm  = -1.
+
+        # TIED parameters?
+        ptied = self.parinfo(parinfo, 'tied', default='', n=npar)
+        self.qanytied = 0
+        for i in range(npar):
+            ptied[i] = ptied[i].strip()
+            if ptied[i] != '':
+                self.qanytied = 1
+        self.ptied = ptied
+
+        # FIXED parameters ?
+        pfixed = self.parinfo(parinfo, 'fixed', default=0, n=npar)
+        pfixed = (pfixed == 1)
+        for i in range(npar):
+            pfixed[i] = pfixed[i] or (ptied[i] != '') # Tied parameters are also effectively fixed
+
+        # Maximum and minimum steps allowed to be taken in one iteration
+        maxstep = self.parinfo(parinfo, 'mpmaxstep', default=0., n=npar)
+        minstep = self.parinfo(parinfo, 'mpminstep', default=0., n=npar)
+        qmin = minstep != 0
+        qmin[:] = False # Remove minstep for now!!
+        qmax = maxstep != 0
+        if numpy.any(qmin & qmax & (maxstep<minstep)):
+            self.errmsg = 'MPMINSTEP is greater than MPMAXSTEP'
+            return
+
+        # Finish up the free parameters
+        ifree = (numpy.nonzero(pfixed != 1))[0]
+        nfree = len(ifree)
+        if nfree == 0:
+            self.errmsg = 'No free parameters'
+            return
+
+        # If doing a GPU run, check that all functions are GPU enabled
+        self.gpu_dict = dict()
+        if ngpus is not None and ngpus != 0:
+            self.check_gpu_funcs()
+            self.gpurun = True
+            numdiv = 16  # should be a power of 2
+            # If we've made it this far, let's pass some data over to the GPU to speed up the minimisation process
+            if self.alisdict._argflag['run']['renew_subpix']:
+                msgs.warn("Cannot renew subpixels during a GPU run:" +msgs.newline()+
+                          "once your fit is converged, rerun with the best-fitting parameters if subpixels are important")
+            msgs.info("Generating subpixels based on input parameters")
+            # Calculate the sub-pixellation of the spectrum
+            wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, xall.copy())
+            msgs.info("Sending data to GPU")
+            for sp in range(len(posnspx)):
+                for sn in range(len(posnspx[sp])-1):
+                    ll = posnspx[sp][sn]
+                    lu = posnspx[sp][sn+1]
+                    wave = wavespx[sp][ll:lu]
+                    gpustr = "{0:d}_{1:d}".format(sp, sn)
+                    self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave.copy())
+                    self.gpu_dict["minx_" + gpustr] = numpy.min(wave)
+                    self.gpu_dict["maxx_" + gpustr] = numpy.max(wave)
+                    self.gpu_dict["contspx_" + gpustr] = cuda.to_device(contspx[sp][ll:lu].copy())
+                    self.gpu_dict["blocks_" + gpustr] = 1 + wave.size // numdiv
+                    self.gpu_dict["thr/blk_" + gpustr] = numdiv
+                    # Include an emission & absorption array for each free parameter of the model
+                    for ff in range(nfree):
+                        parstr = "{0:d}_".format(ff)
+                        self.gpu_dict["modelem_" + parstr + gpustr] = cuda.to_device(numpy.zeros(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modelab_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modcont_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
+                        self.gpu_dict["modfull_" + parstr + gpustr] = cuda.to_device(
+                            numpy.zeros(shape=wave.shape, dtype=numpy.float64))
+            # Setup some variables for the GPU
+            expa2n2 = numpy.array(
+                [7.64405281671221563e-01, 3.41424527166548425e-01, 8.91072646929412548e-02, 1.35887299055460086e-02,
+                 1.21085455253437481e-03, 6.30452613933449404e-05, 1.91805156577114683e-06, 3.40969447714832381e-08,
+                 3.54175089099469393e-10, 2.14965079583260682e-12, 7.62368911833724354e-15, 1.57982797110681093e-17,
+                 1.91294189103582677e-20, 1.35344656764205340e-23, 5.59535712428588720e-27, 1.35164257972401769e-30,
+                 1.90784582843501167e-34, 1.57351920291442930e-38, 7.58312432328032845e-43, 2.13536275438697082e-47,
+                 3.51352063787195769e-52, 3.37800830266396920e-57, 1.89769439468301000e-62, 6.22929926072668851e-68,
+                 1.19481172006938722e-73, 1.33908181133005953e-79, 8.76924303483223939e-86, 3.35555576166254986e-92,
+                 7.50264110688173024e-99, 9.80192200745410268e-106, 7.48265412822268959e-113, 3.33770122566809425e-120,
+                 8.69934598159861140e-128, 1.32486951484088852e-135, 1.17898144201315253e-143, 6.13039120236180012e-152,
+                 1.86258785950822098e-160, 3.30668408201432783e-169, 3.43017280887946235e-178, 2.07915397775808219e-187,
+                 7.36384545323984966e-197, 1.52394760394085741e-206, 1.84281935046532100e-216, 1.30209553802992923e-226,
+                 5.37588903521080531e-237, 1.29689584599763145e-247, 1.82813078022866562e-258, 1.50576355348684241e-269,
+                 7.24692320799294194e-281, 2.03797051314726829e-292, 3.34880215927873807e-304, 0.0],
+                dtype=numpy.float64)
+            datadir = alload.get_datadir(self.alisdict._argflag)
+            erfcx_cc = numpy.loadtxt(datadir + "erfcx_coeffs.dat", delimiter=',').astype(numpy.float64)
+            self.gpu_dict["erfcx_cc"] = cuda.to_device(erfcx_cc)
+            self.gpu_dict["expa2n2"] = cuda.to_device(expa2n2)
+            msgs.info("Completed GPU data transfer")
+
+        # Return if we're not fitting
+        if not dofit: return
+
+    def minimise(self, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
+                 ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
+                 miniter=0, maxiter=200, factor=100., nprint=1,
+                 iterfunct='default', iterkw={}, nocovar=0, limpar=False,
+                 rescale=0, autoderivative=1, verbose=2, modpass=None,
+                 diag=None, epsfcn=None, convtest=False):
 
         if iterfunct == 'default':
             iterfunct = self.defiter
@@ -429,63 +561,6 @@ class alfit(object):
         # Finish up the free parameters
         ifree = (numpy.nonzero(pfixed != 1))[0]
         nfree = len(ifree)
-        if nfree == 0:
-            self.errmsg = 'No free parameters'
-            return
-
-        # If doing a GPU run, check that all functions are GPU enabled
-        self.gpu_dict = dict()
-        if ngpus is not None and ngpus != 0:
-            self.check_gpu_funcs()
-            self.gpurun = True
-            numdiv = 16  # should be a power of 2
-            # If we've made it this far, let's pass some data over to the GPU to speed up the minimisation process
-            if self.alisdict._argflag['run']['renew_subpix']:
-                msgs.warn("Cannot renew subpixels during a GPU run:" +msgs.newline()+
-                          "once your fit is converged, rerun with the best-fitting parameters if subpixels are important")
-            msgs.info("Generating subpixels based on input parameters")
-            # Calculate the sub-pixellation of the spectrum
-            wavespx, contspx, zerospx, posnspx, nexbins = alload.load_subpixels(self.alisdict, xall.copy())
-            for sp in range(len(posnspx)):
-                for sn in range(len(posnspx[sp])-1):
-                    ll = posnspx[sp][sn]
-                    lu = posnspx[sp][sn+1]
-                    wave = wavespx[sp][ll:lu]
-                    gpustr = "{0:d}_{1:d}".format(sp, sn)
-                    self.gpu_dict["wave_" + gpustr] = cuda.to_device(wave.copy())
-                    self.gpu_dict["minx_" + gpustr] = numpy.min(wave)
-                    self.gpu_dict["maxx_" + gpustr] = numpy.max(wave)
-                    self.gpu_dict["contspx_" + gpustr] = cuda.to_device(contspx[sp][ll:lu].copy())
-                    self.gpu_dict["blocks_" + gpustr] = 1 + wave.size // numdiv
-                    self.gpu_dict["thr/blk_" + gpustr] = numdiv
-                    # Include an emission & absorption array for each free parameter of the model
-                    for ff in range(nfree):
-                        parstr = "{0:d}_".format(ff)
-                        self.gpu_dict["modelem_" + parstr + gpustr] = cuda.to_device(numpy.zeros(shape=wave.shape, dtype=numpy.float64))
-                        self.gpu_dict["modelab_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
-                        self.gpu_dict["modcont_" + parstr + gpustr] = cuda.to_device(numpy.ones(shape=wave.shape, dtype=numpy.float64))
-                        self.gpu_dict["modfull_" + parstr + gpustr] = cuda.to_device(
-                            numpy.zeros(shape=wave.shape, dtype=numpy.float64))
-            # Setup some variables for the GPU
-            expa2n2 = numpy.array(
-                [7.64405281671221563e-01, 3.41424527166548425e-01, 8.91072646929412548e-02, 1.35887299055460086e-02,
-                 1.21085455253437481e-03, 6.30452613933449404e-05, 1.91805156577114683e-06, 3.40969447714832381e-08,
-                 3.54175089099469393e-10, 2.14965079583260682e-12, 7.62368911833724354e-15, 1.57982797110681093e-17,
-                 1.91294189103582677e-20, 1.35344656764205340e-23, 5.59535712428588720e-27, 1.35164257972401769e-30,
-                 1.90784582843501167e-34, 1.57351920291442930e-38, 7.58312432328032845e-43, 2.13536275438697082e-47,
-                 3.51352063787195769e-52, 3.37800830266396920e-57, 1.89769439468301000e-62, 6.22929926072668851e-68,
-                 1.19481172006938722e-73, 1.33908181133005953e-79, 8.76924303483223939e-86, 3.35555576166254986e-92,
-                 7.50264110688173024e-99, 9.80192200745410268e-106, 7.48265412822268959e-113, 3.33770122566809425e-120,
-                 8.69934598159861140e-128, 1.32486951484088852e-135, 1.17898144201315253e-143, 6.13039120236180012e-152,
-                 1.86258785950822098e-160, 3.30668408201432783e-169, 3.43017280887946235e-178, 2.07915397775808219e-187,
-                 7.36384545323984966e-197, 1.52394760394085741e-206, 1.84281935046532100e-216, 1.30209553802992923e-226,
-                 5.37588903521080531e-237, 1.29689584599763145e-247, 1.82813078022866562e-258, 1.50576355348684241e-269,
-                 7.24692320799294194e-281, 2.03797051314726829e-292, 3.34880215927873807e-304, 0.0],
-                dtype=numpy.float64)
-            datadir = alload.get_datadir(self.alisdict._argflag)
-            erfcx_cc = numpy.loadtxt(datadir + "erfcx_coeffs.dat", delimiter=',').astype(numpy.float64)
-            self.gpu_dict["erfcx_cc"] = cuda.to_device(erfcx_cc)
-            self.gpu_dict["expa2n2"] = cuda.to_device(expa2n2)
 
         # Compose only VARYING parameters
         self.params = xall.copy()	  # self.params is the set of parameters to be returned

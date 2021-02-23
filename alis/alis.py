@@ -118,7 +118,7 @@ class ClassMain:
 
     # Now for the fitting code
     def main(self):
-        m = None
+        init_fit = None
         msgs.info("Preparing model parameters",verbose=self._argflag['out']['verbose'])
         # Prepare the parameters and their limits
         wavf, fluf, errf = np.array([]), np.array([]), np.array([])
@@ -151,16 +151,13 @@ class ClassMain:
         # NOW PREPARE TO FIT THE DATA!
         fdict = self.__dict__#.copy()
         fa = {'x':wavf, 'y':fluf, 'err':errf, 'fdict':fdict}
+        if self._argflag['run']['ngpus'] is not None and self._argflag['run']['ngpus'] != 0:
+            msgs.info("Performing a GPU accelerated analysis")
         # Calculate the initial Chi-Squared
         msgs.info("Calculating the starting chi-squared",verbose=self._argflag['out']['verbose'])
         # Calculate the starting function
-        init_fit = alfit(self, self._modpass['p0'], dofit=False, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
-                  verbose=self._argflag['out']['verbose'], modpass=self._modpass,
-                  miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
-                  atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'],
-                  gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                  ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],
-                  limpar=self._argflag['run']['limpar'])
+        init_fit = alfit(self, self._modpass['p0'], dofit=False, parinfo=parinfo,
+                         ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'])
         start_func = init_fit.myfunct(self._modpass['p0'], output=2)
         if not self._argflag['generate']['data'] and self._argflag['sim']['beginfrom'] == "":
             self._chisq_init = np.sum(((fluf-start_func)/errf)**2)
@@ -229,15 +226,18 @@ class ClassMain:
             while not complete:
                 msgs.info("Iterating the model, Iteration {0:d}".format(iternum),verbose=self._argflag['out']['verbose'])
                 # Fit this iteration
-                m = alfit(self, self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
+                # functkw={}, funcarray=[None, None, None], ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
+                # miniter=0, maxiter=200, factor=100., nprint=1, iterkw={}, nocovar=0, limpar=False, rescale=0,
+                # verbose=2, modpass=None, diag=None, epsfcn=None, convtest=False.
+                init_fit.minimise(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                        ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
-                model = m.myfunct(m.params, output=2)
+                        limpar=self._argflag['run']['limpar'])
+                model = init_fit.myfunct(init_fit.params, output=2)
                 # Pass the fitted information to the user module and obtain and updated model and completion status
-                newmodln = alsave.modlines(self, m.params, self._modpass, verbose=self._argflag['out']['verbose'])
-                newmerln = alsave.modlines(self, m.perror, self._modpass, verbose=self._argflag['out']['verbose'])
-                modlines, complete = itermod.loader(self, idtxt, newmodln, newmerln, m, model=model)
+                newmodln = alsave.modlines(self, init_fit.params, self._modpass, verbose=self._argflag['out']['verbose'])
+                newmerln = alsave.modlines(self, init_fit.perror, self._modpass, verbose=self._argflag['out']['verbose'])
+                modlines, complete = itermod.loader(self, idtxt, newmodln, newmerln, init_fit, model=model)
                 if not complete: # then update the appropriate variables
                     self._modlines = modlines
                     # Reload the new model
@@ -251,8 +251,8 @@ class ClassMain:
                     # Update the parameter dictionary
                     fa['fdict'] = self.__dict__
                     iternum += 1
-            self._fitresults = m
-            self._fitparams = m.params
+            self._fitresults = init_fit
+            self._fitparams = init_fit.params
             self._tend=time.time()
         elif self._argflag['generate']['data']:
             # Save the generated data
@@ -270,49 +270,50 @@ class ClassMain:
                     null=input(msgs.input()+"Press enter to view the fits -")
                     alplot.plot_showall()
         else:
-            if self._argflag['run']['ngpus'] is not None:
-                msgs.info("Performing a GPU accelerated analysis")
             msgs.info("Commencing chi-squared minimisation",verbose=self._argflag['out']['verbose'])
-            m = alfit(self, self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
+            init_fit.minimise(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                       verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                       atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                      ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'],
-                      ngpus=self._argflag['run']['ngpus'])
+                      limpar=self._argflag['run']['limpar'])
             self._tend=time.time()
-            niter=m.niter
-            if (m.status <= 0):
-                if m.status == -20: # Interrupted fit
+            niter=init_fit.niter
+            if (init_fit.status <= 0):
+                if init_fit.status == -20: # Interrupted fit
                     msgs.info("Fitting routine was interrupted",verbose=self._argflag['out']['verbose'])
                     msgs.warn("Setting ERRORS = PARAMETERS",verbose=self._argflag['out']['verbose'])
-                    m.perror = m.params
-                elif m.status == -21: # Parameters are not within the specified limits
-                    if type(self._modpass['line'][m.errmsg[0][0]]) is int: msgs.error("A parameter that = {0:s} is not within the specified limits on line -".format(m.errmsg[1])+msgs.newline()+self._modlines[self._modpass['line'][m.errmsg[0][0]]])
-                    else: msgs.error("A parameter that = {0:s} is not within specified limits on line -".format(m.errmsg[1])+msgs.newline()+self._modpass['line'][m.errmsg[0][0]])
+                    init_fit.perror = init_fit.params
+                elif init_fit.status == -21: # Parameters are not within the specified limits
+                    if type(self._modpass['line'][init_fit.errmsg[0][0]]) is int: msgs.error("A parameter that = {0:s} is not within the specified limits on line -".format(init_fit.errmsg[1])+msgs.newline()+self._modlines[self._modpass['line'][init_fit.errmsg[0][0]]])
+                    else: msgs.error("A parameter that = {0:s} is not within specified limits on line -".format(init_fit.errmsg[1])+msgs.newline()+self._modpass['line'][init_fit.errmsg[0][0]])
 
-                elif m.status == -16:
+                elif init_fit.status == -16:
                     msgs.error("There was an error in the chi-squared minimization - "+msgs.newline()+"A parameter or function value has become infinite or an undefined"+msgs.newline()+"number. This is usually a consequence of numerical overflow in the"+msgs.newline()+"user's model function, which must be avoided.")
                 else:
-                    if m.errmsg == "": msgs.error("There was an error in the chi-squared minimization - "+msgs.newline()+"please contact the author")
-                    msgs.error(m.errmsg)
+                    if init_fit.errmsg == "": msgs.error("There was an error in the chi-squared minimization - "+msgs.newline()+"please contact the author")
+                    msgs.error(init_fit.errmsg)
             else:
-                msgs.info("Reason for convergence:"+msgs.newline()+alutils.getreason(m.status,verbose=self._argflag['out']['verbose']),verbose=self._argflag['out']['verbose'])
+                msgs.info("Reason for convergence:"+msgs.newline()+alutils.getreason(init_fit.status,verbose=self._argflag['out']['verbose']),verbose=self._argflag['out']['verbose'])
             # Create the best-fitting model, this generates some arrays that are now required
             msgs.info("Best-fitting model parameters found",verbose=self._argflag['out']['verbose'])
             # If the user just wants to fit the data and return, do so.
             if self._fitonly:
-                self._fitresults = m
-                self._fitparams = m.params
-                model = m.myfunct(m.params, output=1)
+                self._fitresults = init_fit
+                self._fitparams = init_fit.params
+                model = init_fit.myfunct(init_fit.params, output=1)
                 return self
             # Otherwise, do everything else
             if self._argflag['run']['convergence']:
-                if m.status == -20:
+                if init_fit.status == -20:
                     msgs.warn("Cannot check convergence for an interrupted fit",verbose=self._argflag['out']['verbose'])
                 else:
                     msgs.info("Beginning test for convergence",verbose=self._argflag['out']['verbose'])
-                    mpars = copy.deepcopy(m)
+                    mpars = copy.deepcopy(init_fit)
                     lowby = 0
-                    mt = copy.deepcopy(m) # The testing set of parameters
+                    mt = copy.deepcopy(init_fit) # The testing set of parameters
+                    # Initialise the fit - TODO : Is this needed? Maybe could reuse init_fit?
+                    mc = alfit(self, mpars.params, parinfo=parinfo, ncpus=self._argflag['run']['ncpus'],
+                               ngpus=self._argflag['run']['ngpus'],
+                               fstep=self._argflag['chisq']['fstep'])
                     while True:
                         if mpars.status != 5: # If the maximum number of iterations was reached, don't lower the tolerance
                             self._argflag['chisq']['atol'] /= 10.0
@@ -320,10 +321,11 @@ class ClassMain:
                             self._argflag['chisq']['gtol'] /= 10.0
                             self._argflag['chisq']['xtol'] /= 10.0
                             lowby -= 1
-                        mc = alfit(self, mpars.params, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
-                                verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
-                                atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                                ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], convtest=True)
+                        # Now minimise
+                        mc.minimise(mpars.params, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
+                                    verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
+                                    atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
+                                    limpar=self._argflag['run']['limpar'], convtest=True)
                         # Update parameters
                         mpars = copy.deepcopy(mc)
                         # Keep going until this run has reached the tolerances
@@ -348,7 +350,7 @@ class ClassMain:
                                 fwrite = open(self._argflag['run']['modname'].rstrip("mod")+"convY", "w")
                                 fwrite.close()
                             # Use the best-fit results from the convergence test
-                            m = mpars
+                            init_fit = mpars
                             msgs.info("Reason for convergence:"+msgs.newline()+alutils.getreason(mpars.status,verbose=self._argflag['out']['verbose']),verbose=self._argflag['out']['verbose'])
                             break
                         elif mc.niter == 1:
@@ -380,21 +382,21 @@ class ClassMain:
                             continue
                     msgs.info("Convergence test complete",verbose=self._argflag['out']['verbose'])
             msgs.info("Generating best-fit model",verbose=self._argflag['out']['verbose'])
-            model = m.myfunct(m.params, output=1)
+            model = init_fit.myfunct(init_fit.params, output=1)
             # Prepare some arrays for eventual plotting
 #			if self._posnLya != 0:
 #				elnames, elwaves, rdshft, comparr = alplot.prep_arrs(self._snip_ions, self._snip_detl, self._posnfit)
             # Write out the results of the convergence test:
             if self._argflag['run']['convergence']:
-                if m.status != -20 and mc.status != -20 and mpars.status != -20:
+                if init_fit.status != -20 and mc.status != -20 and mpars.status != -20:
                     if self._argflag['out']['convtest'] != "":
-                        fit_info=[(self._tend - self._tstart)/3600.0, m.fnorm, m.dof, m.niter, m.status]
+                        fit_info=[(self._tend - self._tstart)/3600.0, init_fit.fnorm, init_fit.dof, init_fit.niter, init_fit.status]
                         diff = np.abs(mpars.params-mt.params)/mt.perror
                         diff[np.where((mpars.params==mt.params) & (mt.perror==0.0))[0]] = 0.0
                         alconv.save_convtest(self, diff, self._argflag['run']['convcriteria'],fit_info)
             # Store the fitting results
-            self._fitresults = m
-            self._fitparams = m.params
+            self._fitresults = init_fit
+            self._fitparams = init_fit.params
             # Write out the data and model fits
             if self._argflag['out']['fits'] or self._argflag['out']['onefits']:
                 fnames = alsave.save_modelfits(self)
@@ -404,19 +406,19 @@ class ClassMain:
                 msgs.info("Generating Supermongo files to plot the output",verbose=self._argflag['out']['verbose'])
                 #alsave.save_smfiles(self._modname_dla, fnames, elnames, elwaves, comparr, rdshft)
             # Write an output of the parameters for the best-fitting model
-            if self._argflag['run']['blind'] and m.status != -20:
+            if self._argflag['run']['blind'] and init_fit.status != -20:
                 if self._argflag['run']['convergence']:
                     if mc.status != -20 and mpars.status != -20:
                         msgs.info("Printing out the parameter errors:",verbose=self._argflag['out']['verbose'])
-                        print(alsave.print_model(m.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray))
+                        print(alsave.print_model(init_fit.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray))
                 else:
                     msgs.info("Printing out the parameter errors:",verbose=self._argflag['out']['verbose'])
-                    print(alsave.print_model(m.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray))
+                    print(alsave.print_model(init_fit.perror, self._modpass, blind=True, verbose=self._argflag['out']['verbose'],funcarray=self._funcarray))
             if self._argflag['out']['model']:
-                fit_info=[(self._tend - self._tstart)/3600.0, m.fnorm, m.dof, m.niter, m.status]
-                alsave.save_model(self, m.params, m.perror, fit_info)
+                fit_info=[(self._tend - self._tstart)/3600.0, init_fit.fnorm, init_fit.dof, init_fit.niter, init_fit.status]
+                alsave.save_model(self, init_fit.params, init_fit.perror, fit_info)
             if self._argflag['out']['covar'] != "":
-                alsave.save_covar(self, m.covar)
+                alsave.save_covar(self, init_fit.covar)
             # Plot the results
             plotCasePDF = ((self._argflag['out']['plots'].lower() == 'true') or ((self._argflag['out']['plots'].lower() != 'false') and (self._argflag['out']['plots'] != '')))
             if self._argflag['plot']['fits'] or self._argflag['plot']['residuals'] or plotCasePDF:
@@ -434,16 +436,16 @@ class ClassMain:
             # If simulations were requested, do them now
             if self._argflag['sim']['random'] != None:
                 from alis import alsims
-                if m.perror is None or m.perror is m.params: msgs.warn("Fitting routine interrupted. Cannot perform simulations",verbose=self._argflag['out']['verbose'])
+                if init_fit.perror is None or init_fit.perror is init_fit.params: msgs.warn("Fitting routine interrupted. Cannot perform simulations",verbose=self._argflag['out']['verbose'])
                 else:
                     msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
-                    alsims.sim_random(self, m.covar, m.params, parinfo)
+                    alsims.sim_random(self, init_fit.covar, init_fit.params, parinfo)
             elif self._argflag['sim']['perturb'] != None:
                 from alis import alsims
-                if m.perror is None or m.perror is m.params: msgs.warn("Fitting routine interrupted. Cannot perform simulations",verbose=self._argflag['out']['verbose'])
+                if init_fit.perror is None or init_fit.perror is init_fit.params: msgs.warn("Fitting routine interrupted. Cannot perform simulations",verbose=self._argflag['out']['verbose'])
                 else:
                     msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
-                    alsims.perturb(self, m.covar, m.params, parinfo)
+                    alsims.perturb(self, init_fit.covar, init_fit.params, parinfo)
         if self._retself == True:
             return self
 
