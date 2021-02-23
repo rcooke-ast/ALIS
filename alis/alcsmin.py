@@ -1926,12 +1926,6 @@ class alfit(object):
         self.gpu_checkcont(parstr, posnspx)
         modelfull = self.gpu_makemodel(parstr, posnspx, modelfull)
         modelem, modelab = self.gpu_getemab(parstr, posnspx, modelem=modelem, modelab=modelab)
-        print("---")
-        print("em=", modelem)
-        print("ab=", modelab)
-        print("em100=", modelem[0][:100])
-        print("ab100=", modelab[0][:100])
-        print("===")
 
         # TODO :: Once this works to here, we should implement the convolution and
         # zerolevel corrections into GPU, and during the chi-squared, only return
