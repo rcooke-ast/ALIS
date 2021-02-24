@@ -2467,6 +2467,7 @@ class alfit(object):
             cold = 10.0 ** pin[0]
         else:
             cold = pin[0]
+        print(cold)
         # Now make the call
         voigt_gpu[blocks, threads_per_block](self.gpu_dict["wave_" + gpustr],
                                              cold, pin[1], pin[2], pin[3], pin[4], pin[5],
@@ -2826,6 +2827,5 @@ def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, s
         # Absorption
         model[idx] *= modval
         if ct == 1: cont[idx] *= modval
-
 
 ################################
