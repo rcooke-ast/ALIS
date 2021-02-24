@@ -2804,15 +2804,6 @@ def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, s
     else:
         wavein = wave[idx]
         wv = lam * 1.0e-8
-    # zp1 = par[1] + 1.0
-    # bl = par[2] * wv / 2.99792458E5
-    # a = par[5] * wv * wv / (3.76730313461770655E11 * bl)
-    # cns = wv * wv * par[4] / (bl * 2.002134602291006E12)
-    # cne = cold * cns
-    # ww = (wavein * 1.0e-8) / zp1
-    # v = wv * ww * ((1.0 / ww) - (1.0 / wv)) / bl
-    # tau = cne * wofz(v + 1j * a).real
-
     # Shift the wavelength
     newwave = wavein / (1.0 + shift_vel/299792.458)
     newwave -= shift_ang
@@ -2823,7 +2814,7 @@ def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, s
     cns = wv*wv*fvl/(bl*2.002134602291006E12)
     cne = cold*cns
     ww = (newwave*1.0e-8)/zp1
-    v = wv*ww*((1.0/ww)-(1.0/wv))/bl
+    v = (wv-ww)/bl
     z = nbtypes.complex128(v + 1j * a)
     tau = cne*faddeeva_real(z, erfcx_cc, expa2n2)
     modval = math.exp(-1.0 * tau)
