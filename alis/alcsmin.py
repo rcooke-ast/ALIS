@@ -2499,7 +2499,7 @@ class machar:
 # First, here are some function dependencies
 
 
-@cuda.jit(device=True, nopython=True)
+@cuda.jit(device=True)
 def erfcx_y100(y100, erfcx_cc):
     iy100 = int(y100)
     if iy100 == 100:
@@ -2510,7 +2510,7 @@ def erfcx_y100(y100, erfcx_cc):
                     erfcx_cc[iy100, 4] + (erfcx_cc[iy100, 5] + erfcx_cc[iy100, 6] * t) * t) * t) * t) * t) * t
 
 
-@cuda.jit(device=True, nopython=True)
+@cuda.jit(device=True)
 def sincomplex(x, sinx):
     if abs(x) < 1e-4:
         return 1 - (0.1666666666666666666667) * x * x
@@ -2518,17 +2518,17 @@ def sincomplex(x, sinx):
         return sinx / x
 
 
-@cuda.jit(device=True, nopython=True)
+@cuda.jit(device=True)
 def sinh_taylor(x):
     return x * (1 + (x * x) * (0.1666666666666666666667 + 0.00833333333333333333333 * (x * x)))
 
 
-@cuda.jit(device=True, nopython=True)
+@cuda.jit(device=True)
 def sqr(x):
     return x * x
 
 
-@cuda.jit(device=True, nopython=True)
+@cuda.jit(device=True)
 def faddeeva_re(x, erfcx_cc):
     if (x >= 0):
         if (x > 50):  # continued-fraction expansion is faster
@@ -2547,7 +2547,7 @@ def faddeeva_re(x, erfcx_cc):
                 return 2 * exp(x * x) - erfcx_y100(400.0 / (4.0 - x), erfcx_cc)
 
 
-@cuda.jit(device=True, nopython=True)
+@cuda.jit(device=True)
 def faddeeva_real(z, erfcx_cc, expa2n2):
     relerr = 1.0E-7
     a = 0.518321480430085929872  # pi / sqrt(-log(eps*0.5))
