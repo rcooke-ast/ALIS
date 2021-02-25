@@ -1925,7 +1925,7 @@ class alfit(object):
 
         self.gpu_checkcont(parstr, posnspx)
         modelfull = self.gpu_makemodel(parstr, posnspx, modelfull)
-        modelem, modelab = self.gpu_getemab(parstr, posnspx, modelem=modelem, modelab=modelab)
+        #modelem, modelab = self.gpu_getemab(parstr, posnspx, modelem=modelem, modelab=modelab)
 
         # TODO :: Once this works to here, we should implement the convolution and
         # zerolevel corrections into GPU, and during the chi-squared, only return
@@ -1954,7 +1954,6 @@ class alfit(object):
                         cvind += 1
                         shind += 1
                         continue
-                gpustr = "{0:d}_{1:d}".format(sp, sn)
                 llx = posnspx[sp][sn]
                 lux = posnspx[sp][sn+1]
                 ll = pos[sp][sn]
@@ -1973,6 +1972,7 @@ class alfit(object):
                 mdtmp *= contspx[sp][llx:lux]
                 #############
                 # GPU implementation
+                # gpustr = "{0:d}_{1:d}".format(sp, sn)
                 # shparams = self.alisdict._funcarray[1][shmtyp].set_vars(self.alisdict._funcarray[2][shmtyp], p, self.alisdict._levadd[shind], self.alisdict._modpass, shind)
                 # shift_vel = 0.0  # x / (1.0 + p[0]/299792.458)
                 # shift_ang = 0.0  # x-p[0]
@@ -2331,8 +2331,7 @@ class alfit(object):
         blocks = self.gpu_dict["blocks_" + gpustr]
         threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
         if funccall == "constant":
-            self.gpu_constant(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
-                              shift_vel=shift_vel, shift_ang=shift_ang,
+            self.gpu_constant(modelstr, modcont, pin, blocks, threads_per_block,
                               aeint=aeint, ctint=ctint)
         elif funccall == "legendre":
             self.gpu_legendre(gpustr, modelstr, modcont, pin, blocks, threads_per_block,
@@ -2356,6 +2355,7 @@ class alfit(object):
         threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
         clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
                                                  self.gpu_dict["modelab_" + parstr + gpustr],
+                                                 self.gpu_dict["modcont_" + parstr + gpustr],
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
 
     def gpu_getemab(self, parstr, posnspx, modelem=None, modelab=None, mcont=None):
@@ -2417,7 +2417,7 @@ class alfit(object):
     def gpu_Ashift(self):
         pass
 
-    def gpu_constant(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
+    def gpu_constant(self, modelstr, modcont, pin, blocks, threads_per_block, aeint=0, ctint=1):
         constant_gpu[blocks, threads_per_block](pin[0],
                                                 aeint, ctint,
                                                 self.gpu_dict[modelstr], self.gpu_dict[modcont])
@@ -2498,7 +2498,8 @@ class machar:
 # Calls to GPU functions are outside of the chi-squared minimisation
 # First, here are some function dependencies
 
-@cuda.jit(device=True)
+
+@cuda.jit(device=True, nopython=True)
 def erfcx_y100(y100, erfcx_cc):
     iy100 = int(y100)
     if iy100 == 100:
@@ -2509,7 +2510,7 @@ def erfcx_y100(y100, erfcx_cc):
                     erfcx_cc[iy100, 4] + (erfcx_cc[iy100, 5] + erfcx_cc[iy100, 6] * t) * t) * t) * t) * t) * t
 
 
-@cuda.jit(device=True)
+@cuda.jit(device=True, nopython=True)
 def sincomplex(x, sinx):
     if abs(x) < 1e-4:
         return 1 - (0.1666666666666666666667) * x * x
@@ -2517,17 +2518,17 @@ def sincomplex(x, sinx):
         return sinx / x
 
 
-@cuda.jit(device=True)
+@cuda.jit(device=True, nopython=True)
 def sinh_taylor(x):
     return x * (1 + (x * x) * (0.1666666666666666666667 + 0.00833333333333333333333 * (x * x)))
 
 
-@cuda.jit(device=True)
+@cuda.jit(device=True, nopython=True)
 def sqr(x):
     return x * x
 
 
-@cuda.jit(device=True)
+@cuda.jit(device=True, nopython=True)
 def faddeeva_re(x, erfcx_cc):
     if (x >= 0):
         if (x > 50):  # continued-fraction expansion is faster
@@ -2546,7 +2547,7 @@ def faddeeva_re(x, erfcx_cc):
                 return 2 * exp(x * x) - erfcx_y100(400.0 / (4.0 - x), erfcx_cc)
 
 
-@cuda.jit(device=True)
+@cuda.jit(device=True, nopython=True)
 def faddeeva_real(z, erfcx_cc, expa2n2):
     relerr = 1.0E-7
     a = 0.518321480430085929872  # pi / sqrt(-log(eps*0.5))
@@ -2716,26 +2717,29 @@ def faddeeva_real(z, erfcx_cc, expa2n2):
 ################################
 # Now for the model calls to the GPU functions
 
-@cuda.jit
+
+@cuda.jit(nopython=True)
 def clearflux_gpu(em, ab, cn):
     idx = cuda.grid(1)
     em[idx] = 0.0
     ab[idx] = 1.0
     cn[idx] = 0.0
 
-@cuda.jit
+
+@cuda.jit(nopython=True)
 def checkcont_gpu(em, cn):
     idx = cuda.grid(1)
     if cn[idx] == 0.0:
         cn[idx] = em[idx]
 
 
-@cuda.jit
+@cuda.jit(nopython=True)
 def makemodel_gpu(em, ab, mod):
     idx = cuda.grid(1)
     mod[idx] = em[idx]*ab[idx]
 
-@cuda.jit
+
+@cuda.jit(nopython=True)
 def constant_gpu(p0, ae, ct, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
@@ -2748,7 +2752,8 @@ def constant_gpu(p0, ae, ct, model, cont):
         model[idx] *= p0
         if ct == 1: cont[idx] *= p0
 
-@cuda.jit
+
+@cuda.jit(nopython=True)
 def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
                  maxx, minx, shift_vel, shift_ang, ae, ct, model, cont):
     # Get the CUDA index
@@ -2786,7 +2791,7 @@ def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
         if ct == 1: cont[idx] *= modval
 
 
-@cuda.jit
+@cuda.jit(nopython=True)
 def vfwhm_gpu(wave, sigd, shift_vel, shift_ang, modem, modab, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
@@ -2795,7 +2800,7 @@ def vfwhm_gpu(wave, sigd, shift_vel, shift_ang, modem, modab, model, cont):
     pass
 
 
-@cuda.jit
+@cuda.jit(nopython=True)
 def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shift_ang, ae, ct, fr, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
