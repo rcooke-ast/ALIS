@@ -2718,7 +2718,7 @@ def faddeeva_real(z, erfcx_cc, expa2n2):
 # Now for the model calls to the GPU functions
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def clearflux_gpu(em, ab, cn):
     idx = cuda.grid(1)
     em[idx] = 0.0
@@ -2726,20 +2726,20 @@ def clearflux_gpu(em, ab, cn):
     cn[idx] = 0.0
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def checkcont_gpu(em, cn):
     idx = cuda.grid(1)
     if cn[idx] == 0.0:
         cn[idx] = em[idx]
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def makemodel_gpu(em, ab, mod):
     idx = cuda.grid(1)
     mod[idx] = em[idx]*ab[idx]
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def constant_gpu(p0, ae, ct, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
@@ -2753,7 +2753,7 @@ def constant_gpu(p0, ae, ct, model, cont):
         if ct == 1: cont[idx] *= p0
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
                  maxx, minx, shift_vel, shift_ang, ae, ct, model, cont):
     # Get the CUDA index
@@ -2791,7 +2791,7 @@ def legendre_gpu(wave, p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
         if ct == 1: cont[idx] *= modval
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def vfwhm_gpu(wave, sigd, shift_vel, shift_ang, modem, modab, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
@@ -2800,7 +2800,7 @@ def vfwhm_gpu(wave, sigd, shift_vel, shift_ang, modem, modab, model, cont):
     pass
 
 
-@cuda.jit(nopython=True)
+@cuda.jit()
 def voigt_gpu(wave, cold, p1, p2, lam, fvl, gam, erfcx_cc, expa2n2, shift_vel, shift_ang, ae, ct, fr, model, cont):
     # Get the CUDA index
     idx = cuda.grid(1)
