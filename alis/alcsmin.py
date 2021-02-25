@@ -2357,6 +2357,7 @@ class alfit(object):
         clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
                                                  self.gpu_dict["modelab_" + parstr + gpustr],
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
+        cuda.synchronize()
 
     def gpu_getemab(self, parstr, posnspx, modelem=None, modelab=None, mcont=None):
         # Pull the data back from the GPU
@@ -2411,6 +2412,7 @@ class alfit(object):
                 makemodel_gpu[blocks, threads_per_block](self.gpu_dict[modemstr],
                                                          self.gpu_dict[modabstr],
                                                          self.gpu_dict[modflstr])
+                cuda.synchronize()
                 modelfull[sp][ll:lu] = self.gpu_dict[modflstr].copy_to_host()
         return modelfull
 
@@ -2421,6 +2423,7 @@ class alfit(object):
         constant_gpu[blocks, threads_per_block](pin[0],
                                                 aeint, ctint,
                                                 self.gpu_dict[modelstr], self.gpu_dict[modcont])
+        cuda.synchronize()
 
     def gpu_legendre(self, gpustr, modelstr, modcont, pin, blocks, threads_per_block, shift_vel=0.0, shift_ang=0.0, aeint=0, ctint=1):
         p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10 = pin[0], 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
@@ -2444,6 +2447,7 @@ class alfit(object):
                                                 p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
                                                 maxx, minx, shift_vel, shift_ang,
                                                 aeint, ctint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
+        cuda.synchronize()
 
     def gpu_random(self):
         pass
@@ -2473,6 +2477,7 @@ class alfit(object):
                                              self.gpu_dict["erfcx_cc"], self.gpu_dict["expa2n2"],
                                              shift_vel, shift_ang,
                                              aeint, ctint, frint, self.gpu_dict[modelstr], self.gpu_dict[modcont])
+        cuda.synchronize()
 
     def gpu_vshift(self):
         pass
