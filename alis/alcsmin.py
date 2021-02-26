@@ -1926,7 +1926,7 @@ class alfit(object):
         self.gpu_checkcont(parstr, posnspx)
         modelfull = self.gpu_makemodel(parstr, posnspx, modelfull)
         #modelem, modelab = self.gpu_getemab(parstr, posnspx, modelem=modelem, modelab=modelab)
-        mcont = self.gpu_getemab(parstr, posnspx, mcont=mcont)  # Need to get the continuum because of the zero level adjustment
+        mcont = self.gpu_getemab(parstr, posnspx, mcont=mcont)[0]  # Need to get the continuum because of the zero level adjustment
 
         # TODO :: Once this works to here, we should implement the convolution and
         # zerolevel corrections into GPU, and during the chi-squared, only return
@@ -2380,10 +2380,10 @@ class alfit(object):
                 if get_cont:
                     modcont = "modcont_" + parstr + gpustr
                     mcont[sp][ll:lu] = self.gpu_dict[modcont].copy_to_host()
-        retval = []
-        if get_em: retval.append(modelem)
-        if get_ab: retval.append(modelab)
-        if get_cont: retval.append(mcont)
+        retval = ()
+        if get_em: retval += (modelem,)
+        if get_ab: retval += (modelab,)
+        if get_cont: retval += (mcont,)
         return retval
 
     def gpu_checkcont(self, parstr, pos):
