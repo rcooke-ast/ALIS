@@ -2355,7 +2355,6 @@ class alfit(object):
         threads_per_block = self.gpu_dict["thr/blk_" + gpustr]
         clearflux_gpu[blocks, threads_per_block](self.gpu_dict["modelem_" + parstr + gpustr],
                                                  self.gpu_dict["modelab_" + parstr + gpustr],
-                                                 self.gpu_dict["modcont_" + parstr + gpustr],
                                                  self.gpu_dict["modcont_" + parstr + gpustr])
 
     def gpu_getemab(self, parstr, posnspx, modelem=None, modelab=None, mcont=None):
