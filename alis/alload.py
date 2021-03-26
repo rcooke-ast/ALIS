@@ -620,6 +620,7 @@ def load_data(slf, datlines, data=None):
         linspl = nocoms.split()
         if data is None:
             filename = linspl[0]
+            msgs.info("Parsing file: {0:s}".format(filename))
         else:
             filename = "Data read from 'data' keyword"
             linspl.insert(0,linspl[0])
@@ -804,7 +805,11 @@ def load_data(slf, datlines, data=None):
             wavemin, wavemax = np.min(wavein), np.max(wavein)
         elif wavemin == -2.0:
             wf = np.where(fitrin != 0.0)
-            wavemin, wavemax = np.min(wavein[wf]), np.max(wavein[wf])
+            try:
+                wavemin, wavemax = np.min(wavein[wf]), np.max(wavein[wf])
+            except:
+                from IPython import embed
+                embed()
         else:
             wf = np.where((wavein >= wavemin) & (wavein <= wavemax))
         # Specify the loaded data

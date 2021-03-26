@@ -3,6 +3,8 @@ from alis import almsgs
 from alis import alfunc_polynomial
 msgs=almsgs.msgs()
 
+maskval = -1.0
+
 class Legendre(alfunc_polynomial.Polynomial) :
     """
     Returns a Legendre polynomial of the first kind:
@@ -24,9 +26,9 @@ class Legendre(alfunc_polynomial.Polynomial) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'legendre'								# ID string for this class
         self._pnumr   = 1											# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'scale':[]})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'scale':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'scale':""})		# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'scale':[], 'min':maskval, 'max':maskval})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'scale':0,  'min':0,       'max':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'scale':"", 'min':"",      'max':""})		# Format for the keyword. "" is the Default setting
         self._parid   = ['coefficient']				# Name of each parameter
         self._defpar  = [ 0.0 ]						# Default values for parameters that are not provided
         self._fixpar  = [ None ]					# By default, should these parameters be fixed?
@@ -51,13 +53,18 @@ class Legendre(alfunc_polynomial.Polynomial) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        def model(par):
+        def model(par, karr):
             """
             Define the model here
             """
             modret = np.ones(x.size)*par[0]
-            xt = 2.0*x/(np.max(x)-np.min(x))
-            xt = xt - np.min(xt) - 1.0
+            if karr['min'] == maskval: mnx = np.min(x)
+            else: mnx = karr['min']
+            if karr['max'] == maskval: mxx = np.max(x)
+            else: mxx = karr['max']
+            xt = 2.0 * (x - mnx) / (mxx - mnx) - 1.0
+            # xt = 2.0*x/(np.max(x)-np.min(x))
+            # xt = xt - np.min(xt) - 1.0
             for m in range(1,len(par)):
                 if   m == 1 : modret += par[m]*(xt)
                 elif m == 2 : modret += par[m]*(    1.5*xt**2  -      0.5)
@@ -76,7 +83,7 @@ class Legendre(alfunc_polynomial.Polynomial) :
         #############
         yout = np.zeros((p.shape[0],x.size))
         for i in range(p.shape[0]):
-            yout[i,:] = model(p[i,:])
+            yout[i,:] = model(p[i,:], karr=mkey[i])
         if ae == 'em': return yout.sum(axis=0)
         else: return yout.prod(axis=0)
 
