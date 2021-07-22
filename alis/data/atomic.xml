@@ -1056,6 +1056,42 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
+    <TD>3889.9194658</TD>
+    <TD>7.1636e-03</TD>
+    <TD>1.0216e+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>3</TD>
+    <TD>3.0160293191</TD>
+    <TD>0.0</TD>
+    <TD>He</TD>
+    <TD>I</TD>
+    <TD>3889.9604174</TD>
+    <TD>2.1491e-02</TD>
+    <TD>1.0216e+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>3</TD>
+    <TD>3.0160293191</TD>
+    <TD>0.0</TD>
+    <TD>He</TD>
+    <TD>I</TD>
+    <TD>3889.9637440</TD>
+    <TD>3.5819e-02</TD>
+    <TD>1.0216e+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>3</TD>
+    <TD>3.0160293191</TD>
+    <TD>0.0</TD>
+    <TD>He</TD>
+    <TD>I</TD>
     <TD>6680.49529</TD>
     <TD>2.8411e-01</TD>
     <TD>6.3705e+07</TD>
@@ -1200,7 +1236,7 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10833.538557</TD>
+    <TD>10833.375341</TD>
     <TD>5.9902e-02</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
@@ -1212,19 +1248,7 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10833.274711</TD>
-    <TD>5.9902e-02</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.638475</TD>
+    <TD>10834.534892</TD>
     <TD>1.7974e-01</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
@@ -1236,67 +1260,7 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10834.374576</TD>
-    <TD>1.7974e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.815161</TD>
-    <TD>1.7974e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.551253</TD>
-    <TD>1.7974e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.612317</TD>
-    <TD>2.9958e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.348419</TD>
-    <TD>2.9958e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.620986</TD>
+    <TD>10834.624645</TD>
     <TD>2.9958e-01</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
@@ -1347,6 +1311,42 @@
     <TD>515.644042</TD>
     <TD>0.015045</TD>
     <TD>2.0E8</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>4</TD>
+    <TD>4.00260325415</TD>
+    <TD>0.0</TD>
+    <TD>He</TD>
+    <TD>I</TD>
+    <TD>3889.7065598</TD>
+    <TD>7.1636e-03</TD>
+    <TD>1.0216e+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>4</TD>
+    <TD>4.00260325415</TD>
+    <TD>0.0</TD>
+    <TD>He</TD>
+    <TD>I</TD>
+    <TD>3889.7475084</TD>
+    <TD>2.1491e-02</TD>
+    <TD>1.0216e+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>4</TD>
+    <TD>4.00260325415</TD>
+    <TD>0.0</TD>
+    <TD>He</TD>
+    <TD>I</TD>
+    <TD>3889.7508332</TD>
+    <TD>3.5819e-02</TD>
+    <TD>1.0216e+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
   </TR>
