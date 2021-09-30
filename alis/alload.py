@@ -5,6 +5,8 @@ import os, sys
 import copy
 from alis import almsgs
 from multiprocessing import cpu_count
+from IPython import embed
+
 msgs = almsgs.msgs()
 
 from astropy.io import fits as pyfits
@@ -427,7 +429,8 @@ def load_atomic(slf):
         table = parse_single_table(fname)
     except IOError:
         msgs.error("The filename does not exist -"+msgs.newline()+fname)
-    isotope = table.array['MassNumber'].astype("|S3").astype(np.object)+table.array['Element']
+    # isotope = table.array['MassNumber'].astype("|S3").astype(np.object)+table.array['Element']
+    isotope = np.core.defchararray.add(table.array['MassNumber'].astype("|S3"), table.array['Element'].astype("|S4"))
     atmdata = dict({})
     # eln = Ion
     # elw = Wavelength
@@ -437,16 +440,31 @@ def load_atomic(slf):
     # elK = Kvalue
     # elname = Element
     # elmass = AtomicMass
-    atmdata['Ion'] = np.array(isotope+b"_"+table.array['Ion']).astype(np.str)
+    # atmdata['Ion'] = np.array(isotope+"_"+table.array['Ion']).astype(np.str)
+    atmdata['Ion'] = np.core.defchararray.add(np.core.defchararray.add(isotope, "_").astype('S8'), table.array['Ion'].astype('|S4'))
     atmdata['Wavelength'] = np.array(table.array['RestWave'])
     atmdata['fvalue'] = np.array(table.array['fval'])
     atmdata['Gamma'] = np.array(table.array['Gamma'])
     atmdata['Qvalue'] = np.array(table.array['q'])
     atmdata['Kvalue'] = np.array(table.array['K'])
+    # seen = set()
+    # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(np.str)
+    # seen = set()
+    # atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
     seen = set()
-    atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(np.str)
+    fnl = []
+    for x in isotope:
+        if x not in seen:
+            fnl.append(x)
+            seen.add(x)
+    atmdata['Element'] = np.array(fnl).astype(np.str).copy()
     seen = set()
-    atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
+    fnl = []
+    for x in isotope:
+        if x not in seen:
+            fnl.append(x)
+            seen.add(x)
+    atmdata['AtomicMass'] = np.array(fnl).astype(np.str).copy()
     return atmdata
 
 def load_data(slf, datlines, data=None):
