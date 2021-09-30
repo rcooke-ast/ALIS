@@ -8,7 +8,7 @@
  !  at 2012-11-21T00:20:59
  !-->
 <RESOURCE>
-<TABLE name="Atomic_Data_Table" nrows="713">
+<TABLE name="Atomic_Data_Table" nrows="709">
 <FIELD ID="MassNumber" datatype="int" name="MassNumber" ucd="AT_ELEMENT">
 <DESCRIPTION>Number of Nucleons</DESCRIPTION>
 <VALUES null='-2147483648'/>
@@ -1200,8 +1200,8 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10833.538557</TD>
-    <TD>5.9902e-02</TD>
+    <TD>10833.274711213253</TD>
+    <TD>5.99e-02</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
@@ -1212,8 +1212,8 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10833.274711</TD>
-    <TD>5.9902e-02</TD>
+    <TD>10834.551252851868</TD>
+    <TD>5.99e-02</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
@@ -1224,8 +1224,8 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10834.638475</TD>
-    <TD>1.7974e-01</TD>
+    <TD>10834.374575268444</TD>
+    <TD>1.1983e-01</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
@@ -1236,8 +1236,8 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10834.374576</TD>
-    <TD>1.7974e-01</TD>
+    <TD>10834.620985932166</TD>
+    <TD>1.7975e-01</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
@@ -1248,56 +1248,8 @@
     <TD>0.0</TD>
     <TD>He</TD>
     <TD>I</TD>
-    <TD>10834.815161</TD>
-    <TD>1.7974e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.551253</TD>
-    <TD>1.7974e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.612317</TD>
-    <TD>2.9958e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.348419</TD>
-    <TD>2.9958e-01</TD>
-    <TD>1.0216e+07</TD>
-    <TD>NaN</TD>
-    <TD>NaN</TD>
-  </TR>
-  <TR>
-    <TD>3</TD>
-    <TD>3.0160293191</TD>
-    <TD>0.0</TD>
-    <TD>He</TD>
-    <TD>I</TD>
-    <TD>10834.620986</TD>
-    <TD>2.9958e-01</TD>
+    <TD>10834.348418552983</TD>
+    <TD>1.1983e-01</TD>
     <TD>1.0216e+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
