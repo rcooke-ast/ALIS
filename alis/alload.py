@@ -430,7 +430,7 @@ def load_atomic(slf):
     except IOError:
         msgs.error("The filename does not exist -"+msgs.newline()+fname)
     # isotope = table.array['MassNumber'].astype("|S3").astype(np.object)+table.array['Element']
-    isotope = np.core.defchararray.add(table.array['MassNumber'].astype("|S3"), table.array['Element'].astype("|S4"))
+    isotope = np.core.defchararray.add(table.array['MassNumber'].astype('U'), table.array['Element'].astype('U'))
     atmdata = dict({})
     # eln = Ion
     # elw = Wavelength
@@ -441,7 +441,7 @@ def load_atomic(slf):
     # elname = Element
     # elmass = AtomicMass
     # atmdata['Ion'] = np.array(isotope+"_"+table.array['Ion']).astype(np.str)
-    atmdata['Ion'] = np.core.defchararray.add(np.core.defchararray.add(isotope, "_").astype('S8'), table.array['Ion'].astype('|S4'))
+    atmdata['Ion'] = np.core.defchararray.add(np.core.defchararray.add(isotope, "_").astype('U'), table.array['Ion'].astype('U'))
     atmdata['Wavelength'] = np.array(table.array['RestWave'])
     atmdata['fvalue'] = np.array(table.array['fval'])
     atmdata['Gamma'] = np.array(table.array['Gamma'])
@@ -460,12 +460,13 @@ def load_atomic(slf):
     atmdata['Element'] = np.array(fnl).astype(np.str).copy()
     seen = set()
     fnl = []
-    for x in isotope:
+    for x in table.array['AtomicMass']:
         if x not in seen:
             fnl.append(x)
             seen.add(x)
-    atmdata['AtomicMass'] = np.array(fnl).astype(np.str).copy()
+    atmdata['AtomicMass'] = np.array(fnl).astype(np.float).copy()
     return atmdata
+
 
 def load_data(slf, datlines, data=None):
     """
