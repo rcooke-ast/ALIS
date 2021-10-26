@@ -20,7 +20,7 @@ class Gaussian(alfunc_base.Base) :
         self._defpar  = [ 0.0,         0.0,        100.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ None,       None,      None ]				# By default, should these parameters be fixed?
         self._limited = [ [1  ,0  ],   [0  ,0  ], [1      ,0  ] ]	# Should any of these parameters be limited from below or above
-        self._limits  = [ [0.0,0.0],   [0.0,0.0], [1.0E-20,0.0] ]	# What should these limiting values be
+        self._limits  = [ [0.0,0.0],   [0.0,0.0], [1.0,0.0] ]	# What should these limiting values be
         self._svfmt   = [ "{0:.8g}",  "{0:.8g}", "{0:.8g}"]			# Specify the format used to print or save output
         self._prekw   = []											# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.

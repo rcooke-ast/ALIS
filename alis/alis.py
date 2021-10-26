@@ -22,6 +22,7 @@ from alis import alsave
 from alis import alutils
 from alis import alfunc_base
 from alis import almsgs
+from IPython import embed
 msgs = almsgs.msgs()
 
 try: input = raw_input
@@ -363,6 +364,14 @@ class ClassMain:
                     mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
 #					mdtmp = mdtmp +  mzero[sp][llx:lux]*(1.0-mdtmp)/mcont[sp][llx:lux]
                 modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
+                # TODO :: DELETE THIS CODE
+                if False:
+                    outname = self._snipnames[sp][sn].replace(".dat", "_wzcorr.dat")
+                    wavout = shwave.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
+                    cntout = mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
+                    flxout = (self._fluxfull[sp][ll:lu]-mzero[sp][llx])/(cntout-mzero[sp][llx])
+                    fleout = self._fluefull[sp][ll:lu]/(cntout-mzero[sp][llx])
+                    np.savetxt(outname, np.transpose((wavout, x[sp][ll:lu], flxout, fleout)))
                 # Make sure this model shouldn't be capped
                 if self._argflag['run']['capvalue'] is not None:
                     wc = np.where(modcv[sp][ll:lu] >= self._argflag['run']['capvalue'])[0]

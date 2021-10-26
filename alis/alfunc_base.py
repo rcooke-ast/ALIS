@@ -636,6 +636,7 @@ from alis import alfunc_polynomial
 from alis import alfunc_powerlaw
 from alis import alfunc_random
 from alis import alfunc_spline
+from alis import alfunc_splineabs
 from alis import alfunc_thar
 from alis import alfunc_tophat
 from alis import alfunc_variable
@@ -645,6 +646,7 @@ from alis import alfunc_afwhm
 from alis import alfunc_apod
 from alis import alfunc_lsf
 from alis import alfunc_vfwhm
+from alis import alfunc_voigtconv
 from alis import alfunc_vsigma
 from alis import alshift
 from alis import alfunc_user
@@ -656,7 +658,7 @@ include it's idstr value and the function call here.
 """
 
 def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
-    sendatomic = ['voigt', 'lineemission', 'phionxs']
+    sendatomic = ['voigt', 'lineemission', 'splineabs', 'phionxs']
     # Add your new function to the following:
     fd = dict({ 'Afwhm'          : alfunc_afwhm.AFWHM,
                 'apod'           : alfunc_apod.APOD,
@@ -670,16 +672,20 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'lineemission'   : alfunc_lineemission.LineEmission,
                 'phionxs'        : alfunc_phionxs.PhotIon_CrossSection,
                 'polynomial'     : alfunc_polynomial.Polynomial,
+                'polyshift'      : alshift.polyshift,
                 'powerlaw'       : alfunc_powerlaw.PowerLaw,
                 'random'         : alfunc_random.Random,
                 'spline'         : alfunc_spline.Spline,
+                'splineabs'      : alfunc_splineabs.SplineAbs,
                 'thar'           : alfunc_thar.ThAr,
                 'tophat'         : alfunc_tophat.TopHat,
                 'variable'       : alfunc_variable.Variable,
                 'vfwhm'          : alfunc_vfwhm.vFWHM,
                 'lsf'            : alfunc_lsf.LSF,
                 'voigt'          : alfunc_voigt.Voigt,
+                'voigtconv'      : alfunc_voigtconv.VoigtConv,
                 'vshift'         : alshift.vshift,
+                'vshiftscale'    : alshift.vshiftscale,
                 'vsigma'         : alfunc_vsigma.vSigma
                 })
 
