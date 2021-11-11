@@ -641,7 +641,7 @@ from alis import alfunc_thar
 from alis import alfunc_tophat
 from alis import alfunc_variable
 from alis import alfunc_voigt
-# Convolution routines
+# Convolution+shifting routines
 from alis import alfunc_afwhm
 from alis import alfunc_apod
 from alis import alfunc_lsf
@@ -667,6 +667,8 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'chebyshev'      : alfunc_chebyshev.Chebyshev,
                 'constant'       : alfunc_constant.Constant,
                 'gaussian'       : alfunc_gaussian.Gaussian,
+                'gaussianconst'  : alfunc_gaussian.GaussianConstant,
+                'gaussianconsthelium'  : alfunc_gaussian.GaussianConstantHelium,
                 'legendre'       : alfunc_legendre.Legendre,
                 'linear'         : alfunc_linear.Linear,
                 'lineemission'   : alfunc_lineemission.LineEmission,
