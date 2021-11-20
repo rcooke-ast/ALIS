@@ -11,5 +11,6 @@ This script runs PYPIT
 import alis.scripts.run_alis as run_alis
 
 if __name__ == '__main__':
+    __spec__ = None
     args = run_alis.parser()
     run_alis.main(args)
