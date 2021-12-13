@@ -364,7 +364,7 @@ class ClassMain:
                     mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
 #					mdtmp = mdtmp +  mzero[sp][llx:lux]*(1.0-mdtmp)/mcont[sp][llx:lux]
                 modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
-                # TODO :: DELETE THIS CODE
+                # TODO :: DELETE OR MODIFY THIS CODE
                 if False:
                     outname = self._snipnames[sp][sn].replace(".dat", "_wzcorr.dat")
                     wavout = shwave.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
