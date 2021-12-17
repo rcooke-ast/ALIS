@@ -63,7 +63,7 @@ class SplineAbs(alfunc_base.Base) :
             cne = cold*cns
             ww = (wavein*1.0e-8)/zp1
             x = 299792.458*(ww-wv)/wv
-            # Get the lcoations of the spline points
+            # Get the locations of the spline points
             nspl = (len(par)-5)//2
             yspl = par[5:5+nspl]
             xspl = par[5+nspl:]
