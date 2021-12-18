@@ -51,15 +51,15 @@ class SplineAbs(alfunc_base.Base) :
         def model(par, karr):
             """
             Define the model here
+
+            8.85282061604877e-13 = pi x r_e, where r_e = e^2 / (m_e c^2) = 2.8179403227E-13 is the classical electron radius
             """
             wavein = wave
             wv = par[3] * 1.0e-8
             if karr['logN']: cold = 10.0**par[0]
             else: cold = par[0]
             zp1 = par[1]+1.0
-            #bl = par[2]*wv/2.99792458E5
-            bl = wv/2.99792458E5
-            cns = wv*wv*par[4]/(bl*2.002134602291006E12)
+            cns = 8.85282061604877e-13 * 299792.458 * par[4] * wv
             cne = cold*cns
             ww = (wavein*1.0e-8)/zp1
             x = 299792.458*(ww-wv)/wv
@@ -95,11 +95,9 @@ class SplineAbs(alfunc_base.Base) :
             modret_conv[modret_conv < 0.0] = 0.0
             # Normalise
             norm = np.trapz(modret_conv, x=x)
-            modret_conv *= np.sqrt(np.pi)/norm
+            modret_conv /= norm
             # Prepare the optical depth
-            #v = wv * ((wv / ww) - 1) / bl
             tau = cne * modret_conv
-            #tau = cne*voigtking(v, a)
             return np.exp(-1.0*tau)
         #############
         yout = np.zeros((pin.shape[0],wave.size))
