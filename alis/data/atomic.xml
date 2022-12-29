@@ -8,7 +8,7 @@
  !  at 2012-11-21T00:20:59
  !-->
 <RESOURCE>
-<TABLE name="Atomic_Data_Table" nrows="735">
+<TABLE name="Atomic_Data_Table" nrows="750">
 <FIELD ID="MassNumber" datatype="int" name="MassNumber" ucd="AT_ELEMENT">
 <DESCRIPTION>Number of Nucleons</DESCRIPTION>
 <VALUES null='-2147483648'/>
@@ -42,6 +42,42 @@
 </FIELD>
 <DATA>
 <TABLEDATA>
+  <TR>
+    <TD>1</TD>
+    <TD>1.00782503207</TD>
+    <TD>0.0</TD>
+    <TD>TL</TD>
+    <TD>a</TD>
+    <TD>10834.601905771482</TD>
+    <TD>0.4164</TD>
+    <TD>6.265E8</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1</TD>
+    <TD>1.00782503207</TD>
+    <TD>0.0</TD>
+    <TD>TL</TD>
+    <TD>b</TD>
+    <TD>10835.076417750368</TD>
+    <TD>0.4164</TD>
+    <TD>6.265E8</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1</TD>
+    <TD>1.00782503207</TD>
+    <TD>0.0</TD>
+    <TD>TL</TD>
+    <TD>c</TD>
+    <TD>10836.952396837065</TD>
+    <TD>0.4164</TD>
+    <TD>6.265E8</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
   <TR>
     <TD>1</TD>
     <TD>1.00782503207</TD>
@@ -1755,6 +1791,161 @@
     <TD>256.317</TD>
     <TD>0.079</TD>
     <TD>1.897E8</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+<!--
+ ! Lithium data come from Table A.5 of Mott et al. (2017), A&A, 604, A44
+ ! which is derived from Kurucz et al. (1995). The vacuum wavelengths are
+ ! converted from air using the following code:
+    wavelength = np.array([6707.756,6707.768,6707.907,6707.908,6707.919,6707.920])  # Lithium-7
+    wavelength = np.array([6707.920,6707.923,6708.069,6708.070,6708.074,6708.075])  # Lithium-6
+    sigma_sq = (1.e4/wavelength)**2. #wavenumber squared
+    factor = 1 + (5.792105e-2/(238.0185-sigma_sq)) + (1.67918e-3/(57.362-sigma_sq))
+    factor = factor*(wavelength>=2000.) + 1.*(wavelength<2000.) #only modify above 2000A
+    print(wavelength*factor)
+ !--> 
+  <TR>
+    <TD>6</TD>
+    <TD>6.015122</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.772</TD>
+    <TD>0.1659</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>6</TD>
+    <TD>6.015122</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.775</TD>
+    <TD>0.3318</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>6</TD>
+    <TD>6.015122</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.921</TD>
+    <TD>0.07378</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>6</TD>
+    <TD>6.015122</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.922</TD>
+    <TD>0.009225</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>6</TD>
+    <TD>6.015122</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.926</TD>
+    <TD>0.09225</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>6</TD>
+    <TD>6.015122</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.927</TD>
+    <TD>0.07379</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>7</TD>
+    <TD>7.016003</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.608</TD>
+    <TD>0.18662507889786029</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>7</TD>
+    <TD>7.016003</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.620</TD>
+    <TD>0.31115014258457974</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>7</TD>
+    <TD>7.016003</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.759</TD>
+    <TD>0.07779828158025372</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>7</TD>
+    <TD>7.016003</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.760</TD>
+    <TD>0.015558581685530093</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>7</TD>
+    <TD>7.016003</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.771</TD>
+    <TD>0.07779828158025372</TD>
+    <TD>3.689E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>7</TD>
+    <TD>7.016003</TD>
+    <TD>0.0</TD>
+    <TD>Li</TD>
+    <TD>I</TD>
+    <TD>6709.772</TD>
+    <TD>0.07779828158025372</TD>
+    <TD>3.689E+07</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
   </TR>

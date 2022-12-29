@@ -52,7 +52,10 @@ class Gaussian(alfunc_base.Base) :
         #############
         yout = np.zeros((p.shape[0],x.size))
         for i in range(p.shape[0]):
-            yout[i,:] = model(p[i,:], karr=mkey[i])
+            if ae == 'zl':
+                yout[i, :] = model(p[i, :], karr=mkey)
+            else:
+                yout[i, :] = model(p[i, :], karr=mkey[i])
         if ae == 'em': return yout.sum(axis=0)
         else: return yout.prod(axis=0)
 

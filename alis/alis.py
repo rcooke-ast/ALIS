@@ -25,8 +25,8 @@ from alis import almsgs
 from IPython import embed
 msgs = almsgs.msgs()
 
-try: input = raw_input
-except NameError: pass
+#try: input = raw_input
+#except NameError: pass
 
 #from multiprocessing import Pool as mpPool
 #import pycuda.driver as cuda
@@ -364,8 +364,7 @@ class ClassMain:
                     mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
 #					mdtmp = mdtmp +  mzero[sp][llx:lux]*(1.0-mdtmp)/mcont[sp][llx:lux]
                 modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
-                # TODO :: DELETE OR MODIFY THIS CODE
-                if False:
+                if self._argflag['out']['wavecorr']:
                     outname = self._snipnames[sp][sn].replace(".dat", "_wzcorr.dat")
                     wavout = shwave.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
                     cntout = mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/np.float64(nexbins[sp][sn])
@@ -678,7 +677,7 @@ class ClassMain:
             plotCasePDF = ((self._argflag['out']['plots'].lower() == 'true') or ((self._argflag['out']['plots'].lower() != 'false') and (self._argflag['out']['plots'] != '')))
             if plotCasePDF:
                 alplot.plot_pdf(self)
-            fileend=input(msgs.input()+"Press enter to view the fits -")
+            #fileend=input(msgs.input()+"Press enter to view the fits -")
             alplot.plot_showall()
         elif self._argflag['sim']['random'] is not None and self._argflag['sim']['beginfrom'] != "":
             from alis import alsims
@@ -769,7 +768,7 @@ class ClassMain:
                 if plotCasePDF:
                     alplot.plot_pdf(self)
                 if self._argflag['plot']['fits'] or self._argflag['plot']['residuals']:
-                    null=input(msgs.input()+"Press enter to view the fits -")
+                    #null=input(msgs.input()+"Press enter to view the fits -")
                     alplot.plot_showall()
         else:
             msgs.info("Commencing chi-squared minimisation",verbose=self._argflag['out']['verbose'])
@@ -923,7 +922,7 @@ class ClassMain:
                 if plotCasePDF:
                     alplot.plot_pdf(self)
                 if self._argflag['plot']['fits'] or self._argflag['plot']['residuals']:
-                    null=input(msgs.input()+"Press enter to view the fits -")
+                    #null=input(msgs.input()+"Press enter to view the fits -")
                     alplot.plot_showall()
 #			if self._argflag['plot']['fits']:
 #				alplot.make_plots_all(self)
