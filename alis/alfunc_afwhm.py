@@ -48,13 +48,13 @@ class AFWHM(alfunc_base.Base) :
             dwav = 0.5*(x[2:]-x[:-2])
             dwav = np.append(np.append(dwav[0],dwav), dwav[-1])
             if np.size(sigd) == 1:
-                df=np.min([np.int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
+                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
                 yval = np.zeros(2*df+1)
                 yval[df:2*df+1] = (x[df:2*df+1] - x[df])/sigd
                 yval[:df] = (x[:df] - x[df])/sigd
                 gaus = np.exp(-0.5*yval*yval)
                 size = ysize + gaus.size - 1
-                fsize = 2 ** np.int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
+                fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
                 conv = np.fft.fft(y, fsize)
                 conv *= np.fft.fft(gaus/gaus.sum(), fsize)
                 ret = np.fft.ifft(conv).real.copy()
@@ -62,7 +62,7 @@ class AFWHM(alfunc_base.Base) :
                 return ret[df:df+ysize]
             elif np.size(sigd) == szflx:
                 yb = y.copy()
-                df=np.min([np.int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
+                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
                 for i in range(szflx):
                     if sigd[i] == 0.0:
                         yb[i] = y[i]
@@ -72,7 +72,7 @@ class AFWHM(alfunc_base.Base) :
                     yval[:df] = (x[:df] - x[df])/sigd[i]
                     gaus = np.exp(-0.5*yval*yval)
                     size = ysize + gaus.size - 1
-                    fsize = 2 ** np.int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
+                    fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
                     conv  = np.fft.fft(y, fsize)
                     conv *= np.fft.fft(gaus/gaus.sum(), fsize)
                     ret   = np.fft.ifft(conv).real.copy()

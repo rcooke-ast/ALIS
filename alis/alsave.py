@@ -56,9 +56,9 @@ def save_asciifits(fname, slf, arr, model):
         elif i == 'zerolevel':
             data[:,num] = slf._zerofinal[sp][ll:lu]
         elif i == 'fitrange':
-            out = np.zeros(lu-ll).astype(np.float64)
+            out = np.zeros(lu-ll).astype(float)
             w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-            out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(np.float64)
+            out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
             data[:,num] = out
         elif i == 'loadrange':
             data[:,num] = np.ones(lu-ll)
@@ -104,9 +104,9 @@ def save_fitsfits(fname, slf, arr, model):
         elif i == 'zerolevel':
             data[:,num] = slf._zerofinal[sp][ll:lu]
         elif i == 'fitrange':
-            out = np.zeros(lu-ll).astype(np.float64)
+            out = np.zeros(lu-ll).astype(float)
             w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-            out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(np.float64)
+            out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
             data[:,num] = out
         elif i == 'loadrange':
             data[:,num] = np.ones(lu-ll)
@@ -193,9 +193,9 @@ def save_onefits(fname, slf):
                 elif i == 'zerolevel':
                     data[:,num] = slf._zerofinal[sp][ll:lu]
                 elif i == 'fitrange':
-                    out = np.zeros(lu-ll).astype(np.float64)
+                    out = np.zeros(lu-ll).astype(float)
                     w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-                    out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(np.float64)
+                    out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
                     data[:,num] = out
                 elif i == 'loadrange':
                     data[:,num] = np.ones(lu-ll)
@@ -254,10 +254,10 @@ def save_onefits(fname, slf):
 def save_modelfits(slf):
     msgs.info("Writing out the model fits", verbose=slf._argflag['out']['verbose'])
     stf = 0
-    fit_fnames = np.array([]).astype(np.str)
-    fnames = np.array([]).astype(np.str)
+    fit_fnames = np.array([]).astype(str)
+    fnames = np.array([]).astype(str)
 #	stf, enf = [0 for all in slf._posnfull], [0 for all in slf._posnfull]
-    usdtwice, usdtwind, usdtwext = np.array([]).astype(np.str), np.array([]).astype(np.int64), np.array([]).astype(np.str)
+    usdtwice, usdtwind, usdtwext = np.array([]).astype(str), np.array([]).astype(int), np.array([]).astype(str)
     if slf._argflag['out']['onefits']: wvarr, fxarr, erarr, mdarr = [], [], [], []
     # If we are generating fakedata, find the peak value of the model
     if slf._argflag['generate']['data'] and slf._argflag['generate']['peaksnr'] > 0.0:
@@ -623,8 +623,8 @@ def save_covar(slf, covar):
             np.savetxt(filename, covar)
         msgs.info("Saved covariance matrix successfully:"+msgs.newline()+filename, verbose=slf._argflag['out']['verbose'])
         # Generate the correlation matrix from the covariance matrix
-        outsize = np.int(np.sqrt(np.shape(np.where(covar!=0.0))[1]))
-        if np.float(outsize) != np.sqrt(np.shape(np.where(covar!=0.0))[1]): msgs.bug("Error when deriving correlation matrix.", verbose=slf._argflag['out']['verbose'])
+        outsize = int(np.sqrt(np.shape(np.where(covar!=0.0))[1]))
+        if float(outsize) != np.sqrt(np.shape(np.where(covar!=0.0))[1]): msgs.bug("Error when deriving correlation matrix.", verbose=slf._argflag['out']['verbose'])
         corrM = np.zeros((outsize,outsize))
         sig    = np.sqrt(np.diag(covar))
         sigsig = np.dot(sig[:,np.newaxis],sig[np.newaxis,:])

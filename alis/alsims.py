@@ -27,7 +27,7 @@ def make_directory(dirname,overwrite=False,verbose=2):
 def perturb(slf, covar, bparams, parinfo):
     from alis.alis import myfunct_wrap
     # Decide how many characters to use for output files
-    nchr = str(np.int(np.log10(slf._argflag['sim']['perturb']))+1)
+    nchr = str(int(np.log10(slf._argflag['sim']['perturb']))+1)
     # Create the directory structure for the simulations
     make_directory(slf._argflag['sim']['dirname'],overwrite=slf._argflag['out']['overwrite'],verbose=slf._argflag['out']['verbose'])
     # Grab the best-fitting model
@@ -138,7 +138,7 @@ def perturb(slf, covar, bparams, parinfo):
 def sim_random(slf, covar, bparams, parinfo):
     from alis.alis import myfunct_wrap
     # Decide how many characters to use for output files
-    nchr = str(np.int(np.log10(slf._argflag['sim']['random']))+1)
+    nchr = str(int(np.log10(slf._argflag['sim']['random']))+1)
     # Create the directory structure for the simulations
     make_directory(slf._argflag['sim']['dirname'],overwrite=slf._argflag['out']['overwrite'],verbose=slf._argflag['out']['verbose'])
     # Grab the best-fitting model

@@ -104,7 +104,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
             try:
-                inval=np.float64(ival.rstrip(tieval))
+                inval=float(ival.rstrip(tieval))
             except:
                 msgs.error("This is not allowed for model input: "+ival.rstrip(tieval))
             if len(tieval) == 0: # Parameter is not tied
@@ -225,7 +225,7 @@ class PhotIon_CrossSection(alfunc_base.Base):
                     cpy_keywd[kwspl[0]] = kwspl[1]
                 elif type(cpy_keywd[kwspl[0]]) is float:
                     typeval='float'
-                    cpy_keywd[kwspl[0]] = np.float64(kwspl[1])
+                    cpy_keywd[kwspl[0]] = float(kwspl[1])
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'specid':
                     typeval='list'
                     cpy_keywd[kwspl[0]] = sidlist
@@ -517,12 +517,12 @@ class PhotIon_CrossSection(alfunc_base.Base):
             if mp['mtie'][mnum][i] >= 0: add -= 1
             elif mp['mtie'][mnum][i] <= -2:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
                 mp['mfix'][mnum][i] = -1
                 levadd += 1
             else:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
                 levadd += 1
         # Hardcode in the minimum and maximum column density ratio

@@ -51,7 +51,7 @@ class VoigtConv(alfunc_base.Base) :
             dwav = 0.5*(x[2:]-x[:-2])/x[1:-1]
             dwav = np.append(np.append(dwav[0],dwav),dwav[-1])
             if np.size(sigd) == 1:
-                df = int(np.min([np.int(np.ceil(fsigd/dwav).max()), ysize//2 - 1]))
+                df = int(np.min([int(np.ceil(fsigd/dwav).max()), ysize//2 - 1]))
                 # Here starts the Voigt function
                 wv = x[df] * 1.0e-8
                 bl = sigd * wv
@@ -61,7 +61,7 @@ class VoigtConv(alfunc_base.Base) :
                 gaus = wofz(v + 1j * a).real
                 # Now make the Fourier transform efficient
                 size = ysize + gaus.size - 1
-                fsize = 2 ** np.int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
+                fsize = 2 ** int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
                 conv = np.fft.fft(y, fsize)
                 conv *= np.fft.fft(gaus/gaus.sum(), fsize)
                 ret = np.fft.ifft(conv).real.copy()
@@ -69,7 +69,7 @@ class VoigtConv(alfunc_base.Base) :
                 return ret[df:df+ysize]
             elif np.size(sigd) == szflx:
                 yb = y.copy()
-                df=np.min([np.int(np.ceil(fsigd/dwav).max()), ysize//2 - 1])
+                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize//2 - 1])
                 for i in range(szflx):
                     if sigd[i] == 0.0:
                         yb[i] = y[i]
@@ -79,7 +79,7 @@ class VoigtConv(alfunc_base.Base) :
                     yval[:df] = (x[:df]/x[df] - 1.0)/sigd[i]
                     gaus = np.exp(-0.5*yval*yval)
                     size = ysize + gaus.size - 1
-                    fsize = 2 ** np.int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
+                    fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
                     conv  = np.fft.fft(y, fsize)
                     conv *= np.fft.fft(gaus/gaus.sum(), fsize)
                     ret   = np.fft.ifft(conv).real.copy()

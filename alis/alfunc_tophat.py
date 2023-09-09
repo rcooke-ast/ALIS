@@ -101,7 +101,7 @@ class TopHat(alfunc_base.Base) :
             if mp['mtie'][mnum][i] >= 0: add -= 1
             elif mp['mtie'][mnum][i] <= -2:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
                 mp['mfix'][mnum][i] = -1
                 if i==1:
                     pinfo[level+levadd]['step'] = self._keywd['hstep']
@@ -110,7 +110,7 @@ class TopHat(alfunc_base.Base) :
                 levadd += 1
             else:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
                 if i==1:
                     pinfo[level+levadd]['step'] = self._keywd['hstep']

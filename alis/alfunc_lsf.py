@@ -58,7 +58,7 @@ class LSF(alfunc_base.Base) :
             tab = lsf_val.interpolate_to_wv_array(x * u.AA)
             lsfk = tab["kernel"].data
             size = ysize + lsfk.size - 1
-            fsize = 2 ** np.int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
+            fsize = 2 ** int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
             conv = np.fft.fft(y, fsize)
             conv *= np.fft.fft(lsfk/lsfk.sum(), fsize)
             ret = np.fft.ifft(conv).real.copy()

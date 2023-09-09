@@ -141,7 +141,7 @@ class Base :
         # Determine the adjustment that needs to be made.
         try:
             if self._limited[parj][jind] == 0: value = None
-            else: value = np.float64(self._limits[parj][jind])
+            else: value = float(self._limits[parj][jind])
         except:
             msgs.error("Argument of 'lim' only takes None or float")
         # Determine if the parameter is tied, if it is, store tpnum.
@@ -553,12 +553,12 @@ class Base :
             if mp['mtie'][mnum][i] >= 0: add -= 1
             elif mp['mtie'][mnum][i] <= -2:
                 pinfo[level+levadd]['limited'] = [0 if o is None else 1 for o in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if o is None else np.float64(o) for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if o is None else float(o) for o in mp['mlim'][mnum][i]]
                 mp['mfix'][mnum][i] = -1
                 levadd += 1
             else:
                 pinfo[level+levadd]['limited'] = [0 if o is None else 1 for o in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if o is None else np.float64(o) for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if o is None else float(o) for o in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
                 levadd += 1
         return pinfo, add

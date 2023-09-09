@@ -89,13 +89,13 @@ class Variable(alfunc_base.Base):
             elif mp['mtie'][mnum][i] <= -2:
                 pinfo[level+levadd]['step'] = mp['mkey'][mnum]['step']
                 pinfo[level+levadd]['limited'] = [0 if o is None else 1 for o in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if o is None else np.float64(o) for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if o is None else float(o) for o in mp['mlim'][mnum][i]]
                 mp['mfix'][mnum][i] = -1
                 levadd += 1
             else:
                 pinfo[level+levadd]['step'] = mp['mkey'][mnum]['step']
                 pinfo[level+levadd]['limited'] = [0 if o is None else 1 for o in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if o is None else np.float64(o) for o in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if o is None else float(o) for o in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
                 levadd += 1
         return pinfo, add

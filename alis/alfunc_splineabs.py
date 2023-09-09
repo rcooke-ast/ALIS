@@ -78,13 +78,13 @@ class SplineAbs(alfunc_base.Base) :
                 fsigd = 6.0 * sigd
                 dwav = 0.5 * (wave[2:] - wave[:-2]) / wave[1:-1]
                 dwav = np.append(np.append(dwav[0], dwav), dwav[-1])
-                df = int(np.min([np.int(np.ceil(fsigd / dwav).max()), ysize / 2 - 1]))
+                df = int(np.min([int(np.ceil(fsigd / dwav).max()), ysize / 2 - 1]))
                 yval = np.zeros(2 * df + 1)
                 yval[df:2 * df + 1] = (wave[df:2 * df + 1] / wave[df] - 1.0) / sigd
                 yval[:df] = (wave[:df] / wave[df] - 1.0) / sigd
                 gaus = np.exp(-0.5 * yval * yval)
                 size = ysize + gaus.size - 1
-                fsize = 2 ** np.int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
+                fsize = 2 ** int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
                 conv = np.fft.fft(modret, fsize)
                 conv *= np.fft.fft(gaus / gaus.sum(), fsize)
                 ret = np.fft.ifft(conv).real.copy()
@@ -127,7 +127,7 @@ class SplineAbs(alfunc_base.Base) :
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
             try:
-                inval=np.float64(ival.rstrip(tieval))
+                inval=float(ival.rstrip(tieval))
             except:
                 msgs.error("This is not allowed for model input: "+ival.rstrip(tieval))
             if len(tieval) == 0: # Parameter is not tied
@@ -277,7 +277,7 @@ class SplineAbs(alfunc_base.Base) :
                     cpy_keywd[kwspl[0]] = kwspl[1]
                 elif type(cpy_keywd[kwspl[0]]) is float:
                     typeval='float'
-                    cpy_keywd[kwspl[0]] = np.float64(kwspl[1])
+                    cpy_keywd[kwspl[0]] = float(kwspl[1])
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'specid':
                     typeval='list'
                     cpy_keywd[kwspl[0]] = sidlist
@@ -361,14 +361,14 @@ class SplineAbs(alfunc_base.Base) :
         if '/' in self._keywd['ion']:
             cdratio = True
             numrat, denrat = self._keywd['ion'].split('/')
-            m = np.where(self._atomic['Element'].astype(np.str) == numrat.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(str) == numrat.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+numrat+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE COLUMN DENSITY FOR A SINGLE ION HAS BEEN SPECIFIED
             pt=np.zeros(pnumr)
             levadd=0
-            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
+            m = np.where(self._atomic['Element'].astype(str) == self._keywd['ion'].split('_')[0])
             if np.size(m) != 1:
                 msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             for i in range(pnumr):
@@ -683,12 +683,12 @@ class SplineAbs(alfunc_base.Base) :
             if mp['mtie'][mnum][i] >= 0: add -= 1
             elif mp['mtie'][mnum][i] <= -2:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
                 mp['mfix'][mnum][i] = -1
                 levadd += 1
             else:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
-                pinfo[level+levadd]['limits']  = [0.0 if j is None else np.float64(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
                 levadd += 1
         # Hardcode in the minimum and maximum column density ratio
@@ -712,14 +712,14 @@ class SplineAbs(alfunc_base.Base) :
         if '/' in self._keywd['ion']:
             cdratio = True
             numrat, denrat = self._keywd['ion'].split('/')
-            m = np.where(self._atomic['Element'].astype(np.str) == numrat.split('_')[0])
+            m = np.where(self._atomic['Element'].astype(str) == numrat.split('_')[0])
             if np.size(m) != 1: msgs.error("Numerator element "+numrat+" not found for -"+msgs.newline()+self._keywd['ion'])
             elmass = self._atomic['AtomicMass'][m][0]
         else: cdratio = False
         if not cdratio: # THE COLUMN DENSITY FOR A SINGLE ION HAS BEEN SPECIFIED
             pt=np.zeros(self._pnumr)
             levadd=0
-            m = np.where(self._atomic['Element'].astype(np.str) == self._keywd['ion'].split('_')[0])
+            m = np.where(self._atomic['Element'].astype(str) == self._keywd['ion'].split('_')[0])
             if np.size(m) != 1:
                 msgs.error("Element {0:s} not found in atomic data file".format(self._keywd['ion'].split('_')[0]))
             for i in range(self._pnumr):

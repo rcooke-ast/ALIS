@@ -440,7 +440,7 @@ def load_atomic(slf):
     # elK = Kvalue
     # elname = Element
     # elmass = AtomicMass
-    # atmdata['Ion'] = np.array(isotope+"_"+table.array['Ion']).astype(np.str)
+    # atmdata['Ion'] = np.array(isotope+"_"+table.array['Ion']).astype(str)
     atmdata['Ion'] = np.core.defchararray.add(np.core.defchararray.add(isotope, "_").astype('U'), table.array['Ion'].astype('U'))
     atmdata['Wavelength'] = np.array(table.array['RestWave'])
     atmdata['fvalue'] = np.array(table.array['fval'])
@@ -448,7 +448,7 @@ def load_atomic(slf):
     atmdata['Qvalue'] = np.array(table.array['q'])
     atmdata['Kvalue'] = np.array(table.array['K'])
     # seen = set()
-    # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(np.str)
+    # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(str)
     # seen = set()
     # atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
     seen = set()
@@ -457,14 +457,14 @@ def load_atomic(slf):
         if x not in seen:
             fnl.append(x)
             seen.add(x)
-    atmdata['Element'] = np.array(fnl).astype(np.str).copy()
+    atmdata['Element'] = np.array(fnl).astype(str).copy()
     seen = set()
     fnl = []
     for x in table.array['AtomicMass']:
         if x not in seen:
             fnl.append(x)
             seen.add(x)
-    atmdata['AtomicMass'] = np.array(fnl).astype(np.float).copy()
+    atmdata['AtomicMass'] = np.array(fnl).astype(float).copy()
     return atmdata
 
 
@@ -673,7 +673,7 @@ def load_data(slf, datlines, data=None):
                     fitrtxt = linspl[j]
                     fitspl = kwdspl[1].strip('[]()').split(',')
                     if len(fitspl) == 2:
-                        wavemin, wavemax = np.float64(fitspl[0]), np.float64(fitspl[1])
+                        wavemin, wavemax = float(fitspl[0]), float(fitspl[1])
                     elif fitspl == ['all']:
                         wavemin, wavemax = -1.0, -1.0
                     elif fitspl == ['columns']:
@@ -683,7 +683,7 @@ def load_data(slf, datlines, data=None):
                     loadrtxt = linspl[j]
                     loadspl = kwdspl[1].strip('[]()').split(',')
                     if len(loadspl) == 2:
-                        lwavemin, lwavemax = np.float64(loadspl[0]), np.float64(loadspl[1])
+                        lwavemin, lwavemax = float(loadspl[0]), float(loadspl[1])
                     elif loadspl == ['all']:
                         lwavemin, lwavemax = -1.0, -1.0
                     elif loadspl == ['columns']:
@@ -701,7 +701,7 @@ def load_data(slf, datlines, data=None):
                     colspl = kwdspl[1].strip('[]()').split(',')
                     for k in range(len(colspl)):
                         clspid = colspl[k].strip().split(':')
-                        if len(clspid)==2: wfe[clspid[0].strip()] = np.int(clspid[1].strip())
+                        if len(clspid)==2: wfe[clspid[0].strip()] = int(clspid[1].strip())
                         else: wfe[clspid[0].strip()] = k
                 elif kwdspl[0] == 'plotone' and kwdspl[1].lower() == 'true':
                     setplot = True # Force this plot to be shown by itself
@@ -714,11 +714,11 @@ def load_data(slf, datlines, data=None):
                         if yrngspl[0].lower() == "none":
                             yrngmin = None
                         else:
-                            yrngmin = np.float64(yrngspl[0])
+                            yrngmin = float(yrngspl[0])
                         if yrngspl[1].lower() == "none":
                             yrngmax = None
                         else:
-                            yrngmax = np.float64(yrngspl[1])
+                            yrngmax = float(yrngspl[1])
                     elif yrngspl == ['all']:
                         yrngmin, yrngmax = None, None
                     else: msgs.bug("specified 'yrange' is not allowed on line -"+msgs.newline()+datlines[i],verbose=slf._argflag['out']['verbose'])
@@ -899,7 +899,7 @@ def load_userdata(data, colspl, wfe, verbose=2):
         ucind[wfek[j]]=uccnt
         uccnt+=1
     datain = data[usecols,:]
-    wavein, fluxin, fluein = datain[ucind['wave'],:].astype(np.float64), datain[ucind['flux'],:].astype(np.float64), datain[ucind['error'],:].astype(np.float64)
+    wavein, fluxin, fluein = datain[ucind['wave'],:].astype(float), datain[ucind['flux'],:].astype(float), datain[ucind['error'],:].astype(float)
     ncols = datain.shape[1]
     if len(colspl) > ncols:
         msgs.error("The data only have {0:d} columns. Have you specified too many".format(ncols)+msgs.newline()+"columns with the 'columns' keyword?")
@@ -933,16 +933,16 @@ def load_userdata(data, colspl, wfe, verbose=2):
             fitrin = datain[ucind['fitrange'],:]
         except:
             msgs.warn("fitrange information was not provided as input", verbose=verbose)
-            fitrin = np.ones(wavein.size).astype(np.int32)
-    else: fitrin = np.ones(wavein.size).astype(np.int32)
+            fitrin = np.ones(wavein.size).astype(int)
+    else: fitrin = np.ones(wavein.size).astype(int)
     # Read the loadrange information
     if wfe['loadrange']  != -1:
         try:
             loadin = datain[ucind['loadrange'],:]
         except:
             msgs.warn("loadrange information was not provided as input", verbose=verbose)
-            loadin = np.ones(wavein.size).astype(np.int32)
-    else: loadin = np.ones(wavein.size).astype(np.int32)
+            loadin = np.ones(wavein.size).astype(int)
+    else: loadin = np.ones(wavein.size).astype(int)
     # Now return
     return wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin
 
@@ -969,13 +969,13 @@ def load_ascii(filename, colspl, wfe, wfek, verbose=2):
 #		ucind[wfek[j]]=uccnt
 #		uccnt+=1
 #	try:
-#		datain = np.loadtxt(filename, dtype=np.float64, usecols=usecols).transpose()
+#		datain = np.loadtxt(filename, dtype=float, usecols=usecols).transpose()
 #	except:
     wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin = None, None, None, None, None, None, None, None
     for j in range(len(wfek)):
         if wfe[wfek[j]] == -1: continue
         try:
-            onecol = np.loadtxt(filename, dtype=np.float64, usecols=(wfe[wfek[j]],))
+            onecol = np.loadtxt(filename, dtype=float, usecols=(wfe[wfek[j]],))
             if   wfek[j] == 'wave':        wavein = onecol
             elif wfek[j] == 'flux':        fluxin = onecol
             elif wfek[j] == 'error':       fluein = onecol
@@ -995,8 +995,8 @@ def load_ascii(filename, colspl, wfe, wfek, verbose=2):
     if contin is None: contin = np.ones(wavein.size)
     if zeroin is None: zeroin = np.zeros(wavein.size)
     if systin is None: systin = np.zeros(wavein.size)
-    if fitrin is None: fitrin = np.ones(wavein.size).astype(np.int32)
-    if loadin is None: loadin = np.ones(wavein.size).astype(np.int32)
+    if fitrin is None: fitrin = np.ones(wavein.size).astype(int)
+    if loadin is None: loadin = np.ones(wavein.size).astype(int)
     # Now return
     return wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin
 
@@ -1067,51 +1067,51 @@ def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
     # Read in the continuum
     if wfe['continuum'] != -1:
         try:
-            contin = datain[wfe['continuum'],:].astype(np.float64)
+            contin = datain[wfe['continuum'],:].astype(float)
             msgs.warn("Data found in column {0:d} for the file -".format(wfe['continuum']+1)+msgs.newline()+filename+msgs.newline()+"will not be used for the continuum", verbose=verbose)
-            contin = np.zeros(wavein.size).astype(np.float64)
+            contin = np.zeros(wavein.size).astype(float)
         except:
             msgs.warn("A continuum was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
             msgs.info("The continuum will be output for the above file", verbose=verbose)
-            contin = np.zeros(wavein.size).astype(np.float64)
-    else: contin = np.zeros(wavein.size).astype(np.float64)
+            contin = np.zeros(wavein.size).astype(float)
+    else: contin = np.zeros(wavein.size).astype(float)
     # Read in the zero-level
     if wfe['zerolevel'] != -1:
         try:
             zeroin = datain[wfe['zerolevel'],:]
             msgs.warn("Data found in column {0:d} for the file -".format(wfe['zerolevel']+1)+msgs.newline()+filename+msgs.newline()+"will not be used for the zero level", verbose=verbose)
-            contin = np.zeros(wavein.size).astype(np.float64)
+            contin = np.zeros(wavein.size).astype(float)
         except:
             msgs.warn("A zero-level was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
             msgs.info("The zero-level will be output for the above file", verbose=verbose)
-            zeroin = np.zeros(wavein.size).astype(np.float64)
-    else: zeroin = np.zeros(wavein.size).astype(np.float64)
+            zeroin = np.zeros(wavein.size).astype(float)
+    else: zeroin = np.zeros(wavein.size).astype(float)
     # Read in the systematics information
     if wfe['systematics'] != -1:
         try:
             systin = datain[wfe['systematics'],:]
         except:
             msgs.warn("Systematics information was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
-            systin = np.zeros(wavein.size).astype(np.float64)
-    else: systin = np.zeros(wavein.size).astype(np.float64)
+            systin = np.zeros(wavein.size).astype(float)
+    else: systin = np.zeros(wavein.size).astype(float)
     # Read in the fit range
     if wfe['fitrange']  != -1:
         try:
-            fitrin = datain[wfe['fitrange'],:].astype(np.float64)
+            fitrin = datain[wfe['fitrange'],:].astype(float)
         except:
             msgs.warn("A fitting range was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
             msgs.info("The fitting range will be output for the above file", verbose=verbose)
-            fitrin = np.ones(wavein.size).astype(np.float64)
-    else: fitrin = np.ones(wavein.size).astype(np.float64)
+            fitrin = np.ones(wavein.size).astype(float)
+    else: fitrin = np.ones(wavein.size).astype(float)
     # Read in the load range
     if wfe['loadrange']  != -1:
         try:
-            loadin = datain[wfe['loadrange'],:].astype(np.float64)
+            loadin = datain[wfe['loadrange'],:].astype(float)
         except:
             msgs.warn("A loadrange was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
             msgs.info("The loadrange will be output for the above file", verbose=verbose)
-            loadin = np.ones(wavein.size).astype(np.float64)
-    else: loadin = np.ones(wavein.size).astype(np.float64)
+            loadin = np.ones(wavein.size).astype(float)
+    else: loadin = np.ones(wavein.size).astype(float)
     # Now return
     return wavein, fluxin, fluein, contin, zeroin, systin, fitrin, loadin
 
@@ -1243,7 +1243,7 @@ def load_model(slf, modlines, updateself=True):
                             slf._funcarray[2][mdlspl[1]]._limits[find][j]  = 0.0
                         else:
                             slf._funcarray[2][mdlspl[1]]._limited[find][j] = 1
-                            slf._funcarray[2][mdlspl[1]]._limits[find][j]  = np.float64(limspl[j])
+                            slf._funcarray[2][mdlspl[1]]._limits[find][j]  = float(limspl[j])
                     except:
                         msgs.error("Keyword 'lim' must be a floating point number or 'None' on line -"+msgs.newline()+modlines[i])
                 continue
@@ -1644,7 +1644,7 @@ def load_subpixels(slf, parin):
             ll = slf._posnfull[sp][sn]
             lu = slf._posnfull[sp][sn+1]
             binsize=get_binsize(slf._wavefull[sp][ll:lu], bintype=slf._datopt['bintype'][sp][sn], maxonly=False, verbose=slf._argflag['out']['verbose'])
-            binlen = 1.0/np.float64(nexbins[sp][sn])
+            binlen = 1.0/float(nexbins[sp][sn])
             if slf._datopt['bintype'][sp][sn] == "km/s":
                 interpwav = (1.0+((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis]/2.99792458E5))
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1)*interpwav).flatten()
@@ -1652,7 +1652,7 @@ def load_subpixels(slf, parin):
                 interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
             elif slf._datopt['bintype'][sp][sn] == "Hz":
-                binlen = 1.0 / np.float64(nexbins[sp][sn])
+                binlen = 1.0 / float(nexbins[sp][sn])
                 interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
             else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
@@ -1686,13 +1686,13 @@ def load_par_influence(slf, parin):
         return foundit
     ##################
     pinfl = []
-    uinfl = np.array([],dtype=np.int)
+    uinfl = np.array([],dtype=int)
     modtyp=[[] for all in slf._posnfull]
     # Find the model parameters that influence a given sp+sn
     shind = np.where(np.array(slf._modpass['emab'])=='sh')[0][0]
     for sp in range(0,len(slf._posnfull)):
         lastemab, iea = ['' for all in slf._posnfull[sp][:-1]], [-1 for all in slf._posnfull[sp][:-1]]
-        pinfl.append([np.array([],dtype=np.int) for all in slf._posnfull[sp][:-1]])
+        pinfl.append([np.array([],dtype=int) for all in slf._posnfull[sp][:-1]])
         for sn in range(len(slf._posnfull[sp])-1):
             ll = slf._posnfull[sp][sn]
             lu = slf._posnfull[sp][sn+1]

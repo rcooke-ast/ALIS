@@ -416,10 +416,10 @@ def make_plots_all(slf, model=None):
                     (slf._argflag['out']['plots'] != '')))
     if slf._argflag['plot']['fits'] or plotCasePDF:
         numpagesA = plot_drawplots(pages-numone, ps_wfemc, pgcnt_arr, ps_disps, dspl, slf._argflag, labels=ps_labels, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=ps_yrange)
-        numpagesB = plot_drawplots(numone, po_wfemc, np.ones(numone).astype(np.int), po_disps, [1,1], slf._argflag, labels=po_labels, numpages=pages-numone, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=po_yrange)
+        numpagesB = plot_drawplots(numone, po_wfemc, np.ones(numone).astype(int), po_disps, [1,1], slf._argflag, labels=po_labels, numpages=pages-numone, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=po_yrange)
     if slf._argflag['plot']['residuals']:
         numpagesA = plot_drawresiduals(pages-numone, ps_wfemc, pgcnt_arr, ps_disps, dspl, slf._argflag, labels=ps_labels, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=ps_yrange)
-        numpagesB = plot_drawresiduals(numone, po_wfemc, np.ones(numone).astype(np.int), po_disps, [1,1], slf._argflag, labels=po_labels, numpages=pages-numone, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=po_yrange)
+        numpagesB = plot_drawresiduals(numone, po_wfemc, np.ones(numone).astype(int), po_disps, [1,1], slf._argflag, labels=po_labels, numpages=pages-numone, verbose=slf._argflag['out']['verbose'],plotticks=pticks,yrange=po_yrange)
     if (slf._argflag['plot']['fits'] or plotCasePDF) and slf._argflag['plot']['residuals']:
         numpagesA *= 2
         numpagesB *= 2
@@ -548,11 +548,11 @@ def plot_drawplots(pages, wfemcarr, pgcnt, disp, dims, argflag, labels=None, num
                     if yrngspl[0].lower() == "none":
                         pass
                     else:
-                        ymin = np.float64(yrngspl[0])
+                        ymin = float(yrngspl[0])
                     if yrngspl[1].lower() == "none":
                         pass
                     else:
-                        ymax = np.float64(yrngspl[1])
+                        ymax = float(yrngspl[1])
             ax.set_ylim(ymin,ymax)
             #ax.set_yticks((0,0.5,1.0))
             # Plot the label

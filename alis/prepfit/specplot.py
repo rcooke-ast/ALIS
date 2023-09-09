@@ -6,6 +6,7 @@ import matplotlib
 from matplotlib.lines import Line2D
 import matplotlib.transforms as mtransforms
 matplotlib.use('Qt5Agg')
+from scipy.special import wofz
 
 from alis import alload
 from alis import alis as alismain
@@ -37,6 +38,9 @@ class SelectRegions(object):
         self._changes = False
         self.annlines = []
         self.anntexts = []
+        self.voigtlines = []
+        self.logn = 22.0
+        self.HImodel = self.voigtmodel()
 
         # Unset some of the matplotlib keymaps
         matplotlib.pyplot.rcParams['keymap.fullscreen'] = ''        # toggling fullscreen (Default: f, ctrl+f)
@@ -69,12 +73,41 @@ class SelectRegions(object):
 
         self.update_waverange()  # This includes a redraw of the canvas
 
+    def voigtmodel(self):
+        """
+        Define the model here
+        """
+        wave = self.prop._wave
+        logn = self.logn
+        zabs = self.prop._zabs
+        bval = 10.0
+        lam0 = 1215.6701
+        fval = 0.416400
+        gama = 6.265E8
+        wv = lam0 * 1.0e-8
+        cold = 10.0**logn
+        zp1=zabs+1.0
+        bl=bval*wv/2.99792458E5
+        a=gama*wv*wv/(3.76730313461770655E11*bl)
+        cns=wv*wv*fval/(bl*2.002134602291006E12)
+        cne=cold*cns
+        ww=(wave*1.0e-8)/zp1
+        v = wv * ((wv / ww) - 1) / bl
+        tau = cne*wofz(v + 1j * a).real
+        return np.median(self.prop._flux) * np.exp(-1.0*tau)
+
     def draw_lines(self):
         #annotations = [child for child in self.ax.get_children() if isinstance(child, matplotlib.text.Annotation)]
         for i in self.annlines: i.remove()
         for i in self.anntexts: i.remove()
+        for i in self.voigtlines:
+            for ii in i: ii.remove()
         self.annlines = []
         self.anntexts = []
+        self.voigtlines = []
+        if self.atom._atom_wvl[self.linecur] == 1215.6701:
+            self.voigtlines.append(self.ax.plot(self.prop._wave, self.HImodel, color='r'))
+        return
         molecules=False
         # Plot the lines
         xmn, xmx = self.ax.get_xlim()
@@ -202,6 +235,7 @@ class SelectRegions(object):
             print("p       : toggle pan/zoom with the cursor")
             print("w       : write the spectrum with the associated region")
             print("q       : exit")
+            print("+/-     : Increase/decrease logN of N(HI) model")
             print("------------------------------------------------------------")
             print("       SHORTCUTS TO MOVE BETWEEN LINES")
             print("[ / ]   : go to previous/next element")
@@ -212,6 +246,8 @@ class SelectRegions(object):
             print("{0:} {1:}  {2:f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur]))
             print("Observed wavelength = {0:f}".format(self.atom._atom_wvl[self.linecur]*(1.0+self.prop._zabs)))
             print("f-value = {0:f}".format(self.atom._atom_fvl[self.linecur]))
+            print("------------------------------------------------------------")
+            print("Current logN value = ", self.logn)
             print("------------------------------------------------------------")
         elif event.key == 'w':
             self.write_data()
@@ -233,6 +269,14 @@ class SelectRegions(object):
         elif event.key == ',':
             self.next_element(-1, ion=True)
             self.next_spectrum()
+        elif event.key == '+':
+            self.logn += 0.1
+            self.voigtmodel()
+            self.canvas.draw()
+        elif event.key == '-':
+            self.logn -= 0.1
+            self.voigtmodel()
+            self.canvas.draw()
         elif event.key == 'q':
             if self._changes:
                 print("WARNING: There are unsaved changes!!")
@@ -397,7 +441,7 @@ class atomic:
         self._atom_fvl = atmdata['fvalue'][keep]
         self._atom_gam = atmdata['Gamma'][keep]
         # seen = set()
-        # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(np.str)
+        # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(str)
         # seen = set()
         # atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
 
