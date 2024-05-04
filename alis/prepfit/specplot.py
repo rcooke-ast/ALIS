@@ -427,7 +427,7 @@ class atomic:
         numtrans = atmdata['Wavelength'].size
         ionspl = np.char.split(atmdata['Ion'], sep ='_')
         self._atom_atm, self._atom_ion = [], []
-        keep = np.ones(numtrans, dtype=np.bool)
+        keep = np.ones(numtrans, dtype=bool)
         for ss in range(numtrans):
             if str(ionspl[ss][0]) in ['1Ly', 'FAKE']: keep[ss] = False
             if str(ionspl[ss][1]) in ['IB']: keep[ss] = False
