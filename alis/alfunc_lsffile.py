@@ -45,7 +45,7 @@ class LSFFile(alfunc_base.Base) :
             try:
                 lsf_wave, lsf_kernel = np.loadtxt(self._keywd['name'], unpack=True)
             except:
-                msgs.error("The LSF file could not be read - it should be a two column file with wavelength and kernel values")
+                msgs.error("The LSF file could not be read!" + msgs.newline() + "It should be a two column file with wavelength and kernel values")
             ysize = y.size
             df = ysize//2 - 1
             lsfk = np.zeros(2*df+1)
