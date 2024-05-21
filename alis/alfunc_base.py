@@ -645,6 +645,7 @@ from alis import alfunc_voigt
 from alis import alfunc_afwhm
 from alis import alfunc_apod
 from alis import alfunc_lsf
+from alis import alfunc_lsffile
 from alis import alfunc_vfwhm
 from alis import alfunc_voigtconv
 from alis import alfunc_vsigma
@@ -684,6 +685,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'variable'       : alfunc_variable.Variable,
                 'vfwhm'          : alfunc_vfwhm.vFWHM,
                 'lsf'            : alfunc_lsf.LSF,
+                'lsffile'        : alfunc_lsffile.LSFFile,
                 'voigt'          : alfunc_voigt.Voigt,
                 'voigtconv'      : alfunc_voigtconv.VoigtConv,
                 'vshift'         : alshift.vshift,

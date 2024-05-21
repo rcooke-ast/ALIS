@@ -1,22 +1,24 @@
 import numpy as np
 from alis import almsgs
 from alis import alfunc_base
-msgs=almsgs.msgs()
+import astropy.units as u
+msgs = almsgs.msgs()
 
-class AFWHM(alfunc_base.Base) :
+
+class LSFFile(alfunc_base.Base) :
     """
-    Convolves the spectrum with a Gaussian with full-width at half-maxium AFWHM (in Angstroms):
-    p[0] = AFWHM
+    Convolves the spectrum with a line spread function from linetools.
+    The only input parameter is a dummy parameter at this moment.
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
-        self._idstr   = 'Afwhm'			# ID string for this class
+        self._idstr   = 'lsffile'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._parid   = ['value']		# Name of each parameter
-        self._defpar  = [ 0.0 ]			# Default values for parameters that are not provided
-        self._fixpar  = [ None ]		# By default, should these parameters be fixed?
+        self._keywd   = dict({'name':'lsf.dat', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'name':1,         'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'name':"",        'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._parid   = ['scale']		# Name of each parameter
+        self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
+        self._fixpar  = [ True ]		# By default, should these parameters be fixed?
         self._limited = [ [1  ,0  ] ]	# Should any of these parameters be limited from below or above
         self._limits  = [ [0.0,0.0] ]	# What should these limiting values be
         self._svfmt   = [ "{0:.3g}" ]	# Specify the format used to print or save output
@@ -39,87 +41,26 @@ class AFWHM(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        sigd = p[0] / ( 2.0*np.sqrt(2.0*np.log(2.0)) )
-        if np.size(sigd) == 1: cond = sigd > 0
-        else: cond = np.size(np.where(sigd > 0.0)) >= 1
-        if cond:
-            ysize=y.size
-            fsigd=6.0*sigd
-            dwav = 0.5*(x[2:]-x[:-2])
-            dwav = np.append(np.append(dwav[0],dwav), dwav[-1])
-            if np.size(sigd) == 1:
-                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize//2 - 1])
-                yval = np.zeros(2*df+1)
-                yval[df:2*df+1] = (x[df:2*df+1] - x[df])/sigd
-                yval[:df] = (x[:df] - x[df])/sigd
-                gaus = np.exp(-0.5*yval*yval)
-                size = ysize + gaus.size - 1
-                fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
-                conv = np.fft.fft(y, fsize)
-                conv *= np.fft.fft(gaus/gaus.sum(), fsize)
-                ret = np.fft.ifft(conv).real.copy()
-                del conv
-                return ret[df:df+ysize]
-            elif np.size(sigd) == szflx:
-                yb = y.copy()
-                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
-                for i in range(szflx):
-                    if sigd[i] == 0.0:
-                        yb[i] = y[i]
-                        continue
-                    yval = np.zeros(2*df+1)
-                    yval[df:2*df+1] = (x[df:2*df+1] - x[df])/sigd[i]
-                    yval[:df] = (x[:df] - x[df])/sigd[i]
-                    gaus = np.exp(-0.5*yval*yval)
-                    size = ysize + gaus.size - 1
-                    fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
-                    conv  = np.fft.fft(y, fsize)
-                    conv *= np.fft.fft(gaus/gaus.sum(), fsize)
-                    ret   = np.fft.ifft(conv).real.copy()
-                    yb[i] = ret[df:df+ysize][i]
-                del conv
-                return yb
-            else:
-                msgs.error("Afwhm and flux arrays have different sizes.")
-        else: return y
+        if p[0] > 0.0:
+            try:
+                lsf_wave, lsf_kernel = np.loadtxt(self._keywd['name'], unpack=True)
+            except:
+                msgs.error("The LSF file could not be read - it should be a two column file with wavelength and kernel values")
+            ysize = y.size
+            df = ysize//2 - 1
+            lsfk = np.zeros(2*df+1)
+            lsfk[:2*df+1] = np.interp(x[:2*df+1]-x[df], lsf_wave, lsf_kernel)
+            size = ysize + lsfk.size - 1
+            fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
+            conv = np.fft.fft(y, fsize)
+            conv *= np.fft.fft(lsfk/lsfk.sum(), fsize)
+            ret = np.fft.ifft(conv).real.copy()
+            del conv
+            return ret[df:df+ysize]
+        else:
+            return y
 
-#	def call_CPU(self, x, y, p, ncpus=1):
-#		"""
-#		Define the functional form of the model
-#		--------------------------------------------------------
-#		x  : array of wavelengths
-#		y  : model flux array
-#		p  : array of parameters for this model
-#		--------------------------------------------------------
-#		"""
-#		sigd = p[0] / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
-#		szflx=np.size(y)
-#		flub= np.copy(y)
-#		flutx=np.ones(szflx+2)
-#		flutx[0], flutx[-1] = 0.0, 0.0
-#		flutf=np.zeros(szflx+2)
-#		flutf[1:-1]=y
-#		if sigd > 0.0:
-#			fsigd=6.0*sigd
-#			deltawave=0.5*(x[2:]-x[:-2])
-#			df=fsigd*x[1:-1]/deltawave
-#			nd=np.int_(df)
-#			nd[np.argwhere(nd <= 0)] = 1
-#			i=np.arange(1,x.size-1)
-#			nran=np.arange(-nd[0]+1,nd[0]+2)
-#			ind = nran+np.arange(np.size(i))[:,np.newaxis]
-#			indn = np.copy(ind)
-#			indn[np.where(indn<-1)]=-1
-#			indn[np.where(indn>=x.size)]=-1
-#			y=(x[indn]/np.transpose([x[i]]) - 1.0)/sigd
-#			sx=(flutx[indn+1]*np.exp(-y*y*0.5)).sum(1)
-#			sf=(flutf[indn+1]*np.exp(-y*y*0.5)).sum(1)
-#			w=np.where(sx>0.0)
-#			flub[i[w]] = sf[w]/sx[w]
-#		else: flub = y
-#		return flub
-
-    def getminmax(self, par, fitrng, Nsig=5.0):
+    def getminmax(self, par, fitrng, Nsig=30.0):
         """
         This definition is only used for specifying the
         FWHM Resolution of the data.
@@ -135,16 +76,18 @@ class AFWHM(alfunc_base.Base) :
         Nsig   : Width in number of sigma to extract either side of
                  fitrange
         """
-        # Convert the input parameters to the parameters used in call
-        pin = [0.0 for all in par]
-        for i in range(len(par)):
-            tval=par[i].lstrip('+-.0123456789')
-            if tval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
-                tval=tval[2:].lstrip('.0123456789')
-            parsnd=float(par[i].rstrip(tval))
-            pin[i] = self.parin(i, parsnd)
+        lsf_dict = dict(name=self._keywd['name'],
+                        grating=self._keywd['grating'],
+                        life_position=str(self._keywd['life_position']),
+                        cen_wave=self._keywd['cen_wave'])
+        lsf_val = ltLSF(lsf_dict)
+        tab = lsf_val.interpolate_to_wv0(float(self._keywd['cen_wave']) * u.AA)
+        # Roughly estimate the FWHM
+        w = np.where(tab["kernel"].data >= 0.5 * np.max(tab["kernel"].data))
+        dwav = np.max(tab["wv"].data[w]) - np.min(tab["wv"].data[w])
+        fwhmv = 299792.458 * dwav / 1309.0
         # Use the parameters to now calculate the sigma width
-        sigd = pin[0] / ( 2.0*np.sqrt(2.0*np.log(2.0)) )
+        sigd = fwhmv / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
         # Calculate the min and max extraction wavelengths
         wmin = fitrng[0]*(1.0 - Nsig*sigd)
         wmax = fitrng[1]*(1.0 + Nsig*sigd)
@@ -202,12 +145,14 @@ class AFWHM(alfunc_base.Base) :
             mps['mlim'][cntr].append([self._limits[iind][i] if self._limited[iind][i]==1 else None for i in range(2)])
             return mps
         ################
-        isspl=instr.split()
+        # Convert colon back to equals so that it's interpreted as a keyword
+        instr = instr.replace(":", "=")
+        isspl = instr.split(",")
         # Seperate the parameters from the keywords
         kywrd = []
         keywdk = list(self._keywd.keys())
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
-        param = [None for all in range(self._pnumr)]
+        param = [str(self._defpar[all]) for all in range(self._pnumr)]
         parid = [i for i in range(self._pnumr)]
         for i in range(len(isspl)):
             if "=" in isspl[i]:
@@ -281,7 +226,7 @@ class AFWHM(alfunc_base.Base) :
         if   i == 0: pin = par
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False, getstdd=None):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, getinfl=False, ddpid=None, getstdd=None):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
@@ -316,12 +261,12 @@ class AFWHM(alfunc_base.Base) :
             if ddpid not in parinf: return []
         if nexbin is not None:
             if params[0] == 0: return params, 1
-            if nexbin[0] == "km/s": msgs.error("bintype is set to 'km/s', when FWHM is specified in Angstroms.")
-            elif nexbin[0] == "A" : return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*nexbin[1]/params[0] + 0.5))
+            if nexbin[0] == "km/s": return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*nexbin[1]/params[0] + 0.5))
+            elif nexbin[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
             else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getstdd is not None:
             fact = 2.0*np.sqrt(2.0*np.log(2.0))
-            return getstdd[1]*(1.0+getstdd[0]*params[0]/(fact)), getstdd[2]*(1.0-getstdd[0]*params[0]/(fact))
+            return getstdd[1]*(1.0+getstdd[0]*params[0]/(fact*299792.458)), getstdd[2]*(1.0-getstdd[0]*params[0]/(fact*299792.458))
         elif getinfl: return params, parinf
         else: return params
 

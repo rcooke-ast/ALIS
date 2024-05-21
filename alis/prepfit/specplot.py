@@ -364,6 +364,8 @@ class props:
         except:
             try:
                 wave, flux, flue, cont = np.loadtxt(ifil, unpack=True, usecols=(0,1,2,4))
+                # print("NEED TO DELETE THIS CONT FUDGE!")
+                # cont = np.ones(wave.size)
                 regions = np.zeros(wave.size)
                 print("Loaded file:")
                 print(ifil)
