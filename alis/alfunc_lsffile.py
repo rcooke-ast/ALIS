@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from alis import almsgs
 from alis import alfunc_base
@@ -13,9 +14,9 @@ class LSFFile(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'lsffile'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'name':'lsf.dat', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'name':1,         'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'name':"",        'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keywd   = dict({'name':'', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'name':1,  'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'name':"", 'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
         self._parid   = ['scale']		# Name of each parameter
         self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ True ]		# By default, should these parameters be fixed?
@@ -27,10 +28,22 @@ class LSFFile(alfunc_base.Base) :
         tempinput = self._parid+list(self._keych.keys())                             #
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
         ########################################################################
+        self._lsf_wave, self._lsf_kernel = None, None
         self._verbose = verbose
         # Set the atomic data
         self._atomic = atomic
         if getinst: return
+
+    def loadlsf(self, name):
+        """
+        Load the LSF file
+        """
+        if not os.path.exists(name):
+            msgs.error("LSF file not found: {:s}".format(name))
+        try:
+            self._lsf_wave, self._lsf_kernel = np.loadtxt(name, unpack=True)
+        except:
+            msgs.error("LSF file not found or not in the correct format")
 
     def call_CPU(self, x, y, p, ncpus=1):
         """
@@ -41,15 +54,13 @@ class LSFFile(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
+        if self._lsf_wave is None or self._lsf_kernel is None:
+            self.loadlsf(self._keywd['name'])
         if p[0] > 0.0:
-            try:
-                lsf_wave, lsf_kernel = np.loadtxt(self._keywd['name'], unpack=True)
-            except:
-                msgs.error("The LSF file could not be read!" + msgs.newline() + "It should be a two column file with wavelength and kernel values")
             ysize = y.size
             df = ysize//2 - 1
             lsfk = np.zeros(2*df+1)
-            lsfk[:2*df+1] = np.interp(x[:2*df+1]-x[df], lsf_wave, lsf_kernel)
+            lsfk[:2*df+1] = np.interp(x[:2*df+1]-x[df], self._lsf_wave, self._lsf_kernel)
             size = ysize + lsfk.size - 1
             fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
             conv = np.fft.fft(y, fsize)
@@ -76,15 +87,18 @@ class LSFFile(alfunc_base.Base) :
         Nsig   : Width in number of sigma to extract either side of
                  fitrange
         """
-        lsf_dict = dict(name=self._keywd['name'],
-                        grating=self._keywd['grating'],
-                        life_position=str(self._keywd['life_position']),
-                        cen_wave=self._keywd['cen_wave'])
-        lsf_val = ltLSF(lsf_dict)
-        tab = lsf_val.interpolate_to_wv0(float(self._keywd['cen_wave']) * u.AA)
+        if self._lsf_wave is None or self._lsf_kernel is None:
+            name = None
+            for pp in par:
+                if pp.split(":")[0] == 'name':
+                    name = pp.split(":")[1]
+                    break
+            if name is None:
+                msgs.error("LSF file not found")
+            self.loadlsf(name)
         # Roughly estimate the FWHM
-        w = np.where(tab["kernel"].data >= 0.5 * np.max(tab["kernel"].data))
-        dwav = np.max(tab["wv"].data[w]) - np.min(tab["wv"].data[w])
+        w = np.where(self._lsf_kernel >= 0.5 * np.max(self._lsf_kernel))
+        dwav = np.max(self._lsf_wave[w]) - np.min(self._lsf_wave[w])
         fwhmv = 299792.458 * dwav / 1309.0
         # Use the parameters to now calculate the sigma width
         sigd = fwhmv / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
@@ -211,6 +225,7 @@ class LSFFile(alfunc_base.Base) :
             if self._keych[keywdk[i]] == 1: msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
         # Append the final set of keywords
         mp['mkey'].append(self._keywd.copy())
+        print(self._keywd, mp['mkey'])
         return mp, parid
 
     def parin(self, i, par):
