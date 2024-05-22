@@ -225,7 +225,6 @@ class LSFFile(alfunc_base.Base) :
             if self._keych[keywdk[i]] == 1: msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
         # Append the final set of keywords
         mp['mkey'].append(self._keywd.copy())
-        print(self._keywd, mp['mkey'])
         return mp, parid
 
     def parin(self, i, par):
