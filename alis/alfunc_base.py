@@ -400,7 +400,6 @@ class Base :
         # Check if we are blinding any parameters with an offset value
         blindoffset = 0
         if 'blindrange' in mp['mkey'][istart]:
-            print("Blinding the parameters")
             if len(mp['mkey'][istart]['blindrange']) == 2:
                 if 'blindseed' in mp['mkey'][istart]:
                     np.random.seed(mp['mkey'][istart]['blindseed'])
