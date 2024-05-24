@@ -17,9 +17,9 @@ class LSF(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'lsf'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'name':'COS', 'grating':'G130M', 'life_position':1,  'cen_wave':'1309', 'blind':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'name':1,     'grating':0,       'life_position':0,  'cen_wave':0,      'blind':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'name':"",    'grating':"",      'life_position':"", 'cen_wave':"",     'blind':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keywd   = dict({'name':'COS', 'grating':'G130M', 'life_position':1,  'cen_wave':'1309', 'blind':False, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'name':1,     'grating':0,       'life_position':0,  'cen_wave':0,      'blind':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'name':"",    'grating':"",      'life_position':"", 'cen_wave':"",     'blind':"", 'blindseed':"",  'blindrange':""})			# Require keywd to be changed (1 for yes, 0 for no)
         self._parid   = ['scale']		# Name of each parameter
         self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ True ]		# By default, should these parameters be fixed?

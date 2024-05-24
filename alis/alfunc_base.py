@@ -3,6 +3,7 @@ import numpy as np
 import traceback
 from alis import almsgs
 import sys
+import time
 msgs=almsgs.msgs()
 
 class Base :
@@ -15,9 +16,9 @@ class Base :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'base'										# ID string for this class
         self._pnumr   = 3											# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'wave':-1.0})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'wave':1})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'wave':""})			# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'wave':-1.0, 'blindseed':0,  'blindrange':[]})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'wave':1,    'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'wave':"",   'blindseed':"", 'blindrange':""})			# Format for the keyword. "" is the Default setting
         self._parid   = ['amplitude', 'redshift', 'dispersion']		# Name of each parameter
         self._defpar  = [ 0.0,         0.0,        100.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ None,        None,       None ]			# By default, should these parameters be fixed?
@@ -311,6 +312,9 @@ class Base :
                     if ksspl[j] not in specid:
                         msgs.error("There is no data with specid: "+ksspl[j]+" for -"+msgs.newline()+self._idstr+"   "+instr.replace('\t','  '))
                 specidset=True
+            elif kwspl[0] == 'blindrange':
+                if len(ksspl) != 2:
+                    msgs.error("blindrange should have 2 values for -"+msgs.newline()+self._idstr+"   "+instr)
             for j in range(len(ksspl)):
                 if type(cpy_keywd[kwspl[0]]) is int:
                     typeval='integer'
@@ -324,6 +328,9 @@ class Base :
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'specid':
                     typeval='list'
                     cpy_keywd[kwspl[0]] = sidlist
+                elif type(cpy_keywd[kwspl[0]]) is list:
+                    typeval='list'
+                    cpy_keywd[kwspl[0]] = ksspl
                 elif type(cpy_keywd[kwspl[0]]) is bool:
                     if kwspl[1] in ['True', 'False']:
                         typeval='boolean'
@@ -389,6 +396,20 @@ class Base :
         levadd = 0
         outstring = ['  %s ' % (self._idstr)]
         errstring = ['# %s ' % (self._idstr)]
+
+        # Check if we are blinding any parameters with an offset value
+        blindoffset = 0
+        if 'blindrange' in mp['mkey'][istart]:
+            print("Blinding the parameters")
+            if len(mp['mkey'][istart]['blindrange']) == 2:
+                if 'blindseed' in mp['mkey'][istart]:
+                    np.random.seed(mp['mkey'][istart]['blindseed'])
+                else:
+                    np.random.seed(0)
+                blindoffset = np.random.uniform(int(mp['mkey'][istart]['blindrange'][0]), int(mp['mkey'][istart]['blindrange'][1]))
+            # Reset the seed
+            self.resetseed()
+
         for i in range(self._pnumr):
             if mp['mkey'][istart]['input'][self._parid[i]] == 0: # Parameter not given as input
                 outstring.append( "" )
@@ -399,7 +420,7 @@ class Base :
             if mp['mtie'][istart][i] >= 0:
                 if reletter:
                     newfmt=pretxt+self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],self._svfmt[i]+'{1:c}')
-                    outstring.append( (newfmt).format(params[mp['tpar'][mp['mtie'][istart][i]][1]],97+mp['mtie'][istart][i]-32*mp['mfix'][istart][1]) )
+                    outstring.append( (newfmt).format(blindoffset+params[mp['tpar'][mp['mtie'][istart][i]][1]],97+mp['mtie'][istart][i]-32*mp['mfix'][istart][1]) )
                     if conv is None:
                         errstring.append( (newfmt).format(errors[mp['tpar'][mp['mtie'][istart][i]][1]],97+mp['mtie'][istart][i]-32*mp['mfix'][istart][1]) )
                     else:
@@ -408,7 +429,7 @@ class Base :
                         errstring.append( ('--{0:s}--{1:c}    ').format(cvtxt,97+tienum-32*mp['mfix'][istart][1]) )
                 else:
                     newfmt=pretxt+self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],self._svfmt[i]+'{1:s}')
-                    outstring.append( (newfmt).format(params[mp['tpar'][mp['mtie'][istart][i]][1]],mp['tpar'][mp['mtie'][istart][i]][0]) )
+                    outstring.append( (newfmt).format(blindoffset+params[mp['tpar'][mp['mtie'][istart][i]][1]],mp['tpar'][mp['mtie'][istart][i]][0]) )
                     if conv is None:
                         errstring.append( (newfmt).format(errors[mp['tpar'][mp['mtie'][istart][i]][1]],mp['tpar'][mp['mtie'][istart][i]][0]) )
                     else:
@@ -428,7 +449,7 @@ class Base :
                         if mp['tpar'][tienum][1] == level+levadd:
                             if reletter:
                                 newfmt=pretxt+self.gtoef(params[level+levadd],self._svfmt[i]+'{1:c}')
-                                outstring.append( (newfmt).format(params[level+levadd],97+tienum-32*mp['mfix'][istart][1]) )
+                                outstring.append( (newfmt).format(blindoffset+params[level+levadd],97+tienum-32*mp['mfix'][istart][1]) )
                                 if conv is None:
                                     errstring.append( (newfmt).format(errors[level+levadd],97+tienum-32*mp['mfix'][istart][1]) )
                                 else:
@@ -437,7 +458,7 @@ class Base :
                                     errstring.append( ('--{0:s}--{1:c}    ').format(cvtxt,97+tienum-32*mp['mfix'][istart][1]) )
                             else:
                                 newfmt=pretxt+self.gtoef(params[level+levadd],self._svfmt[i]+'{1:s}')
-                                outstring.append( (newfmt).format(params[level+levadd],mp['tpar'][tienum][0]) )
+                                outstring.append( (newfmt).format(blindoffset+params[level+levadd],mp['tpar'][tienum][0]) )
                                 if conv is None:
                                     errstring.append( (newfmt).format(errors[level+levadd],mp['tpar'][tienum][0]) )
                                 else:
@@ -448,7 +469,7 @@ class Base :
                             if tienum == len(mp['tpar']): havtie = 2 # Stop searching for 1st instance of tied param
                         else:
                             newfmt=pretxt+self.gtoef(params[level+levadd],self._svfmt[i])
-                            outstring.append( (newfmt).format(params[level+levadd]) )
+                            outstring.append( (newfmt).format(blindoffset+params[level+levadd]) )
                             if conv is None:
                                 errstring.append( (newfmt).format(errors[level+levadd]) )
                             else:
@@ -457,7 +478,7 @@ class Base :
                                 errstring.append( ('--{0:s}--    ').format(cvtxt) )
                     else: # There are no tied parameters!
                         newfmt=pretxt+self.gtoef(params[level+levadd],self._svfmt[i])
-                        outstring.append( (newfmt).format(params[level+levadd]) )
+                        outstring.append( (newfmt).format(blindoffset+params[level+levadd]) )
                         if conv is None:
                             errstring.append( (newfmt).format(errors[level+levadd]) )
                         else:
@@ -466,7 +487,7 @@ class Base :
                             errstring.append( ('--{0:s}--    ').format(cvtxt) )
                 else:
                     newfmt=pretxt+self.gtoef(params[level+levadd],self._svfmt[i])
-                    outstring.append( (newfmt).format(params[level+levadd]) )
+                    outstring.append( (newfmt).format(blindoffset+params[level+levadd]) )
                     if conv is None:
                         errstring.append( (newfmt).format(errors[level+levadd]) )
                     else:
@@ -619,6 +640,16 @@ class Base :
         By default, return no tick marks and no labels.
         """
         return [], []
+
+    def resetseed(self):
+        """
+        Reset the seed for the random number generator
+        """
+        # reset the seed
+        t = 1000000000 * time.time()  # current time in nanoseconds
+        np.random.seed(int(t % (2 ** 32)))
+
+
 #######################################################################################
 #######################################################################################
 #######################################################################################

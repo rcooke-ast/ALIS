@@ -13,9 +13,9 @@ class TopHat(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'tophat'									# ID string for this class
         self._pnumr   = 4											# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'hstep':0.2, 'wstep':0.1})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'hstep':0,   'wstep':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'hstep':"",  'wstep':""})			# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'hstep':0.2, 'wstep':0.1, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'hstep':0,   'wstep':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'hstep':"",  'wstep':"", 'blindseed':"",  'blindrange':""})			# Format for the keyword. "" is the Default setting
         self._parid   = ['offset',  'height',  'centroid', 'width']		    	# Name of each parameter
         self._defpar  = [ 0.0,       1.0,       0.0,        1.0 ]				# Default values for parameters that are not provided
         self._fixpar  = [ None,      None,      None,       None ]				# By default, should these parameters be fixed?

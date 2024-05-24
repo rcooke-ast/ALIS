@@ -24,9 +24,9 @@ class Legendre(alfunc_polynomial.Polynomial) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'legendre'								# ID string for this class
         self._pnumr   = 1											# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'scale':[]})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'scale':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'scale':""})		# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'scale':[], 'blindseed':0,  'blindrange':[]})			# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'scale':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'scale':"", 'blindseed':"",  'blindrange':""})		# Format for the keyword. "" is the Default setting
         self._parid   = ['coefficient']				# Name of each parameter
         self._defpar  = [ 0.0 ]						# Default values for parameters that are not provided
         self._fixpar  = [ None ]					# By default, should these parameters be fixed?
