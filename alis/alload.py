@@ -1376,10 +1376,18 @@ def load_model(slf, modlines, updateself=True):
 def load_links(slf, lnklines):
     """
     Load the Links
+
+    AN IMPORTANT NOTE!!
+
+    When specifying multiple links, the order in which they are specified is important.
+    The first link is the first link that is applied, the second link is the second link that is applied, and so on.
+    This is important because the links are applied in the order they are specified. The current code does not allow
+    for the links to appear in a random order. The order of the (varA) links specified in the "link read" section
+    must be the same as the order of the parameters specified in the "model read" section of the input file.
     """
     msgs.info("Loading the links",verbose=slf._argflag['out']['verbose'])
     linka, linkb, linke = [], [], []
-    lnkcnt = 0
+    total_lnkcnt = 0  # This counts the total number of links. It is effectively the same as i
     for i in range(len(lnklines)):
         if len(lnklines[i].strip()) == 0: continue # Nothing on a line
         nocoms = lnklines[i].lstrip().split('#')[0] # Remove everything on a line after the first instance of a comment symbol: #
@@ -1409,24 +1417,38 @@ def load_links(slf, lnklines):
         if varA in linka:
             msgs.warn("A link for the variable '{0:s}' is specified more than once -".format(varA)+msgs.newline()+lnklines[i].rstrip("\n")+msgs.newline()+"This link will be ignored",verbose=slf._argflag['out']['verbose'])
             continue
-        # Check the two link parameters exist in the model
+        # Check the variable we are setting, and all of its dependent variables, exist in the model
         foundA, foundB = False, [False for all in varB]
         for j in range(len(slf._modpass['tpar'])):
+            # We have found the variable we are setting
             if slf._modpass['tpar'][j][0] == varA:
                 foundA = True
-                mtc = 0
-                for ka in range(len(slf._modpass['mtie'])):
-                    for kb in range(len(slf._modpass['mtie'][ka])):
+                mtc = 0  # This variables counts the number of...
+                lnkcnt = 0  # This counts the number of linked variables that have been encountered
+                for ka in range(len(slf._modpass['mtie'])):  # Loop over all lines of the model
+                    for kb in range(len(slf._modpass['mtie'][ka])):  # Loop over all parameters in this model
+                        # All instances of slf._modpass['mtie'][ka][kb] >= 0 are tied to previous parameters. The index
+                        # slf._modpass['mtie'][ka][kb] correponds to the index in slf._modpass['tpar'].
+                        # Now we need to check if a linked
+                        if slf._modpass['mtie'][ka][kb] <= -2:
+                            lnkcnt += 1
                         if slf._modpass['mtie'][ka][kb] >= 0:
                             # Tied parameter is not included in tpar[*][1]
                             continue
+                        # This next statement checks for the first occurrence of the linked parameter
                         if mtc == slf._modpass['tpar'][j][1]-lnkcnt: # You need to subtract lnkcnt here because modpass['mtie'] is being updated during the for loop and changes a -1 to a more negative number
-                            slf._modpass['mtie'][ka][kb] = -2-lnkcnt
-                            mtc = -1
+                            slf._modpass['mtie'][ka][kb] = -2 - total_lnkcnt
+                            mtc = -1  # This is to ensure that we only change the first instance of the parameter
                             # elif slf._modpass['mtie'][ka][kb] == slf._modpass['tpar'][j][1]: slf._modpass['mtie'][ka][kb] = -2-lnkcnt
-                        elif slf._modpass['mtie'][ka][kb] == mtc and mtc != -1: slf._modpass['mtie'][ka][kb] = -2 - lnkcnt
+                        # This next statement checks for the case where the linked parameter is tied to another parameter
+                        elif slf._modpass['mtie'][ka][kb] == mtc and mtc != -1:
+                            slf._modpass['mtie'][ka][kb] = -2 - total_lnkcnt
                         #elif mtc != -1: mtc += 1
                         elif slf._modpass['mtie'][ka][kb] == -1 and mtc != -1: mtc += 1
+                        #     2  4  3   4   20   [-1, -1, -1, -1, -1, -1, -1]  22                      2
+                        #     2  4  3   5   -1   [-1, -1, -1, -1, -1, -4, -1]  22                      2
+                        print(i, j, ka, kb, mtc, slf._modpass['mtie'][ka], slf._modpass['tpar'][j][1], lnkcnt)
+            # Loop over the dependent variables to make sure all exist
             for k in range(len(varB)):
                 if slf._modpass['tpar'][j][0] == varB[k]:
                     foundB[k] = True
@@ -1438,8 +1460,8 @@ def load_links(slf, lnklines):
         linka.append(varA)
         linkb.append(varB)
         linke.append(exp)
-        lnkcnt += 1
-    # Write a dictionary with the relavant operations
+        total_lnkcnt += 1
+    # Write a dictionary with the relevant operations
     lnkpass = dict({'opA':linka,     # First tied parameter
                     'opB':linkb,     # Array of linked parameters
                     'exp':linke})    # The relational expression
@@ -1760,12 +1782,10 @@ def load_par_influence(slf, parin):
 #		for sn in range(len(pinfl[sp])):
 #			opinfl[sp][sn] = insrt
 ######
-#	print "#################"
-#	print pinfl
-#	print opinfl
-#	sys.exit()
-#	print "#################"
-#	return opinfl
+    # embed()
+    # print(pinfl)
+    # print(opinfl)
+    # sys.exit()
     return [opinfl,pinfl]
 
 
