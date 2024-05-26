@@ -14,9 +14,9 @@ class LSFFile(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'lsffile'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'name':'', 'blind':False, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'name':1,  'blind':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'name':"", 'blind':"", 'blindseed':"",  'blindrange':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keywd   = dict({'name':'', 'index':-1, 'blind':False, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'name':1,  'index':0,  'blind':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'name':"", 'index':"", 'blind':"", 'blindseed':"",  'blindrange':""})			# Require keywd to be changed (1 for yes, 0 for no)
         self._parid   = ['scale']		# Name of each parameter
         self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ True ]		# By default, should these parameters be fixed?
@@ -34,16 +34,24 @@ class LSFFile(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def loadlsf(self, name):
+    def loadlsf(self, name, index=-1):
         """
         Load the LSF file
         """
         if not os.path.exists(name):
             msgs.error("LSF file not found: {:s}".format(name))
         try:
-            self._lsf_wave, self._lsf_kernel = np.loadtxt(name, unpack=True)
+            data = np.loadtxt(name)
+            allkernels = data[:,1:]
+            self._lsf_wave = data[:,0]
+            if index == -1:
+                # Generate a random index
+                index = np.random.randint(0, allkernels.shape[1])
+            self._lsf_kernel = allkernels[:, index]
         except:
             msgs.error("LSF file not found or not in the correct format")
+        # Print the details of the LSF file that was loaded
+        msgs.info("Loading LSF file: {:s} with index: {:d}".format(name, index))
 
     def call_CPU(self, x, y, p, ncpus=1):
         """
@@ -55,7 +63,7 @@ class LSFFile(alfunc_base.Base) :
         --------------------------------------------------------
         """
         if self._lsf_wave is None or self._lsf_kernel is None:
-            self.loadlsf(self._keywd['name'])
+            self.loadlsf(self._keywd['name'], self._keywd['index'])
         if p[0] > 0.0:
             ysize = y.size
             df = ysize//2 - 1
@@ -88,14 +96,17 @@ class LSFFile(alfunc_base.Base) :
                  fitrange
         """
         if self._lsf_wave is None or self._lsf_kernel is None:
+            # Load the name and index of the input
             name = None
+            index = -1
             for pp in par:
                 if pp.split(":")[0] == 'name':
                     name = pp.split(":")[1]
-                    break
+                elif pp.split(":")[0] == 'index':
+                    index = int(pp.split(":")[1])
             if name is None:
                 msgs.error("LSF file not found")
-            self.loadlsf(name)
+            self.loadlsf(name, index=index)
         # Roughly estimate the FWHM
         w = np.where(self._lsf_kernel >= 0.5 * np.max(self._lsf_kernel))
         dwav = np.max(self._lsf_wave[w]) - np.min(self._lsf_wave[w])
