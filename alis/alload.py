@@ -1373,7 +1373,7 @@ def load_model(slf, modlines, updateself=True):
     return modpass
 
 
-def load_links(slf, lnklines):
+def load_links(slf, lnklines, debug=False):
     """
     Load the Links
 
@@ -1445,9 +1445,8 @@ def load_links(slf, lnklines):
                             slf._modpass['mtie'][ka][kb] = -2 - total_lnkcnt
                         #elif mtc != -1: mtc += 1
                         elif slf._modpass['mtie'][ka][kb] == -1 and mtc != -1: mtc += 1
-                        #     2  4  3   4   20   [-1, -1, -1, -1, -1, -1, -1]  22                      2
-                        #     2  4  3   5   -1   [-1, -1, -1, -1, -1, -4, -1]  22                      2
-                        print(i, j, ka, kb, mtc, slf._modpass['mtie'][ka], slf._modpass['tpar'][j][1], lnkcnt)
+                        if debug:
+                            print(i, j, ka, kb, mtc, slf._modpass['mtie'][ka], slf._modpass['tpar'][j][1], lnkcnt)
             # Loop over the dependent variables to make sure all exist
             for k in range(len(varB)):
                 if slf._modpass['tpar'][j][0] == varB[k]:
@@ -1465,6 +1464,19 @@ def load_links(slf, lnklines):
     lnkpass = dict({'opA':linka,     # First tied parameter
                     'opB':linkb,     # Array of linked parameters
                     'exp':linke})    # The relational expression
+    # Check the ordering of the links is the same as the ordering of the parameters
+    tstidx = np.ones(len(lnkpass['opA']),dtype=int)*-1
+    for i in range(len(lnkpass['opA'])):
+        for j in range(len(slf._modpass['tpar'])):
+            if lnkpass['opA'][i] == slf._modpass['tpar'][j][0]:
+                tstidx[i] = j
+                break
+    if np.any(tstidx == -1):
+        msgs.error("Parameter linking has failed. Please check the links in the model file.")
+    if np.any(np.diff(tstidx) <= 0):
+        msgs.error("The links are not in the same order as the parameters in the model")
+    embed()
+    assert False
     msgs.info("Links loaded successfully",verbose=slf._argflag['out']['verbose'])
     return lnkpass
 
