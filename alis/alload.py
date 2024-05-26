@@ -1475,8 +1475,6 @@ def load_links(slf, lnklines, debug=False):
         msgs.error("Parameter linking has failed. Please check the links in the model file.")
     if np.any(np.diff(tstidx) <= 0):
         msgs.error("The links are not in the same order as the parameters in the model")
-    embed()
-    assert False
     msgs.info("Links loaded successfully",verbose=slf._argflag['out']['verbose'])
     return lnkpass
 
