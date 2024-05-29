@@ -676,6 +676,7 @@ from alis import alfunc_afwhm
 from alis import alfunc_apod
 from alis import alfunc_lsf
 from alis import alfunc_lsffile
+from alis import alfunc_multivfwhm
 from alis import alfunc_vfwhm
 from alis import alfunc_voigtconv
 from alis import alfunc_vsigma
@@ -703,6 +704,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'legendre'       : alfunc_legendre.Legendre,
                 'linear'         : alfunc_linear.Linear,
                 'lineemission'   : alfunc_lineemission.LineEmission,
+                'multivfwhm'     : alfunc_multivfwhm.MultiVFWHM,
                 'phionxs'        : alfunc_phionxs.PhotIon_CrossSection,
                 'polynomial'     : alfunc_polynomial.Polynomial,
                 'polyshift'      : alshift.polyshift,
