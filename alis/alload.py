@@ -221,7 +221,7 @@ def load_settings(fname,verbose=2):
         """
         Initialise the default settings called argflag
         """
-        rna = dict({'prognm':'alis.py', 'last_update':'Last updated 25th March 2015', 'atomic':'atomic.xml', 'modname':'model.mod', 'convergence':False, 'convnostop':False, 'convcriteria':0.2, 'datatype':'default', 'limpar':False, 'ncpus':-1, 'ngpus':None, 'nsubpix':5, 'nsubmin':5, 'nsubmax':21, 'warn_subpix':100, 'renew_subpix':False, 'blind':True, 'bintype':'km/s', 'logn':True, 'capvalue':None})
+        rna = dict({'prognm':'alis.py', 'last_update':'Last updated 27th May 2024', 'atomic':'atomic.xml', 'modname':'model.mod', 'convergence':False, 'convnostop':False, 'convcriteria':0.2, 'datatype':'default', 'limpar':False, 'ncpus':-1, 'ngpus':None, 'nsubpix':5, 'nsubmin':5, 'nsubmax':21, 'warn_subpix':100, 'renew_subpix':False, 'blind':True, 'bintype':'km/s', 'logn':True, 'capvalue':None})
         csa = dict({'miniter':0, 'maxiter':20000, 'atol':1.0E-10, 'xtol':1.0E-10, 'ftol':1.0E-10, 'gtol':1.0E-10, 'fstep':1.0})
         pla = dict({'dims':'3x3', 'fits':True, 'residuals':False, 'xaxis':'observed', 'labels':False, 'only':False, 'pages':'all', 'ticks':True, 'ticklabels':False, 'fitregions':False})
         opa = dict({'wavecorr':False, 'model':True, 'modelname':'','plots':'', 'fits':False, 'onefits':False, 'overwrite':False, 'sm':False, 'verbose':2, 'reletter':False, 'covar':"", 'convtest':""})
