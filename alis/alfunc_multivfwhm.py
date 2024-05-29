@@ -89,16 +89,19 @@ class MultiVFWHM(alfunc_base.Base) :
                models read in so far.
         --------------------------------------------------------
         Nothing should be changed here when writing a new function.
+
+        When writing this function, I replaced the following:
+        self._fixpar[parj]  -->  self._fixpar[0]
         --------------------------------------------------------
         """
         # Determine the adjustment that needs to be made.
         value = None
-        if self._fixpar[parj] not in ['False','false','FALSE']:
+        if self._fixpar[0] not in ['False','false','FALSE']:
             adj = 1
-            if self._fixpar[parj] not in ['True','true','TRUE']:
-                if self._fixpar[parj] is True or self._fixpar[parj] is False: return mp # This means the default values were used and parameters are fixed
+            if self._fixpar[0] not in ['True','true','TRUE']:
+                if self._fixpar[0] is True or self._fixpar[0] is False: return mp # This means the default values were used and parameters are fixed
                 try:
-                    value = float(self._fixpar[parj])
+                    value = float(self._fixpar[0])
                 except:
                     msgs.error("Argument of 'fix' only takes True/False/None or float")
         else: adj = 0
@@ -151,12 +154,15 @@ class MultiVFWHM(alfunc_base.Base) :
                models read in so far.
         --------------------------------------------------------
         Nothing should be changed here when writing a new function.
+
+        When writing this function, I replaced the following:
+        self._limited[parj][jind]  -->  self._limited[0][jind]
         --------------------------------------------------------
         """
         # Determine the adjustment that needs to be made.
         try:
-            if self._limited[parj][jind] == 0: value = None
-            else: value = float(self._limits[parj][jind])
+            if self._limited[0][jind] == 0: value = None
+            else: value = float(self._limits[0][jind])
         except:
             msgs.error("Argument of 'lim' only takes None or float")
         # Determine if the parameter is tied, if it is, store tpnum.
@@ -293,6 +299,29 @@ class MultiVFWHM(alfunc_base.Base) :
         elif (pnumr-1) % 3 != 0:
             msgs.error("The number of parameters in the model is incorrect. Please check the input model." +
                        msgs.newline() + "The number of parameters should be 1 + 3n, where n is the number of Gaussians.")
+        # Update the variables
+        ngauss = (pnumr-1) // 3
+        for i in range(ngauss):
+            #ampl, offs, vFWHM = multipar[i,0], multipar[i,1], multipar[i,2]
+            # The amplitude is the first parameter
+            self._parid.append('amplitude{0:d}'.format(i+1))
+            self._defpar.append(0.0)
+            self._fixpar.append(None)
+            self._limited.append([1, 1])
+            self._limits.append([0.0,1.0])
+            # The offset is the second parameter
+            self._parid.append('offset{0:d}'.format(i+1))
+            self._defpar.append(0.0)
+            self._fixpar.append(None)
+            self._limited.append([0, 0])
+            self._limits.append([0.0,0.0])
+            # The FWHM is the third parameter
+            self._parid.append('vfwhm{0:d}'.format(i+1))
+            self._defpar.append(0.0)
+            self._fixpar.append(None)
+            self._limited.append([1, 0])
+            self._limits.append([0.0,0.0])
+
         # Now return to the default code
         param = [None for all in range(pnumr)]
         parid = [i for i in range(pnumr)]
@@ -330,7 +359,6 @@ class MultiVFWHM(alfunc_base.Base) :
             msgs.error("Incorrect number of parameters (should be "+str(pnumr)+"):"+msgs.newline()+self._idstr+"   "+instr)
         if len(specid) > 1: # Force the user to specify a spectrum ID number
             self._keych['specid'] = 1
-        ngauss = (pnumr-1) // 3
         specidset=False # Detect is the user has specified specid
         # Set the parameters:
         mp['mtyp'].append(self._idstr)
@@ -379,27 +407,6 @@ class MultiVFWHM(alfunc_base.Base) :
             if self._keych[keywdk[i]] == 1: msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
         # Append the final set of keywords
         mp['mkey'].append(self._keywd.copy())
-        # Before returning, update the parameters of the model
-        for i in range(ngauss):
-            #ampl, offs, vFWHM = multipar[i,0], multipar[i,1], multipar[i,2]
-            # The amplitude is the first parameter
-            self._parid.append('amplitude{0:d}'.format(i+1))
-            self._defpar.append(0.0)
-            self._fixpar.append(None)
-            self._limited.append([1, 1])
-            self._limits.append([0.0,1.0])
-            # The offset is the second parameter
-            self._parid.append('offset{0:d}'.format(i+1))
-            self._defpar.append(0.0)
-            self._fixpar.append(None)
-            self._limited.append([0, 0])
-            self._limits.append([0.0,0.0])
-            # The FWHM is the third parameter
-            self._parid.append('vfwhm{0:d}'.format(i+1))
-            self._defpar.append(0.0)
-            self._fixpar.append(None)
-            self._limited.append([1, 0])
-            self._limits.append([0.0,0.0])
         return mp, parid
 
     def parin(self, i, par):
