@@ -79,6 +79,118 @@ class MultiVFWHM(alfunc_base.Base) :
         del conv
         return ret[df:df+ysize]
 
+    def adjust_fix(self, mp, cntr, jval, parj):
+        """
+        Adjust the parameters in the input model file
+        --------------------------------------------------------
+        cntr : The line number of the model (e.g. if it's the
+               first model line, cntr=0)
+        mp   : modpass --> A dictionary with the details of all
+               models read in so far.
+        --------------------------------------------------------
+        Nothing should be changed here when writing a new function.
+        --------------------------------------------------------
+        """
+        # Determine the adjustment that needs to be made.
+        value = None
+        if self._fixpar[parj] not in ['False','false','FALSE']:
+            adj = 1
+            if self._fixpar[parj] not in ['True','true','TRUE']:
+                if self._fixpar[parj] is True or self._fixpar[parj] is False: return mp # This means the default values were used and parameters are fixed
+                try:
+                    value = float(self._fixpar[parj])
+                except:
+                    msgs.error("Argument of 'fix' only takes True/False/None or float")
+        else: adj = 0
+        if mp['mfix'][cntr][jval] == adj and value is None: return mp # No adjustment is necessary
+        # Determine if the parameter is tied, if it is, store tpnum.
+        adjarr=[]
+        pradd=0
+        if mp['mtie'][cntr][jval] != -1:
+            tpnum = mp['mtie'][cntr][jval]
+        else:
+            tpnum = -1
+            for i in range(cntr+1):
+                for j in range(len(mp['mtie'][i])):
+                    if i == cntr and j == jval:
+                        for t in range(len(mp['tpar'])):
+                            if mp['tpar'][t][1] == pradd:
+                                tpnum = t
+                                break
+                        break
+                    elif mp['mtie'][i][j] == -1: pradd += 1
+                if tpnum != -1: break
+            if tpnum == -1: # This parameter is not tied to anything else
+                mp['mfix'][cntr][jval] = adj
+                if value is not None:
+                    mp['mpar'][cntr][jval] = value
+                    mp['p0'][pradd] = value
+                return mp
+        # Now tpnum is known, find all associated values
+        prnum = mp['tpar'][tpnum][1]
+        prsum=-1
+        for i in range(len(mp['mtie'])):
+            for j in range(len(mp['mtie'][i])):
+                if mp['mtie'][i][j] == -1: prsum += 1
+                if (prnum == prsum and mp['mtie'][i][j] == -1) or tpnum == mp['mtie'][i][j]: adjarr.append([i,j])
+        # Apply the adjustments
+        for i in range(len(adjarr)):
+            mp['mfix'][adjarr[i][0]][adjarr[i][1]] = adj
+            if value is not None:
+                mp['mpar'][adjarr[i][0]][adjarr[i][1]] = value
+        if value is not None: mp['p0'][prnum] = value
+        return mp
+
+    def adjust_lim(self, mp, cntr, jval, jind, parj):
+        """
+        Adjust the parameters in the input model file
+        --------------------------------------------------------
+        cntr : The line number of the model (e.g. if it's the
+               first model line, cntr=0)
+        mp   : modpass --> A dictionary with the details of all
+               models read in so far.
+        --------------------------------------------------------
+        Nothing should be changed here when writing a new function.
+        --------------------------------------------------------
+        """
+        # Determine the adjustment that needs to be made.
+        try:
+            if self._limited[parj][jind] == 0: value = None
+            else: value = float(self._limits[parj][jind])
+        except:
+            msgs.error("Argument of 'lim' only takes None or float")
+        # Determine if the parameter is tied, if it is, store tpnum.
+        adjarr=[]
+        pradd=0
+        if mp['mtie'][cntr][jval] != -1:
+            tpnum = mp['mtie'][cntr][jval]
+        else:
+            tpnum = -1
+            for i in range(cntr+1):
+                for j in range(len(mp['mtie'][i])):
+                    if i == cntr and j == jval:
+                        for t in range(len(mp['tpar'])):
+                            if mp['tpar'][t][1] == pradd:
+                                tpnum = t
+                                break
+                        break
+                    elif mp['mtie'][i][j] == -1: pradd += 1
+                if tpnum != -1: break
+            if tpnum == -1: # This parameter is not tied to anything else
+                mp['mlim'][cntr][jval][jind] = value
+                return mp
+        # Now tpnum is known, find all associated values
+        prnum = mp['tpar'][tpnum][1]
+        prsum=-1
+        for i in range(len(mp['mtie'])):
+            for j in range(len(mp['mtie'][i])):
+                if mp['mtie'][i][j] == -1: prsum += 1
+                if (prnum == prsum and mp['mtie'][i][j] == -1) or tpnum == mp['mtie'][i][j]: adjarr.append([i,j])
+        # Apply the adjustments
+        for i in range(len(adjarr)):
+            mp['mlim'][adjarr[i][0]][adjarr[i][1]][jind] = value
+        return mp
+
     def getminmax(self, par, fitrng, Nsig=10.0):
         """
         This definition is only used for specifying the
@@ -302,6 +414,212 @@ class MultiVFWHM(alfunc_base.Base) :
         """
         return par
 
+    def parout(self, params, mp, istart, level, errs=None, reletter=False, conv=None):
+        """
+        Convert the parameter list to the input form for
+        printing to screen or output to a file.
+        --------------------------------------------------------
+        pval     : List of all parameters
+        mp       : modpass, which includes details of all models
+        istart   : Model number
+        errs     : List of all parameter errors.
+        reletter : Set to true if you want to reletter the tied
+                   and fixed parameters (a will be used for the
+                   first parameter, b is used for the second...)
+        conv     : If convergence test is being written, conv is
+                   the threshold for convergence (in sigma's).
+        --------------------------------------------------------
+        Nothing should be changed here when writing a new function.
+        --------------------------------------------------------
+        """
+        if errs is None:
+            errors = params
+        else:
+            errors = errs
+        pnumr = len(mp['mpar'][istart])
+        add = pnumr
+        havtie = 0
+        tienum = 0
+        levadd = 0
+        outstring = ['  %s ' % (self._idstr)]
+        errstring = ['# %s ' % (self._idstr)]
+
+        # Check if we are blinding any parameters with an offset value
+        blindoffset = 0
+        if 'blindrange' in mp['mkey'][istart]:
+            if len(mp['mkey'][istart]['blindrange']) == 2:
+                if 'blindseed' in mp['mkey'][istart]:
+                    np.random.seed(mp['mkey'][istart]['blindseed'])
+                else:
+                    np.random.seed(0)
+                blindoffset = np.random.uniform(int(mp['mkey'][istart]['blindrange'][0]),
+                                                int(mp['mkey'][istart]['blindrange'][1]))
+            # Reset the seed
+            self.resetseed()
+
+        for i in range(pnumr):
+            if mp['mkey'][istart]['input'][self._parid[i]] == 0:  # Parameter not given as input
+                outstring.append("")
+                errstring.append("")
+                continue
+            elif mp['mkey'][istart]['input'][self._parid[i]] == 1:
+                pretxt = ""  # Parameter is given as input, without parid
+            else:
+                pretxt = self._parid[i] + "="  # Parameter is given as input, with parid
+            if mp['mtie'][istart][i] >= 0:
+                if reletter:
+                    newfmt = pretxt + self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],
+                                                 self._svfmt[i] + '{1:c}')
+                    outstring.append((newfmt).format(blindoffset + params[mp['tpar'][mp['mtie'][istart][i]][1]],
+                                                     97 + mp['mtie'][istart][i] - 32 * mp['mfix'][istart][1]))
+                    if conv is None:
+                        errstring.append((newfmt).format(errors[mp['tpar'][mp['mtie'][istart][i]][1]],
+                                                         97 + mp['mtie'][istart][i] - 32 * mp['mfix'][istart][1]))
+                    else:
+                        if params[mp['tpar'][mp['mtie'][istart][i]][1]] < conv:
+                            cvtxt = "CONVERGED"
+                        else:
+                            cvtxt = "!!!!!!!!!"
+                        errstring.append(
+                            ('--{0:s}--{1:c}    ').format(cvtxt, 97 + tienum - 32 * mp['mfix'][istart][1]))
+                else:
+                    newfmt = pretxt + self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],
+                                                 self._svfmt[i] + '{1:s}')
+                    outstring.append((newfmt).format(blindoffset + params[mp['tpar'][mp['mtie'][istart][i]][1]],
+                                                     mp['tpar'][mp['mtie'][istart][i]][0]))
+                    if conv is None:
+                        errstring.append((newfmt).format(errors[mp['tpar'][mp['mtie'][istart][i]][1]],
+                                                         mp['tpar'][mp['mtie'][istart][i]][0]))
+                    else:
+                        if params[mp['tpar'][mp['mtie'][istart][i]][1]] < conv:
+                            cvtxt = "CONVERGED"
+                        else:
+                            cvtxt = "!!!!!!!!!"
+                        errstring.append(('--{0:s}--{1:s}    ').format(cvtxt, mp['tpar'][mp['mtie'][istart][i]][0]))
+                add -= 1
+            else:
+                if havtie != 2:
+                    if havtie == 0:  # First searching for the very first instance of a tied parameter
+                        for tn in range(0, len(mp['tpar'])):
+                            if mp['tpar'][tn][1] == level + levadd:
+                                tienum = tn
+                                havtie = 1
+                                break
+                    if len(mp['tpar']) != 0:
+                        if mp['tpar'][tienum][1] == level + levadd:
+                            if reletter:
+                                newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i] + '{1:c}')
+                                outstring.append((newfmt).format(blindoffset + params[level + levadd],
+                                                                 97 + tienum - 32 * mp['mfix'][istart][1]))
+                                if conv is None:
+                                    errstring.append((newfmt).format(errors[level + levadd],
+                                                                     97 + tienum - 32 * mp['mfix'][istart][1]))
+                                else:
+                                    if params[level + levadd] < conv:
+                                        cvtxt = "CONVERGED"
+                                    else:
+                                        cvtxt = "!!!!!!!!!"
+                                    errstring.append(('--{0:s}--{1:c}    ').format(cvtxt, 97 + tienum - 32 *
+                                                                                   mp['mfix'][istart][1]))
+                            else:
+                                newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i] + '{1:s}')
+                                outstring.append(
+                                    (newfmt).format(blindoffset + params[level + levadd], mp['tpar'][tienum][0]))
+                                if conv is None:
+                                    errstring.append((newfmt).format(errors[level + levadd], mp['tpar'][tienum][0]))
+                                else:
+                                    if params[level + levadd] < conv:
+                                        cvtxt = "CONVERGED"
+                                    else:
+                                        cvtxt = "!!!!!!!!!"
+                                    errstring.append(('--{0:s}--{1:s}    ').format(cvtxt, mp['tpar'][tienum][0]))
+                            tienum += 1
+                            if tienum == len(
+                                mp['tpar']): havtie = 2  # Stop searching for 1st instance of tied param
+                        else:
+                            newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i])
+                            outstring.append((newfmt).format(blindoffset + params[level + levadd]))
+                            if conv is None:
+                                errstring.append((newfmt).format(errors[level + levadd]))
+                            else:
+                                if params[level + levadd] < conv:
+                                    cvtxt = "CONVERGED"
+                                else:
+                                    cvtxt = "!!!!!!!!!"
+                                errstring.append(('--{0:s}--    ').format(cvtxt))
+                    else:  # There are no tied parameters!
+                        newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i])
+                        outstring.append((newfmt).format(blindoffset + params[level + levadd]))
+                        if conv is None:
+                            errstring.append((newfmt).format(errors[level + levadd]))
+                        else:
+                            if params[level + levadd] < conv:
+                                cvtxt = "CONVERGED"
+                            else:
+                                cvtxt = "!!!!!!!!!"
+                            errstring.append(('--{0:s}--    ').format(cvtxt))
+                else:
+                    newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i])
+                    outstring.append((newfmt).format(blindoffset + params[level + levadd]))
+                    if conv is None:
+                        errstring.append((newfmt).format(errors[level + levadd]))
+                    else:
+                        if params[level + levadd] < conv:
+                            cvtxt = "CONVERGED"
+                        else:
+                            cvtxt = "!!!!!!!!!"
+                        errstring.append(('--{0:s}--    ').format(cvtxt))
+                levadd += 1
+        level += add
+        # Now write in the keywords
+        keys = list(mp['mkey'][istart].keys())
+        keys[:] = (kych for kych in keys if kych[:] != 'input')  # Remove the keyword 'input'
+        for i in range(len(keys)):
+            if mp['mkey'][istart]['input'][keys[i]] == 0:  # This keyword wasn't provided as user input
+                outstring.append("")
+                errstring.append("")
+                continue
+            if type(mp['mkey'][istart][keys[i]]) is list:
+                outkw = ','.join(map(str, mp['mkey'][istart][keys[i]]))
+            else:
+                outkw = mp['mkey'][istart][keys[i]]
+            if self._keyfm[keys[i]] != "":
+                outstring.append(('{0:s}=' + self._keyfm[keys[i]]).format(keys[i], outkw))
+                errstring.append(('{0:s}=' + self._keyfm[keys[i]]).format(keys[i], outkw))
+            else:
+                outstring.append('%s=%s' % (keys[i], outkw))
+                errstring.append('%s=%s' % (keys[i], outkw))
+        #                outstring.append( '{0:s}={1:s}'.format(keys[i],outkw) )
+        #                errstring.append( '{0:s}={1:s}'.format(keys[i],outkw) )
+        # Now place the keywords specified in self._prekw at the beginning of the return string:
+        if len(self._prekw) != 0:
+            insind = 1
+            for i in range(len(self._prekw)):
+                delind = -1
+                for j in range(len(keys)):
+                    if self._prekw[i] == keys[j]:
+                        delind = self._pnumr + insind + j
+                        del keys[j]
+                        break
+                if delind == -1: msgs.bug("prekw variable for function " + self._idstr + " contains bad argument",
+                                          verbose=self._verbose)
+                outstring.insert(insind, outstring[delind])
+                errstring.insert(insind, errstring[delind])
+                del outstring[delind + 1]
+                del errstring[delind + 1]
+                insind += 1
+        if mp['mkey'][istart]['blind'] and conv is None:
+            retout = "       ------ BLIND MODEL ------\n"
+            # reterr = "       ------ BLIND MODEL ------\n"
+            reterr = '  '.join(errstring) + '\n'
+        else:
+            retout = '  '.join(outstring) + '\n'
+            reterr = '  '.join(errstring) + '\n'
+        # Return the strings and the new level
+        if errs is not None or conv is not None:
+            return retout, reterr, level
+        else:
+            return retout, level
 
     def set_pinfo(self, pinfo, level, mp, lnk, mnum):
         """
