@@ -239,7 +239,7 @@ class Polynomial(alfunc_base.Base) :
             return mps
         ################
         isspl=instr.split()
-        # Seperate the parameters from the keywords
+        # Separate the parameters from the keywords
         ptemp, kywrd = [], []
         keywdk = list(self._keywd.keys())
         keywdk[:] = (kych for kych in keywdk if kych[:] != 'input') # Remove the keyword 'input'
