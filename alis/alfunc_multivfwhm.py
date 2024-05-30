@@ -48,27 +48,41 @@ class MultiVFWHM(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
+        FWHM_to_SIGMA = 2.0*np.sqrt(2.0*np.log(2.0))
         vFWHM = p[0]  # This is the main component
         multipar = p[1:].reshape((-1,3))
         ngauss = multipar.shape[0]
         # Setup the arrays required for the convolution
-        sigd = p[0] / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
+        sigd = vFWHM / ( 2.99792458E5 * FWHM_to_SIGMA )
+        # Calculate the maximum difference between the centres of the Gaussians
+        amax = np.argmax(multipar[:,1])
+        maxp = max(0.0, multipar[amax,1])
+        amin = np.argmin(multipar[:,1])
+        minp = min(0.0, multipar[amin,1])
+        maxdiff = (maxp-minp)/2.99792458E5
+        # Now include some extra width to account for the tails of the leftmost and rightmost Gaussians
+        lext = 3.0*multipar[amin,2] / ( 2.99792458E5 * FWHM_to_SIGMA )
+        rext = 3.0*multipar[amax,2] / ( 2.99792458E5 * FWHM_to_SIGMA )
+        # Also consider the largest FWHM, which may occur between the leftmost and rightmost Gaussians
+        maxFWHM = max(vFWHM, np.max(multipar[:,2]))  # Maximum sigma
+        maxsigd = maxFWHM / ( 2.99792458E5 * FWHM_to_SIGMA )
+        # Total the extra widths required
+        fsigd = max(lext + rext, maxsigd) + maxdiff
+        # Calculate the number of points required for the convolution
         ysize = y.size
-        fsigd = 6.0*sigd
         dwav = 0.5*(x[2:]-x[:-2])/x[1:-1]
         dwav = np.append(np.append(dwav[0],dwav),dwav[-1])
-        df= int(np.min([int(np.ceil(fsigd/dwav).max()), ysize//2 - 1]))
-        yval = np.zeros(2*df+1)
-        yval[:2*df+1] = (x[:2*df+1]/x[df] - 1.0)/sigd
+        df = int(np.min([int(np.ceil(fsigd/dwav).max()), ysize//2 - 1]))
+        yval = (x[:2*df+1]/x[df] - 1.0)/sigd
         # Construct the multi-Gaussian convolution kernel
         gaus = np.exp(-0.5*yval*yval)
         for i in range(ngauss):
             ampl, offs, vFWHM = multipar[i,0], multipar[i,1], multipar[i,2]
             if vFWHM == 0.0:
                 continue
-            sigd = vFWHM / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )  # Convert to sigma in Angstroms
+            sigd = vFWHM / ( 2.99792458E5 * FWHM_to_SIGMA )  # Convert to sigma
             offsA = x[df]*(offs/2.99792458E5)  # Convert to offset in Angstroms
-            yval = ((x+offsA)/x[df]-1.0)/sigd
+            yval = ((x[:2*df+1]-offsA)/x[df] - 1.0)/sigd
             gaus += ampl*np.exp(-0.5*yval*yval)
         # Perform the convolution
         size = ysize + gaus.size - 1
@@ -280,7 +294,9 @@ class MultiVFWHM(alfunc_base.Base) :
             mps['mlim'][cntr].append([self._limits[iind][i] if self._limited[iind][i]==1 else None for i in range(2)])
             return mps
         ################
-        isspl=instr.split()
+        # Convert colon back to equals so that it's interpreted as a keyword
+        instr = instr.replace(":", "=")
+        isspl = instr.split(",")
         # Separate the parameters from the keywords
         ptemp, kywrd = [], []
         keywdk = list(self._keywd.keys())
@@ -465,14 +481,14 @@ class MultiVFWHM(alfunc_base.Base) :
             self.resetseed()
 
         for i in range(pnumr):
-            if mp['mkey'][istart]['input'][self._parid[i]] == 0:  # Parameter not given as input
+            if mp['mkey'][istart]['input'][self._parid[0]] == 0:  # Parameter not given as input
                 outstring.append("")
                 errstring.append("")
                 continue
-            elif mp['mkey'][istart]['input'][self._parid[i]] == 1:
+            elif mp['mkey'][istart]['input'][self._parid[0]] == 1:
                 pretxt = ""  # Parameter is given as input, without parid
             else:
-                pretxt = self._parid[i] + "="  # Parameter is given as input, with parid
+                pretxt = self._parid[0] + "="  # Parameter is given as input, with parid
             if mp['mtie'][istart][i] >= 0:
                 if reletter:
                     newfmt = pretxt + self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],
@@ -566,7 +582,7 @@ class MultiVFWHM(alfunc_base.Base) :
                                 cvtxt = "!!!!!!!!!"
                             errstring.append(('--{0:s}--    ').format(cvtxt))
                 else:
-                    newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i])
+                    newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[0])
                     outstring.append((newfmt).format(blindoffset + params[level + levadd]))
                     if conv is None:
                         errstring.append((newfmt).format(errors[level + levadd]))
@@ -676,6 +692,7 @@ class MultiVFWHM(alfunc_base.Base) :
         The only thing that should be changed here is the parb values
         """
         pnumr = len(mp['mpar'][ival])
+        ngauss = (pnumr-1)//3
         levadd=0
         params=np.zeros(pnumr)
         parinf=[]
