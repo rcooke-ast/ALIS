@@ -30,6 +30,7 @@ def parser(options=None):
                         help="Plot the data and input model - don't fit")
     parser.add_argument("-l", "--labels", default=False, help="Label the absorption components when plotting", action="store_true")
     parser.add_argument("-v", "--verbose", type=int, help="(2) Level of verbosity (0-2)")
+    parser.add_argument("-a", "--repeat", type=int, help="Repeat the fit N times")
     parser.add_argument("-r", "--random", type=int, help="Number of random simulations to perform")
     parser.add_argument("-s", "--startid", type=int, help="Starting ID for the simulations")
     parser.add_argument("-f", "--fits", default=False, help="Write model fits to *.dat files", action="store_true")

@@ -72,6 +72,14 @@ class msgs:
             premsg=Colors.start + Colors.red_CL   + "[WARNING] ::" + Colors.end + " "
             print(premsg+msg, file=sys.stderr)
 
+    def simulate(self, msg, verbose=None):
+        if verbose is None and self._verbose != -1:
+            premsg=Colors.start + Colors.white_BL   + "[SIMULATE]::" + Colors.end + " "
+            print(premsg+msg, file=sys.stderr)
+        elif verbose is not None and verbose != -1:
+            premsg=Colors.start + Colors.white_BL   + "[SIMULATE]::" + Colors.end + " "
+            print(premsg+msg, file=sys.stderr)
+
     def test(self, msg, verbose=None):
         if verbose is None and self._verbose != -1:
             premsg=Colors.start + Colors.white_BL   + "[TEST]    ::" + Colors.end + " "

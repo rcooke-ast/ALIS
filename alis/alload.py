@@ -141,6 +141,8 @@ def optarg(pathname, argv=None, verbose=2):
             argflag['plot']['labels']  = argv.labels
         if argv.verbose is not None:
             argflag['out']['verbose']  = argv.verbose
+        if argv.repeat is not None:
+            argflag['sim']['repeat']   = argv.repeat
         if argv.random is not None:
             argflag['sim']['random']   = argv.random
         if argv.startid is not None:
@@ -225,7 +227,7 @@ def load_settings(fname,verbose=2):
         csa = dict({'miniter':0, 'maxiter':20000, 'atol':1.0E-10, 'xtol':1.0E-10, 'ftol':1.0E-10, 'gtol':1.0E-10, 'fstep':1.0})
         pla = dict({'dims':'3x3', 'fits':True, 'residuals':False, 'xaxis':'observed', 'labels':False, 'only':False, 'pages':'all', 'ticks':True, 'ticklabels':False, 'fitregions':False})
         opa = dict({'wavecorr':False, 'model':True, 'modelname':'','plots':'', 'fits':False, 'onefits':False, 'overwrite':False, 'sm':False, 'verbose':2, 'reletter':False, 'covar':"", 'convtest':""})
-        mca = dict({'random':None, 'perturb':None, 'systematics':False, 'beginfrom':"", 'startid':0, 'maxperturb':0.1, 'systmodule':None, 'newstart':True, 'dirname':'sims', 'edgecut':4.0})
+        mca = dict({'repeat':None, 'random':None, 'perturb':None, 'systematics':False, 'beginfrom':"", 'startid':0, 'maxperturb':0.1, 'systmodule':None, 'newstart':True, 'dirname':'sims', 'edgecut':4.0})
         gna = dict({'pixelsize':2.5, 'data':False, 'overwrite':False, 'peaksnr':0.0, 'skyfrac':0.0})
         itr = dict({'model':None, 'data':None})
         argflag = dict({'run':rna, 'chisq':csa, 'plot':pla, 'out':opa, 'sim':mca, 'generate':gna, 'iterate':itr})
@@ -1460,6 +1462,9 @@ def load_links(slf, lnklines, debug=False):
         linkb.append(varB)
         linke.append(exp)
         total_lnkcnt += 1
+    if debug:
+        embed()
+        assert False
     # Write a dictionary with the relevant operations
     lnkpass = dict({'opA':linka,     # First tied parameter
                     'opB':linkb,     # Array of linked parameters

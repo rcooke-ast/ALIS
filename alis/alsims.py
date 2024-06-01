@@ -192,7 +192,7 @@ def sim_random(slf, covar, bparams, parinfo):
     for sim in range(slf._argflag['sim']['random']):
         ntxt="{0:0"+nchr+"d}"
         ntxt=ntxt.format(sim+slf._argflag['sim']['startid']) # Text Identifier used as output
-        msgs.test("RANDOM ERRORS -- Realisation {0:s}/{1:s} began {2:s}".format(str(sim+1),str(slf._argflag['sim']['random']),time.ctime()),verbose=slf._argflag['out']['verbose'])
+        msgs.simulate("RANDOM ERRORS -- Realisation {0:s}/{1:s} began {2:s}".format(str(sim+1),str(slf._argflag['sim']['random']),time.ctime()),verbose=slf._argflag['out']['verbose'])
         # Generate a random realisation
         newfluxfull, newfluxfit = [], []
         fluf = np.array([])
@@ -260,7 +260,7 @@ def sim_random(slf, covar, bparams, parinfo):
             alplot.plot_showall()
         if slf._argflag['sim']['systematics']:
             # Calculate the systematics
-            msgs.test("SYSTEMATIC ERRORS -- Realisation {0:s}/{1:s} began {2:s}".format(str(sim+1),str(slf._argflag['sim']['random']),time.ctime()),verbose=slf._argflag['out']['verbose'])
+            msgs.simulate("SYSTEMATIC ERRORS -- Realisation {0:s}/{1:s} began {2:s}".format(str(sim+1),str(slf._argflag['sim']['random']),time.ctime()),verbose=slf._argflag['out']['verbose'])
             ms = sim_systematics(slf, p0new, parinfo, ntxt, edgearr)
             outsyst = np.append(outsyst, np.array([np.array(ms.params)]),axis=0)
     ntxt=":0"+nchr+"d}"

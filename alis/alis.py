@@ -112,7 +112,27 @@ class ClassMain:
 #		sys.exit()
 
         # Fit the data!
-        self.main()
+        if isinstance(self._argflag['sim']['repeat'], int):
+            base_outname = self._argflag['out']['modelname']
+            for sim in range(self._argflag['sim']['repeat']):
+                msgs.simulate("Realisation {0:s}/{1:s} began {2:s}".format(str(sim + 1), str(
+                    self._argflag['sim']['repeat']), time.ctime()), verbose=self._argflag['out']['verbose'])
+
+                # Get the calls to each of the functions
+                function = alfunc_base.call(getfuncs=True, verbose=self._argflag['out']['verbose'])
+                funccall = alfunc_base.call(verbose=self._argflag['out']['verbose'])
+                funcinst = alfunc_base.call(prgname=self._argflag['run']['prognm'], getinst=True,
+                                            verbose=self._argflag['out']['verbose'], atomic=self._atomic)
+                self._funcarray = [function, funccall, funcinst]
+                # Reload the model
+                self._modpass = alload.load_model(self, self._modlines)
+                # Reload the Links
+                self._links = alload.load_links(self, self._lnklines)
+                # self._argflag['out']['modelname'] = self._argflag['out']['modelname'].replace('.out', '_{0:03d}.out'.format(ii))
+                self._argflag['out']['modelname'] = base_outname + '.REPEAT{0:03d}'.format(sim)
+                self.main()
+        else:
+            self.main()
 
 #$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 # The fitting code
