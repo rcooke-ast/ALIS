@@ -507,7 +507,7 @@ class MultiVFWHM(alfunc_base.Base) :
                             ('--{0:s}--{1:c}    ').format(cvtxt, 97 + tienum - 32 * mp['mfix'][istart][1]))
                 else:
                     newfmt = pretxt + self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],
-                                                 self._svfmt[i] + '{1:s}')
+                                                 self._svfmt[0] + '{1:s}')
                     outstring.append((newfmt).format(blindoffset + params[mp['tpar'][mp['mtie'][istart][i]][1]],
                                                      mp['tpar'][mp['mtie'][istart][i]][0]))
                     if conv is None:
@@ -545,7 +545,7 @@ class MultiVFWHM(alfunc_base.Base) :
                                     errstring.append(('--{0:s}--{1:c}    ').format(cvtxt, 97 + tienum - 32 *
                                                                                    mp['mfix'][istart][1]))
                             else:
-                                newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i] + '{1:s}')
+                                newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[0] + '{1:s}')
                                 outstring.append(
                                     (newfmt).format(blindoffset + params[level + levadd], mp['tpar'][tienum][0]))
                                 if conv is None:
