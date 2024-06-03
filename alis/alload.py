@@ -1478,8 +1478,10 @@ def load_links(slf, lnklines, debug=False):
                 break
     if np.any(tstidx == -1):
         msgs.error("Parameter linking has failed. Please check the links in the model file.")
-    if np.any(np.diff(tstidx) <= 0):
-        msgs.error("The links are not in the same order as the parameters in the model")
+    wd = np.where(np.diff(tstidx) < 0)
+    if wd[0].size > 0:
+        msgs.error("The links are not in the same order as the parameters in the model." + msgs.newline() +
+                   "Please check the following link: " + lnklines[wd[0][0]+1].rstrip("\n"))
     msgs.info("Links loaded successfully",verbose=slf._argflag['out']['verbose'])
     return lnkpass
 
