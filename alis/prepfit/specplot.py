@@ -22,7 +22,7 @@ class SelectRegions(object):
 
     """
 
-    def __init__(self, canvas, ax, spec, prop, atom, vel=500.0):
+    def __init__(self, canvas, ax, spec, prop, atom, vel=500.0, include_cont=True):
         """
         vel : float
           Default +/- plotting window in km/s
@@ -41,6 +41,7 @@ class SelectRegions(object):
         self.voigtlines = []
         self.logn = 22.0
         self.HImodel = self.voigtmodel()
+        self._include_cont = include_cont
 
         # Unset some of the matplotlib keymaps
         matplotlib.pyplot.rcParams['keymap.fullscreen'] = ''        # toggling fullscreen (Default: f, ctrl+f)
@@ -347,7 +348,10 @@ class SelectRegions(object):
         idtxt = "{0:}_{1:}_{2:.1f}".format(self.atom._atom_atm[self.linecur].strip(),self.atom._atom_ion[self.linecur].strip(),self.atom._atom_wvl[self.linecur])
         outnm = self.prop._outp + "_" + idtxt + "_reg.dat"
         sclfct = 1.0
-        np.savetxt(outnm, np.transpose((self.prop._wave[wsv], sclfct*self.prop._flux[wsv]*self.prop._cont[wsv], sclfct*self.prop._flue[wsv]*self.prop._cont[wsv], self.prop._regions[wsv])))
+        if self._include_cont:
+            np.savetxt(outnm, np.transpose((self.prop._wave[wsv], sclfct*self.prop._flux[wsv]*self.prop._cont[wsv], sclfct*self.prop._flue[wsv]*self.prop._cont[wsv], self.prop._regions[wsv])))
+        else:
+            np.savetxt(outnm, np.transpose((self.prop._wave[wsv], sclfct*self.prop._flux[wsv], sclfct*self.prop._flue[wsv], self.prop._regions[wsv])))
         print("Saved file:")
         print(outnm)
 
