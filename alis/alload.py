@@ -1717,7 +1717,19 @@ def load_subpixels(slf, parin):
     return wavespx, contspx, zerospx, posnspx, nexbins
 
 
-def load_par_influence(slf, parin):
+def load_par_influence(slf, parin, setall=False):
+    """
+    Load the influence of the model parameters on the model
+
+    Parameters
+    ----------
+    slf : class
+        The class containing the model
+    parin : str
+        ????
+    setall : bool
+        If True, set all parameters to influence every spectrum and every snip
+    """
     def inlinks(ivar):
         foundit = False
         for i in range(len(slf._modpass['tpar'])):
@@ -1788,18 +1800,22 @@ def load_par_influence(slf, parin):
     uinfl.sort()
     # Map the parameter ID numbers to a *free* parameter ID number
     opinfl = copy.deepcopy(pinfl)
+    allpars = np.array([])
     for sp in range(len(pinfl)):
         for sn in range(len(pinfl[sp])):
             for j in range(len(pinfl[sp][sn])):
                 opinfl[sp][sn][j] = np.argwhere(uinfl==pinfl[sp][sn][j])[0][0]
-######
-    # TEMPORARY DURING TESTING ---- THIS MUST BE REMOVED IN ORDER FOR INFLUENCE TO WORK
-#	insrt = range(len(unq_num))
-#	for sp in range(len(pinfl)):
-#		for sn in range(len(pinfl[sp])):
-#			opinfl[sp][sn] = insrt
+                allpars = np.append(allpars,pinfl[sp][sn][j])
 ######
     # embed()
+    # TEMPORARY DURING TESTING ---- THIS MUST BE REMOVED IN ORDER FOR INFLUENCE TO WORK
+    if setall:
+        unq_num = np.unique(allpars)
+        insrt = np.arange(len(unq_num))
+        for sp in range(len(pinfl)):
+            for sn in range(len(pinfl[sp])):
+                opinfl[sp][sn] = insrt
+######
     # print(pinfl)
     # print(opinfl)
     # sys.exit()
