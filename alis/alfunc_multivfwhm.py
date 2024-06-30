@@ -7,13 +7,13 @@ class MultiVFWHM(alfunc_base.Base) :
     """
     Convolves the spectrum with a sum of Gaussians with various full-width
     at half-maximum values, relative offsets. An arbitrary number of Gaussians
-    can be used. The number of parameters is 2*n+1, where n is the number of
+    can be used. The number of parameters is 3*n+1, where n is the number of
     Gaussians. The first parameter is the vFWHM of the main component. If there
     is just one Gaussian, the spectrum is convolved with a Gaussian with a
     full-width at half-maximum of vFWHM (This will be the same as the alfunc_vfwhm
     function). There are three required parameters for each additional Gaussian:
-    the relative offset of the Gaussian from the main component, the relative
-    amplitude of the Gaussian, and the full-width at half-maximum of the Gaussian.
+    the relative amplitude of the Gaussian, the relative offset of the Gaussian
+    from the main component, and the full-width at half-maximum of the Gaussian.
     Thus, the user must specify 3*n+1 parameters, where n is the number of Gaussians.
     Note that the relative offset and FWHM are expressed as velocity in km/s.
     """
