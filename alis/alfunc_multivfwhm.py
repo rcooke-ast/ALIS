@@ -168,9 +168,6 @@ class MultiVFWHM(alfunc_base.Base) :
                models read in so far.
         --------------------------------------------------------
         Nothing should be changed here when writing a new function.
-
-        When writing this function, I replaced the following:
-        self._limited[parj][jind]  -->  self._limited[0][jind]
         --------------------------------------------------------
         """
         # Determine the adjustment that needs to be made.
