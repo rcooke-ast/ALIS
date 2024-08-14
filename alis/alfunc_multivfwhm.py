@@ -12,8 +12,8 @@ class MultiVFWHM(alfunc_base.Base) :
     is just one Gaussian, the spectrum is convolved with a Gaussian with a
     full-width at half-maximum of vFWHM (This will be the same as the alfunc_vfwhm
     function). There are three required parameters for each additional Gaussian:
-    the relative offset of the Gaussian from the main component, the relative
-    amplitude of the Gaussian, and the full-width at half-maximum of the Gaussian.
+    the relative amplitude of the Gaussian, the relative offset of the Gaussian
+    from the main component, and the full-width at half-maximum of the Gaussian.
     Thus, the user must specify 3*n+1 parameters, where n is the number of Gaussians.
     Note that the relative offset and FWHM are expressed as velocity in km/s.
     """
@@ -39,7 +39,7 @@ class MultiVFWHM(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, y, p, ncpus=1):
+    def call_CPU(self, x, y, p, mkey=None, ncpus=1):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -175,8 +175,15 @@ class MultiVFWHM(alfunc_base.Base) :
         """
         # Determine the adjustment that needs to be made.
         try:
-            if self._limited[0][jind] == 0: value = None
-            else: value = float(self._limits[0][jind])
+            if parj == 0:
+                if self._limited[0][jind] == 0: value = None
+                else: value = float(self._limits[0][jind])
+            elif (parj - 1) % 3 == 0:  # amplitude
+                value = 0.0 if jind == 0 else 1.0
+            elif (parj - 2) % 3 == 0:  # offset
+                value = None
+            elif (parj - 3) % 3 == 0:  # FWHM
+                value = 0.0 if jind == 0 else None
         except:
             msgs.error("Argument of 'lim' only takes None or float")
         # Determine if the parameter is tied, if it is, store tpnum.
