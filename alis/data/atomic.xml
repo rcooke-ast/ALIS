@@ -8,7 +8,7 @@
  !  at 2012-11-21T00:20:59
  !-->
 <RESOURCE>
-<TABLE name="Atomic_Data_Table" nrows="789">
+<TABLE name="Atomic_Data_Table" nrows="812">
 <FIELD ID="MassNumber" datatype="int" name="MassNumber" ucd="AT_ELEMENT">
 <DESCRIPTION>Number of Nucleons</DESCRIPTION>
 <VALUES null='-2147483648'/>
@@ -1804,7 +1804,7 @@
     factor = 1 + (5.792105e-2/(238.0185-sigma_sq)) + (1.67918e-3/(57.362-sigma_sq))
     factor = factor*(wavelength>=2000.) + 1.*(wavelength<2000.) #only modify above 2000A
     print(wavelength*factor)
- !--> 
+ !-->
   <TR>
     <TD>6</TD>
     <TD>6.015122</TD>
@@ -5454,6 +5454,102 @@
     <TD>NaN</TD>
   </TR>
   <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3218.083</TD>
+    <TD>1.54E-04</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3218.549</TD>
+    <TD>6.18E-05</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3447.359</TD>
+    <TD>5.90E-04</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3448.363</TD>
+    <TD>2.59E-04</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>4045.2847</TD>
+    <TD>5.68E-03</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>4048.3565</TD>
+    <TD>2.64E-03</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>7667.0089</TD>
+    <TD>6.682E-01</TD>
+    <TD>3.791E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>7701.0835</TD>
+    <TD>3.327E-01</TD>
+    <TD>3.742E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
     <TD>40</TD>
     <TD>40.078</TD>
     <TD>0.0</TD>
@@ -8083,6 +8179,54 @@
     <TD>NaN</TD>
   </TR>
   <TR>
+    <TD>85</TD>
+    <TD>84.911</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.378</TD>
+    <TD>0.290</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>85</TD>
+    <TD>84.911</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.440</TD>
+    <TD>0.406</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>87</TD>
+    <TD>86.909</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.329</TD>
+    <TD>0.261</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>87</TD>
+    <TD>86.909</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.467</TD>
+    <TD>0.435</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
     <TD>87</TD>
     <TD>87.62</TD>
     <TD>0.0</TD>
@@ -8911,7 +9055,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C14N R2 - ['rR1(2.5)' 'rQ21(2.5)' 'rR2(1.5)']
+12C14N B-X(0,0) R2 - ['rR1(2.5)' 'rQ21(2.5)' 'rR2(1.5)']
 !-->
   <TR>
     <TD>1214</TD>
@@ -8950,7 +9094,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C14N R1 - ['rR1(1.5)' 'rQ21(1.5)' 'rR2(0.5)']
+12C14N B-X(0,0) R1 - ['rR1(1.5)' 'rQ21(1.5)' 'rR2(0.5)']
 !-->
   <TR>
     <TD>1214</TD>
@@ -8989,7 +9133,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C14N R0 - ['rR1(0.5)' 'rQ21(0.5)']
+12C14N B-X(0,0) R0 - ['rR1(0.5)' 'rQ21(0.5)']
 !-->
   <TR>
     <TD>1214</TD>
@@ -9016,7 +9160,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C14N P1 - ['pP1(1.5)' 'pQ12(0.5)']
+12C14N B-X(0,0) P1 - ['pP1(1.5)' 'pQ12(0.5)']
 !-->
   <TR>
     <TD>1214</TD>
@@ -9043,7 +9187,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C14N P2 - ['pP1(2.5)' 'pQ12(1.5)' 'pP2(1.5)']
+12C14N B-X(0,0) P2 - ['pP1(2.5)' 'pQ12(1.5)' 'pP2(1.5)']
 !-->
   <TR>
     <TD>1214</TD>
@@ -9082,7 +9226,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-13C14N R2 - ['rR1(2.5)' 'rQ21(2.5)' 'rR2(1.5)']
+13C14N B-X(0,0) R2 - ['rR1(2.5)' 'rQ21(2.5)' 'rR2(1.5)']
 !-->
   <TR>
     <TD>1314</TD>
@@ -9121,7 +9265,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-13C14N R1 - ['rR1(1.5)' 'rQ21(1.5)' 'rR2(0.5)']
+13C14N B-X(0,0) R1 - ['rR1(1.5)' 'rQ21(1.5)' 'rR2(0.5)']
 !-->
   <TR>
     <TD>1314</TD>
@@ -9160,7 +9304,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-13C14N R0 - ['rR1(0.5)' 'rQ21(0.5)']
+13C14N B-X(0,0) R0 - ['rR1(0.5)' 'rQ21(0.5)']
 !-->
   <TR>
     <TD>1314</TD>
@@ -9187,7 +9331,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-13C14N P1 - ['pP1(1.5)' 'pQ12(0.5)']
+13C14N B-X(0,0) P1 - ['pP1(1.5)' 'pQ12(0.5)']
 !-->
   <TR>
     <TD>1314</TD>
@@ -9214,7 +9358,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-13C14N P2 - ['pP1(2.5)' 'pQ12(1.5)' 'pP2(1.5)']
+13C14N B-X(0,0) P2 - ['pP1(2.5)' 'pQ12(1.5)' 'pP2(1.5)']
 !-->
   <TR>
     <TD>1314</TD>
@@ -9253,7 +9397,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C15N R2 - ['rR1(2.5)' 'rQ21(2.5)' 'rR2(1.5)']
+12C15N B-X(0,0) R2 - ['rR1(2.5)' 'rQ21(2.5)' 'rR2(1.5)']
 !-->
   <TR>
     <TD>1215</TD>
@@ -9292,7 +9436,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C15N R1 - ['rR1(1.5)' 'rQ21(1.5)' 'rR2(0.5)']
+12C15N B-X(0,0) R1 - ['rR1(1.5)' 'rQ21(1.5)' 'rR2(0.5)']
 !-->
   <TR>
     <TD>1215</TD>
@@ -9331,7 +9475,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C15N R0 - ['rR1(0.5)' 'rQ21(0.5)']
+12C15N B-X(0,0) R0 - ['rR1(0.5)' 'rQ21(0.5)']
 !-->
   <TR>
     <TD>1215</TD>
@@ -9358,7 +9502,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C15N P1 - ['pP1(1.5)' 'pQ12(0.5)']
+12C15N B-X(0,0) P1 - ['pP1(1.5)' 'pQ12(0.5)']
 !-->
   <TR>
     <TD>1215</TD>
@@ -9385,7 +9529,7 @@
     <TD>NaN</TD>
   </TR>
 <!--
-12C15N P2 - ['pP1(2.5)' 'pQ12(1.5)' 'pP2(1.5)']
+12C15N B-X(0,0) P2 - ['pP1(2.5)' 'pQ12(1.5)' 'pP2(1.5)']
 !-->
   <TR>
     <TD>1215</TD>
@@ -9420,6 +9564,145 @@
     <TD>3877.4754966813466</TD>
     <TD>0.011216090060770512</TD>
     <TD>1.494E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+<!--
+CN A-X(2,0) N"=0 - ['rR1(0.5)' 'sR21(0.5)' 'rQ21(0.5)']
+!-->
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N0J0.5</TD>
+    <TD>7873.813880803182</TD>
+    <TD>0.00012654709280468524</TD>
+    <TD>4.927E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N0J0.5</TD>
+    <TD>7877.011989725982</TD>
+    <TD>0.0003059302980545908</TD>
+    <TD>4.928E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N0J0.5</TD>
+    <TD>7908.77562646954</TD>
+    <TD>0.0004835581930819899</TD>
+    <TD>4.867E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+<!--
+CN A-X(2,0) N"=1 - ['rR1(1.5)' 'qP21(1.5)' 'sR21(1.5)' 'qQ2(0.5)' 'qQ1(1.5)' 'rQ21(1.5)'
+ 'qR12(0.5)' 'rR2(0.5)']
+!-->
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J1.5</TD>
+    <TD>7870.82583246911</TD>
+    <TD>0.00010627169831423089</TD>
+    <TD>4.926E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J0.5</TD>
+    <TD>7876.1456562710155</TD>
+    <TD>0.00018120529421139508</TD>
+    <TD>4.927E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J1.5</TD>
+    <TD>7876.152355913117</TD>
+    <TD>0.0002227494987891987</TD>
+    <TD>4.927E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J0.5</TD>
+    <TD>7879.359566915098</TD>
+    <TD>0.00030583920306526124</TD>
+    <TD>4.928E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J1.5</TD>
+    <TD>7879.366334110395</TD>
+    <TD>7.64261931180954e-05</TD>
+    <TD>4.928E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J1.5</TD>
+    <TD>7906.0696311745</TD>
+    <TD>0.00030592401162721217</TD>
+    <TD>4.866E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J0.5</TD>
+    <TD>7911.137358506837</TD>
+    <TD>0.00042895920341834426</TD>
+    <TD>4.867E+04</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>1214</TD>
+    <TD>26.003074</TD>
+    <TD>0.0</TD>
+    <TD>CN</TD>
+    <TD>AX20N1J1.5</TD>
+    <TD>7911.144180396998</TD>
+    <TD>0.0002046393055934459</TD>
+    <TD>4.867E+04</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
   </TR>
