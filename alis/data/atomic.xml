@@ -8,7 +8,7 @@
  !  at 2012-11-21T00:20:59
  !-->
 <RESOURCE>
-<TABLE name="Atomic_Data_Table" nrows="800">
+<TABLE name="Atomic_Data_Table" nrows="812">
 <FIELD ID="MassNumber" datatype="int" name="MassNumber" ucd="AT_ELEMENT">
 <DESCRIPTION>Number of Nucleons</DESCRIPTION>
 <VALUES null='-2147483648'/>
@@ -5454,6 +5454,102 @@
     <TD>NaN</TD>
   </TR>
   <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3218.083</TD>
+    <TD>1.54E-04</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3218.549</TD>
+    <TD>6.18E-05</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3447.359</TD>
+    <TD>5.90E-04</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>3448.363</TD>
+    <TD>2.59E-04</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>4045.2847</TD>
+    <TD>5.68E-03</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>4048.3565</TD>
+    <TD>2.64E-03</TD>
+    <TD>1E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>7667.0089</TD>
+    <TD>6.682E-01</TD>
+    <TD>3.791E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>39</TD>
+    <TD>39.098</TD>
+    <TD>0.0</TD>
+    <TD>K</TD>
+    <TD>I</TD>
+    <TD>7701.0835</TD>
+    <TD>3.327E-01</TD>
+    <TD>3.742E+07</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
     <TD>40</TD>
     <TD>40.078</TD>
     <TD>0.0</TD>
@@ -8079,6 +8175,54 @@
     <TD>1164.8672</TD>
     <TD>0.188</TD>
     <TD>3.09E8</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>85</TD>
+    <TD>84.911</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.378</TD>
+    <TD>0.290</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>85</TD>
+    <TD>84.911</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.440</TD>
+    <TD>0.406</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>87</TD>
+    <TD>86.909</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.329</TD>
+    <TD>0.261</TD>
+    <TD>3.0E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>87</TD>
+    <TD>86.909</TD>
+    <TD>0.0</TD>
+    <TD>Rb</TD>
+    <TD>I</TD>
+    <TD>7802.467</TD>
+    <TD>0.435</TD>
+    <TD>3.0E7</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
   </TR>
