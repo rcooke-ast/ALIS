@@ -420,13 +420,17 @@ def load_atomic(slf):
     for i in range(0,len(prgn_spl)-1): fname += prgn_spl[i]+"/"
     fname += "data/"
     # If the user specifies the atomic data file, make sure that it exists
-    if os.path.exists(fname+atmname):
+    if os.path.exists(atmname):
+        fname = atmname
+    elif os.path.exists(fname+atmname):
         msgs.info("Using atomic datafile:"+msgs.newline()+fname+atmname, verbose=slf._argflag['out']['verbose'])
+        fname += atmname
     else:
-        msgs.warn("Couldn't find atomic datafile:"+msgs.newline()+fname+atmname, verbose=slf._argflag['out']['verbose'])
+        msgs.warn("Couldn't find atomic datafile:"+msgs.newline()+atmname, verbose=slf._argflag['out']['verbose'])
+        msgs.warn("Also tried atomic datafile:"+msgs.newline()+fname+atmname, verbose=slf._argflag['out']['verbose'])
         msgs.info("Using atomic datafile:"+msgs.newline()+fname+"atomic.xml", verbose=slf._argflag['out']['verbose'])
         atmname="atomic.xml"
-    fname += atmname
+        fname += atmname
     try:
         table = parse_single_table(fname)
     except IOError:
