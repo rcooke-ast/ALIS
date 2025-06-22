@@ -687,7 +687,7 @@ class ClassMain:
             self._chisq_init = np.sum(((fluf-start_func)/errf)**2)
             numfreepars = len(parinfo) - [parinfo[i]['fixed'] for i in range(len(parinfo))].count(1)
             if np.isnan(self._chisq_init): msgs.error("Initial chi-squared is not a number")
-            if self._chisq_init == np.Inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
+            if self._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
             msgs.info("Chi-squared for input parameters = " + str(self._chisq_init),verbose=self._argflag['out']['verbose'])
             msgs.info("Number of free parameters: {0:d}".format(numfreepars),verbose=self._argflag['out']['verbose'])
         if self._argflag['plot']['only']:

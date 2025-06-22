@@ -95,7 +95,7 @@ def perturb(slf, covar, bparams, parinfo):
         start_func = myfunct_wrap(p0new,output=2,**fa)
         slf._chisq_init = np.sum(((fluf-start_func)/errf)**2)
         if np.isnan(slf._chisq_init): msgs.error("Initial chi-squared is not a number")
-        if slf._chisq_init == np.Inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
+        if slf._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
         # Fit the realisation
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
@@ -226,7 +226,7 @@ def sim_random(slf, covar, bparams, parinfo):
         start_func = myfunct_wrap(slf._modpass['p0'],output=2,**fa)
         slf._chisq_init = np.sum(((fluf-start_func)/errf)**2)
         if np.isnan(slf._chisq_init): msgs.error("Initial chi-squared is not a number")
-        if slf._chisq_init == np.Inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
+        if slf._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
         # Fit the realisation
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
@@ -351,7 +351,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
     start_func = myfunct_wrap(p0new,output=2,**fa)
     slf._chisq_init = np.sum(((fluf-start_func)/errf)**2)
     if np.isnan(slf._chisq_init): msgs.error("Initial chi-squared is not a number")
-    if slf._chisq_init == np.Inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
+    if slf._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
     if slf._argflag['plot']['fits']:
         model = myfunct_wrap(p0new,output=3,**fa)
         alplot.make_plots_all(slf,model=model)
