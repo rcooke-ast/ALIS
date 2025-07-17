@@ -391,6 +391,9 @@ class ClassMain:
                     flxout = (self._fluxfull[sp][ll:lu]-mzero[sp][llx])/(cntout-mzero[sp][llx])
                     fleout = self._fluefull[sp][ll:lu]/(cntout-mzero[sp][llx])
                     np.savetxt(outname, np.transpose((wavout, x[sp][ll:lu], flxout, fleout)))
+                    # fit_info = [0.0, 0.0, 0, 0, "WZCORR"]
+                    # self._chisq_init = 0.0
+                    # alsave.save_model(self, p, p, fit_info, printout=False, filename=self._argflag['out']['modelname']+".wzcorr", overwrite=True)
                 # Make sure this model shouldn't be capped
                 if self._argflag['run']['capvalue'] is not None:
                     wc = np.where(modcv[sp][ll:lu] >= self._argflag['run']['capvalue'])[0]
