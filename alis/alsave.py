@@ -799,7 +799,7 @@ def save_smfiles(filename, fnames, elnames, elwaves, elcomps, rdshft):
         outstring += "location 3000 29000 %5i %5i\n" % (y1-1700,y2-4000)
         outstring += "limits -1 1 -1 1\nticksize 10 10 10 10\n\n"
         outstring += "relocate 0 0\nexpand 0.75\nctype black\nlweight 2\n"
-        outstring += "putlabel 5 Velocity Relative to {\it z}_{\\rm abs} = $(redshift) (km s^{-1})\n\n"
+        outstring += "putlabel 5 Velocity Relative to {\\it z}_{\\rm abs} = $(redshift) (km s^{-1})\n\n"
         outstring += "# End of Plot!\n"
         # Now write the file
         outname = filename+"_page%02i.sm" % (pg+1)
