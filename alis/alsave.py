@@ -374,11 +374,19 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
         #if errs is not None and mp['emab'][i] == "cv": continue
         mtyp = mp['mtyp'][i]
         if mp['emab'][i] != lastemab:
-            if   mp['emab'][i]=="em": aetag = "emission"
-            elif mp['emab'][i]=="ab": aetag = "absorption"
-            elif mp['emab'][i]=="cv": aetag = "Convolution"
-            elif mp['emab'][i]=="sh": aetag = "Shift"
-            elif mp['emab'][i]=="zl": aetag = "zerolevel"
+            thisemabtag = mp['emab'][i]
+            if mp['emab'][i]=="em":
+                aetag = "emission"
+            elif mp['emab'][i]=="ab":
+                aetag = "absorption"
+            elif mp['emab'][i]=="cv":
+                aetag = "Convolution"
+            elif mp['emab'][i]=="sh":
+                aetag = "Shift"
+            elif mp['emab'][i]=="zl":
+                aetag = "zerolevel"
+            else:
+                thisemabtag = lastemab
             # Place the model details into a string
             if mp['emab'][i] == "cv":
                 cvstring  += " "+aetag+"\n"
@@ -391,7 +399,7 @@ def print_model(params, mp, errs=None, reletter=False, blind=False, getlines=Fal
             else:
                 outstring += " "+aetag+"\n"
                 errstring += "#"+aetag+"\n"
-            lastemab = mp['emab'][i]
+            lastemab = thisemabtag
         if errs is None:
             funcinst[mtyp]._keywd = mp['mkey'][i]
             outstr, level = funccall[mtyp].parout(funcinst[mtyp], params, mp, i, level)
