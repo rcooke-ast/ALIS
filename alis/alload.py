@@ -1485,7 +1485,8 @@ def load_links(slf, lnklines, debug=False):
     wd = np.where(np.diff(tstidx) < 0)
     if wd[0].size > 0:
         msgs.error("The links are not in the same order as the parameters in the model." + msgs.newline() +
-                   "Please check the following link: " + lnklines[wd[0][0]+1].rstrip("\n"))
+                   "Please check the following link: " + lnklines[wd[0][0]+1].rstrip("\n")+msgs.newline() +
+                   "The model is built up by looking at the variables one line at a time, from left to right." + msgs.newline() + "The links need to be specified in the same order as they appear in the model.")
     msgs.info("Links loaded successfully",verbose=slf._argflag['out']['verbose'])
     return lnkpass
 
