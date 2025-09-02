@@ -223,7 +223,7 @@ def load_settings(fname,verbose=2):
         """
         Initialise the default settings called argflag
         """
-        rna = dict({'prognm':'alis.py', 'last_update':'Last updated 27th May 2024', 'atomic':'atomic.xml', 'modname':'model.mod', 'convergence':False, 'convnostop':False, 'convcriteria':0.2, 'datatype':'default', 'limpar':False, 'ncpus':-1, 'ngpus':None, 'nsubpix':5, 'nsubmin':5, 'nsubmax':21, 'warn_subpix':100, 'renew_subpix':False, 'blind':True, 'bintype':'km/s', 'logn':True, 'capvalue':None})
+        rna = dict({'prognm':'alis.py', 'last_update':'Last updated 27th May 2024', 'atomic':'atomic.xml', 'datadirc':'', 'modname':'model.mod', 'convergence':False, 'convnostop':False, 'convcriteria':0.2, 'datatype':'default', 'limpar':False, 'ncpus':-1, 'ngpus':None, 'nsubpix':5, 'nsubmin':5, 'nsubmax':21, 'warn_subpix':100, 'renew_subpix':False, 'blind':True, 'bintype':'km/s', 'logn':True, 'capvalue':None})
         csa = dict({'miniter':0, 'maxiter':20000, 'atol':1.0E-10, 'xtol':1.0E-10, 'ftol':1.0E-10, 'gtol':1.0E-10, 'fstep':1.0})
         pla = dict({'dims':'3x3', 'fits':True, 'residuals':False, 'xaxis':'observed', 'labels':False, 'only':False, 'pages':'all', 'ticks':True, 'ticklabels':False, 'fitregions':False})
         opa = dict({'wavecorr':False, 'model':True, 'modelname':'','plots':'', 'fits':False, 'onefits':False, 'overwrite':False, 'sm':False, 'verbose':2, 'reletter':False, 'covar':"", 'convtest':""})
@@ -478,7 +478,10 @@ def load_data(slf, datlines, data=None):
     """
     Load the observed data
     """
-    msgs.info("Loading the data",verbose=slf._argflag['out']['verbose'])
+    msgs.info("Loading the data", verbose=slf._argflag['out']['verbose'])
+    datadirc = slf._argflag['run']['datadirc']
+    if datadirc != "":
+        msgs.info("Using data directory: "+datadirc, verbose=slf._argflag['out']['verbose'])
     # Do some checks
     if data is not None and len(datlines) > 1:
         msgs.error("If you have used the data keyword to pass an array of data,"+msgs.newline()+"the keyword datlines can have a maximum of one element")
@@ -503,7 +506,7 @@ def load_data(slf, datlines, data=None):
         if len(nocoms) == 0: continue # A comment line
         linspl = nocoms.split()
         if data is None:
-            filename = linspl[0]
+            filename = datadirc + linspl[0]
         else:
             filename = "Data read from 'data' keyword"
             linspl.insert(0,linspl[0])
@@ -635,7 +638,7 @@ def load_data(slf, datlines, data=None):
         fitrange = 'all'
         linspl = nocoms.split()
         if data is None:
-            filename = linspl[0]
+            filename = datadirc + linspl[0]
         else:
             filename = "Data read from 'data' keyword"
             linspl.insert(0,linspl[0])
@@ -1484,9 +1487,18 @@ def load_links(slf, lnklines, debug=False):
         msgs.error("Parameter linking has failed. Please check the links in the model file.")
     wd = np.where(np.diff(tstidx) < 0)
     if wd[0].size > 0:
+        # Get the variable order
+        varord = []
+        for j in range(len(slf._modpass['tpar'])):
+            varord.append(slf._modpass['tpar'][j][0])
+        # Print out a relevant error message
         msgs.error("The links are not in the same order as the parameters in the model." + msgs.newline() +
                    "Please check the following link: " + lnklines[wd[0][0]+1].rstrip("\n")+msgs.newline() +
-                   "The model is built up by looking at the variables one line at a time, from left to right." + msgs.newline() + "The links need to be specified in the same order as they appear in the model.")
+                   "The model is built up by looking at the variables one line at a time, from left to right." + msgs.newline() +
+                   "The links need to be specified in the same order as they appear in the model." + msgs.newline() + msgs.newline() +
+                   "The order of the parameters in the model is: " + msgs.newline() +
+                   ", ".join(varord) + msgs.newline() +
+                   "Not all parameters need a link, but the *order* of the links should appear in the same order as above.")
     msgs.info("Links loaded successfully",verbose=slf._argflag['out']['verbose'])
     return lnkpass
 

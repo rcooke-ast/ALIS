@@ -1,4 +1,5 @@
 run blind False
+run datadirc ../data/
 chisq ftol 1.0E-10
 chisq atol 0.001
 chisq miniter 10
@@ -10,7 +11,7 @@ plot labels True
 #sim perturb 100
 
 data read
-  ../data/OI_SiII.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0va)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
+  OI_SiII.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0va)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
 data end
 
 model read
