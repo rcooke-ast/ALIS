@@ -1696,7 +1696,10 @@ def load_subpixels(slf, parin):
     wavespx, contspx, zerospx, posnspx = [np.array([]) for all in slf._posnfull], [np.array([]) for all in slf._posnfull], [np.array([]) for all in slf._posnfull], [[] for all in slf._posnfull]
     for sp in range(len(slf._posnfull)):
         for sn in range(len(slf._posnfull[sp])-1):
-            if nexbins[sp][sn] > slf._argflag['run']['warn_subpix']: msgs.warn("sub-pixellation scale ({0:d}) has exceeded the warning level of: {1:d}".format(nexbins[sp][sn],slf._argflag['run']['warn_subpix']),verbose=slf._argflag['out']['verbose'])
+            if nexbins[sp][sn] > slf._argflag['run']['warn_subpix']:
+                msgs.warn("sub-pixellation scale ({0:d}) has exceeded the warning level of: {1:d}".format(nexbins[sp][sn],slf._argflag['run']['warn_subpix']),verbose=slf._argflag['out']['verbose'])
+            else:
+                msgs.info("sub-pixellation scale: {0:d} for spectrum {1:s}, segment {2:d}".format(nexbins[sp][sn], slf._snipid[sp], sn),verbose=slf._argflag['out']['verbose'])
             ll = slf._posnfull[sp][sn]
             lu = slf._posnfull[sp][sn+1]
             binsize=get_binsize(slf._wavefull[sp][ll:lu], bintype=slf._datopt['bintype'][sp][sn], maxonly=False, verbose=slf._argflag['out']['verbose'])
