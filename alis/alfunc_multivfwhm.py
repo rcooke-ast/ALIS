@@ -175,8 +175,8 @@ class MultiVFWHM(alfunc_base.Base) :
         """
         # Determine the adjustment that needs to be made.
         try:
-            if self._limited[0][jind] == 0: value = None
-            else: value = float(self._limits[0][jind])
+            if self._limited[parj][jind] in [0, None]: value = None
+            else: value = float(self._limits[parj][jind])
         except:
             msgs.error("Argument of 'lim' only takes None or float")
         # Determine if the parameter is tied, if it is, store tpnum.
@@ -336,7 +336,7 @@ class MultiVFWHM(alfunc_base.Base) :
             self._defpar.append(0.0)
             self._fixpar.append(None)
             self._limited.append([1, 0])
-            self._limits.append([0.0,0.0])
+            self._limits.append([0.1,0.0])
 
         # Now return to the default code
         param = [None for all in range(pnumr)]
@@ -453,6 +453,8 @@ class MultiVFWHM(alfunc_base.Base) :
                    the threshold for convergence (in sigma's).
         --------------------------------------------------------
         Nothing should be changed here when writing a new function.
+
+        I changed several self._svfmt[i] to self._svfmt[0].
         --------------------------------------------------------
         """
         if errs is None:
@@ -492,7 +494,7 @@ class MultiVFWHM(alfunc_base.Base) :
             if mp['mtie'][istart][i] >= 0:
                 if reletter:
                     newfmt = pretxt + self.gtoef(params[mp['tpar'][mp['mtie'][istart][i]][1]],
-                                                 self._svfmt[i] + '{1:c}')
+                                                 self._svfmt[0] + '{1:c}')
                     outstring.append((newfmt).format(blindoffset + params[mp['tpar'][mp['mtie'][istart][i]][1]],
                                                      97 + mp['mtie'][istart][i] - 32 * mp['mfix'][istart][1]))
                     if conv is None:
@@ -531,7 +533,7 @@ class MultiVFWHM(alfunc_base.Base) :
                     if len(mp['tpar']) != 0:
                         if mp['tpar'][tienum][1] == level + levadd:
                             if reletter:
-                                newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i] + '{1:c}')
+                                newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[0] + '{1:c}')
                                 outstring.append((newfmt).format(blindoffset + params[level + levadd],
                                                                  97 + tienum - 32 * mp['mfix'][istart][1]))
                                 if conv is None:
@@ -560,7 +562,7 @@ class MultiVFWHM(alfunc_base.Base) :
                             if tienum == len(
                                 mp['tpar']): havtie = 2  # Stop searching for 1st instance of tied param
                         else:
-                            newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i])
+                            newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[0])
                             outstring.append((newfmt).format(blindoffset + params[level + levadd]))
                             if conv is None:
                                 errstring.append((newfmt).format(errors[level + levadd]))
@@ -571,7 +573,7 @@ class MultiVFWHM(alfunc_base.Base) :
                                     cvtxt = "!!!!!!!!!"
                                 errstring.append(('--{0:s}--    ').format(cvtxt))
                     else:  # There are no tied parameters!
-                        newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[i])
+                        newfmt = pretxt + self.gtoef(params[level + levadd], self._svfmt[0])
                         outstring.append((newfmt).format(blindoffset + params[level + levadd]))
                         if conv is None:
                             errstring.append((newfmt).format(errors[level + levadd]))
@@ -673,7 +675,8 @@ class MultiVFWHM(alfunc_base.Base) :
                                 breakit = True
                                 break
             # Now set limits and fixed values
-            if mp['mtie'][mnum][i] >= 0: add -= 1
+            if mp['mtie'][mnum][i] >= 0:
+                add -= 1
             elif mp['mtie'][mnum][i] <= -2:
                 pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
                 pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]

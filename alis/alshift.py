@@ -745,7 +745,8 @@ class polyshift(alfunc_base.Base) :
             if havtie == False: mps['p0'].append(inval)
             mps['mpar'][cntr].append(inval)
             if iind >= self._pnumr:
-                mps['mlim'][cntr].append([self._limits[1][i] if self._limited[1][i]==1 else None for i in range(2)])
+                # mps['mlim'][cntr].append([self._limits[1][i] if self._limited[1][i]==1 else None for i in range(2)])
+                mps['mlim'][cntr].append([None for i in range(2)])
             else:
                 mps['mlim'][cntr].append([self._limits[iind][i] if self._limited[iind][i]==1 else None for i in range(2)])
             return mps
@@ -832,8 +833,50 @@ class polyshift(alfunc_base.Base) :
         in the function specified by 'call'
         --------------------------------------------------------
         """
-        pin = par
-        return pin
+        return par
+
+    def set_pinfo(self, pinfo, level, mp, lnk, mnum):
+        """
+        Place limits on the functions parameters (as specified in init)
+        Nothing should be changed here.
+        """
+        pnumr = len(mp['mpar'][mnum])
+        add = pnumr
+        levadd = 0
+        for i in range(pnumr):
+            # First Check if there are any operations/links to perform on this parameter
+            if len(lnk['opA']) != 0:
+                breakit=False
+                for j in range(len(mp['tpar'])):
+                    if breakit: break
+                    if mp['tpar'][j][1] == level+levadd: # then this is a tied parameter
+                        # Check if this tied parameter is to be linked to another parameter
+                        for k in range(len(lnk['opA'])):
+                            if mp['tpar'][j][0] == lnk['opA'][k]:
+                                ttext = lnk['exp'][k]
+                                for l in lnk['opB'][k]:
+                                    for m in range(len(mp['tpar'])):
+                                        if mp['tpar'][m][0] == l:
+                                            pn = mp['tpar'][m][1]
+                                            break
+                                    ttext = ttext.replace(l,'p[{0:d}]'.format(pn))
+                                pinfo[level+levadd]['tied'] = ttext
+                                breakit = True
+                                break
+            # Now set limits and fixed values
+            if mp['mtie'][mnum][i] >= 0:
+                add -= 1
+            elif mp['mtie'][mnum][i] <= -2:
+                pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
+                mp['mfix'][mnum][i] = -1
+                levadd += 1
+            else:
+                pinfo[level+levadd]['limited'] = [0 if j is None else 1 for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['limits']  = [0.0 if j is None else float(j) for j in mp['mlim'][mnum][i]]
+                pinfo[level+levadd]['fixed']   = mp['mfix'][mnum][i]
+                levadd += 1
+        return pinfo, add
 
     def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, getinfl=False, ddpid=None, getstdd=None):
         """
