@@ -14,11 +14,6 @@ from astropy.io import fits as pyfits
 try: input = raw_input
 except NameError: pass
 
-try:
-    from xastropy.xutils import xdebug as debugger
-except:
-    import pdb as debugger
-
 
 def cpucheck(ncpu,curcpu=0,verbose=2):
     cpucnt=cpu_count()
@@ -1672,8 +1667,7 @@ def load_subpixels(slf, parin):
                 try:
                     params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
                 except:
-                    import pdb
-                    pdb.set_trace()
+                    embed()
                 if len(params) == 0: continue
                 if nbn > nexbins[sp][sn]:
                     if nbn > slf._argflag['run']['nsubmax']:
