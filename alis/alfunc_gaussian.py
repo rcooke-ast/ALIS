@@ -240,21 +240,24 @@ class GaussianConstantHelium(alfunc_base.Base) :
     Returns a 1-dimensional gaussian of form:
     p[0] = constant offset
     p[1] = amplitude
-    p[2] = x offset
+    p[2] = redshift
     p[3] = dispersion (sigma)
+    p[4] = relative strength of weak 10833 line relative to the sum of the two strong lines at 10833
+    p[5] = relative strength of the 3889 line relative to the sum of the two strong lines at 10833 line
+    p[6] = relative strength of the 3188 line relative to the sum of the two strong lines at 10833 line
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'gaussianconsthelium'									# ID string for this class
-        self._pnumr   = 5											# Total number of parameters fed in
+        self._pnumr   = 7											# Total number of parameters fed in
         self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'wave':-1.0, 'IntFlux':False})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'wave':1,    'IntFlux':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'wave':0,    'IntFlux':0})			# Require keywd to be changed (1 for yes, 0 for no)
         self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'wave':"",   'IntFlux':""})			# Format for the keyword. "" is the Default setting
-        self._parid   = ['offset', 'amplitude', 'redshift', 'dispersion', 'amplitude2']		# Name of each parameter
-        self._defpar  = [ 0.0,      0.0,         0.0,        100.0, 0.0 ]			# Default values for parameters that are not provided
-        self._fixpar  = [ None,     None,       None,      None, None ]				# By default, should these parameters be fixed?
-        self._limited = [ [0  ,0  ],   [1  ,0  ],   [0  ,0  ], [1      ,0  ], [1  ,1  ] ]	# Should any of these parameters be limited from below or above
-        self._limits  = [ [0.0,0.0],   [0.0,0.0],   [0.0,0.0], [1.0,0.0],   [0.0,0.125] ]	# What should these limiting values be
-        self._svfmt   = [ "{0:.8g}",  "{0:.8g}",  "{0:.8g}", "{0:.8g}", "{0:.8g}"]			# Specify the format used to print or save output
+        self._parid   = ['offset', 'amplitude', 'redshift', 'dispersion', 'amplitude2', 'amplitude3889', 'amplitude3188']		# Name of each parameter
+        self._defpar  = [ 0.0,      0.0,         0.0,        100.0,        0.0,        0.0,        0.0 ]			# Default values for parameters that are not provided
+        self._fixpar  = [ None,     None,       None,      None,          None,      None,          None ]				# By default, should these parameters be fixed?
+        self._limited = [ [0  ,0  ],   [1  ,0  ],   [0  ,0  ], [1      ,0  ], [1  ,1  ], [1  ,1  ], [1  ,1  ] ]	# Should any of these parameters be limited from below or above
+        self._limits  = [ [0.0,0.0],   [0.0,0.0],   [0.0,0.0], [1.0,0.0],   [0.0,0.125],   [0.0,0.125],   [0.0,0.125] ]	# What should these limiting values be
+        self._svfmt   = [ "{0:.8g}",  "{0:.8g}",  "{0:.8g}", "{0:.8g}", "{0:.8g}", "{0:.8g}", "{0:.8g}"]			# Specify the format used to print or save output
         self._prekw   = []											# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
         tempinput = self._parid+list(self._keych.keys())                             #
@@ -278,9 +281,27 @@ class GaussianConstantHelium(alfunc_base.Base) :
             Define the model here
             """
             if karr['IntFlux']:
+                print("Not ready for integrated flux yet!")
+                assert False
                 return par[0] + (par[1]/(np.sqrt(2.0*np.pi)*par[3]))*np.exp(-(x-par[2])**2/(2.0*(par[3]**2)))
             else:
-                return par[0] + par[1]*np.exp(-(x-par[2])**2/(2.0*(par[3]**2))) + par[1]*par[4]*np.exp(-(x-par[2]+1.215528)**2/(2.0*(par[3]**2)))
+                #modv = par[0] + par[1]*np.exp(-(x-par[2])**2/(2.0*(par[3]**2))) + par[1]*par[4]*np.exp(-(x-par[2]+1.2153364838268317)**2/(2.0*(par[3]**2)))
+                # fval weighted wavelengths: 3188.665406014746, 3889.7448067333644, 10833.272806483827 (this is the two strongest lines)
+                lcen10833  = 10833.272806483827*(1.0 + par[2])
+                lcen10833b = 10832.05747*(1.0 + par[2])
+                lcen3889   = 3889.7448067333644*(1.0 + par[2])
+                lcen3188   = 3188.665406014746*(1.0 + par[2])
+                wid10833   = lcen10833 * par[3] / 299792.458
+                wid10833b  = lcen10833b * par[3] / 299792.458
+                wid3889    = lcen3889 * par[3] / 299792.458
+                wid3188    = lcen3188 * par[3] / 299792.458
+                modv = par[0]
+                modv += par[1]*np.exp(-(x-lcen10833)**2/(2.0*(wid10833**2)))
+                modv += par[1]*par[4]*np.exp(-(x-lcen10833b)**2/(2.0*(wid10833b**2)))
+                modv += par[1]*par[5]*np.exp(-(x-lcen3889)**2/(2.0*(wid3889**2)))
+                modv += par[1]*par[6]*np.exp(-(x-lcen3188)**2/(2.0*(wid3188**2)))
+                return modv
+
         #############
         yout = np.zeros((p.shape[0],x.size))
         for i in range(p.shape[0]):
@@ -301,9 +322,11 @@ class GaussianConstantHelium(alfunc_base.Base) :
         """
         if   i == 0: pin = par
         elif i == 1: pin = par
-        elif i == 2: pin = parb['ap_1a'] * (1.0 + par)
-        elif i == 3: pin = parb['ap_2a'] * par/299792.458
+        elif i == 2: pin = par#parb['ap_1a'] * (1.0 + par)
+        elif i == 3: pin = par
         elif i == 4: pin = par
+        elif i == 5: pin = par
+        elif i == 6: pin = par
         return pin
 
     def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
@@ -317,7 +340,9 @@ class GaussianConstantHelium(alfunc_base.Base) :
         parinf=[]
         for i in range(self._pnumr):
             lnkprm = None
-            parb = dict({'ap_1a':self._keywd['wave'], 'ap_2a':params[2]})
+            # fval weighted wavelengths: 3188.665406014746, 3889.7448067333644, 10833.272806483827
+            # parb = dict({'ap_1a':self._keywd['wave'], 'ap_2a':params[2]})
+            parb = dict({'ap_1a':10833.272806483827, 'ap_2a':10833.272806483827*(1+params[2])})
             if mp['mtie'][ival][i] >= 0:
                 getid = mp['tpar'][mp['mtie'][ival][i]][1]
             elif mp['mtie'][ival][i] <= -2:
