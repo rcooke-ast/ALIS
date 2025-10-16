@@ -29,7 +29,7 @@ class Ashift(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, p, ncpus=1):
+    def call_CPU(self, x, p, ncpus=1, mkey=None):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -246,7 +246,7 @@ class vshift(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, p, ncpus=1):
+    def call_CPU(self, x, p, ncpus=1, mkey=None):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -460,7 +460,7 @@ class vshiftscale(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, p, ncpus=1):
+    def call_CPU(self, x, p, ncpus=1, mkey=None):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -678,7 +678,7 @@ class polyshift(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, p, ncpus=1):
+    def call_CPU(self, x, p, ncpus=1, mkey=None):
         """
         Define the functional form of the model
         --------------------------------------------------------

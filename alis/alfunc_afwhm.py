@@ -30,7 +30,7 @@ class AFWHM(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, y, p, ncpus=1):
+    def call_CPU(self, x, y, p, ncpus=1, mkey=None):
         """
         Define the functional form of the model
         --------------------------------------------------------

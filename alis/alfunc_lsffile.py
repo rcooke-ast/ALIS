@@ -48,12 +48,13 @@ class LSFFile(alfunc_base.Base) :
                 # Generate a random index
                 index = np.random.randint(0, allkernels.shape[1])
             self._lsf_kernel = allkernels[:, index]
+            self._lsf_name = name
         except:
             msgs.error("LSF file not found or not in the correct format")
         # Print the details of the LSF file that was loaded
         msgs.info("Loading LSF file: {:s} with index: {:d}".format(name, index))
 
-    def call_CPU(self, x, y, p, ncpus=1):
+    def call_CPU(self, x, y, p, mkey=None, ncpus=1):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -62,8 +63,8 @@ class LSFFile(alfunc_base.Base) :
         p  : array of parameters for this model
         --------------------------------------------------------
         """
-        if self._lsf_wave is None or self._lsf_kernel is None:
-            self.loadlsf(self._keywd['name'], self._keywd['index'])
+        # Currently need to always reload to ensure the correct LSF is used... bad programming...
+        self.loadlsf(mkey['name'], mkey['index'])
         if p[0] > 0.0:
             ysize = y.size
             df = ysize//2 - 1

@@ -39,7 +39,7 @@ class MultiVFWHM(alfunc_base.Base) :
         self._atomic = atomic
         if getinst: return
 
-    def call_CPU(self, x, y, p, ncpus=1):
+    def call_CPU(self, x, y, p, mkey=None, ncpus=1):
         """
         Define the functional form of the model
         --------------------------------------------------------
@@ -168,13 +168,22 @@ class MultiVFWHM(alfunc_base.Base) :
                models read in so far.
         --------------------------------------------------------
         Nothing should be changed here when writing a new function.
-
-        When writing this function, I replaced the following:
-        self._limited[parj][jind]  -->  self._limited[0][jind]
         --------------------------------------------------------
         """
         # Determine the adjustment that needs to be made.
         try:
+            # This was a conflicting use of parj... I think the bottom choice
+            # is the one used more generally throughout the code, but this specific
+            # one might be more relevant to this function.
+        #     if parj == 0:
+        #         if self._limited[0][jind] == 0: value = None
+        #         else: value = float(self._limits[0][jind])
+        #     elif (parj - 1) % 3 == 0:  # amplitude
+        #         value = 0.0 if jind == 0 else 1.0
+        #     elif (parj - 2) % 3 == 0:  # offset
+        #         value = None
+        #     elif (parj - 3) % 3 == 0:  # FWHM
+        #         value = 0.0 if jind == 0 else None
             if self._limited[parj][jind] in [0, None]: value = None
             else: value = float(self._limits[parj][jind])
         except:

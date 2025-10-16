@@ -376,8 +376,8 @@ class ClassMain:
                 shmtyp = self._modpass['mtyp'][shind]
                 self._funcarray[2][shmtyp]._keywd = self._modpass['mkey'][shind]
                 shparams = self._funcarray[1][shmtyp].set_vars(self._funcarray[2][shmtyp], p, self._levadd[shind], self._modpass, shind)
-                shwave = self._funcarray[1][shmtyp].call_CPU(self._funcarray[2][shmtyp], wavespx[sp][llx:lux], shparams)
-                mdtmp = self._funcarray[1][mtyp].call_CPU(self._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
+                shwave = self._funcarray[1][shmtyp].call_CPU(self._funcarray[2][shmtyp], wavespx[sp][llx:lux], shparams, mkey=self._modpass['mkey'][shind])
+                mdtmp = self._funcarray[1][mtyp].call_CPU(self._funcarray[2][mtyp], shwave, modelem[sp][llx:lux]*modelab[sp][llx:lux], params, mkey=self._modpass['mkey'][cvind])
                 mdtmp *= contspx[sp][llx:lux]
                 # Apply the zero-level correction if necessary
                 if len(zerlev[sp]) != 0:
