@@ -26,8 +26,8 @@ class SplineAbs(alfunc_base.Base) :
         self._parid   = ['TotalColDens',   'redshift', 'bturb',   'tau']		# Name of each parameter
         self._defpar  = [ 8.1,         0.0,        7.0,       1.0 ]				# Default values for parameters that are not provided
         self._fixpar  = [ None,        None,       None,      None ]				# By default, should these parameters be fixed?
-        self._limited = [ [0  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,1] ]		# Should any of these parameters be limited from below or above
-        self._limits  = [ [0.0,0.0],  [0.0,0.0],  [0.5,0.0], [0.0,1.0] ]		# What should these limiting values be
+        self._limited = [ [1  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,1] ]		# Should any of these parameters be limited from below or above
+        self._limits  = [ [8.0,0.0],  [0.0,0.0],  [0.5,0.0], [0.0,1.0] ]		# What should these limiting values be
         self._svfmt   = [ "{0:.7g}", "{0:.12g}", "{0:.6g}", "{0:.7g}"]			# Specify the format used to print or save output
         self._prekw   = [ 'ion', 'wavemin', 'wavemax' ]																			# Specify the keywords to print out before the parameters
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
