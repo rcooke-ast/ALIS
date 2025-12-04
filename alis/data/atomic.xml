@@ -8,7 +8,7 @@
  !  at 2012-11-21T00:20:59
  !-->
 <RESOURCE>
-<TABLE name="Atomic_Data_Table" nrows="814">
+<TABLE name="Atomic_Data_Table" nrows="815">
 <FIELD ID="MassNumber" datatype="int" name="MassNumber" ucd="AT_ELEMENT">
 <DESCRIPTION>Number of Nucleons</DESCRIPTION>
 <VALUES null='-2147483648'/>
@@ -6734,6 +6734,18 @@
     <TD>1162.015</TD>
     <TD>0.0102</TD>
     <TD>3.9E7</TD>
+    <TD>NaN</TD>
+    <TD>NaN</TD>
+  </TR>
+  <TR>
+    <TD>56</TD>
+    <TD>55.845</TD>
+    <TD>0.0</TD>
+    <TD>Fe</TD>
+    <TD>I</TD>
+    <TD>3861.0055</TD>
+    <TD>0.0217</TD>
+    <TD>1.63E7</TD>
     <TD>NaN</TD>
     <TD>NaN</TD>
   </TR>
