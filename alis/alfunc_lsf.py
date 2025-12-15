@@ -62,7 +62,7 @@ class LSF(alfunc_base.Base) :
                 lsf_val = ltLSF(lsf_dict, scalefactor=p[0])
             except:
                 lsf_val = ltLSF(lsf_dict)
-            tab = lsf_val.interpolate_to_wv_array(x * u.AA)
+            tab = lsf_val.interpolate_to_wv_array(x * u.AA, kind='cubic')  # The default interpolation ('Akima') produces constant non-zero values at the edges, which introduces spurious results in the fitting.
             lsfk = tab["kernel"].data
             size = ysize + lsfk.size - 1
             fsize = 2 ** int(np.ceil(np.log2(size)))  # Use this size for a more efficient computation
