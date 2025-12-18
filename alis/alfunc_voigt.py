@@ -411,7 +411,7 @@ class Voigt(alfunc_base.Base) :
                     if parb['ap_1a'][2]: pin = parb['ap_1a'][0] * 10.0**par     # Den is logN
                     else:                pin = parb['ap_1a'][0] * par           # Den is N
         elif i == 1: pin = par
-        elif i == 2: pin = par
+        elif i == 2: pin = abs(par)  # Ensure the turbulence is positive.
         elif i == 3:
             pin = np.sqrt(parb['ap_2a']**2 + 0.01662892444*par/parb['ap_2b'])
             if pin == 0.0:
