@@ -20,9 +20,9 @@ class SplineAbs(alfunc_base.Base) :
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'splineabs'																				# ID string for this class
         self._pnumr   = 4																					# Total number of parameters fed in
-        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'ion':'', 'logN':True,  'reference':0, 'wavemin':-1.0, 'wavemax':-1.0, 'locations':[], 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'ion':1,  'logN':0,  'reference':0,  'wavemin':0,    'wavemax':0,    'locations':1, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'ion':"{1:7}", 'logN':"", 'reference':"", 'wavemin':"{1:.8g}",   'wavemax':"{1:.8g}",   'locations':"", 'blindseed':"",  'blindrange':""})		# Format for the keyword. "" is the Default setting
+        self._keywd   = dict({'specid':[], 'continuum':False, 'blind':False, 'ion':'', 'logN':True,  'reference':0, 'wavemin':-1.0, 'wavemax':-1.0, 'locations':[], 'ColDensScale':1.0, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'specid':0,  'continuum':0,     'blind':0,     'ion':1,  'logN':0,  'reference':0,  'wavemin':0,    'wavemax':0,    'locations':1, 'ColDensScale':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'specid':"", 'continuum':"",    'blind':"",    'ion':"{1:7}", 'logN':"", 'reference':"", 'wavemin':"{1:.8g}",   'wavemax':"{1:.8g}",   'locations':"", 'ColDensScale':"", 'blindseed':"",  'blindrange':""})		# Format for the keyword. "" is the Default setting
         self._parid   = ['TotalColDens',   'redshift', 'bturb',   'tau']		# Name of each parameter
         self._defpar  = [ 8.1,         0.0,        7.0,       1.0 ]				# Default values for parameters that are not provided
         self._fixpar  = [ None,        None,       None,      None ]				# By default, should these parameters be fixed?
@@ -57,7 +57,7 @@ class SplineAbs(alfunc_base.Base) :
             wavein = wave
             wv = par[3] * 1.0e-8
             if karr['logN']: cold = 10.0**par[0]
-            else: cold = par[0]
+            else: cold = karr['ColDensScale'] * par[0]
             zp1 = par[1]+1.0
             cns = 8.85282061604877e-13 * 299792.458 * par[4] * wv
             cne = cold*cns
