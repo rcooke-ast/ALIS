@@ -465,6 +465,7 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     prestringA += "#   Initial Chi-Squared = {0:f}\n".format(slf._chisq_init)
     prestringA += "#   Bestfit Chi-Squared = {0:f}\n".format(info[1])
     prestringA += "#   Degrees-of-Freedom  = {0:d}\n".format(info[2])
+    prestringA += "#   Reduced Chi-Squared = {0:f}\n".format(info[1]/info[2])
     prestringA += "#   Num. of Iterations  = {0:d}\n".format(info[3])
     prestringA += "#   Convergence Reason  = {0:s}\n".format(getreason(info[4],verbose=verbose))
     prestringA += "\n"
