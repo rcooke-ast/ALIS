@@ -676,6 +676,7 @@ from alis import alfunc_afwhm
 from alis import alfunc_apod
 from alis import alfunc_lsf
 from alis import alfunc_lsffile
+from alis import alfunc_lsfspline
 from alis import alfunc_multivfwhm
 from alis import alfunc_vfwhm
 from alis import alfunc_voigtconv
@@ -718,6 +719,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
                 'vfwhm'          : alfunc_vfwhm.vFWHM,
                 'lsf'            : alfunc_lsf.LSF,
                 'lsffile'        : alfunc_lsffile.LSFFile,
+                'lsfspline'      : alfunc_lsfspline.SplineLSF,
                 'voigt'          : alfunc_voigt.Voigt,
                 'voigtconv'      : alfunc_voigtconv.VoigtConv,
                 'vshift'         : alshift.vshift,
