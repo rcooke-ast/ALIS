@@ -1,8 +1,8 @@
 generate data True
 generate overwrite True
-generate pixelsize 0.05
-generate peaksnr 20
-generate skyfrac 0.02
+generate pixelsize 2.0
+generate peaksnr 2000
+generate skyfrac 0.0
 run blind False
 out fits True
 plot dims 2x2

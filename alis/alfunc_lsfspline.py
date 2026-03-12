@@ -82,7 +82,7 @@ class SplineLSF(alfunc_base.Base) :
             igaus = np.exp(-0.5 * iyval * iyval)
             isize = iysize + igaus.size - 1
             ifsize = 2 ** int(np.ceil(np.log2(isize)))  # Use this size for a more efficient computation
-            iconv = np.fft.fft(modret, ifsize)
+            iconv = np.fft.fft(smth, ifsize)
             iconv *= np.fft.fft(igaus / igaus.sum(), ifsize)
             iret = np.fft.ifft(iconv).real.copy()
             del iconv
@@ -241,9 +241,6 @@ class SplineLSF(alfunc_base.Base) :
         for i in range(len(keywdk)):
             if cpy_keych[keywdk[i]] == 1 and pnumr != 1: # Only check locations if it's not a column density ratio (i.e. when pnumr==1)
                 msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
-        # Check that we have set a specid
-        if len(specid) == 1 and not specidset:
-            if len(cpy_keywd['specid']) == 0: cpy_keywd['specid'].append(specid[0])
         # Append the final set of keywords
         mp['mkey'].append(cpy_keywd)
         # Before returning, update the parameters of the model
