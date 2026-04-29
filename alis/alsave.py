@@ -58,7 +58,7 @@ def save_asciifits(fname, slf, arr, model):
         elif i == 'fitrange':
             out = np.zeros(lu-ll).astype(float)
             w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-            out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
+            out[w] = np.isin(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
             data[:,num] = out
         elif i == 'loadrange':
             data[:,num] = np.ones(lu-ll)
@@ -106,7 +106,7 @@ def save_fitsfits(fname, slf, arr, model):
         elif i == 'fitrange':
             out = np.zeros(lu-ll).astype(float)
             w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-            out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
+            out[w] = np.isin(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
             data[:,num] = out
         elif i == 'loadrange':
             data[:,num] = np.ones(lu-ll)
@@ -195,7 +195,7 @@ def save_onefits(fname, slf):
                 elif i == 'fitrange':
                     out = np.zeros(lu-ll).astype(float)
                     w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-                    out[w] = np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
+                    out[w] = np.isin(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
                     data[:,num] = out
                 elif i == 'loadrange':
                     data[:,num] = np.ones(lu-ll)

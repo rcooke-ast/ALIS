@@ -160,7 +160,7 @@ def make_plots_all(slf, model=None):
             po_tlarr[numone].append(ticklabl)
             # Determine the fitted regions
             wft = np.where((wavearr[sp][llo:luo] >= slf._posnfit[sp][2*sn+0]) & (wavearr[sp][llo:luo] <= slf._posnfit[sp][2*sn+1]))
-            wftA= np.in1d(wavearr[sp][llo:luo][wft], slf._wavefit[sp])
+            wftA= np.isin(wavearr[sp][llo:luo][wft], slf._wavefit[sp])
             po_ftarr[numone].append(wftA)
             snips_done += 1
             numone += 1
@@ -230,7 +230,7 @@ def make_plots_all(slf, model=None):
             sn = pltlst[sp]
             """
                 w = np.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
-                wA= np.in1d(x[sp][ll:lu][w], self._wavefit[sp])
+                wA= np.isin(x[sp][ll:lu][w], self._wavefit[sp])
                 wB= np.where(wA==True)
                 enf[sp] = stf[sp] + x[sp][ll:lu][w][wB]
             """
@@ -274,7 +274,7 @@ def make_plots_all(slf, model=None):
                 po_tlarr[numone].append(ticklabl)
                 # Determine the fitted regions
                 wft = np.where((wavearr[sp][llo:luo] >= slf._posnfit[sp][2*sn+0]) & (wavearr[sp][llo:luo] <= slf._posnfit[sp][2*sn+1]))
-                wftA= np.in1d(wavearr[sp][llo:luo][wft], slf._wavefit[sp])
+                wftA= np.isin(wavearr[sp][llo:luo][wft], slf._wavefit[sp])
                 po_ftarr[numone].append(wftA)
                 snips_done += 1
                 numone += 1
@@ -347,7 +347,7 @@ def make_plots_all(slf, model=None):
                         po_tlarr[numone+tnumone].append(ticklabl)
                         # Determine the fitted regions
                         wft = np.where((wavearr[sp][llo:luo] >= slf._posnfit[sp][2*sn+0]) & (wavearr[sp][llo:luo] <= slf._posnfit[sp][2*sn+1]))
-                        wftA= np.in1d(wavearr[sp][llo:luo][wft], slf._wavefit[sp])
+                        wftA= np.isin(wavearr[sp][llo:luo][wft], slf._wavefit[sp])
                         po_ftarr[numone+tnumone].append(wftA)
                         snips_done += 1
                         tnumone += 1
@@ -395,7 +395,7 @@ def make_plots_all(slf, model=None):
                     ps_tlarr[pgs].append(ticklabl)
                     # Determine the fitted regions
                     wft = np.where((wavearr[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (wavearr[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-                    wftA= np.in1d(wavearr[sp][ll:lu][wft], slf._wavefit[sp])
+                    wftA= np.isin(wavearr[sp][ll:lu][wft], slf._wavefit[sp])
                     ps_ftarr[pgs].append(wftA)
                     #				ps_cparr[pg].append(comparr[sp][panels_done+i])
                     pltlst[sp] += 1

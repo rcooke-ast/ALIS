@@ -861,7 +861,7 @@ def load_data(slf, datlines, data=None):
             wavemax = lwavemax
             redo_wf = True
         if redo_wf:
-            wf = np.where((wavein >= wavemin) & (wavein <= wavemax) & np.in1d(wavein,wavein[wf]))
+            wf = np.where((wavein >= wavemin) & (wavein <= wavemax) & np.isin(wavein,wavein[wf]))
         # Store the data
         datopt['nsubpix'][sind].append( nspix*get_binsize(wavein[w],bintype=bntyp,verbose=slf._argflag['out']['verbose']) )
         posnfit[sind].append(wavemin)

@@ -312,7 +312,7 @@ class SelectRegions(object):
         if os.path.exists(tstnm):
             wv, reg = np.loadtxt(tstnm, unpack=True, usecols=(0,3))
             mtch = in1d_tol(self.prop._wave, wv, 1.0E-7)
-#			mtch = np.in1d(self.prop._wave, wv, assume_unique=True)
+#			mtch = np.isin(self.prop._wave, wv, assume_unique=True)
             self.prop._regions[np.where(mtch)] = reg.copy()
             self.ax.set_xlim([np.min(wv), np.max(wv)])
         # Other stuff

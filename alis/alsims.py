@@ -203,7 +203,7 @@ def sim_random(slf, covar, bparams, parinfo):
                 ll = slf._posnfull[sp][sn]
                 lu = slf._posnfull[sp][sn+1]
                 w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-                wA= np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp])
+                wA= np.isin(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp])
                 wB= np.where(wA==True)
                 newfluxfit[sp] = np.append(newfluxfit[sp], np.copy(newfluxfull[sp][ll:lu][w][wB]))
                 fluf = np.append(fluf, np.copy(newfluxfull[sp][ll:lu][w][wB]))
@@ -327,7 +327,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
             slf._fluxfull[sp][ll:lu], slf._fluefull[sp][ll:lu] = copy.deepcopy(newfluxfull)*slf._contfull[sp][ll:lu], copy.deepcopy(newfluefull)*slf._contfull[sp][ll:lu]
             # Make the appropriate changes to the fitted spectral region
             w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-            wA= np.in1d(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp])
+            wA= np.isin(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp])
             wB= np.where(wA==True)
             enf[sp] = stf[sp] + slf._wavefull[sp][ll:lu][w][wB].size
             slf._fluxfit[sp][stf[sp]:enf[sp]] = slf._fluxfull[sp][ll:lu][w][wB]

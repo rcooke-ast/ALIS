@@ -358,7 +358,7 @@ class ClassMain:
                         ll = pos[sp][sn]
                         lu = pos[sp][sn+1]
                         w = np.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
-                        wA= np.in1d(x[sp][ll:lu][w], self._wavefit[sp])
+                        wA= np.isin(x[sp][ll:lu][w], self._wavefit[sp])
                         wB= np.where(wA==True)
                         enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
                         stf[sp] = enf[sp]
@@ -403,7 +403,7 @@ class ClassMain:
 #				modcv[sp][ll:lu] *= self._contfull[sp][ll:lu]
                 # Extract the fitted part of the model.
                 w = np.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
-                wA= np.in1d(x[sp][ll:lu][w], self._wavefit[sp])
+                wA= np.isin(x[sp][ll:lu][w], self._wavefit[sp])
                 wB= np.where(wA==True)
                 enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
                 modcvf[sp][stf[sp]:enf[sp]] = modcv[sp][ll:lu][w][wB]
@@ -579,7 +579,7 @@ class ClassMain:
                         ll = pos[sp][sn]
                         lu = pos[sp][sn+1]
                         w = np.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
-                        wA= np.in1d(x[sp][ll:lu][w], self._wavefit[sp])
+                        wA= np.isin(x[sp][ll:lu][w], self._wavefit[sp])
                         wB= np.where(wA==True)
                         enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
                         stf[sp] = enf[sp]
@@ -601,7 +601,7 @@ class ClassMain:
 #				modcv[sp][ll:lu] *= self._contfull[sp][ll:lu]
                 # Extract the fitted part of the model.
                 w = np.where((x[sp][ll:lu] >= self._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= self._posnfit[sp][2*sn+1]))
-                wA= np.in1d(x[sp][ll:lu][w], self._wavefit[sp])
+                wA= np.isin(x[sp][ll:lu][w], self._wavefit[sp])
                 wB= np.where(wA==True)
                 enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
                 modcvf[sp][stf[sp]:enf[sp]] = modcv[sp][ll:lu][w][wB]
