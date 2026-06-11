@@ -94,7 +94,12 @@ class SplineAbs(alfunc_base.Base) :
                 modret_conv = modret.copy()
             modret_conv[modret_conv < 0.0] = 0.0
             # Normalise
-            norm = np.trapz(modret_conv, x=x)
+            try:
+                # Needed for numpy v2.4
+                norm = np.trapezoid(modret_conv, x=x)
+            except AttributeError:
+                # Fall back to an older version of numpy
+                norm = np.trapz(modret_conv, x=x)
             modret_conv /= norm
             # Prepare the optical depth
             tau = cne * modret_conv
