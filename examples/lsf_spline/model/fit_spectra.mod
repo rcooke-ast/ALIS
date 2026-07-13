@@ -12,6 +12,6 @@ model read
   emission
     constant 1.0CONST  specid=0
   absorption
-    voigt   ion=16O_I   14.0    0.0ra    5.0da   8000.0ta   specid=0
+    voigt   ion=16O_I   14.0    0.0ra    5.0DA   8000.0TA   specid=0
     voigt   ion=28Si_II/16O_I   -1.0    specid=0
 model end

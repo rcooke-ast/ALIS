@@ -1,5 +1,5 @@
 run blind False
-plot fits True
+plot fits False
 out fits True
 out overwrite True
 

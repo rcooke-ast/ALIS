@@ -4,14 +4,15 @@ chisq atol 0.001
 chisq miniter 10
 chisq maxiter 1000
 out fits True
+out overwrite True
 plot dims 2x2
-plot fits True
+plot fits False
 plot labels True
 #sim perturb 100
 #plot only True
 
 data read
-  ../data/OI_SiII.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0VA)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
+  ../data/OI_SiII_linear.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0VA)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
 data end
 
 model read

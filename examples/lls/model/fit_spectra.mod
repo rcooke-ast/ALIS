@@ -5,7 +5,8 @@ chisq miniter 10
 chisq maxiter 1000
 out fits True
 plot dims 2x2
-plot fits True
+out overwrite True
+plot fits False
 plot labels True
 #sim perturb 100
 
