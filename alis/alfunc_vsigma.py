@@ -48,7 +48,7 @@ class vSigma(alfunc_base.Base) :
             dwav = 0.5*(x[2:]-x[:-2])/x[1:-1]
             dwav = np.append(np.append(dwav[0],dwav),dwav[-1])
             if np.size(sigd) == 1:
-                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
+                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize//2 - 1])
                 yval = np.zeros(2*df+1)
                 yval[df:2*df+1] = (x[df:2*df+1]/x[df] - 1.0)/sigd
                 yval[:df] = (x[:df]/x[df] - 1.0)/sigd

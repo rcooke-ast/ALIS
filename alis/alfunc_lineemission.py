@@ -2,6 +2,7 @@ import os
 import numpy as np
 from alis import almsgs
 from alis import alfunc_voigt
+from scipy.special import wofz
 #import pycuda.driver as cuda
 #import pycuda.autoinit
 #from pycuda.compiler import SourceModule
@@ -25,7 +26,7 @@ class LineEmission(alfunc_voigt.Voigt) :
         self._parid   = ['IntFlux',   'redshift', 'bturb',   'temperature', 'ColFreq']			# Name of each parameter
         self._defpar  = [ 8.1,         0.0,        7.0,       1.0E2,         0.0 ]				# Default values for parameters that are not provided
         self._fixpar  = [ None,        None,       None,      None,          True ]				# By default, should these parameters be fixed?
-        self._limited = [ [1  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,0],        [0  ,0 ] ]			# Should any of these parameters be limited from below or above
+        self._limited = [ [1  ,0  ],  [0  ,0  ],  [1  ,0  ], [1  ,0],        [1  ,0 ] ]			# Should any of these parameters be limited from below or above
         self._limits  = [ [0.0,0.0],  [0.0,0.0],  [0.5,0.0], [0.0,0.0],      [0.0,0.0] ]		# What should these limiting values be
         self._svfmt   = [ "{0:.7g}", "{0:.10g}", "{0:.6g}", "{0:.7g}",      "{0:.7g}"]			# Specify the format used to print or save output
         self._prekw   = [ 'ion' ]																# Specify the keywords to print out before the parameters
@@ -100,7 +101,8 @@ class LineEmission(alfunc_voigt.Voigt) :
             a0=oneonsqrtpi/bl
             ww=(wave*1.0e-8)/zp1
             v=wv*ww*((1.0/ww)-(1.0/wv))/bl
-            modval = intflux * a0*1.0E-8 * voigtking(v,a)
+            # modval = intflux * a0*1.0E-8 * voigtking(v,a)
+            modval = intflux * a0*1.0E-8 * wofz(v + 1j * a).real
             return modval
         #############
         yout = np.zeros((pin.shape[0],wave.size))
