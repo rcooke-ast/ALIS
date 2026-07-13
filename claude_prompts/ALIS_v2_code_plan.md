@@ -552,6 +552,42 @@ I will choose a minimal valid model for each unless you would like specific setu
 
 **Response:** I have provided instructions in Task 2 for the templates to use for each function.
 
+---
+
+### Task 2 outcome (unit examples) — 5 created, 6 functions found broken
+
+Built the unit examples per Task 2. **Five now exist with references**
+(`examples/{powerlaw,chebyshev,polynomial,brokenpowerlaw,tophat}/`), each
+converging to reduced χ² ≈ 0.95–1.18.
+
+**Six functions cannot produce a reference because they are broken/unsuitable in
+the *current* ALIS** (I removed the partial dirs; all are recreatable once fixed):
+
+- `vsigma` — `alfunc_vsigma.py:52` `np.zeros(2*df+1)`, `df` is a float → TypeError.
+- `voigtconv` — `call_CPU()` lacks the `mkey` kwarg that `alis.py:380` passes.
+- `apod` — requires `kind=`, then `load()` `IndexError` at `alfunc_apod.py:191`.
+- `thar` — drops into an IPython `embed()` during model prep and hangs.
+- `lineemission` — needs `ion=<el>_<stage>_<wavelength>`; then `voigtking`
+  (`alfunc_lineemission.py:73`) raises "only 0-dimensional arrays can be
+  converted to Python scalars".
+- `random` — variable-type (`call_CPU` returns `None`, needs `command=`); not an
+  emission drop-in for `legendre`.
+
+**Q23 — how to proceed with the 6 broken functions?** These are exactly what the
+test suite should protect, but no golden reference can be made from code that
+crashes. Options: (a) leave them out of the suite for now and add examples as each
+is repaired during the refactor (fixing them then becomes a tracked Stage 2/other
+subtask); or (b) treat "does not crash" as the initial test and add numerical
+references once fixed. My recommendation is (a). Either way, these six are
+flagged as pre-existing bugs to fix.
+
+**Response:** I have resolved several bugs in these functions in ALIS, and the following functions
+are now working correctly: `vsigma`, `voigtconv`, `random`, `lineemission`. I have generated the examples
+and created all of the reference files for these functions. The `apod` and `thar` functions are still broken,
+and so the following functions can be ignored for the following reasons:
+- `apod` — this function requires frequency units for the input.
+- `thar` — this function is not currently supported.
+
 ## Prompts
 
 1. Read this doc, and execute Task 1.
@@ -564,8 +600,11 @@ I will choose a minimal valid model for each unless you would like specific setu
 
 5. Read this doc. I have responded to the queries. Please ask more queries if needed. I have now generated reference files for all examples in the `ALIS/examples/` directory (except the `prepfit` and `lsf_spline` examples, which do not need to be tested at this time). I have also included a new example that tests the `generate` functionality (Note that because this is not fitted, it does not have an `_fit` suffix. The filename listed in the data block of `generate_spectra.mod` is the same as the filename provided in the `data/reference_fits/` directory). Please check that all models are suitable. Is it possible for Claude to generate additional examples in the `ALIS/examples/` directory before finalising the test-suite? These "unit" examples are quick to run, and we should aim to have one test for each `alfunc_<modelname>.py` function currently supported by ALIS. If so, please add a new task in the `Tasks` Section above for Claude to generate these examples. Do not create these examples yet - RJC will review the task before proceeding.
 
-6. Read this doc, and particular my responses to the queries. Please ask more queries if needed. If everything is clear, please proceed to execute Task 2.
+6. Read this doc, and particular my responses to the queries. Please ask more queries if needed. If everything is clear, please proceed to execute Task 2. We will not 
 
+7. I received an `API Error: Unable to connect to API (ConnectionRefused)` during the last prompt. Please retry the last prompt, or resume from the point before you were interrupted.
+
+8. Read this doc, and particular my responses to the queries. Please ask more queries if needed. 
 
 ## Logging
 
