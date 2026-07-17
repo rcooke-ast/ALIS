@@ -142,10 +142,20 @@ subtasks. Per-stage work is logged in
       (the example's `model/` folder). A `.mod` file is part of the test suite
       **only if** its `.mod.out.reference` exists alongside it; otherwise it is
       skipped.
-    - `<data>_fit.dat` golden fit files live in a `reference_fits/`
-      folder inside the example's `data/` directory.
-    The harness runs each qualifying example with the working code and compares
-    its `.mod.out` / `_fit.dat` output against these references.
+    - `<data>_fit.dat` golden fit files live in a `reference_fits/` folder
+      inside the data directory. Note a fit may read data from several
+      directories (referenced as `../data*/` — e.g. `data/` and `data_hrdx/` for
+      `DH/J1358p6522`, or `datafit_orders/` for `DH_orders`); each such data
+      directory has its own `reference_fits/`.
+    - `<model>.covar.reference` (present for 13 of the 16 `context/fitting_examples/`
+      fits) is the golden covariance matrix, sitting next to the `.mod`.
+    Test cases are discovered by the presence of a `.mod.out.reference` (the fit
+    `.mod` filenames vary — `*_FINAL_MODEL.mod`, `*_converge_newstart76.mod`,
+    etc. — so do not rely on a name pattern). The harness runs only the fit
+    models (`run_alis <fit>.mod`) — the input data already exists, so
+    `generate_spectra.mod` is *not* run at test time — and compares the resulting
+    `.mod.out`, `_fit.dat`, and (if a `.covar.reference` exists) `.covar` against
+    the references.
 0.3 Split the suite into **fast** (seconds, run on every change) and **slow**
     (minutes+, e.g. `DH_orders`, Monte-Carlo runs; run nightly / on demand).
     Randomised examples (`sim`, `random`) use a fixed seed for determinism.
@@ -617,6 +627,15 @@ and so the following functions can be ignored for the following reasons:
 8. Read this doc, and particular my responses to the queries. Please ask more queries if needed. I have responded to your most recent query, and generated new references in the `examples` directory. Please check they are correctly formatted and named.
 
 9. Please check if you have any more queries, and that you have all the information you need to proceed with the next stage of the refactor. Please ask more queries if something is unclear. Please note that all data should already exist in the `examples/<testname>/data/` folders, therefore there is no need to run `generate_spectra.mod` for the tests each time. We should only run `run_alis fit_<example_name>.mod` and test the `.mod.out` file, the `.covar` files (if they exist) and the output `_fit.dat` files. If everything is in place for the `examples/`, please proceed to execute Task 3.
+
+[//]: # (COMMENT:
+During execution of Prompt 9, Claude returned the following question:
+I've generated refactor_code_stage0.md. How would you like to proceed with "Task 3" / the next stage?
+MY RESPONSE: Before proceeding, please run Task 3, and assess if the refactor_code_stage0.md needs to be
+rewritten/checked. If there are no further queries on the content in ALIS_v2_code_plan.md, then please
+proceed to write all stage files 1-6 with any queries relevant to those stages in the          
+corresponding file.
+)
 
 ## Logging
 
