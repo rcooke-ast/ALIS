@@ -42,19 +42,29 @@ supported model function, keeping each example quick to run.
      base) and `alfunc_user` (user-defined-function template) do not need a
      standalone example.
 
-**Template 1:** Please use the `fit_spectra.mod` and `generate_spectra.mod` files in the
+>**Template 1:** Please use the `fit_spectra.mod` and `generate_spectra.mod` files in the
 `examples/metal_line_abs/` example as a template for the new files, where the
 new model to be tested will be used as the emission component (instead of `legendre`).
 
-**Template 2:** Please use the `fit_spectra.mod` and `generate_spectra.mod` files in the
+>**Template 2:** Please use the `fit_spectra.mod` and `generate_spectra.mod` files in the
 `examples/metal_line_abs/` example as a template for the new files, where the
 new model to be tested will be used as the `vfwhm` model in the resolution argument of the
 data block.
 
-**Template 3:** Please use the `fit_spectra.mod` and `generate_spectra.mod` files in the
+>**Template 3:** Please use the `fit_spectra.mod` and `generate_spectra.mod` files in the
 `examples/emission_line_ratio/` example as a template for the new files, where the
 new model to be tested will be used as the emission component (instead of `gaussian`).
 To make things simpler, we don't need to replace both `gaussian` functions, just the `wave=6563.0` one.
+
+3. I have generated several reference files for the real world examples in `context/fitting_examples/`.
+When building a test set, please also use these reference files to test the working version of ALIS.
+Note that some data files are located in multiple directories, usually prefixed with `../data*/` relative
+to the locations of the `.mod` file. Finally, note that there are several reference files that should
+be tested if they exist:
+  - the `.mod.out.reference` file.
+  - the `data/reference_fits/<dataname>_fit.dat` best-fit data and model files
+  - the `.covar.reference` file (if it exists) in the `model/` directory of the example. This is the output covariance matrix.
+Please check that everything is in place. You may need to update the `Staged Task List` section below.
 
 ## Claude
 
@@ -604,7 +614,9 @@ and so the following functions can be ignored for the following reasons:
 
 7. I received an `API Error: Unable to connect to API (ConnectionRefused)` during the last prompt. Please retry the last prompt, or resume from the point before you were interrupted.
 
-8. Read this doc, and particular my responses to the queries. Please ask more queries if needed. 
+8. Read this doc, and particular my responses to the queries. Please ask more queries if needed. I have responded to your most recent query, and generated new references in the `examples` directory. Please check they are correctly formatted and named.
+
+9. Please check if you have any more queries, and that you have all the information you need to proceed with the next stage of the refactor. Please ask more queries if something is unclear. Please note that all data should already exist in the `examples/<testname>/data/` folders, therefore there is no need to run `generate_spectra.mod` for the tests each time. We should only run `run_alis fit_<example_name>.mod` and test the `.mod.out` file, the `.covar` files (if they exist) and the output `_fit.dat` files. If everything is in place for the `examples/`, please proceed to execute Task 3.
 
 ## Logging
 
