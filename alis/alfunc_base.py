@@ -315,6 +315,7 @@ class Base :
             elif kwspl[0] == 'blindrange':
                 if len(ksspl) != 2:
                     msgs.error("blindrange should have 2 values for -"+msgs.newline()+self._idstr+"   "+instr)
+                brlist = [float(x) for x in ksspl]
             for j in range(len(ksspl)):
                 if type(cpy_keywd[kwspl[0]]) is int:
                     typeval='integer'
@@ -328,6 +329,9 @@ class Base :
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'specid':
                     typeval='list'
                     cpy_keywd[kwspl[0]] = sidlist
+                elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'blindrange':
+                    typeval = 'list'
+                    cpy_keywd[kwspl[0]] = brlist
                 elif type(cpy_keywd[kwspl[0]]) is list:
                     typeval='list'
                     cpy_keywd[kwspl[0]] = ksspl

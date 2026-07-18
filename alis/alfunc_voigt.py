@@ -354,6 +354,10 @@ class Voigt(alfunc_base.Base) :
                     if ksspl[j] not in specid:
                         msgs.error("There is no data with specid: "+ksspl[j]+" for -"+msgs.newline()+self._idstr+"   "+instr.replace('\t','  '))
                 specidset=True
+            elif kwspl[0] == 'blindrange':
+                if len(ksspl) != 2:
+                    msgs.error("blindrange should have 2 values for -"+msgs.newline()+self._idstr+"   "+instr)
+                brlist = [float(x) for x in ksspl]
             for j in range(len(ksspl)):
                 if type(cpy_keywd[kwspl[0]]) is int:
                     typeval='integer'
@@ -367,6 +371,9 @@ class Voigt(alfunc_base.Base) :
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'specid':
                     typeval='list'
                     cpy_keywd[kwspl[0]] = sidlist
+                elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'blindrange':
+                    typeval = 'list'
+                    cpy_keywd[kwspl[0]] = brlist
                 elif type(cpy_keywd[kwspl[0]]) is bool:
                     if kwspl[1] in ['True', 'False']:
                         typeval='boolean'
