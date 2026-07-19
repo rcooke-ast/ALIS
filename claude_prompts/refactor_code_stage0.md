@@ -71,10 +71,23 @@ Each non-blind test case has two test modes; blind cases run mode (a) only.
     compare them directly like any other parameter (the large offset is identical
     in both files, so it cancels in the difference). `examples/blind` exercises
     both modes in one file (O I via `blindrange`, Si II via `blind=True`).
+    **Zero printed 1σ errors**: a parameter whose reference error prints as zero
+    is either tied/fixed (it carries a tie suffix, e.g. `ratrand`, `TA`; tied
+    followers can jitter at print precision, so compare with a tight 1e-4
+    relative fallback) or free-but-degenerate (no suffix, e.g. the unconstrained
+    telluric component in `helium34/tet02OriA`, which moves arbitrarily with no
+    model effect — skip it; the χ² and model-column comparisons gate any change
+    that matters). Keyword-numeric tokens (e.g. `damping=11.2300905dampb`) are
+    compared numerically, not as strings.
   - the produced `<dataname>_fit.dat` model column against
     `<datadir>/reference_fits/<dataname>_fit.dat`; ignore the `-9.999999999e+09`
     sentinel rows (pixels outside `fitrange`).
-  - the emitted `.covar` against `<name>.covar.reference` **only if** it exists.
+  - the emitted covariance file against its golden copy **only if** one exists.
+    The covariance output is named by the `out covar` setting and its golden
+    copy is that filename + `.reference` (naming varies:
+    `J1419p0829.covar.reference`, `J0814p5029.mod.out.covar.reference`,
+    `J0035m0918_all_data_covar.dat.reference`), so pair via the `out covar`
+    value, not a fixed `<name>.covar.reference` pattern.
 - **(b) Fixed-parameter gate (option A).** Run the `.mod.out.reference` itself (it
   is a valid `.mod` input) with `chisq miniter 0` + `chisq maxiter 0`, and
   compare the produced model column to the **existing** `reference_fits/`. This is
@@ -82,6 +95,14 @@ Each non-blind test case has two test modes; blind cases run mode (a) only.
   and needs no new references. **Skip for any blinded case** (either mode) — the
   `.mod.out` value is hidden (`blind=True`) or offset (`blindrange`), so feeding
   it back cannot reproduce the true model; those rely on mode (a) only.
+  Implementation notes (Task 0.2): the gate compares **χ² (0.1%), DOF (exact)
+  and the `_fit.dat` model column only** — a zero-iteration run does not
+  reproduce the reference 1σ errors (e.g. shift-model errors come out 0), so
+  the parameter/error blocks are compared in mode (a) only. Active `random`
+  model lines are rewritten as the equivalent `variable` line (dropping
+  `command=`/`start=`), because `random` would re-draw a new value on every
+  run whereas `variable` keeps the best-fit value recorded in the reference.
+  `examples/brokenpowerlaw` is excluded pending Q0.12.
 - **Special: the `generate` case** runs `generate_spectra.mod` and compares the
   produced data file to `data/reference_fits/<dataname>.dat` (data-generation
   test, no fit).
@@ -140,9 +161,9 @@ Each non-blind test case has two test modes; blind cases run mode (a) only.
 - Tolerances (plan Q11); volatile-header handling (plan Q19); fit-only + `.covar`
   testing (Prompt 9).
 - Existing examples under `examples/` (25 `.mod.out.reference` fits, 23 model
-  functions covered, plus the `blind`/`generate` special cases, no
-  `.covar.reference`) and `context/fitting_examples/` (16 fits, 15 with
-  `.covar.reference`).
+  functions covered, plus the `blind`/`generate` special cases, no covariance
+  references) and `context/fitting_examples/` (16 fits, **all 16** with a golden
+  covariance reference — named `<out covar value>.reference`).
 - The empty `tests/` directory is the intended home for the harness.
 
 ## Queries
@@ -379,6 +400,140 @@ minimisation-only test case).
 With that confirmed, I believe the Stage 0 specification is complete and ready to
 implement (0.1 → 0.5).
 
+**Response:** Yes, that is correct. The `examples/blind` test case should be excluded from
+the fixed-parameter gate (0.2b) and only be tested in the minimisation test (0.2a).
+
+---
+
+### Follow-up queries (raised while implementing Task 0.2)
+
+**Q0.12 — `examples/brokenpowerlaw` fails the fixed-parameter gate: its
+reference does not evaluate to its own recorded χ².** Evaluating the printed
+best-fit parameters of `fit_spectra.mod.out.reference` (miniter=maxiter=0)
+deterministically gives χ² = 374.98, not the recorded 338.15 (Δχ² ≈ +37,
+concentrated in ~3 pixels at the saturated O I core, model column off by up to
+4.3e-4). Evidence gathered:
+- the reparse is byte-faithful (the fixed-param run re-emits the model and data
+  blocks identically), and perturbing the last printed digit of logN or b moves
+  χ² by only ~±0.05, so print truncation alone cannot explain +37;
+- a normal *fit* started from those printed values drops to χ² = 336.53 in 3
+  iterations — *below* the reference's 338.15 — so the example sits in a flat,
+  degenerate χ² valley (sharp `STR=1e4` break + saturated O I core);
+- the same fixed-param round trip on that new output reproduces its χ² to
+  1e-8 relative, so the ALIS print→read→evaluate chain is faithful in general;
+  the committed reference point alone is internally inconsistent. One possible
+  mechanism worth checking later (Stage 2/3, not Stage 0): whether ALIS can
+  write the parameters of a final *rejected* trial step rather than the best
+  accepted point when convergence triggers on `atol`.
+The minimisation test (mode a) for brokenpowerlaw passes, so the example still
+gates re-fits. For now the harness excludes it from mode (b) via a documented
+`FIXEDPARAM_EXCLUDE` list in `tests/test_regression.py`. Options: (i) keep the
+exclusion; (ii) regenerate the example's references after tightening the
+convergence (e.g. smaller `chisq atol`) so the reference sits at the true
+valley floor; (iii) investigate the suspected write-out quirk (post-Stage 0).
+Please advise.
+
+**Response:** For now, I recommend keeping the exclusion of `examples/brokenpowerlaw`
+from the fixed-parameter gate (0.2b) and documenting it in the `FIXEDPARAM_EXCLUDE` list.
+This model is not used very often, and the minimisation test (mode a) still passes, so it is not critical
+to fix it immediately.
+
+**Q0.13 — Five Task 0.2 implementation choices to confirm.**
+1. The fixed-parameter gate compares χ² (0.1%), DOF (exact) and the `_fit.dat`
+   model column only — not the parameter/error blocks (a zero-iteration run
+   does not reproduce the reference 1σ errors; e.g. `tet02OriA` shift errors
+   print as 0.0 there).
+2. In mode (b) an active `random` model line is rewritten as the equivalent
+   `variable` line (same value/suffix/specid/blind, `command=`/`start=`
+   dropped) so the evaluation is deterministic at the recorded best-fit value.
+3. In mode (a), parameters whose reference 1σ error prints as zero are
+   compared with a 1e-4 relative fallback when they carry a tie/fix suffix
+   (tied followers jitter at print precision), and skipped when they have no
+   suffix (free-but-degenerate parameters, e.g. the unconstrained telluric
+   component in `tet02OriA`, which vary machine-to-machine with no effect on
+   χ² or the model; both remain gated by the χ² and model-column checks).
+4. Mode (b) strips the suffixless `damping=0.0000000` keywords that ALIS
+   prints in `.mod.out` even when the input never set damping: on re-read an
+   explicit suffixless keyword becomes a *free* parameter whereas the
+   implicit default is fixed, changing the DOF (in `tet02OriA` this freed 3
+   parameters: DOF 618 vs 621; with the strip, free-parameter count, DOF and
+   χ² = 773.876629 all match exactly). Only the three helium34 references
+   contain this artifact, and no original `.mod` uses a suffixless
+   `damping=`, so the strip is narrowly scoped. (This write-out asymmetry —
+   like the omission being benign only because the echo *does* include the
+   `link read` block — is worth revisiting when the output writer is
+   refactored.)
+5. The mode (b) `_fit.dat` model-column tolerance is 2e-3 relative (mode (a)
+   keeps 1e-4): the gate evaluates the model at the *printed* 8-significant-
+   digit parameters, and steep saturated line cores amplify that truncation
+   in a handful of core-wall pixels (measured up to 3.4e-4 in
+   `examples/random` and 1.5e-3 in `DH_orders` / `J1358p6522_original`,
+   while χ² reproduces to better than 1e-6 relative). The sharp mode (b)
+   gate remains the 0.1% χ² check.
+
+**Response:** I have responded to each of the five points below:
+1. This is the correct thing to do. The fixed-parameter gate should compare χ², DOF, and
+   the `_fit.dat` model column only, and not the parameter/error blocks.
+2. Yes, this is the correct thing to do.
+3. That’s a great solution for now. We should not check relative parameters when
+   the error is zero. Perhaps we can check that the `(new-reference)/reference` value
+   is within some tolerance (e.g. 0.01%) when the error is zero and the parameter is not
+   zero?
+4. Yes, absolutely this needs to be fixed. Can you please add this as an extra step in
+   the refactoring at a later stage?
+5. Do you think we should have all values satisfy some tolerance relative to the maximum
+   model value in that snippet of spectrum? Or, perhaps we could specify that the new model
+   must match the reference model to within 0.01% of the error value of each pixel?
+
+**Q0.14 — Full fixed-parameter sweep: 13 further cases must be excluded from
+mode (b); please choose how to proceed.** I ran the complete fixed-parameter
+gate across all 36 eligible cases (48 min). After the Q0.13 fixes, **22 of 36
+pass** (including `DH_orders`, `tet02OriA`, `Her36`, `HD319718`,
+`J1419p0829`, `J1358p6522` (VMP), `J0814p5029` (VMP), `Temperature`, and all
+the clean unit examples). The 13 excluded cases (now listed with reasons in
+`FIXEDPARAM_EXCLUDE` in `tests/test_regression.py`) fail for four distinct
+root causes — all pre-existing properties of the current code/references,
+not harness defects, and **every excluded case still runs its minimisation
+test (mode a)**:
+- **Load buffer (6 cases)**: the `.mod.out` echo records the *fitted*
+  resolution in the data line (e.g. `vfwhm(0.075va)` instead of the starting
+  `vfwhm(7.0va)`), and ALIS sizes the pixel-load buffer from the resolution
+  at load time — the re-read run therefore loads a different pixel set
+  (different `_fit.dat` shapes, perturbed edge convolution, χ² shifts of
+  0.1–0.4%): `lls`, `metal_line_abs_thermal`, `splineCont`, `splineabs` ×2,
+  `VMP_DLA/J0035m0918`.
+- **Echo round-trip bugs (4 cases)**: the `.mod.out` is not a valid or
+  faithful re-input on current code — `lsf_hst` (the writer turns
+  `lsf(name:STIS,...)` into `lsf(name=STIS,...)`: crash on re-read);
+  `splineContAbs` (`splineabs` `locations=` keyword no longer matches its
+  parameter count: crash); `metal_line_abs_linear` (its committed reference
+  echoes `../data/OI_SiII.dat` although the current `.mod` reads
+  `OI_SiII_linear.dat` — a stale reference worth regenerating);
+  `DH/HS0105p1619` (the fixed-param run hangs, >19 min for what should be a
+  seconds-long evaluation; not yet diagnosed).
+- **Sharp features (3 cases)**: print truncation moves a sharp model edge
+  across pixels — `tophat` (edge pixels off ~1% of continuum),
+  `VMP_DLA/J0903p2628` (Ly-α core wall, 1.3e-2 relative),
+  `Q1243p307_converge_newstart76` (saturated H I cores, up to 0.64 relative
+  where the model is essentially zero); χ² still passes for all three, so
+  these diffs are σ-insignificant, but they exceed any sane model-column
+  tolerance.
+- **Reference point (1 case)**: `brokenpowerlaw` (Q0.12).
+Options going forward: (i) accept mode (b) covering 23/36 with the
+documented exclusion list (my recommendation for Stage 0 — the writer bugs
+above are themselves worth fixing during the refactor, after which cases can
+rejoin the gate); (ii) additionally commit a *new* golden set produced by
+the current code for the excluded cases (your Q0.1 "option B" spirit:
+fixed-param outputs compared against themselves — deterministic to ~1e-8, so
+tolerances could be very tight — at the cost of new committed files, and
+still impossible for the crash/hang cases); (iii) drop mode (b) for the
+excluded cases permanently. Please advise. Also note the four discovered
+code/reference issues (lsf colon echo, splineabs locations echo, stale
+metal_line_abs_linear reference, HS0105p1619 hang) as candidate fixes —
+the first three would likely also matter to any user who re-runs a saved
+`.mod.out` as input.
+
+
 ## Prompts
 
 1. Read this doc, check my responses to the queries, and ask more queries if needed.
@@ -389,3 +544,10 @@ implement (0.1 → 0.5).
 
 4. Read this doc, check my responses to the queries. Some updates will be needed to this document. Then, ask more queries if needed.
 
+5. Read this doc, and execute Task 0.1.
+
+6. Read this doc, and execute Task 0.2.
+
+7. Read this doc, and execute Task 0.3.
+
+8. Read this doc, and execute Task 0.4.
