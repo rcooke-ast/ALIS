@@ -723,6 +723,21 @@ in real world applications. I would like to keep the `splineContAbs` function in
 the test suite, I have regenerated the reference files, just in case that resolves
 the issue. If not, a tolerance of 2e-3 is acceptable.
 
+**Implemented (Q0.17 / Q0.18).**
+- Q0.17: with `run convergence` off for `HS0105p1619` and all three
+  references regenerated, the mode-(a) minimisation tests for
+  `HS0105p1619`, `J0903p2628` and `Q1243_converge_newstart76` **now pass**
+  (verified, 9m42s). `MINIMISATION_KNOWN_DIVERGENCE` is emptied (the
+  mechanism is kept for future use); all 41 fit cases now run their
+  minimisation test.
+- Q0.18: `splineContAbs` still measures 1.63e-3 of peak after the
+  regeneration (an inherent 8-digit print-truncation artifact at the O I
+  core), so the constant stays at the **2e-3** you accepted; `tophat`
+  remains excluded from mode (b).
+- Your `plot fits False` / `out overwrite True` edits across the `.mod`
+  files make the `-p 0` flag redundant, but it is retained as defensive
+  headless insurance (it does not affect outputs).
+
 ## Prompts
 
 1. Read this doc, check my responses to the queries, and ask more queries if needed.

@@ -82,30 +82,14 @@ FIXEDPARAM_EXCLUDE = {
         "sharp edge (1.0e-2 of peak > tol); Q0.15",
 }
 
-# Cases whose *minimisation* test (mode a) does not reproduce the
-# committed reference on the current code: a fresh from-scratch refit
-# of these three hard, many-parameter real-world fits lands at a
-# slightly (HS0105p1619) or substantially (Q1243 newstart76, J0903)
-# different point, and for J0903 at a *better* chi-squared (5057.6 vs
-# the recorded 5112.8) -- i.e. the committed reference is not the true
-# minimum. This is a reference-quality / minimiser-reproducibility
-# issue, independent of the Q0.12-Q0.15 fixed-parameter work, and is
-# raised as Q0.17 for RJC to decide (regenerate the references, relax
-# the mode-(a) tolerances for real-world fits, or accept as known
-# divergence). Skipped (not xfailed) because each takes minutes to
-# run. Their fixed-parameter gate (mode b) still runs where enabled
-# (Q1243 newstart76 and J0903 pass it; HS0105p1619 is covered too now
-# the out-covar strip removes its timeout).
-MINIMISATION_KNOWN_DIVERGENCE = {
-    "context/fitting_examples/DH/HS0105p1619/model/HS0105p1619":
-        "refit diverges: errors ~25%, covar 0.28%, model <=0.2%; "
-        "Q0.17",
-    "context/fitting_examples/DH/Q1243p307/model/"
-    "Q1243p307_converge_newstart76":
-        "refit diverges at saturated H I cores; Q0.17",
-    "context/fitting_examples/VMP_DLA/J0903p2628/model/J0903p2628":
-        "refit finds better chi2 (5057.6 vs 5112.8); Q0.17",
-}
+# Cases whose *minimisation* test (mode a) is skipped because a fresh
+# from-scratch refit does not reproduce the committed reference. The
+# three real-world fits found in Q0.17 (HS0105p1619, J0903p2628,
+# Q1243_converge_newstart76) were resolved by RJC -- convergence
+# testing turned off for HS0105p1619 and all three references
+# regenerated on the current code -- so the set is now empty. Kept as
+# a documented mechanism in case a future case needs it.
+MINIMISATION_KNOWN_DIVERGENCE = {}
 
 
 def _params(cases, batch=None):
