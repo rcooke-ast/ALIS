@@ -104,6 +104,14 @@ class RegressionCase:
         The .mod file the harness must run.
     mod_out_reference : Path | None
         Golden .mod.out.reference (None for "generate" cases).
+    mod_out_reference_adjusted : Path | None
+        Hand-fixed sibling ``.mod.out.reference_adjusted`` supplied by
+        RJC where the plain ``.mod.out.reference`` is not a faithful
+        re-input on the current code (an output-writer round-trip bug,
+        e.g. ``lsf_hst`` colons, ``splineContAbs`` empty ``locations=``).
+        When present it is the file the fixed-parameter gate (mode b)
+        feeds back to ALIS; the χ²/DOF are still checked against the
+        plain reference. None when no adjusted file exists.
     covar_reference : Path | None
         Golden .covar.reference, if it exists.
     covar_output : Path | None
@@ -131,6 +139,7 @@ class RegressionCase:
     example_dir: Path
     mod_file: Path
     mod_out_reference: Path | None
+    mod_out_reference_adjusted: Path | None
     covar_reference: Path | None
     covar_output: Path | None
     data_pairs: tuple[DataFilePair, ...]
@@ -409,6 +418,13 @@ def _build_case(
     settings, datalines, modellines = _split_blocks(lines)
     datadirc = _get_setting(settings, "run datadirc")
 
+    # Optional hand-fixed re-input for the fixed-parameter gate.
+    adjusted = None
+    if mod_out_reference is not None:
+        cand = Path(str(mod_out_reference) + "_adjusted")
+        if cand.exists():
+            adjusted = cand
+
     # Resolve the (deduplicated, order-preserving) input data files.
     seen: dict[Path, None] = {}
     for line in datalines:
@@ -459,6 +475,7 @@ def _build_case(
         example_dir=model_dir.parent,
         mod_file=mod_file,
         mod_out_reference=mod_out_reference,
+        mod_out_reference_adjusted=adjusted,
         covar_reference=covar_reference,
         covar_output=covar_output,
         data_pairs=pairs,
@@ -587,11 +604,15 @@ def main() -> int:
     nblind = sum(c.is_blind for c in cases)
     nrand = sum(c.uses_random for c in cases)
     ncovar = sum(c.covar_reference is not None for c in cases)
+    nadj = sum(
+        c.mod_out_reference_adjusted is not None for c in cases
+    )
     print("-" * len(header))
     print(
         f"total {len(cases)} cases | fast {counts['fast']}, "
         f"medium {counts['medium']}, slow {counts['slow']} | "
-        f"blind {nblind}, random {nrand}, covar {ncovar}"
+        f"blind {nblind}, random {nrand}, covar {ncovar}, "
+        f"adjusted {nadj}"
     )
     if problems:
         print("\nPROBLEMS:")

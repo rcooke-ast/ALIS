@@ -9,14 +9,13 @@ out overwrite True
 plot dims 2x2
 plot fits False
 plot labels True
-#sim perturb 100
 
 data read
-  OI_SiII_thermal.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0va)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
+  OI_SiII_thermal.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(3.0VA)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
 data end
 
 model read
-  lim voigt bturb [None,None]
+  lim voigt bturb [0.001,None]
   emission
     legendre 1.0   0.01   0.01    scale=[1.0,1.0,1.0]   specid=0
   absorption

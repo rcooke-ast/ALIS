@@ -1,7 +1,8 @@
 run blind False
 out fits True
+out overwrite True
 plot dims 2x2
-plot fits True
+plot fits False
 plot labels True
 
 data read

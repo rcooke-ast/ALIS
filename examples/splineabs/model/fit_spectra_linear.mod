@@ -11,7 +11,7 @@ plot labels True
 #sim perturb 100
 
 data read
-  ../data/OI_SiII_linear.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0va)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
+  ../data/OI_SiII_linear.dat   specid=0   fitrange=[1301.0,1305.0]   resolution=vfwhm(7.0VA)   columns=[wave,flux,error]	plotone=True   label=OI_SiII
 data end
 
 model read
