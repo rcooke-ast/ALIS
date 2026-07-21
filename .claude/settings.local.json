@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk *)",
+      "Bash(run_alis *)",
+      "Bash(tail -15 /tmp/fit_apod.log)",
+      "Bash(ls -la ../data/)",
+      "Bash(sed -n '/data read/,/data end/p')",
+      "Bash(sed -n '/^data read/,/^data end/p' context/fitting_examples/helium34/tet02OriA/model/fit_polyvoigt_linear_Thermal_FINAL_MODEL.mod.out.reference)",
+      "Bash(awk '{print} /^model end/ && !done {print \"\"; print \"link read\"; print \" het\\(hef,heiso\\) = hef  numpy.log10\\(heiso\\) - 4\"; print \"link end\"; done=1}' fp.mod)",
+      "Bash(MPLBACKEND=Agg python /Users/rcooke/Software/ALIS/bin/run_alis -f -w fp_link.mod)",
+      "Bash(grep -E \"Bestfit|Degrees\" fp_link.mod.out)",
+      "Bash(sed 's/ *damping=0\\\\.0000000 */ /g' fp_link.mod)",
+      "Bash(MPLBACKEND=Agg python /Users/rcooke/Software/ALIS/bin/run_alis -f -w fp_link_nd.mod)",
+      "Bash(sed 's/ damping=0\\\\.0000000 / /g' fp.mod)",
+      "Bash(MPLBACKEND=Agg python /Users/rcooke/Software/ALIS/bin/run_alis -f -w fp_nd.mod)",
+      "Bash(grep -E \"Bestfit|Degrees\" fp_nd.mod.out)",
+      "Bash(git status *)"
+    ]
+  }
+}

@@ -90,27 +90,15 @@ FIXEDPARAM_BATCH_OVERRIDE = {
 }
 
 # Minimisation (mode a) tests skipped because a fresh refit does not
-# reproduce the committed reference. Earlier rounds were resolved by
-# RJC (HS0105p1619/J0903p2628/Q1243_newstart76 in Q0.17; five
-# DH/helium34 fits in Q0.21 by regeneration; J1358p6522_original in
-# Q0.22 by adopting the error-based model-column check).
-#
-# DH/J0814p5029 (Q0.24) is different: it is a blind + *random* D/H fit
-# of a complex H I Lyman forest that is degenerate/multi-modal. A
-# fresh refit reaches the *same chi-squared* (0 chi-squared failures)
-# but at meaningfully different parameters and model -- the H I cores
-# differ by up to 0.74 of the pixel error, and 161 one-sigma errors
-# differ > 10%. The random start lands at a different-but-equivalent
-# solution each run, so regeneration will not fix it (unlike the
-# deterministic cases). It only ran here because --run-slow first
-# exercised the slow batch. Skipped pending Q0.24 (fix the random D/H
-# start to the reference value for a deterministic test, or compare
-# chi-squared/DOF only for this case).
-MINIMISATION_KNOWN_DIVERGENCE = {
-    "context/fitting_examples/DH/J0814p5029/model/J0814p5029":
-        "degenerate blind+random D/H fit: same chi-squared but "
-        "different params/model (H I cores to 0.74*error); Q0.24",
-}
+# reproduce the committed reference. Every case found so far has been
+# resolved by RJC: HS0105p1619/J0903p2628/Q1243_newstart76 (Q0.17)
+# and five DH/helium34 fits (Q0.21) by regenerating the references;
+# J1358p6522_original (Q0.22) by adopting the error-based model-column
+# check; and DH/J0814p5029 (Q0.24) by replacing its random D/H start
+# with a fixed `variable` value (so the degenerate Lyman-forest fit is
+# deterministic) and regenerating. The set is now empty; kept as a
+# documented mechanism in case a future case needs it.
+MINIMISATION_KNOWN_DIVERGENCE = {}
 
 
 def _params(cases, batch=None, overrides=None):

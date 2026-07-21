@@ -928,6 +928,14 @@ also updated the reference files for this case, so that the minimisation test
 should now pass. Unfortunately, it is a long-running test (~1 hour), so it will
 be gated behind `--run-slow` in the harness.
 
+**Resolved.** With the fixed `variable` D/H start and regenerated reference,
+`DH/J0814p5029`'s minimisation test now **passes** (verified, 51 min via
+`--run-slow`). It is no longer flagged random (`examples/random` is the only
+random case now), stays blind, and is in the `slow` batch (~55 min). The skip
+is removed. **All 76 tests now pass** under the error-based `_fit.dat` check —
+the Stage 0 harness is green end-to-end. Remaining for Task 0.5: a couple of
+full independent green runs to confirm determinism before Stage 1.
+
 ## Prompts
 
 1. Read this doc, check my responses to the queries, and ask more queries if needed.
@@ -953,3 +961,5 @@ be gated behind `--run-slow` in the harness.
 11. Read this doc, and consider the responses to the queries. If you have any further queries about this, please ask more queries. If you have no more queries, then please make the appropriate updates to the code based on my responses. Following this (and provided there are no new queries), please re-test the harness.
 
 12. Read this doc, and consider the responses to the queries. If you have any further queries about this, please ask more queries. If you have no more queries, then please make the appropriate updates to the code based on my responses. Following this (and provided there are no new queries), please re-test the harness.
+
+13. It is time to complete stage 0 of the harness. Please re-test the harness and confirm that all tests pass. If there are any failures, please investigate and propose resolutions.
