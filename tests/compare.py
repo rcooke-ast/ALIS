@@ -51,18 +51,11 @@ ERROR_RTOL = 0.10
 # Chi-squared relative tolerances (picked by the caller per mode).
 CHISQ_RTOL_MINIMISATION = 0.01
 CHISQ_RTOL_FIXEDPARAM = 0.001
-# _fit.dat model column: relative, with an absolute floor for pixels
-# where the model is essentially zero (saturated line cores).
+# _fit.dat model column, minimisation test (mode a): per-pixel
+# relative tolerance, with an absolute floor for pixels where the
+# model is essentially zero (saturated line cores). Task 0.4.
 FITDAT_RTOL = 1.0e-4
 FITDAT_ATOL = 1.0e-6
-# The fixed-parameter gate evaluates the model at the *printed*
-# (8-significant-digit) best-fit parameters, and steep saturated
-# line cores amplify that truncation in the model column: measured
-# up to 3.4e-4 (examples/random O I core) and 1.5e-3 (DH_orders,
-# J1358p6522 C II core walls) across the otherwise-clean cases, so
-# mode (b) uses a looser per-pixel relative tolerance; its sharp
-# gate is the 0.1% chi-squared check.
-FITDAT_RTOL_FIXEDPARAM = 2.0e-3
 # Mode (b) model-column criterion (Q0.15). RJC specified the
 # statistic |new - ref| / max(reference_model) < tol per pixel, i.e.
 # the model difference measured as a fraction of the snippet's peak
@@ -550,9 +543,9 @@ def compare_fit_dat(out_path, ref_path, rtol=FITDAT_RTOL,
     ref_path : Path
         The golden copy in reference_fits/.
     rtol : float
-        Per-pixel relative tolerance on the model column (FITDAT_RTOL
-        for the minimisation test, FITDAT_RTOL_FIXEDPARAM for the
-        fixed-parameter gate).
+        Per-pixel relative tolerance on the model column for the
+        minimisation test (FITDAT_RTOL). Ignored when ``peakfrac`` is
+        set (the fixed-parameter gate uses the peak criterion).
     peakfrac : float | None
         If set (the fixed-parameter gate,
         FITDAT_FIXEDPARAM_PEAKFRAC), mode (b)'s Q0.15 criterion is
