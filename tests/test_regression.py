@@ -90,36 +90,26 @@ FIXEDPARAM_BATCH_OVERRIDE = {
     "Q1243p307_orders": "medium",
 }
 
-# Cases whose *minimisation* test (mode a) is skipped because a fresh
-# from-scratch refit does not reproduce the committed reference within
-# the mode-(a) tolerances -- a reference-quality / minimiser-
-# reproducibility issue, not a harness bug (mode b, the fixed-param
-# eval at the reference point, passes for all of these). The first
-# three such cases (HS0105p1619, J0903p2628, Q1243_newstart76, Q0.17)
-# were resolved by RJC regenerating their references. The Task-0.5
-# full-harness run surfaced six more -- the DH single-object fits and
-# helium34/HD319718 that had not been regenerated -- listed below and
-# raised as Q0.21 (recommend regenerating them the same way). Skipped
-# (not xfailed) because each takes several minutes; the blind params
-# are correctly skipped, so these are genuine parameter/model-column
-# divergences. Remove an entry once its reference is regenerated.
+# Minimisation (mode a) tests skipped pending a decision.
+#
+# Most reference-reproducibility cases (HS0105p1619/J0903p2628/
+# Q1243_newstart76 in Q0.17; five of the six DH/helium34 fits in
+# Q0.21) were resolved by RJC regenerating the references.
+#
+# J1358p6522_original is different (Q0.22): its regenerated reference
+# *is* reproduced -- every model pixel agrees to <= 1.5e-4 absolute
+# (<= 2e-3 of the snippet peak) -- but 88 pixels at the saturated H I
+# 923 core, where the model is ~0.009, exceed the mode-(a) 1e-4
+# *relative-to-value* tolerance (worst 4e-3 rel-to-value = 3.5e-5
+# absolute). It is the same saturated-core effect the fixed-parameter
+# gate already handles with the peak-relative statistic (Q0.15);
+# regeneration will not fix it. Skipped until Q0.22 decides whether to
+# extend the peak-relative allowance to mode (a).
 MINIMISATION_KNOWN_DIVERGENCE = {
-    "context/fitting_examples/DH/J1358p0349/model/J1358p0349":
-        "refit != reference (120 diffs); Q0.21",
     "context/fitting_examples/DH/J1358p6522/model/"
     "J1358p6522_original":
-        "refit != reference (46 diffs); Q0.21",
-    "context/fitting_examples/DH/J1419p0829/model/J1419p0829":
-        "refit != reference (55 diffs, params > 10% of 1sigma); "
-        "Q0.21",
-    "context/fitting_examples/DH/J1558m0031/model/"
-    "J1558m0031_FINAL_MODEL":
-        "refit != reference (16 diffs, cores off); Q0.21",
-    "context/fitting_examples/DH/Q0913p072/model/Q0913p072":
-        "refit != reference (24 diffs); Q0.21",
-    "context/fitting_examples/helium34/HD319718/model/"
-    "fit_polyvoigt_linear_Thermal_FINAL_MODEL":
-        "marginal: 3/113 pixels at 1.13e-4 (just over 1e-4); Q0.21",
+        "saturated H I core: <=1.5e-4 absolute everywhere but "
+        "4e-3 rel-to-value at ~0.009 pixels; Q0.22",
 }
 
 

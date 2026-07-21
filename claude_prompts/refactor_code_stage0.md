@@ -822,6 +822,43 @@ is green and deterministic (the remaining part of Task 0.5).
 `DH/J1419p0829`, `DH/J1358p6522_original`, and `helium34/HD319718`. We should make sure that these
 models are included in the test suite and that they pass the minimisation tests.
 
+**Re-test result (Prompt 11).** All six are back in the suite; **five pass**
+the minimisation test (`J1358p0349`, `J1558m0031`, `Q0913p072`, `J1419p0829`,
+`HD319718`). One remains — see Q0.22. (Note: the regeneration also changed two
+runtimes so `J1419p0829` and `J1358p6522_original` are now in the `slow` batch,
+~17 / ~16 min; and `J1358p6522_original` is no longer flagged random — its D/H
+start is now fixed. Batches are now fast 24 / medium 15 / slow 3.)
+
+**Q0.22 — `J1358p6522_original` minimisation: a saturated-core tolerance
+issue, not a reference problem (regeneration will not fix it).** Its
+regenerated reference *is* reproduced by a fresh refit — every model pixel
+agrees to **≤ 1.5e-4 absolute (≤ 2e-3 of the snippet peak)**, and χ² and all
+parameters pass — but 88 pixels at the saturated H I 923 core (where the model
+is ~0.009) exceed the mode-(a) `_fit.dat` tolerance of **1e-4 relative to the
+pixel value** (worst 4e-3 rel-to-value = **3.5e-5 absolute**). This is exactly
+the saturated-core effect the fixed-parameter gate already handles with your
+peak-relative statistic (Q0.15/Q0.18): the difference is large only relative to
+a near-zero value, and is physically insignificant. The other five DH fits
+happen to reproduce their cores to within 1e-4 absolute, so only this one
+trips. **Recommendation:** extend the peak-relative allowance to the mode-(a)
+model-column check too — a pixel passes if it is within 1e-4 relative-to-value
+**or** within `2e-3 · max(reference_model)` (the same constant as mode b). That
+keeps the tight 1e-4 check for all normal pixels and only forgives saturated
+cores, and χ² + the parameter checks remain the strict gates. Alternatively I
+can leave mode (a) strict and keep `J1358p6522_original` skipped. Which do you
+prefer? I have **not** changed the mode-(a) tolerance (it is yours to set) and
+skipped the case via `MINIMISATION_KNOWN_DIVERGENCE` pending your answer; the
+other 75 tests are green.
+
+**Response:** We should aim to keep the `J1358p6522_original` test in the suite,
+as it is a real-world example. I propose we run a test that checks if:
+`new_model - reference_model < 0.01 * reference_model_error` for all models
+and for both mode (a) and mode (b). Relative models near a zero value are
+subject to difficulties in precision, so we should also check that the absolute
+difference is less than `0.01 * reference_model_error` for all models. This should
+allow us to keep the `J1358p6522_original` test in the suite while still ensuring
+that the model is accurate to within the error bounds.
+
 ## Prompts
 
 1. Read this doc, check my responses to the queries, and ask more queries if needed.
@@ -845,3 +882,5 @@ models are included in the test suite and that they pass the minimisation tests.
 10. Read this doc, and consider the responses to the queries. If you have any further queries about this, please ask more queries. If you have no more queries, then please make the appropriate updates to the code based on my responses. Following this (and provided there are no new queries), please execute Task 0.5.
 
 11. Read this doc, and consider the responses to the queries. If you have any further queries about this, please ask more queries. If you have no more queries, then please make the appropriate updates to the code based on my responses. Following this (and provided there are no new queries), please re-test the harness.
+
+12. Read this doc, and consider the responses to the queries. If you have any further queries about this, please ask more queries. If you have no more queries, then please make the appropriate updates to the code based on my responses. Following this (and provided there are no new queries), please re-test the harness.
