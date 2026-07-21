@@ -141,10 +141,13 @@ Each non-blind test case has two test modes; blind cases run mode (a) only.
   **10%** of each parameter's 1σ error; plus a softer check within **50%** of 1σ.
 - **χ²:** **1%** relative for the minimisation test; **0.1%** for the
   fixed-parameter gate (0.2b).
-- **`_fit.dat` model column:** minimisation test (mode a) **1e-4** relative
-  (comfortably above the ~1e-5 run-to-run `random` jitter); fixed-parameter
-  gate (mode b) uses the Q0.15/Q0.18 statistic instead —
-  `|new − ref| / max(reference_model) < 2e-3` per pixel.
+- **`_fit.dat` model column:** the Q0.22 error-based check —
+  `|new − ref| < frac · error` per pixel (error = column 2), with `frac` =
+  **0.01** for the minimisation test (mode a) and **0.15** for the
+  fixed-parameter gate (mode b, whose 8-digit-printed evaluation shifts
+  saturated cores by a larger fraction of the noise — see Q0.23). This
+  replaces the earlier relative-to-value / peak-relative checks and avoids
+  the precision trouble at near-zero saturated cores.
 - **`.covar` elements:** **1%** relative, with an absolute floor of
   `1% · sqrt(C_ii · C_jj)` for near-zero elements.
 
@@ -858,6 +861,72 @@ subject to difficulties in precision, so we should also check that the absolute
 difference is less than `0.01 * reference_model_error` for all models. This should
 allow us to keep the `J1358p6522_original` test in the suite while still ensuring
 that the model is accurate to within the error bounds.
+
+**Implemented (Q0.22).** The `_fit.dat` model-column check is now your
+error-based statistic in **both** modes: a pixel passes if
+`|new − ref| < frac · error` (error = column 2 of the golden `_fit.dat`, the
+ALIS convention across all `columns=` specs; a small absolute floor covers
+error = 0). This replaces the old relative-to-value (mode a) and peak-relative
+(mode b) checks. `J1358p6522_original` is back in the suite and passes (mode a
+worst = 3.9e-3 of the error). `tophat` stays excluded from mode (b) (its
+print-truncated edge is ~14× the error at the edge pixel — far beyond any
+sane fraction; you were content to drop it).
+
+**Q0.23 — the two modes need different fractions; please confirm.** Your `0.01`
+works for the minimisation test (mode a), where a full-precision refit is
+faithful (worst measured 3.9e-3 of the error). But the fixed-parameter gate
+(mode b) evaluates the model at the reference's *printed 8-significant-digit*
+parameters, so a saturated core shifts by a larger fraction of the noise —
+measured worst across all mode-(b) cases: **`Q1243_converge_newstart76`
+0.108**, an example 0.076, `splineContAbs` 0.068 (everything else ≤ 0.014).
+`0.01` would fail those. So I set **mode a = 0.01** and **mode b = 0.15** (to
+clear the 0.108 worst with margin; still "well within the error"). The larger
+mode-(b) fraction reflects the 8-digit re-input precision of the gate, not a
+model inaccuracy (χ² at 0.1% remains the sharp mode-(b) gate). Is `0.01` / `0.15`
+acceptable, or would you prefer a single value (≥ ~0.12 to keep all cases) for
+both? I have implemented `0.01` / `0.15` and will re-test on it.
+
+**Response:** I think it is acceptable to have different fractions for the two modes,
+as they are testing different aspects of the model. The 0.01 fraction for mode (a) and
+the 0.15 fraction for mode (b) seem reasonable given the differences in precision and
+the nature of the tests.
+
+**Q0.23 confirmed / re-test result.** The error-based check is in and the full
+`--run-slow` harness (all 76) is **75 pass, 1 fail** (1h46m) — every case
+passes under `0.01` (mode a) / `0.15` (mode b) *except* `DH/J0814p5029` (see
+Q0.24). Its fixed-param (mode b) passes; all other minimisations and all
+fixed-param evals are green.
+
+**Q0.24 — `DH/J0814p5029` minimisation is a degenerate blind+random D/H fit,
+not reproducible at the parameter/model level; how should the harness treat
+it?** This is the one case that had never actually run in mode (a) before
+(it is the slow, `--run-slow`-gated case). A fresh refit reaches the **same
+χ²** (0 χ² failures) but a **different solution**: the H I Lyman-forest cores
+differ by up to **0.74 of the pixel error**, 161 one-sigma errors differ
+> 10%, and many parameters exceed the 10%-of-σ check (though nearly all within
+1σ). The D/H line uses a `random` start (`command=uniform(...)`), and this
+Lyman forest is degenerate/multi-modal, so each run lands at a different
+equally-good fit — regeneration will not fix it (a fresh refit would diverge
+again), unlike the deterministic DH fits. `examples/random` does **not** have
+this problem (it converges to ~2e-6), so this is specific to the complex
+real-world D/H fit. Options:
+1. **Make it deterministic** — replace the random D/H `command=uniform(...)`
+   start with the reference's fixed best-fit value in the mode-(a) run (the
+   "fixed start" idea from Task 0.3), so a refit reproduces the reference and
+   the full comparison applies. (My recommendation — keeps the test meaningful
+   and reproducible.)
+2. **Compare χ²/DOF only** for this case (accept that its params/model are not
+   reproducible) — its χ² *is* stable.
+3. Leave it minimisation-excluded (its fixed-param mode-b gate still runs).
+I have skipped it via `MINIMISATION_KNOWN_DIVERGENCE` (marked "Q0.24") so the
+suite is green (75 tests), pending your choice. **With this, the error-based
+`_fit.dat` check (Q0.22/Q0.23) is validated on the full harness.**
+
+**Response:** I think option 1 is the best approach, and I have updated the
+the `DH/J0814p5029` `.mod` file to use a `variable` starting parameter. I have
+also updated the reference files for this case, so that the minimisation test
+should now pass. Unfortunately, it is a long-running test (~1 hour), so it will
+be gated behind `--run-slow` in the harness.
 
 ## Prompts
 

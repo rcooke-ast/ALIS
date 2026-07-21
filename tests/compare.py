@@ -51,26 +51,30 @@ ERROR_RTOL = 0.10
 # Chi-squared relative tolerances (picked by the caller per mode).
 CHISQ_RTOL_MINIMISATION = 0.01
 CHISQ_RTOL_FIXEDPARAM = 0.001
-# _fit.dat model column, minimisation test (mode a): per-pixel
-# relative tolerance, with an absolute floor for pixels where the
-# model is essentially zero (saturated line cores). Task 0.4.
-FITDAT_RTOL = 1.0e-4
+# _fit.dat model column (Q0.22): a pixel passes if its model
+# difference is within a fraction of that pixel's error (noise),
+# |new - ref| < frac * error. This is the physically-meaningful
+# statistic RJC asked for -- a model difference far smaller than the
+# noise is insignificant -- and it avoids the precision trouble of a
+# relative-to-value check at saturated line cores (near-zero model).
+# The error is the third column (index 2) of the golden _fit.dat, the
+# ALIS convention for every columns= spec in the suite.
+FITDAT_ERROR_COL = 2
 FITDAT_ATOL = 1.0e-6
-# Mode (b) model-column criterion (Q0.15). RJC specified the
-# statistic |new - ref| / max(reference_model) < tol per pixel, i.e.
-# the model difference measured as a fraction of the snippet's peak
-# model rather than of the (possibly tiny) local model value. This is
-# forgiving where an 8-digit print of an edge/position parameter
-# shifts a sharp edge or saturated core across a pixel -- a large
-# difference relative to the local value but a small fraction of the
-# peak, insignificant in chi-squared -- while staying tight on the
-# continuum. Measured worst fraction-of-peak: J0903/Q1243 0.0 (now
-# self-consistent after RJC regenerated them), splineContAbs 1.6e-3,
-# tophat 1.0e-2. RJC's stated constant was 1e-3; splineContAbs (kept
-# in the gate via its .reference_adjusted) is 1.6e-3, so the constant
-# is set to 2e-3 to retain it while still excluding tophat -- flagged
-# for confirmation in Q0.18.
-FITDAT_FIXEDPARAM_PEAKFRAC = 2.0e-3
+# The "generate" special case compares a whole noise-free generated
+# data file (all columns) to its golden copy, so it uses a plain
+# relative tolerance rather than the model-column error statistic.
+GENERATE_RTOL = 1.0e-4
+# Minimisation test (mode a): full-precision refit -> tight fraction.
+FITDAT_ERRFRAC_MINIMISATION = 0.01
+# Fixed-parameter gate (mode b): the model is evaluated at the
+# *printed* 8-significant-digit parameters, so a saturated core can
+# shift by a larger fraction of the noise. Measured worst across all
+# mode-(b) cases: Q1243_converge_newstart76 at 0.108 of the error,
+# then ~0.076 (an example) and splineContAbs 0.068; everything else
+# <= 0.014. Set to 0.15 to clear the worst with margin (still "well
+# within the error"). Flagged for confirmation in Q0.23.
+FITDAT_ERRFRAC_FIXEDPARAM = 0.15
 # Covariance matrix: relative, with an absolute floor of
 # COVAR_RTOL * sqrt(C_ii * C_jj) per element.
 COVAR_RTOL = 0.01
@@ -525,16 +529,17 @@ def compare_mod_out(out_path, ref_path, chisq_rtol,
     return [f"{out_path.name}: {f}" for f in fails]
 
 
-def compare_fit_dat(out_path, ref_path, rtol=FITDAT_RTOL,
-                    peakfrac=None):
+def compare_fit_dat(out_path, ref_path, errfrac):
     """
-    Compare a produced _fit.dat against its golden reference.
+    Compare a produced _fit.dat model column against its golden.
 
-    The model is the last column (per alsave.save_asciifits). The
-    sentinel rows (pixels outside the fitrange) must occupy the same
-    positions in both files and are excluded; the remaining model
-    values must agree within ``rtol`` relative (FITDAT_ATOL absolute
-    floor).
+    The model is the last column (per alsave.save_asciifits) and the
+    error is column ``FITDAT_ERROR_COL``. Sentinel rows (pixels
+    outside the fitrange) must occupy the same positions in both files
+    and are excluded. Each remaining pixel must satisfy the Q0.22
+    criterion: ``|new - ref| < errfrac * error`` (a model difference
+    within a fraction of the pixel's noise). Where the golden error is
+    zero, a small absolute floor (FITDAT_ATOL) is used instead.
 
     Parameters
     ----------
@@ -542,23 +547,15 @@ def compare_fit_dat(out_path, ref_path, rtol=FITDAT_RTOL,
         The _fit.dat produced by the test run.
     ref_path : Path
         The golden copy in reference_fits/.
-    rtol : float
-        Per-pixel relative tolerance on the model column for the
-        minimisation test (FITDAT_RTOL). Ignored when ``peakfrac`` is
-        set (the fixed-parameter gate uses the peak criterion).
-    peakfrac : float | None
-        If set (the fixed-parameter gate,
-        FITDAT_FIXEDPARAM_PEAKFRAC), mode (b)'s Q0.15 criterion is
-        used instead of ``rtol``: a pixel passes when its model
-        difference is within this fraction of the maximum |model|
-        over the snippet's fit pixels (RJC's
-        |new-ref|/max(reference_model) statistic). None (the
-        minimisation test) applies the per-pixel ``rtol`` check.
+    errfrac : float
+        Allowed model difference as a fraction of each pixel's error
+        (FITDAT_ERRFRAC_MINIMISATION for mode a,
+        FITDAT_ERRFRAC_FIXEDPARAM for mode b).
 
     Returns
     -------
     list[str]
-        Failure messages (empty when the files agree).
+        Failure messages (empty when the model columns agree).
 
     Generated by RJC and Claude.
     """
@@ -575,36 +572,19 @@ def compare_fit_dat(out_path, ref_path, rtol=FITDAT_RTOL,
     rsent = rmod == SENTINEL
     if not np.array_equal(osent, rsent):
         ndiff = int(np.sum(osent != rsent))
-        return [
-            f"{label}: sentinel rows differ at {ndiff} pixels"
-        ]
+        return [f"{label}: sentinel rows differ at {ndiff} pixels"]
     keep = ~rsent
     delta = np.abs(omod[keep] - rmod[keep])
-    if peakfrac is not None:
-        # Mode (b), Q0.15: |new - ref| / max(reference_model) < frac,
-        # per pixel (fraction of the snippet's peak model).
-        peak = float(np.max(np.abs(rmod[keep]))) if np.any(keep) \
-            else 0.0
-        scale = max(peak, FITDAT_ATOL)
-        bad = delta > peakfrac * scale
-        worst_scale = scale
-    else:
-        # Mode (a): tight per-pixel relative check.
-        bad = ~np.isclose(
-            omod[keep], rmod[keep], rtol=rtol, atol=FITDAT_ATOL
-        )
-        worst_scale = None
+    err = np.abs(ref[keep, FITDAT_ERROR_COL])
+    tol = np.maximum(errfrac * err, FITDAT_ATOL)
+    bad = delta > tol
     if np.any(bad):
-        if worst_scale is not None:
-            worst = float(np.max(delta[bad]) / worst_scale)
-            detail = f"max fraction of peak model {worst:.3e}"
-        else:
-            scale = np.maximum(np.abs(rmod[keep]), FITDAT_ATOL)
-            worst = float(np.max(delta[bad] / scale[bad]))
-            detail = f"max relative difference {worst:.3e}"
+        worst = float(np.max(delta[bad] / tol[bad]))
         return [
             f"{label}: model column differs at {int(np.sum(bad))}"
-            f"/{int(np.sum(keep))} pixels ({detail})"
+            f"/{int(np.sum(keep))} pixels "
+            f"(worst {worst:.2f}x the {errfrac:g}*error tolerance, "
+            f"i.e. {worst * errfrac:.3e} of the pixel error)"
         ]
     return []
 
@@ -659,7 +639,7 @@ def compare_generated_data(out_path, ref_path):
 
     Used by the "generate" special case (noise-free data generation,
     ``generate peaksnr -1``): every column must agree within
-    FITDAT_RTOL relative (FITDAT_ATOL absolute floor).
+    GENERATE_RTOL relative (FITDAT_ATOL absolute floor).
 
     Parameters
     ----------
@@ -682,10 +662,10 @@ def compare_generated_data(out_path, ref_path):
     label = f"{out_path.name} vs {ref_path}"
     if out.shape != ref.shape:
         return [f"{label}: shape {out.shape} != {ref.shape}"]
-    bad = ~np.isclose(out, ref, rtol=FITDAT_RTOL, atol=FITDAT_ATOL)
+    bad = ~np.isclose(out, ref, rtol=GENERATE_RTOL, atol=FITDAT_ATOL)
     if np.any(bad):
         return [
             f"{label}: {int(np.sum(bad))}/{ref.size} values differ "
-            f"(> {FITDAT_RTOL} relative)"
+            f"(> {GENERATE_RTOL} relative)"
         ]
     return []

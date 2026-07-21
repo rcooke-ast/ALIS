@@ -37,7 +37,8 @@ from alisrun import (
 from compare import (
     CHISQ_RTOL_FIXEDPARAM,
     CHISQ_RTOL_MINIMISATION,
-    FITDAT_FIXEDPARAM_PEAKFRAC,
+    FITDAT_ERRFRAC_FIXEDPARAM,
+    FITDAT_ERRFRAC_MINIMISATION,
     compare_covar,
     compare_fit_dat,
     compare_generated_data,
@@ -62,23 +63,21 @@ _GEN_CASES = [c for c in _CASES if c.kind == "generate"]
 # splineContAbs); metal_line_abs_linear's stale reference was fixed;
 # and HS0105p1619 now runs. Those are back in the gate.
 #
-# The sharp-feature cases run in the gate under the Q0.15 model-
-# column criterion (|new-ref|/max(reference_model) <
-# FITDAT_FIXEDPARAM_PEAKFRAC). After RJC regenerated J0903 and
-# Q1243 they reproduce the goldens exactly; splineContAbs is 1.6e-3
-# of peak (kept). Only tophat (1.0e-2 of peak -- a print-truncated
-# sharp edge) exceeds it, and RJC was content to drop tophat from
-# the gate (Q0.15); its minimisation test (mode a) still runs.
+# The sharp-feature cases run in the gate under the Q0.22 error-based
+# model-column check (|new-ref| < FITDAT_ERRFRAC_FIXEDPARAM * error).
 #
 # What remains excluded from mode (b):
 # - "reference point": brokenpowerlaw's committed .mod.out.reference
 #   does not evaluate to its own recorded chi-squared (Q0.12);
-# - "sharp edge": tophat exceeds the peak-relative tolerance (Q0.15).
+# - "sharp edge": tophat's print-truncated edge lands between pixels,
+#   giving a ~14x-the-error model jump at the edge pixel, far beyond
+#   any sane error fraction (RJC was content to drop it; Q0.15). Its
+#   minimisation test (mode a) still runs.
 FIXEDPARAM_EXCLUDE = {
     "examples/brokenpowerlaw/model/fit_spectra":
         "reference point (chi2 374.98 vs recorded 338.15); Q0.12",
     "examples/tophat/model/fit_spectra":
-        "sharp edge (1.0e-2 of peak > tol); Q0.15",
+        "sharp edge (~14x error at edge pixel); Q0.15",
 }
 
 # Fixed-parameter evals normally all run on every commit (batch
@@ -90,26 +89,27 @@ FIXEDPARAM_BATCH_OVERRIDE = {
     "Q1243p307_orders": "medium",
 }
 
-# Minimisation (mode a) tests skipped pending a decision.
+# Minimisation (mode a) tests skipped because a fresh refit does not
+# reproduce the committed reference. Earlier rounds were resolved by
+# RJC (HS0105p1619/J0903p2628/Q1243_newstart76 in Q0.17; five
+# DH/helium34 fits in Q0.21 by regeneration; J1358p6522_original in
+# Q0.22 by adopting the error-based model-column check).
 #
-# Most reference-reproducibility cases (HS0105p1619/J0903p2628/
-# Q1243_newstart76 in Q0.17; five of the six DH/helium34 fits in
-# Q0.21) were resolved by RJC regenerating the references.
-#
-# J1358p6522_original is different (Q0.22): its regenerated reference
-# *is* reproduced -- every model pixel agrees to <= 1.5e-4 absolute
-# (<= 2e-3 of the snippet peak) -- but 88 pixels at the saturated H I
-# 923 core, where the model is ~0.009, exceed the mode-(a) 1e-4
-# *relative-to-value* tolerance (worst 4e-3 rel-to-value = 3.5e-5
-# absolute). It is the same saturated-core effect the fixed-parameter
-# gate already handles with the peak-relative statistic (Q0.15);
-# regeneration will not fix it. Skipped until Q0.22 decides whether to
-# extend the peak-relative allowance to mode (a).
+# DH/J0814p5029 (Q0.24) is different: it is a blind + *random* D/H fit
+# of a complex H I Lyman forest that is degenerate/multi-modal. A
+# fresh refit reaches the *same chi-squared* (0 chi-squared failures)
+# but at meaningfully different parameters and model -- the H I cores
+# differ by up to 0.74 of the pixel error, and 161 one-sigma errors
+# differ > 10%. The random start lands at a different-but-equivalent
+# solution each run, so regeneration will not fix it (unlike the
+# deterministic cases). It only ran here because --run-slow first
+# exercised the slow batch. Skipped pending Q0.24 (fix the random D/H
+# start to the reference value for a deterministic test, or compare
+# chi-squared/DOF only for this case).
 MINIMISATION_KNOWN_DIVERGENCE = {
-    "context/fitting_examples/DH/J1358p6522/model/"
-    "J1358p6522_original":
-        "saturated H I core: <=1.5e-4 absolute everywhere but "
-        "4e-3 rel-to-value at ~0.009 pixels; Q0.22",
+    "context/fitting_examples/DH/J0814p5029/model/J0814p5029":
+        "degenerate blind+random D/H fit: same chi-squared but "
+        "different params/model (H I cores to 0.74*error); Q0.24",
 }
 
 
@@ -203,7 +203,8 @@ def test_minimisation(case, tmp_path):
     for pair in case.data_pairs:
         for ref in pair.reference_fits:
             failures += compare_fit_dat(
-                staged.fit_output_for(ref), ref
+                staged.fit_output_for(ref), ref,
+                errfrac=FITDAT_ERRFRAC_MINIMISATION,
             )
     if case.covar_reference is not None:
         failures += compare_covar(
@@ -264,7 +265,7 @@ def test_fixed_param(case, tmp_path):
             failures += compare_fit_dat(
                 staged.fit_output_for(ref),
                 ref,
-                peakfrac=FITDAT_FIXEDPARAM_PEAKFRAC,
+                errfrac=FITDAT_ERRFRAC_FIXEDPARAM,
             )
     _assert_clean(failures, case, "fixed-param")
     # Keep the staged copy only when the test fails (for debugging).
