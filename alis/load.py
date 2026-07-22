@@ -2,7 +2,10 @@ import numpy as np
 import os, sys
 import copy
 from alis import almsgs
-from alis.config import ArgFlag, AtomicData, ColumnMap, DataOpt, ModelPass
+from alis.config import (
+    ArgFlag, AtomicData, ColumnMap, ColumnPosition, DataOpt, LinkPass,
+    ModelPass,
+)
 from multiprocessing import cpu_count
 
 msgs = almsgs.msgs()
@@ -887,7 +890,7 @@ def load_data(slf, datlines, data=None):
 def load_userdata(data, colspl, wfe, verbose=2):
     wfek = list(wfe.keys())
     usecols=()
-    ucind=dict({})
+    ucind=ColumnPosition()  # typed structure (Stage 2.1); ucind['wave'] access preserved
     uccnt=0
     for j in range(len(wfek)):
         if wfe[wfek[j]] == -1: continue
@@ -1446,10 +1449,11 @@ def load_links(slf, lnklines, debug=False):
         linkb.append(varB)
         linke.append(exp)
         total_lnkcnt += 1
-    # Write a dictionary with the relevant operations
-    lnkpass = dict({'opA':linka,     # First tied parameter
-                    'opB':linkb,     # Array of linked parameters
-                    'exp':linke})    # The relational expression
+    # Write the typed structure with the relevant operations (Stage 2.1);
+    # lnkpass['opA'] access preserved.
+    lnkpass = LinkPass(opA=linka,    # First tied parameter
+                       opB=linkb,    # Array of linked parameters
+                       exp=linke)    # The relational expression
     # Check the ordering of the links is the same as the ordering of the parameters
     tstidx = np.ones(len(lnkpass['opA']),dtype=int)*-1
     for i in range(len(lnkpass['opA'])):
