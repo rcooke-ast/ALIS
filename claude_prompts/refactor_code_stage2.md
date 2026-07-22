@@ -151,4 +151,5 @@ preserved through the later tasks?
 
 1. Please read this doc, including my responses to your queries, check if any updates need to be made to this document before commencing, and ask further queries if needed.
 
-2. 
+2. Please read this doc, and execute Task 2.0
+

@@ -8,8 +8,8 @@ import matplotlib.transforms as mtransforms
 matplotlib.use('Qt5Agg')
 from scipy.special import wofz
 
-from alis import alload
-from alis import alis as alismain
+from alis import load
+from alis import main as alismain
 
 
 class SelectRegions(object):
@@ -424,10 +424,10 @@ class atomic:
         # Load the lines file
         print("Loading a list of atomic transitions...")
         alispath = __file__#"/".join(__file__.split("/")[:-2])#+"/data/atomic.dat"
-        argflag = alload.optarg(alispath, verbose=verbose)
+        argflag = load.optarg(alispath, verbose=verbose)
         slf = alismain.ClassMain(argflag, getinst=True)
         slf._argflag = argflag
-        atmdata = alload.load_atomic(slf)
+        atmdata = load.load_atomic(slf)
 
         # Convert to numpy arrays
         numtrans = atmdata['Wavelength'].size

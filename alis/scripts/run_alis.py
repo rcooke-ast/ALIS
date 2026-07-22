@@ -14,9 +14,9 @@ except:
 
 def parser(options=None):
     import argparse
-    from alis import alload
+    from alis import load
 
-    parser = argparse.ArgumentParser(description=alload.usage('ALIS'),
+    parser = argparse.ArgumentParser(description=load.usage('ALIS'),
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("alis_modfile", type=str, help="ALIS mod file (.mod extension)")
     parser.add_argument("-c", "--cpus", type=int, help="(all) Number of cpu cores to use")
@@ -48,8 +48,8 @@ def parser(options=None):
 
 def main(args):
     from alis import almsgs
-    from alis import alload
-    from alis import alis
+    from alis import load
+    from alis import main as alismain
     msgs = almsgs.msgs()
 
     # argflag
@@ -61,20 +61,20 @@ def main(args):
         msgs.work("Prepare a separate .py file for user-created functions",verbose=2)
         msgs.work("Assign a number to every warning and error -- describe this in the manual",verbose=2)
         msgs.work("If emission is not specified for a specid before absorption (in a model with several specid's), the specid printed as an error is always one before",verbose=2)
-        argflag = alload.optarg(os.path.realpath(__file__), argv=args)
+        argflag = load.optarg(os.path.realpath(__file__), argv=args)
         # Assign filelist:
-#       if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)
+#       if sys.argv[-1].split('.')[-1] != 'mod': load.usage(argflag)
 #       else:
         argflag['run']['modname'] = sys.argv[-1]
-        alis.ClassMain(argflag)
+        alismain.ClassMain(argflag)
     else:
         try:
-            argflag = alis.alload.optarg(os.path.realpath(__file__), argv=args)
+            argflag = alismain.load.optarg(os.path.realpath(__file__), argv=args)
             # Assign filelist:
-#			if sys.argv[-1].split('.')[-1] != 'mod': alload.usage(argflag)
+#			if sys.argv[-1].split('.')[-1] != 'mod': load.usage(argflag)
 #			else:
             argflag['run']['modname'] = sys.argv[-1]
-            alis.ClassMain(argflag)
+            alismain.ClassMain(argflag)
         except Exception:
             # There is a bug in the code, print the file and line number of the error.
             et, ev, tb = sys.exc_info()
