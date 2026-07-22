@@ -2,7 +2,7 @@ import numpy as np
 import os, sys
 import copy
 from alis import almsgs
-from alis.config import ArgFlag, ModelPass
+from alis.config import ArgFlag, DataOpt, ModelPass
 from multiprocessing import cpu_count
 
 msgs = almsgs.msgs()
@@ -481,7 +481,7 @@ def load_data(slf, datlines, data=None):
     # Now begin
     specid=np.array([])
     slf._snipid=[]
-    datopt = dict({'specid':[],'fitrange':[],'loadrange':[],'plotone':[],'nsubpix':[],'bintype':[],'columns':[],'systematics':[],'systmodule':[],'label':[],'yrange':[]})
+    datopt = DataOpt()  # typed structure (Stage 2.1); datopt['specid'] access preserved
     keywords = ['specid','fitrange','loadrange','systematics','systmodule','resolution','shift','columns','plotone','nsubpix','bintype','loadall','label','yrange']
     colallow = np.array(['wave','flux','error','continuum','zerolevel','fitrange','loadrange','systematics','resolution'])
     columns  = np.array(['wave','flux','error'])

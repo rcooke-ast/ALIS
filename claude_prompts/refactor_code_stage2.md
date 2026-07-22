@@ -157,3 +157,4 @@ preserved through the later tasks?
 
 4. Please perform the next incremental migration step for Task 2.1, converting one nested dict to a dataclass, ensuring the Stage 0 suite remains green.
 
+5. Please perform the next incremental migration step (start with `atmdata`, and once `atmdata` is green for the fast test suite, proceed to `wfe`) for Task 2.1, converting one nested dict to a dataclass, ensuring the Stage 0 suite remains green.
