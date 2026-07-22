@@ -154,3 +154,6 @@ preserved through the later tasks?
 2. Please read this doc, and execute Task 2.0
 
 3. Please read this doc, and execute Task 2.1
+
+4. Please perform the next incremental migration step for Task 2.1, converting one nested dict to a dataclass, ensuring the Stage 0 suite remains green.
+

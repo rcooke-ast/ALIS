@@ -2,7 +2,7 @@ import numpy as np
 import os, sys
 import copy
 from alis import almsgs
-from alis.config import ArgFlag
+from alis.config import ArgFlag, ModelPass
 from multiprocessing import cpu_count
 
 msgs = almsgs.msgs()
@@ -1120,19 +1120,9 @@ def load_model(slf, modlines, updateself=True):
     # Get the calls to each of the functions
     funcused=[]
     emab=[]
-    # Set up the dictionary for the model details
-    modpass = dict({'mtyp':[],  # Store the type of model
-                    'mpar':[],  # Store the parameters for the model
-                    'mtie':[],  # Store the tied parameters and what parameter they are tied to.
-                    'mlim':[],  # Store the limited parameters and their value
-                    'mlnk':[],  # Store the linked parameter strings
-                    'mfix':[],  # Determine if a parameter is fixed
-                    'tpar':[],  # Sequence of letters used to tie/fix parameters
-                    'mkey':[],  # Keyword parameters
-                    'psto':[],
-                    'p0':[],    # Variables/parameters
-                    'emab':[],  # Emission or Absorption?
-                    'line':[]}) # The index of modlines that corresponds to this parameter
+    # Set up the typed structure for the model details (Stage 2.1). Still
+    # supports modpass['mtyp'] access via the config dataclass.
+    modpass = ModelPass()
     cntr=0
     # Load the models form
     parid = []
