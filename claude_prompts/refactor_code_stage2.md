@@ -147,6 +147,38 @@ preserved through the later tasks?
   default + `--verbose`/`--quiet`, and is **extended to be multiprocessing-aware**
   (the example is console/file only; log records must survive worker processes).
 
+**Q2.7 — Remaining nested dicts after Task 2.1 (Prompt 7 audit).** Which
+string-keyed structural dicts are still un-migrated, and where should they go?
+
+**Response (audit result):** Task 2.1 converted the seven core config/data
+structures (`argflag`→`ArgFlag`+7 sections, `modpass`→`ModelPass`,
+`datopt`→`DataOpt`, `atmdata`→`AtomicData`, `wfe`→`ColumnMap`,
+`ucind`→`ColumnPosition`, `lnkpass`→`LinkPass`) in `alis/config.py`. The
+remaining structural dicts are deferred, not dropped:
+
+- **`fdict`** and the mpfit **`functkw`/`fa`** dict (`{'x','y','err','fdict'}`,
+  built in `main.py`/`simulate.py`): per-iteration χ² state + the minimiser
+  call payload. **→ Tasks 2.3/2.4** (removing `ClassMain`, fixing the
+  multiprocessing state), where they are naturally replaced by the explicit
+  `FitState`/picklable state object.
+- **`parinfo`/`parbase`** (`{'value','fixed','limited','limits','mpside',
+  'step','tied'}`, a list of per-parameter dicts built in `load.load_parinfo`
+  and each function's `set_pinfo`, consumed heavily by the `alfit` minimiser):
+  a genuine dataclass candidate, but tightly coupled to the mpfit-derived
+  minimiser internals. **→ deferred to a dedicated increment alongside the
+  minimiser work** (Stage 2.3/2.4 or a follow-up), to keep the change reviewable.
+- **Per-function `_keywd`/`_keych`/`_keyfm`** metadata dicts (one set per
+  `alfunc` class, with *heterogeneous* keys per function): not a simple
+  `_DictLike` swap; best addressed as part of a model-function interface
+  redesign. **→ recorded for a later stage** (function-interface work), not
+  Stage 2.1.
+- Transient/eval dicts (`namespace={'p':p}`, `parb` in convolution helpers) are
+  not migration targets.
+
+Conclusion: no further standalone `_DictLike` increments are warranted for Task
+2.1; the remaining structures are attached to the tasks/stages above. Proceeding
+to Task 2.2.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, check if any updates need to be made to this document before commencing, and ask further queries if needed.
@@ -160,3 +192,5 @@ preserved through the later tasks?
 5. Please perform the next incremental migration step (start with `atmdata`, and once `atmdata` is green for the fast test suite, proceed to `wfe`) for Task 2.1, converting one nested dict to a dataclass, ensuring the Stage 0 suite remains green.
 
 6. Please perform the next incremental migration step (start with `ucind` in `load_datafile`, and once that update is green for the fast test suite, proceed to `lnkpass` in `load_links`) for Task 2.1, converting one nested dict to a dataclass, ensuring the Stage 0 suite remains green.
+
+7. If there are more nested dicts (other than `fdict`) that still need to be migrated, then please make a record of those in this file, or attach them to one of the upcoming stages. If there are no more incremental migration steps for Task 2.1, please proceed to Task 2.2, ensuring the Stage 0 suite remains green.
