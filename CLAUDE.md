@@ -31,11 +31,12 @@ flag when a reference file would be better than inline instructions.
 
 This is a Python project. Follow these conventions:
 
-- **PEP 8** for all code style (4-space indentation, 79-char line limit, etc.)
+- **PEP 8** for all code style (4-space indentation, etc.). Line length is
+  88 characters (black default); black / isort / ruff are configured in
+  `pyproject.toml` (Stage 1.3)
 - Match the style of the surrounding code in whichever file is being edited
-- The codebase uses `from __future__ import absolute_import, division, print_function`
-  at the top of modules — preserve this in existing files; new files targeting Python 3
-  only do not need it
+- Target Python 3.13+. The old `from __future__` imports and Python 2/3 shims
+  were removed in Stage 1.1 — do not reintroduce them
 - Docstrings use triple double-quotes; inline comments use `#`
 - Imports are ordered: standard library, then third-party (`numpy`, `astropy`), then
   local `alis` modules

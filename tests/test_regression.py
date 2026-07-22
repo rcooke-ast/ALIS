@@ -129,7 +129,14 @@ def _params(cases, batch=None, overrides=None):
     for case in cases:
         chosen = overrides.get(case.name, batch or case.batch)
         mark = getattr(pytest.mark, chosen)
-        params.append(pytest.param(case, id=case.name, marks=mark))
+        # Second marker records the case's source tree so CI can select
+        # only the shipped examples (``-m examples``); context/ cases are
+        # refactor-only reference fits and are excluded from CI.
+        source = case.name.split("/", 1)[0]
+        source_mark = getattr(pytest.mark, source)
+        params.append(
+            pytest.param(case, id=case.name, marks=[mark, source_mark])
+        )
     return params
 
 

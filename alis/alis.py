@@ -1,6 +1,5 @@
 """ Absorption LIne Software
 """
-from __future__ import absolute_import, division, print_function
 
 # Import standard libraries
 import os
@@ -22,11 +21,7 @@ from alis import alsave
 from alis import alutils
 from alis import alfunc_base
 from alis import almsgs
-from IPython import embed
 msgs = almsgs.msgs()
-
-#try: input = raw_input
-#except NameError: pass
 
 #from multiprocessing import Pool as mpPool
 #import pycuda.driver as cuda

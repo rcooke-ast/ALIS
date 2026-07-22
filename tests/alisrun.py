@@ -6,8 +6,8 @@ Every test run is staged in a disposable copy of the whole example
 directory (made under pytest's tmp_path), so no file in the
 repository -- in particular no ``.mod.out.reference``,
 ``reference_fits/`` golden file, or covariance reference -- is ever
-touched by a test. ALIS itself is executed in a subprocess (via
-``bin/run_alis``) with the working directory set to the staged
+touched by a test. ALIS itself is executed in a subprocess (running
+``alis/scripts/run_alis.py``) with the working directory set to the staged
 model directory, exactly as a user would run it, with the ``-f``
 (write model fits) and ``-w`` (overwrite) flags and a non-interactive
 matplotlib backend.
@@ -34,7 +34,10 @@ from manifest import REPO_ROOT, RegressionCase
 
 # The run_alis entry point shipped with the repository (guarantees
 # the subprocess exercises this checkout, not another installation).
-RUN_ALIS = REPO_ROOT / "bin" / "run_alis"
+# Executed as a script directly; its ``__main__`` guard calls
+# ``console_entry`` -- the same code path as the pyproject console
+# script -- so the harness and installed ``run_alis`` command agree.
+RUN_ALIS = REPO_ROOT / "alis" / "scripts" / "run_alis.py"
 
 # Baseline subprocess timeout (seconds) plus a generous multiple of
 # the reference runtime, to tolerate slower machines.

@@ -4,9 +4,6 @@ from alis import almsgs
 from alis.alutils import getreason
 msgs=almsgs.msgs()
 
-try: input = raw_input
-except NameError: pass
-
 def print_model(diff, mp, thresh, verbose=2, funcarray=[None, None, None]):
     function=funcarray[0]
     funccall=funcarray[1]

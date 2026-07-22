@@ -1,5 +1,3 @@
-from __future__ import print_function, absolute_import, division, unicode_literals
-
 import os
 import copy
 import numpy as np
@@ -11,9 +9,6 @@ from matplotlib import pyplot as plt
 from matplotlib import cm as pltcm
 from alis.alutils import getreason
 msgs = almsgs.msgs()
-
-try: input = raw_input
-except NameError: pass
 
 def file_exists(slf, filename):
     """

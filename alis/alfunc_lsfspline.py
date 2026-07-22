@@ -3,7 +3,6 @@ import numpy as np
 from alis import almsgs
 from alis import alfunc_base
 from scipy.interpolate import interp1d
-from IPython import embed
 #import pycuda.driver as cuda
 #import pycuda.autoinit
 #from pycuda.compiler import SourceModule

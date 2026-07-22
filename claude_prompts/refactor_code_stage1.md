@@ -86,8 +86,35 @@ current entry point is a `bin/run_alis` script that calls `parser()` then
 `run_alis = "alis.scripts.run_alis:console_entry"` (a small zero-arg wrapper that
 parses then calls `main`), and delete `bin/run_alis`.
 
+**Q1.6 — CI test scope and lint rollout (raised during Prompt 4).** The task
+text says CI runs `pytest -m "not slow"`, but the markers designate `medium` as
+a nightly batch, and `context/fitting_examples/` cases are refactor-only. What
+should CI actually run, and how should linting land on a codebase that was never
+auto-formatted?
+
+**Response:**
+- **CI runs only the `examples/` cases** (`pytest -m examples`) — the shipped
+  example fits. `context/fitting_examples/` cases are for refactor development
+  only and are excluded from CI (dedicated unit tests will come with ALIS v2).
+  A new `examples` marker (and a `context` marker) is applied per case.
+- **Line length 88** (black default); `CLAUDE.md` updated to match.
+- **Linting is config-first:** add pre-commit + CI lint config now but do not
+  reformat the legacy codebase; the CI lint job runs the hooks on the files
+  changed by each push/PR only, so legacy files do not fail CI. A repo-wide
+  reformat is deferred to a dedicated task.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, check if any updates need to be made to this document before commencing, and ask further queries if needed.
 
 2. Please read this doc, and execute Task 1.1
+
+3. Please read this doc, and execute Task 1.2
+
+4. Please read this doc, and execute Task 1.3
+
+[comment]: # (During execution, I responded with the following text: The CI tests should only run the tests in the `examples/` folder. The files in `context/fitting_examples/` is only for the refactoring developing. Eventually we will make unit tests with the new       
+  version of ALIS as well. So, is it possible to run all of the tests in the `examples/` folder, instead? )
+
+5. Please read this doc, and execute Task 1.4
+

@@ -1,5 +1,3 @@
-from __future__ import absolute_import, division, print_function
-
 import os
 import time
 import copy
@@ -12,9 +10,6 @@ from alis import alsave
 from alis import alplot
 from alis import alutils
 msgs=almsgs.msgs()
-
-try: input = raw_input
-except NameError: pass
 
 def make_directory(dirname,overwrite=False,verbose=2):
     currDIR=os.getcwd()

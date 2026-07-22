@@ -1,18 +1,12 @@
-from __future__ import absolute_import, division, print_function
-
 import numpy as np
 import os, sys
 import copy
 from alis import almsgs
 from multiprocessing import cpu_count
-from IPython import embed
 
 msgs = almsgs.msgs()
 
 from astropy.io import fits as pyfits
-
-try: input = raw_input
-except NameError: pass
 
 
 def cpucheck(ncpu,curcpu=0,verbose=2):
@@ -1464,9 +1458,6 @@ def load_links(slf, lnklines, debug=False):
         linkb.append(varB)
         linke.append(exp)
         total_lnkcnt += 1
-    if debug:
-        embed()
-        assert False
     # Write a dictionary with the relevant operations
     lnkpass = dict({'opA':linka,     # First tied parameter
                     'opB':linkb,     # Array of linked parameters
@@ -1664,10 +1655,7 @@ def load_subpixels(slf, parin):
                     if modtyp[sp][sn][iea[sn]][0] == '': modtyp[sp][sn][iea[sn]] = np.delete(modtyp[sp][sn][iea[sn]], 0)
                 mid = np.where(mtyp==modtyp[sp][sn][iea[sn]])[0][0]
                 slf._funcarray[2][mtyp]._keywd = slf._modpass['mkey'][i]
-                try:
-                    params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
-                except:
-                    embed()
+                params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
                 if len(params) == 0: continue
                 if nbn > nexbins[sp][sn]:
                     if nbn > slf._argflag['run']['nsubmax']:
@@ -1821,7 +1809,6 @@ def load_par_influence(slf, parin, setall=False):
                 opinfl[sp][sn][j] = np.argwhere(uinfl==pinfl[sp][sn][j])[0][0]
                 allpars = np.append(allpars,pinfl[sp][sn][j])
 ######
-    # embed()
     # TEMPORARY DURING TESTING ---- THIS MUST BE REMOVED IN ORDER FOR INFLUENCE TO WORK
     if setall:
         unq_num = np.unique(allpars)
