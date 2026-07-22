@@ -15,7 +15,8 @@
       "Bash(sed 's/ damping=0\\\\.0000000 / /g' fp.mod)",
       "Bash(MPLBACKEND=Agg python /Users/rcooke/Software/ALIS/bin/run_alis -f -w fp_nd.mod)",
       "Bash(grep -E \"Bestfit|Degrees\" fp_nd.mod.out)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(xargs -I{} sed -n '{}p' alis/load.py)"
     ]
   }
 }

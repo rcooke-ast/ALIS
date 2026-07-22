@@ -2,7 +2,7 @@ import numpy as np
 import os, sys
 import copy
 from alis import almsgs
-from alis.config import ArgFlag, DataOpt, ModelPass
+from alis.config import ArgFlag, AtomicData, ColumnMap, DataOpt, ModelPass
 from multiprocessing import cpu_count
 
 msgs = almsgs.msgs()
@@ -424,7 +424,7 @@ def load_atomic(slf):
         msgs.error("The filename does not exist -"+msgs.newline()+fname)
     # isotope = table.array['MassNumber'].astype("|S3").astype(np.object)+table.array['Element']
     isotope = np.core.defchararray.add(table.array['MassNumber'].astype('U'), table.array['Element'].astype('U'))
-    atmdata = dict({})
+    atmdata = AtomicData()  # typed structure (Stage 2.1); atmdata['Ion'] access preserved
     # eln = Ion
     # elw = Wavelength
     # elt = Gamma
@@ -621,7 +621,7 @@ def load_data(slf, datlines, data=None):
         if len(datlines[i].strip()) == 0 : continue # Nothing on a line
         nocoms = datlines[i].lstrip().split('#')[0] # Remove everything on a line after the first instance of a comment symbol: #
         if len(nocoms) == 0: continue # A comment line
-        wfe = dict({'wave':0, 'flux':1, 'error':2, 'continuum':-1, 'zerolevel':-1, 'systematics':-1, 'fitrange':-1, 'loadrange':-1, 'resolution':-1})
+        wfe = ColumnMap()  # column indices (Stage 2.1); wfe['flux'] access + .keys() preserved
         fitrange = 'all'
         linspl = nocoms.split()
         if data is None:
