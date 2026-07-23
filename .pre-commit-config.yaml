@@ -1,0 +1,19 @@
+# Pre-commit hooks for ALIS (Task 1.3).
+# Formatting/linting is introduced config-first: the legacy codebase is not
+# yet reformatted, so these hooks run on changed files only (pre-commit's
+# default) rather than a repo-wide sweep. Run `pre-commit autoupdate` to
+# refresh the pinned revisions.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
