@@ -198,6 +198,26 @@ and the typed fit state live?
   Main-process direct evaluations may keep writing to the orchestrator so
   `save`/`plot` are unchanged. Done incrementally, Stage 0 green after each step.
 
+**Q2.9 — Logging replacement approach (raised during Prompt 11).** Given ~900
+`msgs` call sites (323 `error()`, 277 inline `newline()`), how to replace
+`almsgs`?
+
+**Response:**
+- **Logger subclass keeping the `msgs` API.** Adapt `context/misc/logger.py`
+  into `alis/logger.py` as a `logging.Logger` subclass (real levels/handlers/
+  formatters) that also exposes the msgs methods (info/warn/error[+`sys.exit`]/
+  bug/work/simulate/test/newline/indent/input/alisheader/signal_handler). The
+  ~900 `msgs.X(...)` call sites stay unchanged; only the 38
+  `msgs = almsgs.msgs()` instantiations update to `logger.msgs()`; `almsgs.py`
+  is deleted.
+- **Keep ALIS's coloured `[LEVEL] ::` prefixes** via a custom Formatter
+  (custom levels for SIMULATE/TEST/BUG/PROGRESS).
+- **MP-aware:** each process (main + spawned Pool workers) configures the
+  logger with its own stderr handler, so log records emitted inside workers
+  survive (Q2.6). `msgs.error()` still `sys.exit()`s. Console output is
+  stderr-only and never enters the compared files, so format changes don't
+  affect the Stage 0 suite.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, check if any updates need to be made to this document before commencing, and ask further queries if needed.

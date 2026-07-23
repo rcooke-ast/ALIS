@@ -2,13 +2,13 @@ import os
 import copy
 import numpy as np
 import datetime
-from alis import almsgs
+from alis import logger
 from alis.functions import base
 import astropy.io.fits as pyfits
 from matplotlib import pyplot as plt
 from matplotlib import cm as pltcm
 from alis.utils import getreason
-msgs = almsgs.msgs()
+msgs = logger.msgs()
 
 def file_exists(slf, filename):
     """

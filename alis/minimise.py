@@ -34,12 +34,12 @@ import numpy
 import types
 import signal
 # import scipy.linalg
-from alis import almsgs
+from alis import logger
 from alis.save import print_model
 from multiprocessing import Pool as mpPool
 from multiprocessing.pool import ApplyResult
 
-msgs = almsgs.msgs()
+msgs = logger.msgs()
 
 try:
     from copyreg import pickle  # Python 3

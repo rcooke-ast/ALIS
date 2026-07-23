@@ -1,8 +1,8 @@
 import numpy as np
-from alis import almsgs
+from alis import logger
 from alis.functions import base
 from scipy.special import wofz
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 class VoigtConv(base.Base) :
     """

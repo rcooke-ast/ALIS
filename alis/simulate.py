@@ -5,11 +5,11 @@ import warnings
 import numpy as np
 # ALIS code
 from alis.minimise import alfit
-from alis import almsgs
+from alis import logger
 from alis import save
 from alis import plot
 from alis import utils
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 def make_directory(dirname,overwrite=False,verbose=2):
     currDIR=os.getcwd()

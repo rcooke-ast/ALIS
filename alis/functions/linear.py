@@ -1,10 +1,10 @@
 import numpy as np
-from alis import almsgs
+from alis import logger
 from alis.functions import base
 #import pycuda.driver as cuda
 #import pycuda.autoinit
 #from pycuda.compiler import SourceModule
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 class Linear(base.Base) :
     """

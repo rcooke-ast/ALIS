@@ -1,8 +1,8 @@
 import numpy as np
-from alis import almsgs
+from alis import logger
 from alis.functions import base
 from scipy.interpolate import splrep, splev
-msgs = almsgs.msgs()
+msgs = logger.msgs()
 import pdb
 
 class Spline(base.Base) :

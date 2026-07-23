@@ -1,14 +1,14 @@
 import numpy as np
 import os, sys
 import copy
-from alis import almsgs
+from alis import logger
 from alis.config import (
     ArgFlag, AtomicData, ColumnMap, ColumnPosition, DataOpt, LinkPass,
     ModelPass,
 )
 from multiprocessing import cpu_count
 
-msgs = almsgs.msgs()
+msgs = logger.msgs()
 
 from astropy.io import fits as pyfits
 
@@ -134,6 +134,8 @@ def optarg(pathname, argv=None, verbose=2):
             argflag['plot']['labels']  = argv.labels
         if argv.verbose is not None:
             argflag['out']['verbose']  = argv.verbose
+        if getattr(argv, 'quiet', False):
+            argflag['out']['verbose']  = 0
         if argv.repeat is not None:
             argflag['sim']['repeat']   = argv.repeat
         if argv.random is not None:
@@ -160,6 +162,8 @@ def optarg(pathname, argv=None, verbose=2):
         msgs.warn("You must set the 'fits' flag if you want to"+msgs.newline()+"produce a SuperMongo file",verbose=verbose)
         msgs.info("Setting the fits flag",verbose=verbose)
         argflag['out']['fits'] = True
+    # Apply the console verbosity (0/1/2 -> WARNING/INFO/DEBUG); Stage 2.5
+    logger.set_verbosity(argflag['out']['verbose'])
     return argflag
 
 def set_params(lines, argflag, setstr="", verbose=None):

@@ -1,8 +1,8 @@
 import os
 import datetime
-from alis import almsgs
+from alis import logger
 from alis.utils import getreason
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 def print_model(diff, mp, thresh, verbose=2, funcarray=[None, None, None]):
     function=funcarray[0]

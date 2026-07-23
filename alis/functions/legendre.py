@@ -1,8 +1,8 @@
 import sys
 import numpy as np
-from alis import almsgs
+from alis import logger
 from alis.functions import polynomial
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 maskval = -1.0
 

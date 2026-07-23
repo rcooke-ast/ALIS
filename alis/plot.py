@@ -3,8 +3,8 @@ import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib import pyplot as plt
 from matplotlib import ticker
-from alis import almsgs
-msgs=almsgs.msgs()
+from alis import logger
+msgs = logger.msgs()
 
 
 def get_fitregions(wave,cont,fitted,disp,size=None):

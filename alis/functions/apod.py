@@ -1,8 +1,8 @@
 import numpy as np
-from alis import almsgs
+from alis import logger
 from alis.functions import base
 from scipy.signal import convolve
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 class APOD(base.Base) :
     """

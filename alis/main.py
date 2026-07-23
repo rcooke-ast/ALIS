@@ -21,8 +21,8 @@ from alis import plot
 from alis import save
 from alis import utils
 from alis.functions import base
-from alis import almsgs
-msgs = almsgs.msgs()
+from alis import logger
+msgs = logger.msgs()
 
 
 def build_funcarray(argflag, atomic):
@@ -72,6 +72,8 @@ class ClassMain:
         # Set parameters
         self._argflag = argflag
         if verbose is not None: self._argflag['out']['verbose'] = verbose
+        # Apply the console verbosity to the logger (Stage 2.5)
+        logger.set_verbosity(self._argflag['out']['verbose'])
         self._retself = False
         self._fitonly = fitonly
         self._isonefits = False

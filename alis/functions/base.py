@@ -1,9 +1,9 @@
 import numpy as np
 import traceback
-from alis import almsgs
+from alis import logger
 import sys
 import time
-msgs=almsgs.msgs()
+msgs = logger.msgs()
 
 class Base :
     """

@@ -1,9 +1,9 @@
 import os
 import numpy as np
-from alis import almsgs
+from alis import logger
 from alis.functions import base
 import astropy.units as u
-msgs = almsgs.msgs()
+msgs = logger.msgs()
 
 
 class LSFFile(base.Base) :

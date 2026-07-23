@@ -2,8 +2,8 @@
 This file contains a number of useful utilities
 that are used by ALIS.
 """
-from alis import almsgs
-msgs=almsgs.msgs()
+from alis import logger
+msgs = logger.msgs()
 
 def getreason(idnum,verbose=2):
     if   idnum == 1: return "Both actual and predicted relative reductions in the sum of squares are at most ftol"
