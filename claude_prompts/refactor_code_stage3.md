@@ -23,7 +23,7 @@
 
 **3.3 — Convergence robustness.**
 - Formalise and extend the multi-start / random-restart machinery (currently in
-  `alsims.py` and the external Monte-Carlo `newstart` workflow) so fits with
+  `simulate.py` and the external Monte-Carlo `newstart` workflow) so fits with
   hundreds of parameters can be shown not to "remember" their starting values.
 
 ## Skills to use for this stage
@@ -35,7 +35,7 @@
 
 ## Context
 
-- `alcsmin.py` (minimiser), `alsims.py` (Monte-Carlo), the `sim newstart`
+- `minimise.py` (minimiser), `simulate.py` (Monte-Carlo), the `sim newstart`
   workflow described in `doc/ALIS_workflow.md` §"Monte Carlo Convergence
   Testing", and the `DH`/`DH_orders` real-world fits (many-parameter, slow).
 - Plan "Fitting and uncertainty" goals in `context.md`.
@@ -80,6 +80,42 @@ the existing framework. For example, users could select between several options
 for convergence checks, such as a stricter tolerance for agreement or a more
 robust statistical test to assess convergence across multiple restarts.
 
+**Q3.4 — Task 3.1 caching approach (raised during Prompt 1).** Build on the
+existing machinery or design fresh?
+
+**Response:** Build on the existing `emab`/`getemab` machinery. The base call
+(`getemab=True`) already returns each specid's emission (additive) and
+absorption (multiplicative) component contributions; derivative calls recompute
+only the components whose parameter influences that specid (via `_pinfl`) and
+recombine from the cached component arrays (no division → bitwise-safe). This
+completes/repairs the WIP `model_func_ddp` + the `emab` plumbing already threaded
+through `minimise.funcderiv`.
+
+**Q3.5 — Task 3.1 verification + rollout (raised during Prompt 1).** How to
+guarantee/verify bitwise-identical results?
+
+**Response:** Toggle + A/B bitwise self-check. Add a setting (e.g. `run cache
+True/False`) defaulting to the current uncached behaviour so both paths coexist;
+add a self-check that runs cached vs uncached and asserts the model arrays are
+bitwise-identical on the examples; flip the default to cached once proven. (The
+Stage 0 suite compares against golden files within tolerance, so it cannot by
+itself prove an exact cached-vs-uncached match.)
+
+Findings recorded for Task 3.1: the minimiser uses two-sided finite-difference
+derivatives; `model_func` already skips components not in `_pinfl[0][sp][sn]`
+during a derivative (safe only because two-sided un-influenced regions cancel);
+`emab` (cached em/ab components) is returned by the `getemab=True` base call and
+passed into each `funcderiv` derivative.
+
+Note: the finer specifics of Task 3.2 (definition of a "region", the
+poorly-fit threshold, `.report` layout, always-on vs opt-in) and Task 3.3 (the
+`X` in the `X·σ` agreement criterion, the menu of convergence tests) will be
+settled at the start of those tasks' prompts.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing. Ask further queries if needed.
+
+2. Please re-read this doc. There are mentions of files that have changed since Stage 2 (e.g. `alcsmin.py`, `alsims.py`). Please check these carefully, and update as needed. If you find any discrepancies, please ask for clarification.
+
+3. Please read this doc, and execute Task 2.0
