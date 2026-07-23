@@ -20,7 +20,7 @@ def make_directory(dirname,overwrite=False,verbose=2):
     return
 
 def perturb(slf, covar, bparams, parinfo):
-    from alis.main import myfunct_wrap
+    from alis import model_eval
     # Decide how many characters to use for output files
     nchr = str(int(np.log10(slf._argflag['sim']['perturb']))+1)
     # Create the directory structure for the simulations
@@ -84,21 +84,21 @@ def perturb(slf, covar, bparams, parinfo):
             parinfo[i]['value'] = p0new[i]
         #save.save_model(slf, p0new, mfit.perror, [(0.0 - 0.0)/3600.0, mfit.fnorm, mfit.dof, mfit.niter, mfit.status], printout=False, extratxt=[slf._argflag['sim']['dirname']+'/',".new"])
         #np.savetxt(slf._argflag['run']['modname']+'.covar',mfit.covar)
-        fdict = slf.__dict__.copy()
-        fa = {'x':wavf, 'y':fluf, 'err':errf, 'fdict':fdict}
+        state = model_eval.FitState.from_orchestrator(slf)
+        fa = {'x':wavf, 'y':fluf, 'err':errf, 'state':state}
         # Calculate the starting chi-squared
-        start_func = myfunct_wrap(p0new,output=2,**fa)
+        start_func = model_eval._minimiser_eval(p0new,output=2,**fa)
         slf._chisq_init = np.sum(((fluf-start_func)/errf)**2)
         if np.isnan(slf._chisq_init): msgs.error("Initial chi-squared is not a number")
         if slf._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
         # Fit the realisation
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
-        mr = alfit(myfunct_wrap, p0new, parinfo=parinfo, functkw=fa,
+        mr = alfit(model_eval._minimiser_eval, p0new, parinfo=parinfo, functkw=fa,
                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                    atol=slf._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
                    ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
-#		mr = alfit(myfunct_wrap, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
+#		mr = alfit(model_eval._minimiser_eval, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
 #					ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
@@ -118,7 +118,7 @@ def perturb(slf, covar, bparams, parinfo):
         save.save_model(slf, mr.params, mr.perror, [(tend - tstart)/3600.0, mr.fnorm, mr.dof, mr.niter, mr.status], printout=False, extratxt=[slf._argflag['sim']['dirname']+'/',".perturb"+ntxt])
         # Plot the data (if requested)
         if slf._argflag['plot']['fits']:
-            model = myfunct_wrap(mr.params,output=3,**fa)
+            model = model_eval._minimiser_eval(mr.params,output=3,**fa)
             plot.make_plots_all(slf, model=model)
             fileend=input(msgs.input()+"Press enter to view the fits -")
             plot.plot_showall()
@@ -131,7 +131,7 @@ def perturb(slf, covar, bparams, parinfo):
 
 
 def sim_random(slf, covar, bparams, parinfo):
-    from alis.main import myfunct_wrap
+    from alis import model_eval
     # Decide how many characters to use for output files
     nchr = str(int(np.log10(slf._argflag['sim']['random']))+1)
     # Create the directory structure for the simulations
@@ -215,21 +215,21 @@ def sim_random(slf, covar, bparams, parinfo):
         else: p0new = slf._modpass['p0']
         #save.save_model(slf, p0new, mfit.perror, [(0.0 - 0.0)/3600.0, mfit.fnorm, mfit.dof, mfit.niter, mfit.status], printout=False, extratxt=[slf._argflag['sim']['dirname']+'/',".new"])
         #np.savetxt(slf._argflag['out']['modelname']+'.covar',mfit.covar)
-        fdict = slf.__dict__.copy()
-        fa = {'x':wavf, 'y':fluf, 'err':errf, 'fdict':fdict}
+        state = model_eval.FitState.from_orchestrator(slf)
+        fa = {'x':wavf, 'y':fluf, 'err':errf, 'state':state}
         # Calculate the starting chi-squared
-        start_func = myfunct_wrap(slf._modpass['p0'],output=2,**fa)
+        start_func = model_eval._minimiser_eval(slf._modpass['p0'],output=2,**fa)
         slf._chisq_init = np.sum(((fluf-start_func)/errf)**2)
         if np.isnan(slf._chisq_init): msgs.error("Initial chi-squared is not a number")
         if slf._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
         # Fit the realisation
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
-        mr = alfit(myfunct_wrap, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
+        mr = alfit(model_eval._minimiser_eval, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                    atol=slf._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
                    ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
-#		mr = alfit(myfunct_wrap, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
+#		mr = alfit(model_eval._minimiser_eval, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
 #					ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
@@ -249,7 +249,7 @@ def sim_random(slf, covar, bparams, parinfo):
         save.save_model(slf, mr.params, mr.perror, [(tend - tstart)/3600.0, mr.fnorm, mr.dof, mr.niter, mr.status], printout=False, extratxt=[slf._argflag['sim']['dirname']+'/',".rand"+ntxt])
         # Plot the data (if requested)
         if slf._argflag['plot']['fits']:
-            model = myfunct_wrap(mr.params,output=3,**fa)
+            model = model_eval._minimiser_eval(mr.params,output=3,**fa)
             plot.make_plots_all(slf, model=model)
             fileend=input(msgs.input()+"Press enter to view the fits -")
             plot.plot_showall()
@@ -282,7 +282,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
     + choice of starting parameters
     -------------------------------
     """
-    from alis.main import myfunct_wrap
+    from alis import model_eval
     # Make changes to the continuum
     wavf, fluf, errf = np.array([]), np.array([]), np.array([])
     stf, enf = [0 for all in slf._posnfull], [0 for all in slf._posnfull]
@@ -340,21 +340,21 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
             if parinfo[i]['limits'][1] < p0new[i]: p0new[i] = parinfo[i]['limits'][1]
         parinfo[i]['value'] = p0new[i]
     # Update functargs and fit the data!
-    fdict = slf.__dict__.copy()
-    fa = {'x':wavf, 'y':fluf, 'err':errf, 'fdict':fdict}
+    state = model_eval.FitState.from_orchestrator(slf)
+    fa = {'x':wavf, 'y':fluf, 'err':errf, 'state':state}
     # Calculate the starting chi-squared
-    start_func = myfunct_wrap(p0new,output=2,**fa)
+    start_func = model_eval._minimiser_eval(p0new,output=2,**fa)
     slf._chisq_init = np.sum(((fluf-start_func)/errf)**2)
     if np.isnan(slf._chisq_init): msgs.error("Initial chi-squared is not a number")
     if slf._chisq_init == np.inf: msgs.error("Input chi-squared is Infinite"+msgs.newline()+"Perhaps the error spectrum is zero?")
     if slf._argflag['plot']['fits']:
-        model = myfunct_wrap(p0new,output=3,**fa)
+        model = model_eval._minimiser_eval(p0new,output=3,**fa)
         plot.make_plots_all(slf,model=model)
         fileend=input(msgs.input()+"Press enter to view the fits -")
         plot.plot_showall()
     # Now fit it!
     tstart=time.time()
-    ms = alfit(myfunct_wrap, p0new, parinfo=parinfo, functkw=fa,
+    ms = alfit(model_eval._minimiser_eval, p0new, parinfo=parinfo, functkw=fa,
                 verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                 ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
                 ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
@@ -371,7 +371,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
         msgs.error("Cannot continue with the simulations")
     # Plot the data (if requested)
     if slf._argflag['plot']['fits']:
-        model = myfunct_wrap(ms.params,output=3,**fa)
+        model = model_eval._minimiser_eval(ms.params,output=3,**fa)
         plot.make_plots_all(slf,model=model)
         fileend=input(msgs.input()+"Press enter to view the fits -")
         plot.plot_showall()

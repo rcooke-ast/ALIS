@@ -179,6 +179,25 @@ Conclusion: no further standalone `_DictLike` increments are warranted for Task
 2.1; the remaining structures are attached to the tasks/stages above. Proceeding
 to Task 2.2.
 
+**Q2.8 — Scope of Task 2.3/2.4 and placement (raised during Prompt 9).** How
+far should "remove `ClassMain`" go, and where do the extracted evaluation code
+and the typed fit state live?
+
+**Response:**
+- **Scope: targeted eval-path extraction.** Extract `model_func` /
+  `model_func_ddp` / `myfunct` into standalone functions taking explicit state,
+  and eliminate `myfunct_wrap` and the `self.__dict__` copy (all of 2.4).
+  `ClassMain` remains as the loader/orchestrator (slimmer); fully dismantling
+  the load/save/plot orchestration is deferred to a later stage.
+- **Placement: new `alis/model.py`** holding `FitState` (typed dataclass) plus
+  the standalone `model_func` / `model_func_ddp` / `myfunct`. Config settings
+  stay in `config.py`.
+- Design: `FitState` is an explicit, picklable object passed to the minimiser
+  (replacing `functkw['fdict'] = self.__dict__`); the minimiser calls the
+  standalone `myfunct` directly (no per-iteration `ClassMain` reconstitution).
+  Main-process direct evaluations may keep writing to the orchestrator so
+  `save`/`plot` are unchanged. Done incrementally, Stage 0 green after each step.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, check if any updates need to be made to this document before commencing, and ask further queries if needed.
@@ -194,3 +213,11 @@ to Task 2.2.
 6. Please perform the next incremental migration step (start with `ucind` in `load_datafile`, and once that update is green for the fast test suite, proceed to `lnkpass` in `load_links`) for Task 2.1, converting one nested dict to a dataclass, ensuring the Stage 0 suite remains green.
 
 7. If there are more nested dicts (other than `fdict`) that still need to be migrated, then please make a record of those in this file, or attach them to one of the upcoming stages. If there are no more incremental migration steps for Task 2.1, please proceed to Task 2.2, ensuring the Stage 0 suite remains green.
+
+8. Before proceeding, please check the full test suite (Stage 0) to ensure that all changes made so far have not broken any existing functionality. If any tests fail, please investigate and fix the issues before moving on to the next task. We can ignore the test `DH/J0814p5029.mod` for now, since this takes ~1 hour. All other tests should be run before continuing.
+
+9. Please read this doc, and execute Task 2.3 and 2.4. If you have any queries, please ask before proceeding. Ensure the Stage 0 suite remains green after each change.
+
+10. Please read this doc. You found a bug: `the module name model collides with the pervasive local variable model (the model spectrum), so it's imported as model_eval.` Let's rename the file instead of importing with an alias. Please rename the file to `alis/model_eval.py` and update all imports accordingly. Ensure the Stage 0 suite remains green after this change.
+
+11. Please read this doc, and execute Task 2.5. If you have any queries, please ask before proceeding. Once this stage is fully complete, please ensure the full test suite passes.
