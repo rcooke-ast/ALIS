@@ -119,6 +119,8 @@ class OutConfig(_DictLike):
     reletter: bool = False
     covar: str = ""
     convtest: str = ""
+    report: bool = True  # Stage 3.2: write the post-fit quality report
+    reportsig: float = 3.0  # Stage 3.2: flag a region if it deviates > this many sigma
 
 
 @dataclass

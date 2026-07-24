@@ -144,3 +144,6 @@ functions to `model_eval_cached.py` avoid the per-derivative worker pickling?
 4. Considering the result from step 3.1, do you recommend that we proceed to Task 3.2, or pursue the optimization to make caching a universal win (i.e. avoid the per-derivative worker pickling [shared-memory or worker-side cache])? Please consider your answer carefully, and provide a detailed explanation of your reasoning, and any queries you have at this point. My thought is to move the functions in model_eval.py into a new file, model_eval_cached.py, and have the cached versions of the functions there. The original functions would remain in `model_eval.py` to within the `alfit` class in `minimise.py`. Would this avoid the pickling? I'm also open to hear your alternative suggestions.
 
 5. Please read this doc, and execute Task 3.2.
+
+6. Please read this doc, and execute Task 3.3.
+

@@ -18,6 +18,7 @@ from alis import convergence
 from alis import load
 from alis import model_eval
 from alis import plot
+from alis import report
 from alis import save
 from alis import utils
 from alis.functions import base
@@ -455,6 +456,9 @@ class ClassMain:
                 save.save_model(self, m.params, m.perror, fit_info)
             if self._argflag['out']['covar'] != "":
                 save.save_covar(self, m.covar)
+            # Post-fit quality report (Stage 3.2)
+            if self._argflag['out']['report']:
+                report.write_report(self)
             # Plot the results
             plotCasePDF = ((self._argflag['out']['plots'].lower() == 'true') or ((self._argflag['out']['plots'].lower() != 'false') and (self._argflag['out']['plots'] != '')))
             if self._argflag['plot']['fits'] or self._argflag['plot']['residuals'] or plotCasePDF:
