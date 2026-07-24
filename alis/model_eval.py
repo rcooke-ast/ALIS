@@ -99,7 +99,19 @@ def _minimiser_eval(p, fjac=None, x=None, y=None, err=None, state=None,
                    output=output)
 
 
-def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0):
+def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=None):
+    # Profile caching (Stage 3.1): with `run cache True`, the base call
+    # (ddpid is None) stores each model component's evaluated array keyed by
+    # position; a derivative call (ddpid set) reuses the cached array for any
+    # component whose parameters are unchanged (bitwise-identical to
+    # recomputing), and recomputes only the influenced component(s). Cache off
+    # -> compcache stays None and every component is recomputed as before.
+    cache_on = state._argflag['run']['cache']
+    if not cache_on:
+        compcache = None
+    elif ddpid is None:
+        compcache = {}  # base call: (re)build the per-component cache
+    # else (derivative, cache on): reuse the passed-in compcache
     if state._argflag['run']['renew_subpix']:
         wavespx, contspx, zerospx, posnspx, nexbins = load.load_subpixels(state, p) # recalculate the sub-pixellation of the spectrum
     else:
@@ -265,6 +277,15 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0):
             shind += 1
             wave = state._funcarray[1][shmtyp].call_CPU(state._funcarray[2][shmtyp], wavespx[sp][ll:lu], shparams)
 #				wave = wavespx[sp][ll:lu]
+            # Component reuse (Stage 3.1) is only valid if the (shifted)
+            # wavelength grid is also unchanged -- a perturbation that changes
+            # the shift for this sp+sn invalidates every cached component here.
+            wkey = ('wave', sp, sn)
+            if compcache is not None and ddpid is None:
+                compcache[wkey] = wave.copy()
+            wave_ok = (compcache is not None and ddpid is not None
+                       and wkey in compcache
+                       and np.array_equal(wave, compcache[wkey]))
             # First subtract the zero-level from the data
             if len(zerlev[sp]) != 0:
                 mtyp = zerlev[sp][0]
@@ -292,7 +313,21 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0):
 #						else:
                     #mout = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md], ae=aetag, mkey=keyarr[sp][sn][ea][md])
                     for mm in range(0,pararr[sp][sn][ea][md].shape[0]):
-                        mout = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, pararr[sp][sn][ea][md][mm,:].reshape(1,-1), ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]])
+                        prow = pararr[sp][sn][ea][md][mm,:].reshape(1,-1)
+                        ckey = (sp, sn, ea, md, mm)
+                        if (compcache is not None and ddpid is not None
+                                and wave_ok
+                                and ckey in compcache
+                                and np.array_equal(prow, compcache[ckey][0])):
+                            # Unchanged component on an unchanged wave grid:
+                            # reuse the cached array (bitwise-identical to
+                            # recomputing it).
+                            mout = compcache[ckey][1]
+                        else:
+                            mout = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, prow, ae=aetag, mkey=[keyarr[sp][sn][ea][md][mm]])
+                            if compcache is not None and ddpid is None:
+                                # Base call: store this component's array.
+                                compcache[ckey] = (prow.copy(), mout.copy())
                         if ea%2 == 0: # emission
                             modelem[sp][ll:lu] += mout.copy()
                             if keyarr[sp][sn][ea][md][mm]['continuum']: mcont[sp][ll:lu] += mout.copy()
@@ -380,7 +415,7 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0):
 #		if output == 0: return modcvf
     if output == 0:
         if getemab:
-            return modcvf, [modelem, modelab]
+            return modcvf, [modelem, modelab, compcache]
         else:
             return modcvf
     elif output == 1: return modcv
@@ -589,10 +624,11 @@ def myfunct(p, fjac=None, x=None, y=None, err=None, state=None, output=0, ddpid=
         else:
             modconv_fit = model_func(state, state._wavefull, p, state._posnfull, ddpid=ddpid, output=output)
     else:
-        # If not running the speed-up use:
-        modconv_fit = model_func(state, state._wavefull, pp, state._posnfull, ddpid=ddpid, output=output, getemab=getemab)
-        # Otherwise, you should use the following to speed-up the calculation:
-        #modconv_fit = model_func_ddp(state, state._wavefull, p, pp, state._posnfull, ddpid=ddpid, output=output, emab=emab)
+        # Derivative: pass the cached per-component arrays (Stage 3.1) so
+        # unchanged components are reused instead of recomputed. emab carries
+        # [modelem, modelab, compcache]; compcache is None when caching is off.
+        compcache = emab[2] if (emab is not None and len(emab) > 2) else None
+        modconv_fit = model_func(state, state._wavefull, pp, state._posnfull, ddpid=ddpid, output=output, getemab=getemab, compcache=compcache)
     status = 0
     modf = np.array([])
     for sp in range(len(state._posnfull)):

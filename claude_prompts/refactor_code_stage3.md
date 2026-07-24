@@ -112,10 +112,35 @@ poorly-fit threshold, `.report` layout, always-on vs opt-in) and Task 3.3 (the
 `X` in the `X·σ` agreement criterion, the menu of convergence tests) will be
 settled at the start of those tasks' prompts.
 
+**Q3.6 — Caching optimisation vs proceed (raised during Prompt 4).** After 3.1,
+proceed to 3.2 or first make caching a universal win? Would moving the cached
+functions to `model_eval_cached.py` avoid the per-derivative worker pickling?
+
+**Response / findings:**
+- Relocating the functions would **not** avoid the pickling. `minimise.funcderiv`
+  dispatches each derivative with `apply_async(self.funcderiv, (fcn, fvec,
+  functkw, ..., emab, ...))`; the *arguments* (`functkw` with the `FitState`,
+  `emab` with the `compcache`) are pickled **by value** per derivative, while
+  functions are pickled **by reference** — so module location is irrelevant to
+  the payload. (Pickling also happens at `ncpus=1`: a `Pool` is always used.)
+- Real optimisations: **(a) subset-pickling** — send only each derivative's
+  influenced-sp/sn cache subset (`model_func` already skips the rest), a small
+  pickle; **(b) shared memory** for the cache/`FitState`; **(c)** re-enable the
+  commented serial path for `ncpus=1`. A `model_eval_cached.py` is fine as
+  *organisation* but must accompany (a)/(b) to help performance.
+- **Decision: proceed to Task 3.2.** Caching stays the verified opt-in;
+  the subset-pickling optimisation (a) is recorded as a scoped follow-up (with
+  DH_orders benchmarking) rather than blocking the stage's diagnostics /
+  convergence features.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing. Ask further queries if needed.
 
 2. Please re-read this doc. There are mentions of files that have changed since Stage 2 (e.g. `alcsmin.py`, `alsims.py`). Please check these carefully, and update as needed. If you find any discrepancies, please ask for clarification.
 
-3. Please read this doc, and execute Task 2.0
+3. Please read this doc, and execute Task 3.1.
+
+4. Considering the result from step 3.1, do you recommend that we proceed to Task 3.2, or pursue the optimization to make caching a universal win (i.e. avoid the per-derivative worker pickling [shared-memory or worker-side cache])? Please consider your answer carefully, and provide a detailed explanation of your reasoning, and any queries you have at this point. My thought is to move the functions in model_eval.py into a new file, model_eval_cached.py, and have the cached versions of the functions there. The original functions would remain in `model_eval.py` to within the `alfit` class in `minimise.py`. Would this avoid the pickling? I'm also open to hear your alternative suggestions.
+
+5. Please read this doc, and execute Task 3.2.
