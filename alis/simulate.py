@@ -263,6 +263,10 @@ def sim_random(slf, covar, bparams, parinfo):
     msgs.info("Saving the results from the random simulations",verbose=slf._argflag['out']['verbose'])
     randname=outname.format(slf._argflag['out']['modelname'],'rand',slf._argflag['sim']['startid'],slf._argflag['sim']['random']+slf._argflag['sim']['startid'])
     np.savetxt(randname,outrand)
+    # Assess whether the restarts "remember" their starting values (Stage 3.3).
+    # outrand[0] is the seed; outrand[1:] are the restart best-fit parameters.
+    from alis import convergence
+    convergence.assess_restarts(slf, outrand[1:], bparams, perror)
     if slf._argflag['sim']['systematics']:
         msgs.info("Saving the results from the systematics simulations",verbose=slf._argflag['out']['verbose'])
         systname=outname.format(slf._argflag['out']['modelname'],'syst',slf._argflag['sim']['startid'],slf._argflag['sim']['random']+slf._argflag['sim']['startid'])

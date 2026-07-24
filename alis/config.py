@@ -138,6 +138,8 @@ class SimConfig(_DictLike):
     newstart: bool = True
     dirname: str = "sims"
     edgecut: float = 4.0
+    convergetest: str = "maxdev"  # Stage 3.3: multi-start test ("maxdev"/"scatter")
+    convergesig: float = 3.0  # Stage 3.3: agreement tolerance in sigma
 
 
 @dataclass
