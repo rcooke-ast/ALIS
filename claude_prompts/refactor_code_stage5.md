@@ -61,6 +61,16 @@
   `vfwhm`; consider whether the loader should size the buffer independently of
   the (fittable) resolution so a saved model always reloads the same pixels.
 
+**5.5 — Unit tests for this stage's stable surface (do last).**
+- Following the cross-cutting unit-test policy
+  (`claude_prompts/refactor_code_unit_tests.md`), add `unit`-marked tests for the
+  Stage 5 stable surface once the I/O is reshaped: this is where the deferred
+  file-format loaders (`load_fits`/`load_ascii`/`load_data`/model parsing) get
+  their unit tests, using small synthetic fixtures, plus the new YAML/TOML model
+  reader/writer (5.1), the atomic-data loader/converter (5.2), and the
+  output-writer round-trip helpers (5.4). Keep them fast and isolated (no full
+  fits); the existing `unit` CI job picks them up automatically.
+
 ## Skills to use for this stage
 
 - `atomic-data` — add/validate/convert atomic entries.

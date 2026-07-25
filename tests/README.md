@@ -37,6 +37,27 @@ Each non-blind fit case has two tests; blind cases run mode (a) only.
 The `generate` example is a special case: it runs `generate_spectra.mod` and
 compares the produced data file to its golden copy.
 
+## Unit tests
+
+Separate from the regression harness above, the `unit`-marked tests exercise the
+*stable surface* of individual functions in isolation — no fits, no subprocess,
+no golden files — so they run in seconds and localise failures to a single
+function. They cover the pure logic added/refactored through Stages 1–3
+(`utils` conversions, `config` dataclasses, the Stage 3.4 cache/Jacobian helpers
+in `minimise`, `convergence`, the `report` residual math, and the stable
+non-I/O parts of `load` and `logger`).
+
+```bash
+pytest -m unit                                   # whole unit batch (seconds)
+pytest -m unit --cov=alis --cov-report=term-missing   # with a coverage report
+```
+
+The `unit` batch runs on every push via the `unit` CI job (Ubuntu + macOS,
+py3.13), which also prints the coverage report (no threshold gate — modules are
+still evolving). File-format I/O loaders and GPU code are intentionally excluded
+here; their unit tests are added in the stage that reshapes them (I/O in
+Stage 5, GPU in Stage 4). See `claude_prompts/refactor_code_unit_tests.md`.
+
 ## Running the batches
 
 Tests are marked `fast`, `medium`, or `slow` by per-test wall-time:

@@ -13,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -22,6 +23,7 @@ from manifest import REPO_ROOT
 RUN_ALIS = REPO_ROOT / "alis" / "scripts" / "run_alis.py"
 
 
+@pytest.mark.unit
 def test_runs_z_detects_correlation():
     from alis.report import _runs_z
     rng = np.random.default_rng(0)
@@ -33,6 +35,66 @@ def test_runs_z_detects_correlation():
     # One long block of each sign -> far too few runs -> large negative z.
     block = np.array([1.0] * 200 + [-1.0] * 200)
     assert _runs_z(block) < -5.0
+
+
+@pytest.mark.unit
+def test_runs_z_degenerate_inputs_return_zero():
+    from alis.report import _runs_z
+    # All the same sign -> only one run, undefined variance -> defined as 0.
+    assert _runs_z(np.ones(50)) == 0.0
+    # Fewer than two non-zero residuals -> 0.
+    assert _runs_z(np.array([0.0, 0.0, 1.0])) == 0.0
+    assert _runs_z(np.array([])) == 0.0
+
+
+@pytest.mark.unit
+def test_regions_restricts_to_fitted_pixels():
+    from alis.report import _regions
+    wave = np.arange(1000.0, 1010.0)          # 1000 .. 1009 (10 pixels)
+    model = np.zeros(10)
+    # Residual = (flux - model)/flue; set model so fitted pixels give a pattern.
+    for idx, val in {2: -0.5, 3: 0.5, 5: -0.5, 6: 0.5, 7: -0.5}.items():
+        model[idx] = val
+    slf = SimpleNamespace(
+        _posnfull=[[0, 10]],                  # one specid, one snip: pixels 0..10
+        _posnfit=[[1002.0, 1007.0]],          # fit range covers 1002 .. 1007
+        # 1004 is in range but NOT fitted -> must be excluded by the isin mask.
+        _wavefit=[np.array([1002.0, 1003.0, 1005.0, 1006.0, 1007.0])],
+        _wavefull=[wave],
+        _fluxfull=[np.zeros(10)],
+        _fluefull=[np.ones(10)],
+        _modfinal=[model],
+        _specid=[0],
+        _snipnames=[["reg1"]],
+    )
+    regs = _regions(slf)
+    assert len(regs) == 1
+    r = regs[0]
+    assert r["wmin"] == 1002.0 and r["wmax"] == 1007.0
+    # 5 fitted pixels (the in-range-but-unfitted 1004 is dropped).
+    assert r["resid"].size == 5
+    assert np.allclose(r["resid"], [0.5, -0.5, 0.5, -0.5, 0.5])
+
+
+@pytest.mark.unit
+def test_regions_excludes_zero_error_pixels():
+    from alis.report import _regions
+    wave = np.arange(1000.0, 1005.0)          # 1000 .. 1004
+    flue = np.ones(5)
+    flue[3] = 0.0                             # one bad pixel inside the fit range
+    slf = SimpleNamespace(
+        _posnfull=[[0, 5]],
+        _posnfit=[[1000.0, 1004.0]],
+        _wavefit=[wave.copy()],
+        _wavefull=[wave],
+        _fluxfull=[np.zeros(5)],
+        _fluefull=[flue],
+        _modfinal=[np.zeros(5)],
+        _specid=[0],
+        _snipnames=[["reg1"]],
+    )
+    r = _regions(slf)[0]
+    assert r["resid"].size == 4               # flue == 0 pixel excluded
 
 
 @pytest.mark.fast

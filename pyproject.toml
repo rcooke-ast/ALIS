@@ -40,6 +40,7 @@ gpu = [
 # Development tooling (linting, formatting, testing, hooks).
 dev = [
     "pytest",
+    "pytest-cov",
     "ruff",
     "black",
     "isort",

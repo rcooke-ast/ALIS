@@ -56,6 +56,16 @@
   the GPU dispatch of 4.3. Benchmark memory and wall on DH_orders (many-worker)
   and a compact fit.
 
+**4.6 — Unit tests for this stage's stable surface (do last).**
+- Following the cross-cutting unit-test policy
+  (`claude_prompts/refactor_code_unit_tests.md`), add `unit`-marked tests for the
+  *stable* code introduced in Stage 4 once its interfaces settle: the CPU/GPU
+  dispatch/selection logic and fallback (4.1), pure helpers of the GPU Voigt
+  (4.2), and the shared-memory buffer lifecycle (4.5) — with a CPU-vs-GPU
+  numerical-equivalence test where GPU hardware is available (else skipped/mocked
+  per Q4.2). Keep them fast and isolated (no full fits); the existing `unit` CI
+  job picks them up automatically.
+
 ## Skills to use for this stage
 
 - `port-to-gpu` — port a `call_CPU` to `call_GPU`, verifying numerical equivalence.

@@ -27,6 +27,15 @@
   tutorial (walk a user through preparing, running, and analysing a fit), the
   expanded example suite, and API autodoc. Add `CONTRIBUTING.md`.
 
+**6.4 — Unit tests for this stage's stable surface (do last).**
+- Following the cross-cutting unit-test policy
+  (`claude_prompts/refactor_code_unit_tests.md`), add `unit`-marked tests for the
+  Stage 6 stable surface: the CLI argument parsing / command dispatch (6.1) and
+  any pure GUI-backing logic (6.2) that can be exercised without a display. Keep
+  them fast and isolated (no full fits); the existing `unit` CI job picks them up
+  automatically. This closes out the incremental unit-test coverage across all
+  stages.
+
 ## Skills to use for this stage
 
 - `gui-dev`, `gui-component` — exercise / scaffold the GUI.
