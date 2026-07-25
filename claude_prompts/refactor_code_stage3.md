@@ -26,6 +26,37 @@
   `simulate.py` and the external Monte-Carlo `newstart` workflow) so fits with
   hundreds of parameters can be shown not to "remember" their starting values.
 
+**3.4 — Eliminate per-derivative worker pickling (CPU performance).**
+- Root cause: `minimise.fdjac2` spawns a fresh `Pool` every iteration and, inside
+  it, dispatches one `apply_async(funcderiv, ...)` per free parameter, re-pickling
+  the *constant* fit state (`functkw`'s `FitState` data arrays) and -- when caching
+  -- `emab`'s `compcache` to workers for **every** derivative of **every**
+  iteration. This dominates large parallel fits (DH_orders ~5x slower with
+  caching; the `FitState` pickle is a cost even uncached), so it is a general CPU
+  bottleneck, not just a caching one.
+- Goal: cut the per-derivative transfer so parallel fits speed up in general and
+  caching becomes a **universal win** (then default it on). Bitwise-neutral:
+  each Jacobian column is an independent two-sided derivative, so regrouping /
+  reordering their computation must not change the numbers (Stage 0 gate), and
+  every change is benchmarked on DH_orders (pathological) and a compact fit
+  (helium34).
+- Options (see Q3.7 for the full analysis and recommended sequencing):
+  1. **Persistent Pool + chunked derivatives** (recommended first): create the
+     Pool once for the fit (not per iteration); dispatch ~`ncpus` tasks each
+     computing a *group* of derivatives, so the state is pickled ~`ncpus` times
+     per iteration instead of `n`. Low-risk; helps cached *and* uncached.
+  2. **Send-constant-data-once**: the `FitState` data arrays don't change during
+     a fit -- ship them to workers once (Pool `initializer`), so only the small
+     per-iteration state (params + cache) moves.
+  3. **Subset-pickling**: per derivative/chunk send only the influenced-sp/sn
+     slice of state+cache (`model_func` already skips the rest).
+  4. **Shared memory** for the read-only arrays (data + cache): zero-copy worker
+     access; most thorough, most complex (buffer lifecycle, cleanup).
+  - Also: serial path for `ncpus=1`/small `n`; note that *relocating* the cached
+    functions to another module does **not** reduce pickling (payload is data
+    passed by value; functions pickle by reference) -- organisation only; threads
+    are GIL-bound by `model_func`'s Python loops.
+
 ## Skills to use for this stage
 
 - `profile-fit` — quantify the caching speed-up and locate remaining bottlenecks.
@@ -133,6 +164,41 @@ functions to `model_eval_cached.py` avoid the per-derivative worker pickling?
   DH_orders benchmarking) rather than blocking the stage's diagnostics /
   convergence features.
 
+**Q3.7 — Task 3.4 approach: eliminate per-derivative worker pickling (raised
+during Prompt 7).** RJC's proposal was to move the cached functions to
+`model_eval_cached.py`; is that the best way to avoid the pickling, and what CPU
+optimisation should we pursue?
+
+**Analysis / recommendation:**
+- The relocation idea does **not** help: the per-derivative cost is the
+  *arguments* to `funcderiv` (the `FitState` in `functkw` and the `compcache` in
+  `emab`), pickled by value each dispatch; functions pickle by reference, so
+  their module has no effect on the payload. (It is fine as code organisation.)
+- Two real inefficiencies confirmed in `fdjac2`: (i) a fresh `Pool` is spawned
+  **every iteration**; (ii) the *constant* fit state is re-pickled for **every
+  one of the n derivatives** each iteration. The `FitState` transfer is a cost
+  even without caching, so fixing this is a general CPU win.
+- Recommended sequencing (each step Stage-0 bitwise-neutral + benchmarked on
+  DH_orders and helium34):
+  1. **Persistent Pool + chunked derivatives** first -- biggest bang-for-buck,
+     low risk, benefits cached and uncached: Pool once per fit; ~`ncpus` chunked
+     tasks instead of `n`; each Jacobian column stays an independent, identically
+     computed two-sided derivative (so results are unchanged).
+  2. **Send the constant data once** (Pool `initializer`) so only params + the
+     per-iteration cache move.
+  3. If benchmarks still warrant it, **subset-pickling** and/or **shared memory**
+     for the read-only arrays.
+- Only flip the caching default to on once (1)+(2) make it a net win on
+  DH_orders. Optionally re-enable the serial path for `ncpus=1`.
+
+**Open query for RJC (please confirm at the start of Task 3.4):** target the
+low-risk Phase-1 (persistent Pool + chunking + send-data-once) first and measure
+before deciding whether shared memory is worth its complexity -- or go straight
+for the most thorough shared-memory design? And what complexity/risk is
+acceptable in the delicate `minimise.py` parallel core?
+
+**Response:** Let's take the low-risk Phase-1 approach first. Implementing a persistent Pool with chunked derivatives and sending the constant data once should provide significant performance improvements without introducing too much complexity or risk. We can measure the performance gains from this approach and then decide whether to pursue the more complex shared memory design based on the results. The goal is to optimize CPU performance while maintaining the integrity of the fitting process, so we should prioritize solutions that are both effective and maintainable. It may become necessary to deal with shared memory when we later deal with GPU integration.
+
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing. Ask further queries if needed.
@@ -147,3 +213,8 @@ functions to `model_eval_cached.py` avoid the per-derivative worker pickling?
 
 6. Please read this doc, and execute Task 3.3.
 
+7. My proposal is to put off Stages 4, 5, and 6 until a later time, as these are all relatively superficial. I think the most important aspect of the development is to continue with Stage 3, and avoid the per-derivative worker pickling. This offers the greatest chance of CPU performance gain. Please review my proposed suggestion for how to overcome this, but you should also consider other alternatives, and propose them if you think they are a better approach. If you have any queries, please ask them. For now, please don't implement any new code, just add a new task (3.4) that aims to address this issue, and propose the best options and how to proceed. Remember, the goal is to avoid the per-derivative worker pickling, and to make caching a universal win. We should be aiming for optimising the CPU performance gain, and not just the caching.
+
+8. Please read this doc, including my responses to your queries. Ask further queries if needed, otherwise, please implement Phase 1 of Task 3.4. During development perform simple tests to verify that the changes are working (e.g. just run 1 iteration of the long DH_orders fit, and check that the results are bitwise identical to the uncached version for 1 iteration only). Once you have completed Phase 1, please run the full test suite to make sure that everything is still working correctly, and our Stage 0 harness is green.
+
+9. Please read this doc, including my responses to your queries. Ask further queries if needed, otherwise, please implement Phase 2 of Task 3.4. During development perform simple tests to verify that the changes are working (e.g. just run 1 iteration of the long DH_orders fit, and check that the results are bitwise identical to the uncached version for 1 iteration only). Once you have completed Phase 2, please run the full test suite to make sure that everything is still working correctly, and our Stage 0 harness is green.

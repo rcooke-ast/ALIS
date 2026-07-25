@@ -16,7 +16,8 @@
       "Bash(MPLBACKEND=Agg python /Users/rcooke/Software/ALIS/bin/run_alis -f -w fp_nd.mod)",
       "Bash(grep -E \"Bestfit|Degrees\" fp_nd.mod.out)",
       "Bash(git status *)",
-      "Bash(xargs -I{} sed -n '{}p' alis/load.py)"
+      "Bash(xargs -I{} sed -n '{}p' alis/load.py)",
+      "Bash(cp -r examples/metal_line_abs /tmp/sm)"
     ]
   }
 }

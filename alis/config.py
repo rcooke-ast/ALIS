@@ -71,7 +71,7 @@ class RunConfig(_DictLike):
     bintype: str = "km/s"
     logn: bool = True
     capvalue: Optional[float] = None
-    cache: bool = False  # Stage 3.1: reuse unchanged model components in derivatives
+    cache: bool = True  # Stage 3.1/3.4: reuse unchanged model components in derivatives
 
 
 @dataclass
