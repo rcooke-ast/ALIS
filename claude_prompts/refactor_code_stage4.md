@@ -87,12 +87,24 @@
 old code used PyCUDA; the `voigt_gpu` example uses numba. Recommendation: pick one
 that installs cleanly as an optional extra and matches the Faddeeva example.
 
+**Response:** We will use `numba.cuda`, since this is what the `voigt_gpu` code uses.
+
 **Q4.2 — GPU testing in CI.** Is GPU hardware available for CI, or should GPU
 tests run only locally / on demand (with CI covering the CPU path + a mocked GPU
 interface)?
 
+**Response:** GPU hardware is only available locally, so RJC will run those tests
+on demand. For now, let's make sure CPU only tests are run by default. We will need
+to write our own GPU tests and examples (that cover usage of a single GPU and multiple
+simultaneous GPUs).
+
 **Q4.3 — CPU↔GPU equivalence tolerance.** What relative tolerance is acceptable
 between the GPU and CPU Voigt (single vs double precision on GPU)?
+
+**Response:** The current `simple_test.py` has an accuracy that is better than 1e-15.
+This level of accuracy is not currently required, but we should aim for an absolute
+tolerance of 1e-12 for the difference between the GPU and CPU implementations of the
+Voigt profile.
 
 **Q4.4 — Shared memory scope (Task 4.5).** Should shared memory back only the
 `FitState` data arrays (CPU-side, memory-footprint win), or be designed together
@@ -102,6 +114,140 @@ the GPU path (where the arrays must be shared/device-resident anyway) likely
 gives the best return. Recommendation: fold it into the 4.2/4.3 GPU work rather
 than build a CPU-only shared-memory layer first.
 
+**Response:** We will fold the shared memory implementation into the GPU work, as
+this will give us the best return on investment. The shared memory will back both
+the `FitState` data arrays and the GPU device buffers, allowing for a more efficient
+and streamlined implementation.
+
+**Q4.5 — Development environment on this machine.** ALIS is not currently
+installed in any environment here, and `pytest` is absent from all of them, so
+the Stage 0 gate cannot run yet. The default `python` is
+`~/anaconda3/envs/py311` (3.11.9), which is below the `requires-python = ">=3.13"`
+floor. `~/anaconda3/envs/py313` (3.13.14) already has numpy/scipy/astropy plus
+**numba 0.66 with working CUDA** (a trivial `@cuda.jit` kernel runs; `cuda.gpus`
+reports **4x NVIDIA RTX 2080 Ti**). Recommendation: make `py313` the target
+environment, `pip install -e ".[dev]"` there (plus `numba`), and certify with
+`pytest -m unit` and the fast batch *before* any Stage 4 code is written.
+Confirm?
+
+**Response:** `py313` is the correct version to use. I have installed `pytest`
+and also installed ALIS in editable mode with the dev extras.
+
+**Q4.6 — GPU precision.** The Q4.3 tolerance (1e-12 absolute) requires float64
+throughout the GPU Voigt. Note that on the RTX 2080 Ti (Turing, compute 7.5)
+FP64 runs at 1/32 of the FP32 rate, so per-kernel speedups on these cards will be
+modest; the real win for `DH_orders` comes from batching 351 spectra, not raw
+double-precision throughput. Recommendation: implement float64 only and do *not*
+add a float32 fast path (it could not meet the 1e-12 gate and would fork the
+numerical behaviour). Agreed?
+
+**Measurements (Claude, 2026-07-28; RTX 2080 Ti, py313 + numba 0.66).** RJC asked
+what float32 would actually buy in speed and cost in accuracy, so both were
+measured rather than estimated.
+
+*Speed 1 — the real float64 Faddeeva kernel from `context/voigt_gpu/simple_test.py`
+vs the current `scipy.wofz` CPU path (per call, mean of 10-20 reps):*
+
+| Sub-pixels | CPU `wofz` | GPU fp64 | speedup |
+|-----------:|-----------:|---------:|--------:|
+| 1,000 | 0.105 ms | 0.057 ms | 1.8x |
+| 10,000 | 0.877 ms | 0.056 ms | 15.6x |
+| 100,000 | 8.20 ms | 0.231 ms | 35.4x |
+| 1,000,000 | 101 ms | 1.85 ms | 54.7x |
+| 10,000,000 | 1132 ms | 15.6 ms | 72.7x |
+
+*Speed 2 — synthetic kernel with the Faddeeva inner-loop op mix (exp + FMA +
+divide in a branchy loop), compiled float32 vs float64:* fp64 9.116 ms ->
+fp32 0.274 ms = **33.3x**, matching Turing's theoretical 32:1 FP32:FP64 ratio.
+The real kernel is compute-bound too (at 10M pixels it moves 160 MB in 15.6 ms
+= ~10 GB/s, ~1.7% of the card's 616 GB/s peak), so a genuine fp32 Voigt would
+plausibly land in the 10-30x range over fp64.
+
+**Correction to the query text above:** "per-kernel speedups on these cards will
+be modest" is wrong. Even in float64 the GPU beats the CPU by 15-73x for arrays
+greater than 10^4 sub-pixels. The FP64 penalty is real (fp32 would be another ~33x), but
+float64 already captures a large win.
+
+*Accuracy — float32 emulated at three separate points in ALIS's exact expression
+(`v = wv*((wv/ww)-1)/bl`), over logN 13-20.5, b 1-20 km/s, z 0 and 2.5, on a
+0.5 km/s sub-pixel grid. Worst-case **absolute** flux error:*
+
+| What is float32 | Worst error | Verdict |
+|---|---:|---|
+| Wavelength array + argument arithmetic | 3.0e-2 | fatal |
+| Argument arithmetic only (wave stays f64) | 3.0e-2 | fatal |
+| Only w(z), argument well-conditioned in f64 | 2.1e-8 | realistic floor |
+
+The limiting factor is **not** the Faddeeva function but the argument:
+`wv/ww ~ 1` and then 1 is subtracted, which is catastrophic cancellation and
+burns essentially all ~7 significant float32 digits. Storing the wavelength grid
+in float32 is independently fatal (1.2e-4 A quantisation at Lya ~ 0.03 km/s of
+grid jitter, a percent of a narrow line's width). The cancellation *is* fixable
+by computing the velocity offset in double and passing a well-conditioned Dv/b to
+the kernel -- which lands on the third row, **~2e-8 absolute**, the honest best
+case for float32 and still 4 orders short of the Q4.3 target of 1e-12.
+
+**Recommendation (unchanged, but for a sharper reason): float64 only.** 2e-8 is
+physically negligible -- five orders below the noise even at S/N ~ 1000 -- and
+would pass the Stage 0 gates comfortably. The real risk is the **Jacobian**:
+`minimise.fdjac2` builds two-sided finite differences, so a 2e-8 model noise
+floor becomes a percent-level error in derivative columns wherever the parameter
+step changes the model by ~1e-6, degrading the covariance and convergence. That
+is exactly the failure mode Stage 3 guarded against bitwise (the caching bug that
+passed `.mod.out` but drifted `.covar`). Given float64 already delivers 15-73x,
+float32 is a second-order optimisation bought with a numerically fragile second
+code path. If wanted later, the sane framing is an opt-in `run gpuprec single`
+for exploratory/survey work, added *after* the fp64 path lands, with the argument
+restructured to avoid cancellation and gated on its own covariance validation --
+out of Stage 4 scope.
+
+**Bearing on Q4.7:** at 1,000 sub-pixels the GPU is only 1.8x faster (launch and
+transfer dominate). `DH_orders` snips are ~310 pixels x nsubpix 5 ~ 1,550
+sub-pixels, so a naive per-component `call_GPU` sits squarely in that
+low-payoff regime; batched across all 351 spectra it reaches ~5x10^5 sub-pixels
+and the ~50x regime. Batching is therefore a more consequential design choice for
+Stage 4 than the precision question.
+
+**Response:** Let's ensure float64 is used throughout the GPU Voigt implementation,
+as this will meet the requirements.
+
+**Q4.7 — GPU dispatch granularity (Tasks 4.1/4.3).** Two options: (a) a
+per-component `call_GPU` that is a clean drop-in for `call_CPU` in
+`model_eval.model_func` — simple, but pays a kernel launch plus host->device and
+device->host transfer per component, which will be *slower* than the CPU for the
+small snips in most examples; or (b) batching all Voigt components/spectra into
+one kernel launch, which is where the `DH_orders` win actually lives.
+Recommendation: define the *interface* per-component in 4.1 (so `port-to-gpu`
+stays simple for new functions), but have the 4.3 dispatch batch across
+components/spectra, with an array-size threshold below which it falls back to the
+CPU path.
+
+**Response:**
+
+**Q4.8 — GPU workers vs the existing process Pool (Tasks 4.3/4.5).**
+`minimise.fdjac2` now holds a *persistent* `ncpus` Pool for the chunked Jacobian
+(Task 3.4 Phase 1). How should `run ngpus` compose with it: (a) each existing
+Pool worker binds to a GPU round-robin (`cuda.select_device(rank % ngpus)`), or
+(b) a separate GPU worker pool sized by `ngpus` alongside the CPU Pool? Note
+CUDA contexts do not survive `fork`, so this decision also pins the
+multiprocessing start method (`spawn` required on Linux if contexts are created
+before forking). Recommendation: (a) — it reuses the Phase 1/2 machinery
+(persistent pool, chunking, subset-pickling) and keeps one worker model.
+
+**Response:**
+
+**Q4.9 — GPU test/example references (Task 4.2/4.6, follows Q4.2).** Rather than
+generating a separate set of GPU golden files, I propose running *existing*
+examples with `run ngpus 1` and `run ngpus 4` and comparing against the **same
+CPU references**: a 1e-12 profile difference is far inside the Stage 0 tolerances
+(params 10% of 1σ, chi-squared 0.1–1%, `_fit.dat` error-based). These would carry
+a new `gpu` marker, deselected by default so CI stays CPU-only (Q4.2), and run on
+demand locally. Does that satisfy the "single GPU and multiple simultaneous GPUs"
+coverage you asked for, or do you want dedicated GPU examples with their own
+reference files?
+
+**Response:**
+
 ## Prompts
 
-1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing (note that some filenames mentioned are out of date). Ask further queries if needed. Can we delay this stage until later?
+1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing (note that some filenames mentioned are out of date, e.g. `alfunc_BLAH`, and need to be updated). Ask further queries if needed. Can we delay this stage until later?

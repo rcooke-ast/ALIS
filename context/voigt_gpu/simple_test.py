@@ -269,8 +269,8 @@ flux_gpu = cuda.to_device(numpy.zeros(shape=d_wave.shape, dtype=numpy.float64))
 blocks, threads_per_block = 1 + wave.size//128, 128
 voigt_gpu[blocks, threads_per_block](d_wave, N, z, b, lam, fvl, gam, d_erfcx_cc, d_expa2n2, flux_gpu)
 
-print(np.min(d_wave))
-print(np.max(d_wave))
+print(numpy.min(d_wave))
+print(numpy.max(d_wave))
 
 print(timeit.timeit('voigt(wave, N, z, b, lam, fvl, gam)', globals=globals(), number=1000))
 print(timeit.timeit('voigt_gpu[blocks, threads_per_block](d_wave, N, z, b, lam, fvl, gam, d_erfcx_cc, d_expa2n2, flux_gpu)', globals=globals(), number=1000))
