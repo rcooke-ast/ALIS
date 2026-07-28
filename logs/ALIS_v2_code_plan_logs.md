@@ -424,3 +424,78 @@ All 7 stage files (0–6) now exist alongside the `refactor_code_stageX.md`
 template; each has Tasks + Queries and no "phase" wording. RJC will write each
 file's `Prompts` section and review before that stage is executed. No `alis/`
 code was changed.
+---
+
+### 2026-07-28 (Prompt 10: minimiser <-> model-eval call-chain performance analysis)
+
+RJC asked for a holistic analysis (not implementation) of the
+`minimise.alfit -> fcn -> myfunct -> model_func` path before starting Stage 4,
+noting that `fcn` never varies and that per-derivative setup (e.g. renew_subpix)
+is redundant.
+
+Mapped the *current* (post-Stage-2/3) structure and reconciled it with the
+prompt's older ClassMain-era wording:
+- `fcn` is ALWAYS `model_eval._minimiser_eval` (module-level) at all 6 `alfit(...)`
+  call sites (main.py x3, simulate.py x3). `alfit.call()` just does
+  `fcn(x, **functkw)` with `functkw={x,y,err,state}` -> generic MPFIT indirection
+  that is never exercised with a different function. Confirms RJC: `fcn` can be
+  built into `alfit`.
+- `myfunct`/`model_func` are NO LONGER in ClassMain -- Stage 2.3/2.4 already moved
+  them to standalone `model_eval.py` functions taking an explicit picklable
+  `FitState`. `main.py` keeps thin `self.myfunct/model_func` wrappers used only by
+  non-minimiser paths (initial chi2, plot, sim setup).
+- `base.call()` re-instantiation is ALREADY fixed (Stage 2.2 `build_funcarray`
+  loads each function class once into `[names, classes, instances]`).
+- `model_func_ddp` is DEAD (body starts `msgs.bug("Shifts not implemented...")`,
+  only reachable via an unused main.py wrapper) -- safe to delete.
+- renew_subpix: `model_func` recomputes `load.load_subpixels` at the TOP of every
+  call when `run renew_subpix True`. Default is False, BUT it IS enabled in the
+  real-world helium34 fits (Her36, HD319718) -> during the Jacobian this reruns
+  2n times/iteration. Genuine redundancy, not hypothetical.
+- Influence table `_pinfl`: rebuilt via `load_par_influence` on every base
+  `model_func` call (model_eval.py:120), i.e. once/iteration, in addition to the
+  two setup builds in main.py. Only 1x/iter (derivative calls skip it), so lower
+  priority, but a candidate to hoist if it is value-independent.
+- The per-derivative `copy.copy(state)` in `_minimiser_eval` (2n/iter) exists
+  because `model_func` writes back into `state._modfinal/_contfinal/_zerofinal/
+  _pinfl`; a cleaner return-value contract would remove the need to copy.
+
+Proposed approach (for RJC review; nothing implemented): (A) absorb `fcn` into
+`alfit` so the minimiser owns `FitState`; (B) make the per-iteration invariants
+explicit -- a `prepare_iteration(p)` computed ONCE per accepted step (subpix grid,
+`_pinfl`, base component cache) that the 2n derivative evals consume, removing the
+renew_subpix 2n redundancy; (C) treat that `prepare()`/`eval_derivative(j)` split
+as the CPU/GPU seam for Stage 4 (Task 4.5 shared memory uploads the per-iteration
+invariants once); (D) delete dead `model_func_ddp`. Recorded queries on scope
+(new stage doc vs Stage 4 task 4.0), the bitwise Stage-0 requirement, and whether
+to also bank CPU perf now (renew_subpix hoist) vs a pure structural cleanup.
+
+### 2026-07-28 (Prompt 10 follow-up: created Stage 3.5 doc + influence investigation)
+
+RJC answered the four queries: (1) fold into a dedicated pre-Stage-4 doc; (2)
+bitwise-identical under Stage 0; (3) pure structural cleanup enabling the GPU
+port, banking CPU wins only where they don't complicate GPU; (4) investigate the
+influence-table value-dependence.
+
+Wrote `claude_prompts/refactor_code_stage3p5_minimiser.md` (Tasks 3.5.1-3.5.6:
+absorb `fcn` into `alfit`; explicit `prepare_iteration`; return-not-mutate
+`eval_derivative` contract; delete dead `model_func_ddp`; optional bitwise-safe
+`renew_subpix` conditional recompute; unit tests). Nothing implemented -- RJC
+writes the Prompts section and reviews first.
+
+Investigation results recorded as Findings F1/F2 in that doc:
+- **F1:** `_pinfl` is value-dependent. `functions/voigt.py:set_vars` returns an
+  empty influence list when a component's *redshifted* lines
+  (`Wavelength*(1+pt[1])`) fall outside the region window (`wvrng`, itself set by
+  the shift params). So influence tracks the component redshift + shift and
+  cannot be hoisted to once-per-fit; it is already computed once-per-iteration
+  (base call) and reused by all derivatives, which is the correct granularity and
+  what keeps Stage 3.1/3.4 caching bitwise-exact. `base.py:set_vars` ignores
+  `wvrng`, so the value-dependence is specific to line functions (voigt/gaussian/
+  lineemission/splineabs).
+- **F2:** `renew_subpix` per-derivative recompute is NOT a safe blanket hoist:
+  `load_subpixels` sizes sub-pixels from fitted line widths + instrumental FWHM,
+  so perturbing those genuinely changes the grid (a real derivative dependence).
+  Bitwise-safe win is a *conditional* recompute keyed on whether the perturbed
+  parameter feeds the subpix model (Task 3.5.5), not "compute once per
+  iteration."

@@ -637,6 +637,39 @@ proceed to write all stage files 1-6 with any queries relevant to those stages i
 corresponding file.
 )
 
+10. Currently, Stages 1-3 of the refactor have been completed, and we're about to complete Stage 4.
+However, before proceeding with Stage 4, I have noticed a possible issue that might need to be
+resolved that may improve the performance of the code (both CPU, and particularly the GPU).
+In `minimise.alfit()`, the `call()` function is calling a generic function (`fcn`) that is
+external to the `minimise()` class. In principle, we could build in the function inside the
+class (since it never changes), and it would inherit the properties of the class without
+needing to pass them through the function. Related to this, the functions that eventually
+get called (`myfunct`, and subsequently `model_func` and `model_func_ddp`) are locked in
+the main ClassMain class. I think we should take a step back and consider the best approach
+to refactor this part of the code to improve performance. For example, in `model_eval`, one
+of the first things that is done is a call to renew_subpix. This could in principle be done
+once per iteration inside the minimise class, rather than being carried out each time the
+two-sided derivative is calculated. Please take a holistic view of this part of the code,
+and consider the best approach to refactor it to improve performance, now with the appreciation
+that the call to alfit does not require the `fcn` variable. How would this change the way the
+code is structured, and what would be the best approach to refactor this part of the code to
+improve performance?
+
+[//]: # (COMMENT:
+During execution of Prompt 10, Claude returned the following questions:
+  1. Where should this live? A dedicated pre-Stage-4 prompt doc (e.g. refactor_code_stage3p5_minimiser.md), or folded into Stage 4 as task 4.0 (the interface seam that 4.1–4.5 build on)? My lean: a small
+  dedicated doc, since it's a Stage-3-style engine refactor that must land bitwise before GPU work.                                                                                                        
+  2. Bitwise requirement. I assume this must stay bitwise-identical under the Stage 0 gate (as Stage 3.4 did) — confirm?                                                                                   
+  3. Appetite. Pure structural cleanup that enables the GPU port (minimal risk, defer perf to Stage 4), or also bank the CPU wins now (renew_subpix hoist, drop the per-call copy)?                        
+  4. _pinfl hoisting. Do you want me to investigate whether the influence table is truly value-independent (hoistable to once-per-fit)? It changes only if shift/velocity params move a region's coverage —
+  worth confirming before relying on it.   
+MY RESPONSE:
+My responses to your queries are:
+  1. Please fold this into a dedicated pre-Stage-4 prompt doc (e.g. refactor_code_stage3p5_minimiser.md), since it's a Stage-3-style engine refactor that must land bitwise before GPU work. The vision of this new document should be to make this an essential preparatory step for Stage 4, and to ensure that the code is structured in a way that will allow for the GPU port to be implemented with minimal risk. The document should also include any relevant queries and responses, as well as any additional information that may be useful for the refactor.
+  2. Yes, the bitwise requirement must stay bitwise-identical under the Stage 0 gate (as Stage 3.4 did).
+  3. Please focus on pure structural cleanup that enables the GPU port (minimal risk, defer perf to Stage 4), but if there are ways that improve CPU performance without complicating GPU implementation, then we should bank the CPU wins, as well.
+  4. Yes, please investigate whether the influence table is truly value-independent (hoistable to once-per-fit, or once-per-iteration).
+)
 ## Logging
 
 Create a file called `ALIS/logs/ALIS_v2_code_plan_logs.md` to record Claude's work.  Please use the following format:

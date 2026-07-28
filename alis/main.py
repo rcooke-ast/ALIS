@@ -59,7 +59,6 @@ def build_funcarray(argflag, atomic):
 #from pycuda.compiler import SourceModule
 
 ### TO BE IMPLEMENTED ###
-# Supermongo
 # Make sure there is some data in the fitted region (when you load a model)
 # Make sure each snip contains an absorption feature (or give a warning).
 # generate starting parameter files

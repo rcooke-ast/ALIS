@@ -20,7 +20,8 @@
       "Bash(cp -r examples/metal_line_abs /tmp/sm)",
       "Bash(nvidia-smi -L)",
       "Bash(/home/rcooke/anaconda3/envs/py313/bin/python -c 'import alis;print\\(alis.__file__, alis.__version__\\)')",
-      "Bash(timeout 900 /home/rcooke/anaconda3/envs/py313/bin/python fp32_speed.py)"
+      "Bash(timeout 900 /home/rcooke/anaconda3/envs/py313/bin/python fp32_speed.py)",
+      "Bash(xargs -n1 basename)"
     ]
   }
 }

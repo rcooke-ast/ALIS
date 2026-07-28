@@ -222,7 +222,7 @@ stays simple for new functions), but have the 4.3 dispatch batch across
 components/spectra, with an array-size threshold below which it falls back to the
 CPU path.
 
-**Response:**
+**Response:** 
 
 **Q4.8 — GPU workers vs the existing process Pool (Tasks 4.3/4.5).**
 `minimise.fdjac2` now holds a *persistent* `ncpus` Pool for the chunked Jacobian
