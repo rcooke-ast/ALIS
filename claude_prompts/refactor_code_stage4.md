@@ -11,6 +11,19 @@
 
 > Complete in order; log each in `ALIS/claude_prompts/logs/refactor_code_stage4_log.md`.
 
+**4.0 — Return-not-mutate evaluation contract (carried from Stage 3.5, do first).**
+- Deferred here from Stage 3.5 (its Task 3.5.3). Complete the derivative-eval
+  contract before the GPU kernel work: make `eval_derivative(j)` a pure function
+  of `(per-iteration invariants, perturbed params)` that *returns* its residual
+  column instead of mutating shared `state`
+  (`_modfinal`/`_contfinal`/`_zerofinal`/`_pinfl`), removing the per-call
+  `copy.copy(state)` in `_minimiser_eval`. This is the exact shape a GPU kernel
+  needs (a kernel cannot mutate shared Python state); co-design it with 4.3
+  (dispatch) and 4.5 (shared memory). Stage 3.5 Task 3.5.2 leaves a clean
+  `eval_derivative(j)` boundary, so this is a localized change. Must stay
+  **bitwise-identical** under the Stage 0 gate; do it in small, individually
+  gated steps, and add its `unit` tests here (deferred from Stage 3.5's 3.5.6).
+
 **4.1 — Formalise the CPU/GPU model interface.**
 - In the (now clean) `alfunc_base`, define a clear `call_CPU` / `call_GPU`
   contract with a numerical-equivalence requirement and a graceful "no GPU →

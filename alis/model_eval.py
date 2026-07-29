@@ -1,7 +1,7 @@
 """Standalone model-evaluation functions (Stage 2.3/2.4).
 
-``model_func`` / ``model_func_ddp`` / ``myfunct`` were ``ClassMain`` methods
-that took the whole instance as ``self``. They are now module-level functions
+``model_func`` / ``myfunct`` were ``ClassMain`` methods that took the whole
+instance as ``self``. They are now module-level functions
 taking an explicit ``state`` object, so the minimiser can evaluate the model
 without reconstituting a ``ClassMain`` every iteration (removing
 ``myfunct_wrap`` and the ``self.__dict__`` copy -- see Stage 2.4). ``state``
@@ -18,7 +18,6 @@ import numpy as np
 
 from alis import logger
 from alis import load
-from alis import save
 
 msgs = logger.msgs()
 
@@ -415,201 +414,17 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
 #		if output == 0: return modcvf
     if output == 0:
         if getemab:
-            return modcvf, [modelem, modelab, compcache]
+            # Only the component cache (emab[2]) is consumed downstream (Stage
+            # 3.5.4): the derivative path and the Jacobian slicer read emab[2],
+            # and the now-removed model_func_ddp was the sole reader of
+            # modelem/modelab -- so they are dropped from the returned emab.
+            return modcvf, [None, None, compcache]
         else:
             return modcvf
     elif output == 1: return modcv
     elif output == 2: return modcvf
     elif output == 3: return state._modfinal
     else: msgs.bug("The value {0:d} for keyword 'output' is not allowed".format(output),verbose=state._argflag['out']['verbose'])
-
-
-def model_func_ddp(state, x, p, pp, pos, ddpid=None, emab=None, output=0):
-    msgs.bug("Shifts not implemented in speed-up model_func_ddp")
-    if emab is None:
-        msgs.error("The keyword 'emab' of function alis.model_func_ddp must be a 2-element array")
-    if state._argflag['run']['renew_subpix']:
-        wavespx, contspx, zerospx, posnspx, nexbins = load.load_subpixels(state, p) # recalculate the sub-pixellation of the spectrum
-    else:
-        wavespx, contspx, zerospx, posnspx, nexbins = state._wavespx, state._contspx, state._zerospx, state._posnspx, state._nexbins
-    # Extract the pure emission and pure absorption models
-    modelem, modelab = copy.deepcopy(emab[0]), copy.deepcopy(emab[1])
-    mzero, mcont, modcv, modcvf = copy.deepcopy(zerospx), copy.deepcopy(contspx), [], []
-    # Setup of the data <---> model arrays
-    opararr=[[] for all in pos]
-    ppararr=[[] for all in pos]
-    okeyarr=[[] for all in pos]
-    pkeyarr=[[] for all in pos]
-    modtyp=[[] for all in pos]
-    zerlev=[[] for all in pos]
-    for sp in range(0,len(pos)):
-        modcv.append(np.zeros(x[sp].size))
-        modcvf.append(np.zeros(state._wavefit[sp].size))
-        lastemab, iea = ['' for all in pos[sp][:-1]], [-1 for all in pos[sp][:-1]]
-        for sn in range(len(pos[sp])-1):
-            ll = pos[sp][sn]
-            lu = pos[sp][sn+1]
-            wvrng = [x[sp][ll:lu].min(),x[sp][ll:lu].max()]
-            opararr[sp].append([])
-            ppararr[sp].append([])
-            okeyarr[sp].append([])
-            pkeyarr[sp].append([])
-            modtyp[sp].append([])
-            for i in range(0,len(state._modpass['mtyp'])):
-                if state._modpass['emab'][i] == 'cv': continue # This is a convolution (not emission or absorption)
-                if state._specid[sp] not in state._modpass['mkey'][i]['specid']: continue # Don't apply this model to this data
-                if state._modpass['emab'][i] == 'zl': # Get the parameters of the zerolevel
-                    if sn != 0: continue
-                    if len(zerlev[sp]) != 0:
-                        msgs.error("You can only specify the zero-level once for each specid.")
-                    mtyp=state._modpass['mtyp'][i]
-                    state._funcarray[2][mtyp]._keywd = state._modpass['mkey'][i]
-                    zparams = state._funcarray[1][mtyp].set_vars(state._funcarray[2][mtyp], p, state._levadd[i], state._modpass, i, spid=state._specid[sp], levid=state._levadd)
-                    if len(zparams) == 0: continue
-                    zerlev[sp].append(mtyp)
-                    zerlev[sp].append(np.array([zparams]))
-                    zerlev[sp].append(state._modpass['mkey'][i])
-                    continue
-                if lastemab[sn] == '' and state._modpass['emab'][i] != 'em':
-                    if state._modpass['emab'][i] != 'va':
-                        msgs.error("Model for specid={0:s} must specify emission before absorption".format(state._snipid[sp])) # BUG: Not quoting the correct specid...
-                if lastemab[sn] != state._modpass['emab'][i] and state._modpass['emab'][i] != 'va':
-                    opararr[sp][sn].append([])
-                    ppararr[sp][sn].append([])
-                    okeyarr[sp][sn].append([])
-                    pkeyarr[sp][sn].append([])
-                    modtyp[sp][sn].append(np.array(['']))
-                    iea[sn] += 1
-                    lastemab[sn] = state._modpass['emab'][i]
-                # If this parameter doesn't influence the sp+sn, don't go any further.
-                if ddpid is not None:
-                    if ddpid not in state._pinfl[0][sp][sn]: continue
-                mtyp=state._modpass['mtyp'][i]
-                if np.where(mtyp==modtyp[sp][sn][iea[sn]])[0].size != 1:
-                    opararr[sp][sn][iea[sn]].append([])
-                    ppararr[sp][sn][iea[sn]].append([])
-                    okeyarr[sp][sn][iea[sn]].append([])
-                    pkeyarr[sp][sn][iea[sn]].append([])
-                    modtyp[sp][sn][iea[sn]] = np.append(modtyp[sp][sn][iea[sn]],mtyp)
-                    if modtyp[sp][sn][iea[sn]][0] == '': modtyp[sp][sn][iea[sn]] = np.delete(modtyp[sp][sn][iea[sn]], 0)
-                mid = np.where(mtyp==modtyp[sp][sn][iea[sn]])[0][0]
-                state._funcarray[2][mtyp]._keywd = state._modpass['mkey'][i]
-                sddpid = state._pinfl[1][sp][sn][np.where(state._pinfl[0][sp][sn]==ddpid)[0][0]]
-                oparams = state._funcarray[1][mtyp].set_vars(state._funcarray[2][mtyp], p, state._levadd[i], state._modpass, i, wvrng=wvrng, spid=state._specid[sp], levid=state._levadd, ddpid=sddpid)
-                pparams = state._funcarray[1][mtyp].set_vars(state._funcarray[2][mtyp], pp, state._levadd[i], state._modpass, i, wvrng=wvrng, spid=state._specid[sp], levid=state._levadd, ddpid=sddpid)
-                if len(oparams) == 0: continue
-                if np.size(np.shape(oparams)) == 1:
-                    if np.size(opararr[sp][sn][iea[sn]][mid]) == 0:
-                        opararr[sp][sn][iea[sn]][mid] = np.array([oparams])
-                    else:
-                        if np.shape(opararr[sp][sn][iea[sn]][mid])[1] != np.shape(np.array([oparams]))[1]:
-                            msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
-                        opararr[sp][sn][iea[sn]][mid] = np.append(opararr[sp][sn][iea[sn]][mid],np.array([oparams]),axis=0)
-                    okeyarr[sp][sn][iea[sn]][mid].append(state._modpass['mkey'][i])
-                else:
-                    if np.size(opararr[sp][sn][iea[sn]][mid]) == 0:
-                        opararr[sp][sn][iea[sn]][mid] = oparams
-                    else:
-                        if np.shape(opararr[sp][sn][iea[sn]][mid])[1] != np.shape(oparams)[1]:
-                            msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
-                        opararr[sp][sn][iea[sn]][mid] = np.append(opararr[sp][sn][iea[sn]][mid],oparams,axis=0)
-                    for all in range(np.shape(oparams)[0]): okeyarr[sp][sn][iea[sn]][mid].append(state._modpass['mkey'][i])
-                if np.size(np.shape(pparams)) == 1:
-                    if np.size(ppararr[sp][sn][iea[sn]][mid]) == 0:
-                        ppararr[sp][sn][iea[sn]][mid] = np.array([pparams])
-                    else:
-                        if np.shape(ppararr[sp][sn][iea[sn]][mid])[1] != np.shape(np.array([pparams]))[1]:
-                            msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
-                        ppararr[sp][sn][iea[sn]][mid] = np.append(ppararr[sp][sn][iea[sn]][mid],np.array([pparams]),axis=0)
-                    pkeyarr[sp][sn][iea[sn]][mid].append(state._modpass['mkey'][i])
-                else:
-                    if np.size(ppararr[sp][sn][iea[sn]][mid]) == 0:
-                        ppararr[sp][sn][iea[sn]][mid] = pparams
-                    else:
-                        if np.shape(ppararr[sp][sn][iea[sn]][mid])[1] != np.shape(pparams)[1]:
-                            msgs.error("Error when getting parameters for model function '{0:s}'".format(mtyp)+msgs.newline()+"This model probably has a variable number of parameters and has"+msgs.newline()+"been specified twice for one specid. Make sure you give the same"+msgs.newline()+"number of parameters to this function for a given specid.")
-                        ppararr[sp][sn][iea[sn]][mid] = np.append(ppararr[sp][sn][iea[sn]][mid],pparams,axis=0)
-                    for all in range(np.shape(pparams)[0]): pkeyarr[sp][sn][iea[sn]][mid].append(state._modpass['mkey'][i])
-    # Calculate the model
-    for sp in range(len(opararr)):
-        for sn in range(len(opararr[sp])):
-            if ddpid is not None: # If this parameter doesn't influence the sp+sn, don't calculate it.
-                if ddpid not in state._pinfl[0][sp][sn]: continue
-            ll = posnspx[sp][sn]
-            lu = posnspx[sp][sn+1]
-            wave = wavespx[sp][ll:lu]
-            # First subtract the zero-level from the data
-            if len(zerlev[sp]) != 0:
-                mtyp = zerlev[sp][0]
-                zpar = zerlev[sp][1]
-                zkey = zerlev[sp][2]
-                mzero[sp][ll:lu] += state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, zpar, ae='zl', mkey=zkey)
-            for ea in range(len(opararr[sp][sn])):
-                if ea%2 == 0: aetag = 'em'
-                else: aetag = 'ab'
-                for md in range(0,len(opararr[sp][sn][ea])):
-                    mtyp = modtyp[sp][sn][ea][md]
-                    if mtyp in ["variable","random"]: continue
-                    if len(opararr[sp][sn][ea][md]) == 0: continue # OR PARAMETER NOT BEING VARIED!!!
-                    # Calculate both the old and new model
-                    if ea%2 == 0: # emission
-                        submod = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, opararr[sp][sn][ea][md], ae='em', mkey=okeyarr[sp][sn][ea][md])
-                        ppmod  = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, ppararr[sp][sn][ea][md], ae='em', mkey=pkeyarr[sp][sn][ea][md])
-                        modelem[sp][ll:lu] += ppmod-submod
-                    else: # absorption
-                        submod = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, opararr[sp][sn][ea][md], ae='ab', mkey=okeyarr[sp][sn][ea][md])
-                        ppmod  = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wave, ppararr[sp][sn][ea][md], ae='ab', mkey=pkeyarr[sp][sn][ea][md])
-                        w = np.where(submod != 0.0)[0]
-                        modelab[sp][ll:lu][w] /= submod[w]
-                        modelab[sp][ll:lu] *= ppmod
-                if ea == 0:
-                    mcont[sp][ll:lu] += modelem[sp][ll:lu].copy()
-    # Convolve the data with the appropriate instrumental profile
-    stf, enf = [0 for all in pos], [0 for all in pos]
-    cvind = np.where(np.array(state._modpass['emab'])=='cv')[0][0]
-    for sp in range(len(pos)):
-        for sn in range(len(pos[sp])-1):
-            if state._modpass['emab'][cvind] != 'cv': # Check that this is indeed a convolution
-                msgs.bug("Convolution cannot be performed with model "+state._modpass['mtyp'][cvind],verbose=state._argflag['out']['verbose'])
-            # If this parameter doesn't influence the sp+sn, don't go any further.
-            if ddpid is not None:
-                if ddpid not in state._pinfl[0][sp][sn]:
-                    ll = pos[sp][sn]
-                    lu = pos[sp][sn+1]
-                    w = np.where((x[sp][ll:lu] >= state._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= state._posnfit[sp][2*sn+1]))
-                    wA= np.isin(x[sp][ll:lu][w], state._wavefit[sp])
-                    wB= np.where(wA==True)
-                    enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
-                    stf[sp] = enf[sp]
-                    cvind += 1
-                    continue
-            llx = posnspx[sp][sn]
-            lux = posnspx[sp][sn+1]
-            ll = pos[sp][sn]
-            lu = pos[sp][sn+1]
-            mtyp = state._modpass['mtyp'][cvind]
-            state._funcarray[2][mtyp]._keywd = state._modpass['mkey'][cvind]
-            params = state._funcarray[1][mtyp].set_vars(state._funcarray[2][mtyp], pp, state._levadd[cvind], state._modpass, cvind)
-            mdtmp = state._funcarray[1][mtyp].call_CPU(state._funcarray[2][mtyp], wavespx[sp][llx:lux], modelem[sp][llx:lux]*modelab[sp][llx:lux], params)
-            # Apply the zero-level correction if necessary
-            if len(zerlev[sp]) != 0:
-                mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
-            modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn])
-            # Finally, apply the user-specified continuum (if it's not 1.0)
-#				modcv[sp][ll:lu] *= state._contfull[sp][ll:lu]
-            # Extract the fitted part of the model.
-            w = np.where((x[sp][ll:lu] >= state._posnfit[sp][2*sn+0]) & (x[sp][ll:lu] <= state._posnfit[sp][2*sn+1]))
-            wA= np.isin(x[sp][ll:lu][w], state._wavefit[sp])
-            wB= np.where(wA==True)
-            enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
-            modcvf[sp][stf[sp]:enf[sp]] = modcv[sp][ll:lu][w][wB]
-            stf[sp] = enf[sp]
-            cvind += 1
-    del wavespx, posnspx, nexbins
-    del modelem, modelab
-    del mzero, mcont
-    if output != 0: msgs.bug("The value {0:d} for keyword 'output' is not allowed when performing derivatives".format(output),verbose=state._argflag['out']['verbose'])
-    return modcvf
 
 
 def myfunct(p, fjac=None, x=None, y=None, err=None, state=None, output=0, ddpid=None, pp=None, getemab=False, emab=None):

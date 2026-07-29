@@ -35,6 +35,7 @@ import types
 import signal
 # import scipy.linalg
 from alis import logger
+from alis import model_eval
 from alis.save import print_model
 from multiprocessing import Pool as mpPool
 from multiprocessing.pool import ApplyResult
@@ -76,23 +77,15 @@ def _unpickle_method(func_name, obj, cls):
 
 # --- Parallel Jacobian workers (Stage 3.4) ---------------------------------
 # The Jacobian is computed by a persistent Pool created once per fit. The
-# CONSTANT fit state (the model function, functkw with its FitState, and the
-# tie/damp settings) is handed to each worker ONCE via the Pool initializer
-# instead of being re-pickled for every derivative of every iteration; the n
-# derivatives are then computed in ~ncpus chunked tasks. Each Jacobian column
-# is an independent two-sided derivative, so chunking/reordering does not change
-# the numbers. These are module-level (not bound methods) so ``self`` -- which
-# now holds the un-picklable Pool -- is never pickled.
-_WORKER = {}
-
-
-def _worker_init(fcn, functkw, qanytied, ptied, damp):
-    """Pool initializer: stash the constant fit state in each worker."""
-    _WORKER['fcn'] = fcn
-    _WORKER['functkw'] = functkw
-    _WORKER['qanytied'] = qanytied
-    _WORKER['ptied'] = ptied
-    _WORKER['damp'] = damp
+# CONSTANT fit state (functkw with its FitState, and the tie/damp settings) is
+# handed to the workers with each chunk (a Pool initializer was measured to be
+# slower on 'spawn' -- it blocks Pool creation until every worker finishes its
+# heavy re-import); the n derivatives are computed in ~ncpus chunked tasks. Each
+# Jacobian column is an independent two-sided derivative, so chunking/reordering
+# does not change the numbers. These are module-level (not bound methods) so
+# ``self`` -- which now holds the un-picklable Pool -- is never pickled. The
+# model function is always model_eval._minimiser_eval (Stage 3.5.1), called
+# directly rather than passed in.
 
 
 def _worker_tie(p, ptied):
@@ -109,29 +102,33 @@ def _worker_tie(p, ptied):
     return p
 
 
-def _worker_call(fcn, functkw, qanytied, ptied, damp, x, ddpid=None, pp=None,
+def _worker_call(functkw, qanytied, ptied, damp, x, ddpid=None, pp=None,
                  emab=None):
     """Exact replica of ``alfit.call`` for the derivative path (fjac is None).
 
-    ``nfev`` is intentionally not tracked here: it was never propagated from the
-    worker processes in the original per-derivative dispatch either.
+    The model evaluation is ``model_eval._minimiser_eval`` -- the only function
+    ALIS ever fits (Stage 3.5.1), so it is invoked directly rather than through
+    a passed-in ``fcn``. ``nfev`` is intentionally not tracked here: it was never
+    propagated from the worker processes in the original per-derivative dispatch
+    either.
     """
     if qanytied:
         x = _worker_tie(x, ptied)
     if damp > 0:
-        [status, f] = fcn(x, fjac=None, ddpid=ddpid, pp=pp, emab=emab,
-                          getemab=False, **functkw)
+        [status, f] = model_eval._minimiser_eval(x, fjac=None, ddpid=ddpid,
+                                                 pp=pp, emab=emab,
+                                                 getemab=False, **functkw)
         return [status, numpy.tanh(f / damp)]
-    return fcn(x, fjac=None, ddpid=ddpid, pp=pp, emab=emab, getemab=False,
-               **functkw)
+    return model_eval._minimiser_eval(x, fjac=None, ddpid=ddpid, pp=pp,
+                                      emab=emab, getemab=False, **functkw)
 
 
 def _worker_funcderiv(state, fvec, j, xp, ifree, hj, emab, oneside):
     """Exact replica of ``alfit.funcderiv`` (``state`` = the constant tuple)."""
-    fcn, functkw, qanytied, ptied, damp = state
+    functkw, qanytied, ptied, damp = state
     pp = xp.copy()
     pp[ifree] += hj
-    [status, fp] = _worker_call(fcn, functkw, qanytied, ptied, damp, xp,
+    [status, fp] = _worker_call(functkw, qanytied, ptied, damp, xp,
                                 ddpid=j, pp=pp, emab=emab)
     if status < 0:
         return None
@@ -139,7 +136,7 @@ def _worker_funcderiv(state, fvec, j, xp, ifree, hj, emab, oneside):
         fjac = (fp - fvec) / hj
     else:
         pp[ifree] -= 2.0 * hj
-        [status, fm] = _worker_call(fcn, functkw, qanytied, ptied, damp, xp,
+        [status, fm] = _worker_call(functkw, qanytied, ptied, damp, xp,
                                     ddpid=j, pp=pp, emab=emab)
         if status < 0:
             return None
@@ -150,7 +147,7 @@ def _worker_funcderiv(state, fvec, j, xp, ifree, hj, emab, oneside):
 def _worker_chunk(args):
     """Compute a chunk of Jacobian columns in one worker task.
 
-    ``state`` carries the constant fit state (fcn/functkw/qanytied/ptied/damp).
+    ``state`` carries the constant fit state (functkw/qanytied/ptied/damp).
     On ``spawn`` a Pool ``initializer`` waits for every worker to finish
     starting up, which serialises the (heavy) re-import; passing the state with
     each chunk instead keeps Pool creation cheap.
@@ -217,7 +214,7 @@ class alfit(object):
     #	blas_enorm32, = scipy.linalg.get_blas_funcs(['nrm2'],numpy.array([0],dtype=numpy.float32))
     #	blas_enorm64, = scipy.linalg.get_blas_funcs(['nrm2'],numpy.array([0],dtype=numpy.float64))
 
-    def __init__(self, fcn, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
+    def __init__(self, xall=None, functkw={}, funcarray=[None, None, None], parinfo=None,
                  ftol=1.e-10, xtol=1.e-10, gtol=1.e-10, atol=1.e-10,
                  damp=0., miniter=0, maxiter=200, factor=100., nprint=1,
                  iterfunct='default', iterkw={}, nocovar=0, limpar=False,
@@ -477,14 +474,18 @@ class alfit(object):
         self.ncpus = ncpus
         self.fstep = fstep
         self._pool = None  # persistent Jacobian Pool (Stage 3.4)
+        # The minimiser owns the model-evaluation state (Stage 3.5.1): functkw
+        # carries {x, y, err, state=FitState}. The model function is always
+        # model_eval._minimiser_eval, so it is invoked directly (no passed-in
+        # fcn / generic call() indirection).
+        self.functkw = functkw
+        # Per-iteration component cache (Stage 3.5.2): prepared once per accepted
+        # parameter set by prepare_iteration() and consumed by the Jacobian.
+        self._emab = None
 
         # Include a function to deal with signal interruptions
         self.handler = True
         signal.signal(signal.SIGQUIT, self.signal_handler)
-
-        if fcn is None:
-            self.errmsg = "Usage: parms = alfit('myfunct', ... )"
-            return
 
         if iterfunct == 'default':
             iterfunct = self.defiter
@@ -639,10 +640,10 @@ class alfit(object):
                 return
             self.errmsg = ''
 
-        [self.status, fvec, emab] = self.call(fcn, self.params, functkw, getemab=True)
+        [self.status, fvec] = self.prepare_iteration(self.params)
 
         if self.status < 0:
-            self.errmsg = 'first call to "' + str(fcn) + '" failed'
+            self.errmsg = 'first call to the model evaluation failed'
             return
         # If the returned fvec has more than four bits I assume that we have
         # double precision
@@ -689,8 +690,8 @@ class alfit(object):
                     xnew0 = self.params.copy()
 
                     dof = numpy.max([len(fvec) - len(x), 0])
-                    status = iterfunct(fcn, self.params, self.niter, self.fnorm ** 2,
-                                       functkw=functkw, parinfo=parinfo, verbose=verbose,
+                    status = iterfunct(self.params, self.niter, self.fnorm ** 2,
+                                       parinfo=parinfo, verbose=verbose,
                                        modpass=modpass, convtest=convtest, dof=dof, funcarray=funcarray, **iterkw)
                     if status is not None:
                         self.status = status
@@ -709,10 +710,10 @@ class alfit(object):
             # Calculate the jacobian matrix
             self.status = 2
             catch_msg = 'calling ALFIT_FDJAC2'
-            fjac = self.fdjac2(fcn, x, fvec, step, qulim, ulim, dside,
-                               epsfcn=epsfcn, emab=emab,
+            fjac = self.fdjac2(x, fvec, step, qulim, ulim, dside,
+                               epsfcn=epsfcn,
                                autoderivative=autoderivative, dstep=dstep,
-                               functkw=functkw, ifree=ifree, xall=self.params)
+                               ifree=ifree, xall=self.params)
             if fjac is None:
                 self.errmsg = 'WARNING: premature termination by FDJAC2'
                 self._close_pool()
@@ -984,11 +985,10 @@ class alfit(object):
 
                 # Evaluate the function at x+p and calculate its norm
                 mperr = 0
-                catch_msg = 'calling ' + str(fcn)
-                [self.status, wa4, emab] = self.call(fcn, self.params, functkw, getemab=True)
-                # [self.status, wa4] = self.call(fcn, self.params, functkw)
+                catch_msg = 'calling the model evaluation'
+                [self.status, wa4] = self.prepare_iteration(self.params)
                 if self.status < 0:
-                    self.errmsg = 'WARNING: premature termination by "' + fcn + '"'
+                    self.errmsg = 'WARNING: premature termination by the model evaluation'
                     return
                 fnorm1 = self.enorm(wa4)
 
@@ -1114,8 +1114,8 @@ class alfit(object):
         else:
             self.params[ifree] = x
         if (nprint > 0) and (self.status > 0):
-            catch_msg = 'calling ' + str(fcn)
-            [status, fvec] = self.call(fcn, self.params, functkw)
+            catch_msg = 'calling the model evaluation'
+            [status, fvec] = self.call(self.params)
             catch_msg = 'in the termination phase'
             self.fnorm = self.enorm(fvec)
 
@@ -1178,7 +1178,7 @@ class alfit(object):
 
     # Default procedure to be called every iteration.  It simply prints
     # the parameter values.
-    def defiter(self, fcn, x, iter, fnorm=None, functkw=None,
+    def defiter(self, x, iter, fnorm=None,
                 verbose=2, iterstop=None, parinfo=None,
                 format=None, pformat='%.10g', dof=1,
                 modpass=None, convtest=False, funcarray=[None, None, None]):
@@ -1188,7 +1188,7 @@ class alfit(object):
         if verbose == 0:
             return
         if fnorm is None:
-            [status, fvec] = self.call(fcn, x, functkw)
+            [status, fvec] = self.call(x)
             fnorm = self.enorm(fvec) ** 2
 
         # Determine which parameters to print
@@ -1233,7 +1233,10 @@ class alfit(object):
 
     # Call user function or procedure, with _EXTRA or not, with
     # derivatives or not.
-    def call(self, fcn, x, functkw, fjac=None, ddpid=None, pp=None, emab=None, getemab=False):
+    def call(self, x, fjac=None, ddpid=None, pp=None, emab=None, getemab=False):
+        # Evaluate the ALIS model directly (Stage 3.5.1): the model function is
+        # always model_eval._minimiser_eval, and its inputs (x/y/err/state) live
+        # in self.functkw, so there is no passed-in fcn or **functkw threading.
         if self.debug:
             print('Entering call...')
         if self.qanytied:
@@ -1244,12 +1247,30 @@ class alfit(object):
                 # Apply the damping if requested.  This replaces the residuals
                 # with their hyperbolic tangent.  Thus residuals larger than
                 # DAMP are essentially clipped.
-                [status, f] = fcn(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
+                [status, f] = model_eval._minimiser_eval(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **self.functkw)
                 f = numpy.tanh(f / self.damp)
                 return [status, f]
-            return fcn(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
+            return model_eval._minimiser_eval(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **self.functkw)
         else:
-            return fcn(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **functkw)
+            return model_eval._minimiser_eval(x, fjac=fjac, ddpid=ddpid, pp=pp, emab=emab, getemab=getemab, **self.functkw)
+
+    def prepare_iteration(self, params):
+        """Per-iteration model setup before the Jacobian (Stage 3.5.2).
+
+        Evaluate the model at the accepted parameters and cache the one
+        per-iteration invariant the finite-difference derivatives consume -- the
+        component cache -- in ``self._emab`` (``[modelem, modelab, compcache]``).
+        (The influence table ``_pinfl`` is a per-*fit* invariant, fixed at
+        start-up; the sub-pixel grid is per-call, handled in model_func.) This is
+        the explicit CPU/GPU seam: on GPU this is where the per-iteration state is
+        uploaded once, then reused by every derivative kernel. Returns
+        ``[status, fvec]`` (the residual vector).
+
+        Generated by RJC and Claude.
+        """
+        [status, fvec, emab] = self.call(params, getemab=True)
+        self._emab = emab
+        return [status, fvec]
 
     def enorm(self, vec):
         # ans = self.blas_enorm(vec)
@@ -1271,10 +1292,10 @@ class alfit(object):
         # Safety net for abnormal exits; the Pool's own finalizer also cleans up.
         self._close_pool()
 
-    def funcderiv(self, fcn, fvec, functkw, j, xp, ifree, hj, emab, oneside):
+    def funcderiv(self, fvec, j, xp, ifree, hj, emab, oneside):
         pp = xp.copy()
         pp[ifree] += hj
-        [status, fp] = self.call(fcn, xp, functkw, ddpid=j, pp=pp, emab=emab)
+        [status, fp] = self.call(xp, ddpid=j, pp=pp, emab=emab)
         if status < 0:
             return None
         if oneside:
@@ -1284,15 +1305,18 @@ class alfit(object):
             # COMPUTE THE TWO-SIDED DERIVATIVE
             pp[
                 ifree] -= 2.0 * hj  # There's a 2.0 here because hj was recently added to pp (see second line of funcderiv)
-            [status, fm] = self.call(fcn, xp, functkw, ddpid=j, pp=pp, emab=emab)
+            [status, fm] = self.call(xp, ddpid=j, pp=pp, emab=emab)
             if status < 0:
                 return None
             fjac = (fp - fm) / (2.0 * hj)
         return [j, fjac]
 
-    def fdjac2(self, fcn, x, fvec, step=None, ulimited=None, ulimit=None, dside=None,
-               epsfcn=None, emab=None, autoderivative=1,
-               functkw=None, xall=None, ifree=None, dstep=None):
+    def fdjac2(self, x, fvec, step=None, ulimited=None, ulimit=None, dside=None,
+               epsfcn=None, autoderivative=1,
+               xall=None, ifree=None, dstep=None):
+        # The per-iteration component cache prepared by prepare_iteration()
+        # (Stage 3.5.2) is read from self._emab, not threaded in as a parameter.
+        emab = self._emab
 
         if self.debug:
             print('Entering fdjac2...')
@@ -1316,7 +1340,7 @@ class alfit(object):
             mperr = 0
             fjac = numpy.zeros(nall, dtype=float)
             fjac[ifree] = 1.0  # Specify which parameters need derivatives
-            [status, fp, fjac] = self.call(fcn, xall, functkw, fjac=fjac)
+            [status, fp, fjac] = self.call(xall, fjac=fjac)
 
             if fjac.size != m * nall:
                 print('Derivative matrix was not computed properly.')
@@ -1387,7 +1411,7 @@ class alfit(object):
         nchunks = min(self.ncpus, n)
         if nchunks < 1:
             nchunks = 1
-        state = (fcn, functkw, self.qanytied, self.ptied, self.damp)
+        state = (self.functkw, self.qanytied, self.ptied, self.damp)
         # Contiguous chunks give better cache locality for the per-chunk slice.
         chunks = [[jobs[i] for i in idxs]
                   for idxs in numpy.array_split(numpy.arange(len(jobs)), nchunks)
@@ -1396,7 +1420,7 @@ class alfit(object):
         # sp/sn its parameters influence (the derivative skips the rest), and
         # drop the unused modelem/modelab -- so much less is pickled per chunk.
         compcache = emab[2] if (emab is not None and len(emab) > 2) else None
-        param_spsn = _param_spsn_map(functkw, compcache)
+        param_spsn = _param_spsn_map(self.functkw, compcache)
         payload = [(state, fvec, xall,
                     _slice_emab(compcache, param_spsn, chunk), chunk)
                    for chunk in chunks]

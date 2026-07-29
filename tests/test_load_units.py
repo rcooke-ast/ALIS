@@ -126,3 +126,34 @@ def test_load_atomic_schema_and_lya_present():
     near = np.abs(waves - 1215.67) < 0.1
     assert near.any(), "HI Lyman-alpha not found in atomic data"
     assert atm['fvalue'][lya][near][0] > 0.0
+
+
+# -- pinfl_changed (Stage 3.5.2 influence-stability check) --------------------
+
+def _pinfl(pinfl):
+    """Wrap a pinfl table (global param ids per [sp][sn]) as [opinfl, pinfl]."""
+    return [None, pinfl]
+
+
+def test_pinfl_changed_identical_is_empty():
+    ref = _pinfl([[np.array([0, 1]), np.array([2])]])
+    assert load.pinfl_changed(ref, ref) == []
+
+
+def test_pinfl_changed_is_order_insensitive():
+    # Same influence set, different array order -> not "changed" (compared as sets).
+    ref = _pinfl([[np.array([0, 1])]])
+    new = _pinfl([[np.array([1, 0])]])
+    assert load.pinfl_changed(ref, new) == []
+
+
+def test_pinfl_changed_detects_added_parameter():
+    ref = _pinfl([[np.array([0, 1]), np.array([2])]])
+    new = _pinfl([[np.array([0, 1]), np.array([2, 3])]])  # region (0,1) gained 3
+    assert load.pinfl_changed(ref, new) == [(0, 1)]
+
+
+def test_pinfl_changed_reports_every_changed_region():
+    ref = _pinfl([[np.array([0]), np.array([1])], [np.array([2])]])
+    new = _pinfl([[np.array([9]), np.array([1])], [np.array([2, 5])]])
+    assert load.pinfl_changed(ref, new) == [(0, 0), (1, 0)]

@@ -94,11 +94,11 @@ def perturb(slf, covar, bparams, parinfo):
         # Fit the realisation
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
-        mr = alfit(model_eval._minimiser_eval, p0new, parinfo=parinfo, functkw=fa,
+        mr = alfit(p0new, parinfo=parinfo, functkw=fa,
                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                    atol=slf._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
                    ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
-#		mr = alfit(model_eval._minimiser_eval, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
+#		mr = alfit(slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
 #					ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
@@ -225,11 +225,11 @@ def sim_random(slf, covar, bparams, parinfo):
         # Fit the realisation
 #		msgs.info("Using {0:d} CPUs".format(slf._argflag['run']['ncpus']),verbose=slf._argflag['out']['verbose'])
         tstart=time.time()
-        mr = alfit(model_eval._minimiser_eval, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
+        mr = alfit(slf._modpass['p0'], parinfo=parinfo, functkw=fa,
                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                    atol=slf._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
                    ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
-#		mr = alfit(model_eval._minimiser_eval, slf._modpass['p0'], parinfo=parinfo, functkw=fa,
+#		mr = alfit(slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
 #					ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
@@ -358,7 +358,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
         plot.plot_showall()
     # Now fit it!
     tstart=time.time()
-    ms = alfit(model_eval._minimiser_eval, p0new, parinfo=parinfo, functkw=fa,
+    ms = alfit(p0new, parinfo=parinfo, functkw=fa,
                 verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                 ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
                 ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])

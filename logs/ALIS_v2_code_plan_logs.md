@@ -499,3 +499,25 @@ Investigation results recorded as Findings F1/F2 in that doc:
   Bitwise-safe win is a *conditional* recompute keyed on whether the perturbed
   parameter feeds the subpix model (Task 3.5.5), not "compute once per
   iteration."
+
+### 2026-07-29 (Stage 3.5: defer Task 3.5.3 to Stage 4)
+
+RJC asked whether Task 3.5.3 (return-not-mutate eval contract) can be deferred to
+the GPU stage without affecting the other Stage 3.5 tasks. Confirmed yes, and it
+is the better sequencing:
+- The other tasks (3.5.1 absorb `fcn`, 3.5.2 `prepare_iteration`, 3.5.4 dead-code,
+  3.5.5 renew_subpix, 3.5.6 tests) do not consume the return contract. The
+  residual is *already* returned (`myfunct` -> `[status,(y-modf)/err]`); the
+  per-call `copy.copy(state)` only isolates scratch mutations
+  (`_modfinal/_contfinal/_zerofinal/_pinfl`), so removing it is orthogonal to the
+  other tasks.
+- 3.5.3 is the highest bitwise-risk task, its necessity is GPU-specific (a kernel
+  can't mutate shared Python state), and its CPU benefit is negligible (~2n
+  shallow ref-rebinds/iter vs a ~95%-compute Jacobian; read-only arrays are
+  shared not duplicated, so it doesn't block Task 4.5 shared memory).
+Edits: in `refactor_code_stage3p5_minimiser.md` marked 3.5.3 DEFERRED (kept the
+slot/number, added rationale), added a "define a clean `eval_derivative(j)`
+boundary" instruction to 3.5.2 so the deferred contract is a localized Stage 4
+change, dropped the eval-contract item from 3.5.6, and filled Q3.5.6. In
+`refactor_code_stage4.md` added Task 4.0 (return-not-mutate contract, do first,
+with its unit tests). Nothing implemented.

@@ -152,10 +152,6 @@ class ClassMain:
         return model_eval.model_func(self, x, p, pos, ddpid=ddpid,
                                 getemab=getemab, output=output)
 
-    def model_func_ddp(self, x, p, pp, pos, ddpid=None, emab=None, output=0):
-        return model_eval.model_func_ddp(self, x, p, pp, pos, ddpid=ddpid,
-                                    emab=emab, output=output)
-
     def myfunct(self, p, fjac=None, x=None, y=None, err=None, output=0,
                 ddpid=None, pp=None, getemab=False, emab=None):
         return model_eval.myfunct(p, fjac=fjac, x=x, y=y, err=err, state=self,
@@ -270,7 +266,7 @@ class ClassMain:
             while not complete:
                 msgs.info("Iterating the model, Iteration {0:d}".format(iternum),verbose=self._argflag['out']['verbose'])
                 # Fit this iteration
-                m = alfit(model_eval._minimiser_eval, self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
+                m = alfit(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
                         ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
@@ -312,10 +308,13 @@ class ClassMain:
                     plot.plot_showall()
         else:
             msgs.info("Commencing chi-squared minimisation",verbose=self._argflag['out']['verbose'])
-            m = alfit(model_eval._minimiser_eval, self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
+            m = alfit(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
                         ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
+            # Influence must be fixed for the whole fit (Stage 3.5.2): warn if the
+            # best-fit influence differs from the start-of-fit table (self._pinfl).
+            load.check_par_influence(self, m.params, self._pinfl, verbose=self._argflag['out']['verbose'])
             self._tend=time.time()
             niter=m.niter
             if (m.status <= 0):
@@ -358,7 +357,7 @@ class ClassMain:
                             self._argflag['chisq']['gtol'] /= 10.0
                             self._argflag['chisq']['xtol'] /= 10.0
                             lowby -= 1
-                        mc = alfit(model_eval._minimiser_eval, mpars.params, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
+                        mc = alfit(mpars.params, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                                 verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                                 atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
                                 ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], convtest=True)
