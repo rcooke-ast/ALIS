@@ -418,3 +418,6 @@ you foresee this as a problem for our implementation?
 2. Please read this doc, including my responses to your queries, and ask any further queries you have before commencing. Once you have clarified any remaining questions, please let me know, and I will give you the go-ahead to start work on this stage.
 
 3. Please read this doc, including my responses to your queries, and execute Task 4.0.
+
+4. Please read this doc, including my responses to your queries, and execute Task 4.1.
+
