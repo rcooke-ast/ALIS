@@ -48,8 +48,7 @@
   `call_CPU`) -- formalise a clear `call_CPU` / `call_GPU` contract with a
   numerical-equivalence requirement and a graceful "no GPU → CPU" fallback.
   Document how a function opts into GPU support. (Model functions live in
-  `alis/functions/<name>.py`, e.g. `voigt.py`; the historical `alfunc_` prefix
-  was dropped in Stage 2.)
+  `alis/functions/<name>.py`, e.g. `voigt.py`.
 - Design principle (resolved 2026-07-29): keep the kernels **in** the per-function
   `call_GPU` (modular; good for `new-alfunc`/`port-to-gpu`), designed to take
   already-on-device arrays and a *batch* of profiles (it launches, it does not
@@ -66,7 +65,7 @@
 
 **4.2 — GPU Voigt profile.**
 - Implement `call_GPU` for the Voigt profile (`alis/functions/voigt.py`, which
-  has a `GPU_kernal` stub, commented `pycuda` imports, and the CPU `voigtking`)
+  has a `GPU_kernal` stub, commented `pycuda` imports, and the CPU `model`)
   using the `context/voigt_gpu/` example (Faddeeva function), validated close to
   the CPU version.
 - numba feature note (Q4.11): the port needs **neither dynamic parallelism nor
