@@ -37,9 +37,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# GPU stack. Finalised in Stage 4; kept minimal here (Q12: optional deps ok).
+# GPU stack (Stage 4, Q4.1/Q4.11): numba.cuda, float64 throughout. Note the
+# CUDA toolkit itself is NOT installed by this extra -- it must come from the
+# user's own driver/toolkit. numba is imported lazily (alis/gpu.py), so a
+# CPU-only install never touches it.
 gpu = [
-    "cupy",
+    "numba",
 ]
 # Development tooling (linting, formatting, testing, hooks).
 dev = [

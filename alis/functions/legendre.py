@@ -88,13 +88,3 @@ class Legendre(polynomial.Polynomial) :
         if ae == 'em': return yout.sum(axis=0)
         else: return yout.prod(axis=0)
 
-    def call_GPU(self, x, p, ae='em'):
-        """
-        Define the functional form of the model for the GPU
-        --------------------------------------------------------
-        x  : array of wavelengths
-        p  : array of parameters for this model
-        --------------------------------------------------------
-        """
-        self.call_CPU(x, p, ae=ae)
-

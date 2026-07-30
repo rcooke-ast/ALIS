@@ -44,7 +44,9 @@ see `logs/refactor_code_stage4_log.md`]**
   the copy removal bitwise-safe. (The sim `beginfrom` path still needs its
   pre-fit influence set explicitly -- see the Stage 3.5 log.)
 
-**4.1 — Formalise the CPU/GPU model interface.**
+**4.1 — Formalise the CPU/GPU model interface.
+[COMPLETE -- Stage 0 fast gate green (63 passed); unit batch 60 -> 71;
+see `logs/refactor_code_stage4_log.md`]**
 - In the base class `Base` (`alis/functions/base.py`) -- which already carries a
   `call_CPU` template and a `call_GPU` stub (currently just delegating to
   `call_CPU`) -- formalise a clear `call_CPU` / `call_GPU` contract with a
