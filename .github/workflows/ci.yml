@@ -1,0 +1,94 @@
+# Continuous integration for ALIS (Task 1.3).
+#
+# - unit: runs the fast, isolated unit-test batch (`pytest -m unit`) with a
+#   coverage report (no threshold gate yet) on Python 3.13, Ubuntu + macOS.
+# - test: runs the shipped-example regression batch (`pytest -m examples`)
+#   on Python 3.13, Ubuntu + macOS (Q1.2). context/ cases and the GPU
+#   stack are excluded from CI.
+# - lint: runs the pre-commit hooks (ruff / isort / black) on the files
+#   changed in the push or PR only, since the legacy codebase is not yet
+#   auto-formatted (Task 1.3: config-first rollout).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit (${{ matrix.os }}, py${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install ALIS (with dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run unit tests with coverage
+        run: python -m pytest -m unit --cov=alis --cov-report=term-missing
+
+  test:
+    name: examples (${{ matrix.os }}, py${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install ALIS (with dev extras)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run example regression tests
+        run: python -m pytest -m examples -v
+
+  lint:
+    name: lint (changed files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pre-commit
+        run: python -m pip install pre-commit
+      - name: Run pre-commit on changed files
+        run: |
+          # Lint only the files changed by this push / PR so the not-yet-
+          # reformatted legacy code does not fail CI. A repo-wide reformat
+          # is deferred to a dedicated task.
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || ! git rev-parse --verify "$BASE" >/dev/null 2>&1; then
+            echo "No valid base ref to diff against; skipping lint."
+            exit 0
+          fi
+          FILES=$(git diff --name-only --diff-filter=ACMR "$BASE" HEAD -- '*.py')
+          if [ -z "$FILES" ]; then
+            echo "No Python files changed."
+            exit 0
+          fi
+          echo "Changed Python files:"
+          echo "$FILES"
+          pre-commit run --files $FILES
