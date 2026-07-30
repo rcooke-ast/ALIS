@@ -7,6 +7,7 @@ chisq maxiter 1000
 out fits True
 out overwrite True
 out plots fit_spectra.pdf
+out covar fit_spectra.covar
 plot dims 2x2
 plot fits False
 plot labels True
