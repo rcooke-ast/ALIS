@@ -176,9 +176,11 @@ Each non-blind test case has two test modes; blind cases run mode (a) only.
 - Tolerances (plan Q11); volatile-header handling (plan Q19); fit-only + `.covar`
   testing (Prompt 9).
 - Existing examples under `examples/` (25 `.mod.out.reference` fits, 23 model
-  functions covered, plus the `blind`/`generate` special cases, no covariance
-  references) and `context/fitting_examples/` (16 fits, **all 16** with a golden
-  covariance reference — named `<out covar value>.reference`).
+  functions covered, plus the `blind`/`generate` special cases; one covariance
+  reference — `metal_line_abs/fit_spectra`, added later so the CI `examples`
+  batch exercises the covariance writer) and `context/fitting_examples/`
+  (16 fits, **all 16** with a golden covariance reference — named
+  `<out covar value>.reference`). 17 covariance references in total.
 - The empty `tests/` directory is the intended home for the harness.
 
 ## Queries

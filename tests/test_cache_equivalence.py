@@ -44,9 +44,16 @@ CASES = [
      "fit_polyvoigt_linear_Thermal_FINAL_MODEL.mod", "medium"),
 ]
 
+# Each case carries its runtime batch marker *and* a source marker derived from
+# its top-level directory ("examples" / "context"), exactly as test_regression
+# does. The source marker matters: context/fitting_examples/ is not part of the
+# repository, so the CI "examples" batch must not select the helium34 case --
+# on a clean checkout its directory does not exist and copytree would fail.
 _PARAMS = [
     pytest.param(path, mod, id=path.split("/")[-1] if "examples/" in path
-                 else path.split("/")[-2], marks=getattr(pytest.mark, mark))
+                 else path.split("/")[-2],
+                 marks=[getattr(pytest.mark, mark),
+                        getattr(pytest.mark, path.split("/", 1)[0])])
     for path, mod, mark in CASES
 ]
 
@@ -69,7 +76,6 @@ def _clean(path):
     return [ln for ln in path.read_text().splitlines() if not _STRIP.search(ln)]
 
 
-@pytest.mark.examples
 @pytest.mark.parametrize("path,mod", _PARAMS)
 def test_cache_bitwise_equivalence(path, mod, tmp_path):
     off = tmp_path / "off"

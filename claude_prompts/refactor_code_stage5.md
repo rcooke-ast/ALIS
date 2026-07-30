@@ -54,6 +54,15 @@
   `examples/brokenpowerlaw`'s reference evaluating to χ²=374.98 vs the recorded
   338.15; Q0.12). This is a fitting-engine concern (Stage 3) surfacing in the
   writer — coordinate with Stage 3.
+- **Covariance-PNG filename uses `str.rstrip` as a suffix strip.**
+  `save.save_covar` derives the correlation-matrix image name with
+  `filename.rstrip(fnspl[-1]) + 'png'`, where `fnspl = filename.split('.')`.
+  `str.rstrip` removes any trailing characters *in that set*, not the suffix.
+  It happens to be correct for every current covariance filename (the `.`
+  terminates the strip), so this is not an active bug — but it breaks for a
+  covariance name with no extension (`out covar mycovar` writes to `png`).
+  Replace with `removesuffix`/`os.path.splitext` while tidying the writer.
+  (Found during Stage 4 prep, 2026-07-30; deliberately deferred here.)
 - **Fitted-vs-starting resolution in the echo.** The writer records the *fitted*
   resolution in the data line (e.g. `vfwhm(0.075va)`); because ALIS sizes the
   pixel-load buffer from the resolution at load time, re-reading loads a

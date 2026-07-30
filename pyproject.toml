@@ -25,11 +25,15 @@ classifiers = [
 ]
 
 # Runtime dependencies (Q1.1). No new runtime deps without RJC sign-off (Q12).
+# Lower bounds are the oldest versions ALIS is known to run on: the looser of
+# RJC's two development machines (numpy 2.4.3 / scipy 1.17.1 / astropy 7.2.0 /
+# matplotlib 3.10.8 vs 2.4.6 / 1.18.0 / 8.0.1 / 3.11.0). Unbounded versions let
+# a removed API (matplotlib < 3.9 `cm.get_cmap`) reach users silently.
 dependencies = [
-    "numpy",
-    "scipy",
-    "astropy",
-    "matplotlib",
+    "numpy>=2.4.3",
+    "scipy>=1.17.1",
+    "astropy>=7.2.0",
+    "matplotlib>=3.10.8",
 ]
 
 [project.optional-dependencies]

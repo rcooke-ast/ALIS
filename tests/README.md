@@ -24,15 +24,21 @@ in a temporary copy — and it never overwrites a reference.
 Each non-blind fit case has two tests; blind cases run mode (a) only.
 
 - **`test_minimisation` (mode a)** — a full `run_alis` re-fit, comparing the
-  `.mod.out` best-fit parameters (within 10% of each 1σ error), 1σ errors,
-  χ² (1%), the `_fit.dat` model column (1e-4 relative), and the covariance
-  matrix where a golden copy exists (1% relative with a
-  `sqrt(C_ii·C_jj)` floor).
+  `.mod.out` best-fit parameters (within 10% of each 1σ error), 1σ errors
+  (10%), χ² (1%), the `_fit.dat` model column (`|new − ref| < 0.01 × error`
+  per pixel, the error-based check of Q0.22/Q0.23), and the covariance matrix
+  where a golden copy exists (1% relative with a `sqrt(C_ii·C_jj)` floor).
 - **`test_fixed_param` (mode b)** — re-runs the `.mod.out.reference` with
   `chisq miniter 0` / `maxiter 0` (a zero-iteration evaluation at the best-fit
   point) and compares χ² (0.1%), DOF (exact) and the model column
-  (`|new − ref| / max(reference_model) < 2e-3` per pixel). Skipped for blind
-  cases.
+  (`|new − ref| < 0.15 × error` — looser than mode (a) because the reference's
+  parameters are only printed to 8 digits, which moves saturated cores).
+  Skipped for blind cases.
+
+Covariance goldens exist for 17 cases: all 16 under `context/fitting_examples/`
+plus `examples/metal_line_abs/fit_spectra`, which carries one so the CI
+`examples` batch exercises the covariance writer. Only mode (a) compares them —
+mode (b) strips `out covar` when building its fixed-parameter input.
 
 The `generate` example is a special case: it runs `generate_spectra.mod` and
 compares the produced data file to its golden copy.
