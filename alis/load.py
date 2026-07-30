@@ -430,7 +430,9 @@ def load_atomic(slf):
     except IOError:
         msgs.error("The filename does not exist -"+msgs.newline()+fname)
     # isotope = table.array['MassNumber'].astype("|S3").astype(np.object)+table.array['Element']
-    isotope = np.core.defchararray.add(table.array['MassNumber'].astype('U'), table.array['Element'].astype('U'))
+    # np.core is a private namespace and warns on numpy 2.x; np.char is the
+    # public alias of defchararray (and matches np.char.split used elsewhere).
+    isotope = np.char.add(table.array['MassNumber'].astype('U'), table.array['Element'].astype('U'))
     atmdata = AtomicData()  # typed structure (Stage 2.1); atmdata['Ion'] access preserved
     # eln = Ion
     # elw = Wavelength
@@ -441,7 +443,7 @@ def load_atomic(slf):
     # elname = Element
     # elmass = AtomicMass
     # atmdata['Ion'] = np.array(isotope+"_"+table.array['Ion']).astype(str)
-    atmdata['Ion'] = np.core.defchararray.add(np.core.defchararray.add(isotope, "_").astype('U'), table.array['Ion'].astype('U'))
+    atmdata['Ion'] = np.char.add(np.char.add(isotope, "_").astype('U'), table.array['Ion'].astype('U'))
     atmdata['Wavelength'] = np.array(table.array['RestWave'])
     atmdata['fvalue'] = np.array(table.array['fval'])
     atmdata['Gamma'] = np.array(table.array['Gamma'])

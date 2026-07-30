@@ -6,7 +6,7 @@ from alis import logger
 from alis.functions import base
 import astropy.io.fits as pyfits
 from matplotlib import pyplot as plt
-from matplotlib import cm as pltcm
+from matplotlib import colormaps as pltcmaps
 from alis.utils import getreason
 msgs = logger.msgs()
 
@@ -645,7 +645,10 @@ def save_covar(slf, covar):
         # Create a new array with the mask applied and plot it
 #		cplt = np.ma.array(corrM, mask=mask)
         # Choose a colormap without white and set the bad pixels to white
-        cmap = pltcm.get_cmap('jet',10)
+        # matplotlib.cm.get_cmap was removed in matplotlib 3.9; the registry
+        # form (3.6+) is the supported replacement. Cosmetic only -- this
+        # colormap is used solely for the correlation-matrix png.
+        cmap = pltcmaps['jet'].resampled(10)
 #		cmap.set_bad('w')
         plt.imshow(corrM, interpolation="nearest", cmap=cmap, vmin=-1.0, vmax=1.0)
         plt.title("Correlation Matrix for: "+filename)

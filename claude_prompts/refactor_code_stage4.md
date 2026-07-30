@@ -13,7 +13,9 @@
 
 > Complete in order; log each in `ALIS/claude_prompts/logs/refactor_code_stage4_log.md`.
 
-**4.0 — Return-not-mutate evaluation contract (carried from Stage 3.5, do first).**
+**4.0 — Return-not-mutate evaluation contract (carried from Stage 3.5, do first).
+[COMPLETE -- bitwise-verified; Stage 0 gate green (142 passed, 1 deselected);
+see `logs/refactor_code_stage4_log.md`]**
 - Deferred here from Stage 3.5 (its Task 3.5.3). Complete the derivative
   evaluation contract before the GPU kernel work: make the derivative path
   (`model_eval.model_func` with `ddpid` set, reached via

@@ -289,7 +289,7 @@ class SelectRegions(object):
 
     def next_element(self, pm, ion=False):
         if ion == True:
-            arrsrt = np.core.defchararray.add(self.atom._atom_atm, self.atom._atom_ion)
+            arrsrt = np.char.add(self.atom._atom_atm, self.atom._atom_ion)
         else:
             arrsrt = self.atom._atom_atm
         unq, idx = np.unique(arrsrt, return_index=True)

@@ -22,7 +22,10 @@
       "Bash(/home/rcooke/anaconda3/envs/py313/bin/python -c 'import alis;print\\(alis.__file__, alis.__version__\\)')",
       "Bash(timeout 900 /home/rcooke/anaconda3/envs/py313/bin/python fp32_speed.py)",
       "Bash(xargs -n1 basename)",
-      "Bash(exit 1)"
+      "Bash(exit 1)",
+      "Bash(nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv)",
+      "Bash(cp -r examples/metal_line_abs /tmp/claude-1000/-home-rcooke-Software-ALIS/fb380f58-de21-4ce4-a058-11e9359df6a0/scratchpad/)",
+      "Bash(MPLBACKEND=Agg timeout 300 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)"
     ]
   }
 }
