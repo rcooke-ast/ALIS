@@ -521,3 +521,82 @@ boundary" instruction to 3.5.2 so the deferred contract is a localized Stage 4
 change, dropped the eval-contract item from 3.5.6, and filled Q3.5.6. In
 `refactor_code_stage4.md` added Task 4.0 (return-not-mutate contract, do first,
 with its unit tests). Nothing implemented.
+
+### 2026-07-29 (Pre-Stage-4: reconcile stage4 doc with the post-3.5 codebase)
+
+After Stage 3.5 completed, updated `refactor_code_stage4.md` so it matches the
+current code and the 3.5 outcomes: fixed stale filenames (`alfunc_base` -> class
+`Base` in `alis/functions/base.py`, which already has `call_CPU`+`call_GPU` stub;
+`alfunc_voigt.py` -> `alis/functions/voigt.py`; `alfunc_*` -> `alis/functions/
+<name>.py`; the commented PyCUDA scaffolding is in `main.py`/`model_eval.py`/
+several `functions/*.py`, not `alis.py`); corrected Task 4.0 to reference the real
+seam (`prepare_iteration()`/`self._emab` + `_worker_funcderiv`, not a literal
+`eval_derivative(j)` method) and the real mutated scratch
+(`_modfinal/_contfinal/_zerofinal`; `_pinfl` is per-fit, F1); updated the
+depends-on line (Stage 2 + 3.4 + 3.5); added a Context note for the 3.5 seam; and
+noted the deferred 3.5.5 renew_subpix conditional recompute as an optional
+carry-in to Task 4.5. Confirmed the `port-to-gpu`/`gpu-benchmark`/`new-alfunc`/
+`run-tests` skills exist. Q4.1-Q4.6 answered; Q4.7/Q4.8/Q4.9 still open (flagged
+to RJC before starting Stage 4).
+
+### 2026-07-29 (Pre-Stage-4: CPU/GPU backend design decisions)
+
+Design discussion with RJC settled the Stage 4 parallelism model; folded into
+`refactor_code_stage4.md`:
+- **Either-or, not hybrid** (Q4.8 resolved): the parallel backend is CPU *or* GPU
+  per fit, never both computing derivative columns at once. A GPU model-eval is
+  ~50x a CPU one at DH_orders scale, so GPU-only beats CPU-only ~15x even across
+  ~4 GPUs; a hybrid adds only single-digit % for large complexity / mixed-gate /
+  determinism cost. GPU backend reuses the persistent-Pool machinery sized to
+  `ngpus`, one GPU bound per worker (`cuda.select_device(rank)`, `spawn`).
+- **Dispatch shape** (Q4.7 resolved): keep `call_GPU` per-component in
+  `functions/<name>.py` (device arrays, batched); the dispatcher batches same-type
+  components/spectra with a size-threshold CPU fallback; upload the sub-pixel wave
+  grid + read-only data once per iteration via `prepare_iteration()`, keep
+  device-resident, intermediates on-device. Kernel *location* is runtime-
+  irrelevant -> hard-coding kernels in alfit/model_eval would not be faster.
+- **Backend selection** (new Task 4.3a): `run backend = auto|cpu|gpu` (default
+  auto). `auto` warms both backends then times a Jacobian at p0 on each and
+  commits the whole fit to the winner (one numerical gate); `cpu`/`gpu` force a
+  backend for reproducibility; Stage 0 harness forces cpu. Warming first is
+  essential or a cold GPU probe times JIT/context and mis-picks CPU.
+- Open queries remaining before Stage 4: **Q4.9** (reuse CPU refs + `gpu` marker
+  vs dedicated GPU references) and **Q4.10** (auto semantics when `ngpus` unset;
+  recommend CPU-only unless ngpus explicitly requested).
+
+### 2026-07-29 (Prompt 2: fold Q4.9/Q4.10 responses; final pre-Stage-4 queries)
+
+RJC answered Q4.9 (reuse CPU references for GPU runs via a `gpu` marker; wants an
+on-demand local command) and Q4.10 (CPU-only unless `ngpus` explicitly set; wants
+a "GPUs available" info message). Folded both into `refactor_code_stage4.md`:
+- 4.6: `gpu` marker + `--run-gpu` opt-in (mirroring `--run-slow`), on-demand
+  command `pytest --run-gpu -m gpu`, documented in tests/README.md.
+- 4.3a: `backend`/`ncpus`/`ngpus` interplay + a GPU-available INFO notice when
+  GPUs are present but unused.
+- 4.0: added the Finding-F1 interaction -- dropping `copy.copy(state)` requires
+  freezing `_pinfl` (compute once pre-fit, stop recomputing during the fit) so the
+  base call doesn't mutate the shared influence table; this is the agreed
+  set-once behaviour and is what makes the copy removal bitwise-safe.
+- 4.1: `numba`/CUDA must be imported lazily (GPU-selection only) so CPU-only
+  installs never import them.
+- Context: GPU stack recorded as numba.cuda / float64.
+One new query raised: **Q4.11** -- switch the `pyproject.toml` `gpu` extra from the
+placeholder `cupy` to `numba` (recommend yes). Awaiting RJC's go-ahead to start
+Stage 4 (per Prompt 2).
+
+### 2026-07-29 (Prompt 2 re-run: Q4.11 resolved; numba limitations assessed)
+
+RJC confirmed Q4.11 (switch `gpu` extra cupy -> numba) and asked whether numba's
+lack of dynamic parallelism and texture memory is a problem. Assessment: **no**.
+- Dynamic parallelism (device-side kernel launches) is not needed -- dispatch is
+  host-driven; the Voigt/Faddeeva is flat data-parallel over (sub-pixels x
+  profiles) with host-side batching.
+- Texture memory is not needed -- the small read-only Faddeeva coefficient tables
+  belong in numba **constant memory** (`cuda.const.array_like`); there is no
+  interpolation / 2D-locality use case. Existence proof: `context/voigt_gpu/` is
+  pure numba and already reaches ~1e-15.
+- Later GPU convolution (full-model on device) should be a direct-sum kernel
+  (also pure numba), not cuFFT (numba doesn't wrap it) -- not a blocker, noted.
+Folded into the doc: Task 4.2 (constant-memory, no texture/dyn-parallelism note)
+and the Context GPU-stack note (cudatoolkit must be user-installed; gpu extra ->
+numba). No remaining open queries; awaiting RJC's go-ahead to start Task 4.0.

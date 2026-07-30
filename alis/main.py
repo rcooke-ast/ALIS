@@ -223,6 +223,10 @@ class ClassMain:
             # Load the best-fitting parameters
             parlines, datlines, modlines, lnklines = load.load_input(self, filename=self._argflag['sim']['beginfrom'], updateself=False)
             modpass = load.load_model(self, modlines, updateself=False)
+            # Set the influence table for the loaded model (Stage 4.0: model_func
+            # no longer recomputes _pinfl during evaluation, so set it explicitly
+            # here before the simulations snapshot it into their FitState).
+            self._pinfl = load.load_par_influence(self, modpass['p0'])
             # Calculate the best-fitting model
             model = self.myfunct(modpass['p0'], output=1)
             msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
@@ -235,6 +239,10 @@ class ClassMain:
             # Load the best-fitting parameters
             parlines, datlines, modlines, lnklines = load.load_input(self, filename=self._argflag['sim']['beginfrom'], updateself=False)
             modpass = load.load_model(self, modlines, updateself=False)
+            # Set the influence table for the loaded model (Stage 4.0: model_func
+            # no longer recomputes _pinfl during evaluation, so set it explicitly
+            # here before the simulations snapshot it into their FitState).
+            self._pinfl = load.load_par_influence(self, modpass['p0'])
             # Calculate the best-fitting model
             model = self.myfunct(modpass['p0'], output=1)
             msgs.info("Starting simulations",verbose=self._argflag['out']['verbose'])
