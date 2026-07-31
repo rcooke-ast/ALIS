@@ -170,3 +170,137 @@ convolution functions).
 Note on the measurement: an early pass used `black --check -q`, whose `-q` flag
 suppresses the "would reformat" line, so 14 files were mis-classified as clean.
 Corrected by splitting black-only failures from ruff findings and re-measuring.
+
+## Task 4.2 -- GPU Voigt profile [COMPLETE]
+
+`Voigt.call_GPU` is implemented and gated. Agreement with `call_CPU` is
+**<= 2.1e-14 absolute** across every regime tested, against a 1e-12 budget
+(Q4.3), in float64 throughout (Q4.6).
+
+**What landed**
+- `alis/functions/voigt_gpu.py` (new) -- float64 numba port of the Faddeeva
+  function (`_erfcx_y100`, `_erfcx`, `_sinc`, `_sinh_taylor`, `_sqr`,
+  `_faddeeva_real`) plus the batched `_voigt_kernel` and a host entry point
+  `evaluate()`.
+- `alis/data/erfcx_coeffs.dat` (new) -- the 100x7 Chebyshev table, 5600 bytes.
+  No `pyproject.toml` change was needed: the existing `package-data` glob
+  `alis = ["data/*"]` already ships it.
+- `alis/functions/voigt.py` -- `_gpu_supported = True`, a `call_GPU` that
+  imports the kernel module lazily, and the dead PyCUDA `GPU_kernal`
+  scaffolding (plus its commented `pycuda` imports) deleted. That clears the
+  `SourceModule` F821 for this file; `constant.py` and `linear.py` still carry
+  theirs and are noted in Stage 6.5.
+- `alis/functions/lineemission.py` -- `_gpu_supported = False` (see below).
+- `pytest.ini` / `tests/conftest.py` -- the `gpu` marker and `--run-gpu`.
+- `tests/test_voigt_gpu.py` (new, 18 tests), `tests/test_gpu_interface.py`
+  (2 tests updated/added).
+
+**Parameter layout.** `Voigt.set_vars` hands `call_CPU`/`call_GPU` a 6-column
+array, one row per transition per component: column density, redshift, *total*
+Doppler b (thermal+turbulent already combined by `parin`), rest wavelength
+(q-shifted when `DELTAa/a` is fitted), oscillator strength, Gamma. A
+multi-line component is therefore already a batch, which is the shape the
+kernel wants. The three keywords that change the arithmetic (`freq`, `logN`,
+`ColDensScale`) live in `mkey` and are **per row**, so they are encoded into a
+small `(nrow, 3)` device array rather than hoisted -- a model may legitimately
+mix logN and linear column densities in one call.
+
+**Two bugs in the `context/voigt_gpu/` reference, both of which had to be
+fixed to meet the tolerance.** Anyone reading that example should know:
+1. `simple_test.py` hardcodes `relerr = 1.0E-7`, but pairs it with the `a`,
+   `c`, `a2` constants and the precomputed `expa2n2` table that the C original
+   uses *only* on its `relerr <= DBL_EPSILON` path (`numba_test.py:690, 828`).
+   The mismatch truncates the series early while claiming full-precision
+   constants. scipy calls `Faddeeva_w` with `relerr = 0`, which the C promotes
+   to `DBL_EPSILON`. **This one cost ~8 digits**: worst-case relative error
+   against `wofz` was 2.3e-9 before and 3.3e-15 after, and it took the
+   40-component end-to-end comparison from 2.5e-10 (a FAIL) to 2.1e-14.
+   It is invisible in the example itself, which only asserts `decimal=5`.
+2. `erfcx_y100` casts the interval index to `types.float32`. Harmless in
+   practice (integers < 2^24 are exact) but a float64 violation; not
+   reproduced.
+The example also uses `v = wv*ww*((1/ww)-(1/wv))/bl` where `call_CPU` uses the
+better-conditioned `v = wv*((wv/ww)-1)/bl`. The CPU form is the one ported.
+
+**A latent bug this task exposed.** `LineEmission` subclasses `Voigt` but
+replaces `call_CPU` with a different model. `_gpu_supported` is a class
+attribute, so setting it on `Voigt` silently opted `LineEmission` in too --
+the dispatcher would have run the *Voigt* kernel for an emission line and
+returned a wrong profile with no error. Fixed by setting
+`_gpu_supported = False` on `LineEmission`, and guarded generally by
+`test_gpu_support_is_not_inherited_past_a_new_call_cpu`, which asserts that
+any function claiming GPU support defines `call_CPU` and `call_GPU` in the
+*same* class. Task 4.1 chose an explicit flag over override-detection because
+inheritance made "is `call_GPU` overridden?" unreliable; this is the same
+hazard seen from the other side, and the invariant now covers both.
+
+**Design notes**
+- **Placement.** `@cuda.jit` runs at *import* time, so a module-scope kernel in
+  `voigt.py` would import numba on every CPU-only run. The kernel therefore
+  lives in a sibling module imported from inside `call_GPU()`. The Task 4.1
+  lazy boundary still holds -- `test_importing_alis_does_not_import_numba`
+  passes unchanged.
+- **Reduction in-thread.** One thread per pixel loops over all rows and
+  accumulates the sum (`ae='em'`) or product directly, so the `(nrow, nwave)`
+  intermediate `call_CPU` builds is never materialised, and the accumulation
+  order matches numpy's axis-0 reduction.
+- **Per-row scalars are recomputed per thread** rather than precomputed on the
+  host. That is a few flops against the hundreds the Faddeeva needs, and it is
+  what lets `pin` stay on the device untouched as the contract requires.
+- **Constant memory (Q4.11) is well-chosen, not merely adequate.** It
+  broadcasts at full speed only when a warp reads one address, and both
+  lookups here are warp-uniform: `erfcx` is indexed by the damping parameter,
+  a property of the transition and so identical across threads, and `expa2n2`
+  by a counter that starts at 1 everywhere.
+- **Keyword cache.** The encoded `(nrow, 3)` array is cached on its contents,
+  since keywords come from the model file and never change during a fit while
+  `call_GPU` is invoked thousands of times. `reset_key_cache()` exists for
+  anything that changes CUDA context.
+
+**Test gating.** `gpu`-marked tests run automatically wherever a device is
+present and skip where one is not -- deliberately *not* the `--run-slow`
+opt-in pattern, because these tests are fast (3.8 s) and hiding them behind a
+flag on a machine that can run them would mean they rarely ran. `--run-gpu`
+inverts the failure mode: it makes a missing GPU a `UsageError` rather than a
+skip, so a run meant to exercise the GPU cannot pass silently on a broken CUDA
+install. Verified both ways with `CUDA_VISIBLE_DEVICES=""`: 18 skipped / 12
+passed without the flag, hard error with it.
+
+**Validation**
+- Faddeeva vs `scipy.special.wofz` over 100k points spanning the upper half
+  plane (|Re z| from 1e-8 to 1e4, Im z from 0 to ~30, plus Voigt-shaped and
+  zero-damping slabs): max absolute 2.2e-16, max relative 3.3e-15, median
+  relative **0.0** (bit-identical for most points). The relative bound matters
+  more than the absolute one -- `Re w` is <= 1 in the upper half plane, but the
+  far-wing values are multiplied by column densities of ~1e7 to give optical
+  depths of order unity, so an absolute-only check would miss a truncated
+  series.
+- End-to-end flux, worst case per regime: damped logN=20, weak logN=12.5,
+  saturated, zero damping, off-grid z=0.5, b=1.5, b=200, 40-component product
+  and sum, linear column density, frequency axis, mixed keywords across rows.
+  Worst overall **2.1e-14** (the 40-component sum, where 40 terms each ~1e-16
+  accumulate).
+- `-m unit --run-gpu`: 90 passed. Stage 0 fast gate: see below.
+
+**Kernel-only timing** (arrays already resident; RTX 2080 Ti vs one CPU core):
+
+| nwave | nrow | CPU | GPU | speed-up |
+|---|---|---|---|---|
+| 1 000 | 1 | 0.115 ms | 0.128 ms | **0.9x** |
+| 10 000 | 1 | 0.800 ms | 0.152 ms | 5.2x |
+| 10 000 | 20 | 16.0 ms | 0.640 ms | 25x |
+| 100 000 | 20 | 158 ms | 3.79 ms | 42x |
+
+The 0.9x row is the useful one for **Task 4.3**: below roughly 1e4
+pixel-components the launch overhead eats the gain, so the dispatcher's
+small-array CPU fallback needs a threshold around there, measured rather than
+guessed.
+
+**Not done here** (belongs to 4.3+): host<->device transfer, batching of
+same-type components, multi-GPU dispatch, and the `ngpus` argument. `call_GPU`
+returns a device array and does not transfer, per the contract.
+
+**Stage 0 gate.** `-m fast --run-gpu`: **63 passed, 110 deselected in 4:56**
+(0 failures). `-m unit --run-gpu`: 90 passed. The CPU path is unchanged --
+`call_CPU` was not touched, and the only edits to `voigt.py` were the opt-in
+flag, the new `call_GPU`, and deleting the dead PyCUDA method.

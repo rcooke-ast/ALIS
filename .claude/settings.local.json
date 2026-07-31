@@ -27,7 +27,9 @@
       "Bash(cp -r examples/metal_line_abs /tmp/claude-1000/-home-rcooke-Software-ALIS/fb380f58-de21-4ce4-a058-11e9359df6a0/scratchpad/)",
       "Bash(MPLBACKEND=Agg timeout 300 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)",
       "Bash(sed -n '/\\\\[tool.ruff/,/^\\\\[tool.isort/p' pyproject.toml)",
-      "Bash(sed -n '/ruff/,/^  -/p' .pre-commit-config.yaml)"
+      "Bash(sed -n '/ruff/,/^  -/p' .pre-commit-config.yaml)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -m pytest tests/test_voigt_gpu.py tests/test_gpu_interface.py -q)",
+      "Bash(CUDA_VISIBLE_DEVICES=\"\" python -m pytest tests/test_voigt_gpu.py -q --run-gpu)"
     ]
   }
 }

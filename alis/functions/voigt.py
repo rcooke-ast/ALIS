@@ -4,9 +4,6 @@ import numpy as np
 from alis import logger
 from alis.functions import base
 from scipy.special import wofz
-#import pycuda.driver as cuda
-#import pycuda.autoinit
-#from pycuda.compiler import SourceModule
 msgs = logger.msgs()
 
 class Voigt(base.Base) :
@@ -16,7 +13,14 @@ class Voigt(base.Base) :
     p[1] = redshift
     p[2] = turbulent Doppler parameter
     p[3] = temperature
+
+    GPU support (Stage 4.2): call_GPU is implemented in the sibling module
+    alis/functions/voigt_gpu.py, which is imported lazily so that a CPU-only
+    run never imports numba (Task 4.1).
     """
+
+    _gpu_supported = True
+
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'voigt'																				# ID string for this class
         self._pnumr   = 7																					# Total number of parameters fed in
@@ -37,104 +41,35 @@ class Voigt(base.Base) :
         self._verbose = verbose
         # Set the atomic data
         self._atomic = atomic
-        #self._kernal  = self.GPU_kernal()										# Get the Source Module for the GPU
         if getinst: return
 
-    def GPU_kernal(self):
-        return SourceModule("""
-            #define nexpd 10
+    def call_GPU(self, wave, pin, ae='ab', mkey=None, ncpus=1):
+        """
+        Define the functional form of the model for the GPU
+        --------------------------------------------------------
+        wave : device array of wavelengths (already on the GPU)
+        pin  : device array of parameters, one row per transition per
+               component, so a single launch covers the whole batch
+        --------------------------------------------------------
+        Returns a device array of the same length as wave.
 
-            __global__ void voigt(double *model, double *wave, double *params, double *hA, double *hB, double *hC, double *hD)
-            {
-            int idx = blockIdx.x + blockIdx.y*gridDim.x + threadIdx.x*gridDim.x*gridDim.y;
-            int pidx = 6*blockIdx.y;
+        The kernel lives in alis/functions/voigt_gpu.py and is imported here
+        rather than at module scope: @cuda.jit runs at import time, so a
+        module-scope kernel would pull numba into every CPU-only run, which
+        Task 4.1 forbids. Agreement with call_CPU is < 1e-12 absolute (Q4.3),
+        in float64 throughout (Q4.6).
 
-        /*	System generated locals */
-            double vval;
-            double oneonsqrtpi = 0.5641895835477563;
+        Falls back to call_CPU when no usable GPU is present -- reachable only
+        when numba is installed but no device is, in which case the caller
+        cannot have built device arrays and wave/pin are ordinary numpy.
 
-        /* Local variables */
-            int n, p;
-            int p1, p2;
-            double r, v0, x, y, z;
-            double v, a, c;
-            double binvel, wavs;
-            double sum = 0.;
-
-            if ( gridDim.x == 1+blockIdx.x) {
-                binvel = 2.99792458E5*(wave[blockIdx.x]-wave[blockIdx.x-1])/wave[blockIdx.x-1];
-            }
-            else {
-                binvel = 2.99792458E5*(wave[blockIdx.x+1]-wave[blockIdx.x])/wave[blockIdx.x];
-            }
-            int nexbin = (int)(nexpd * binvel/params[pidx+1] + .5);
-            double binlen = 1./(double)(nexbin);
-            a = params[pidx+5] * params[pidx+3] * 2.99792458E-3 / (3.76730313461770655E11 * params[pidx+1]);
-            c = params[pidx+4] * params[pidx+3] * 2.99792458E-3 * (pow(10.,params[pidx+0]))/(2.002134602291006E12 * params[pidx+1]);
-            for( int k = 0; k < nexbin; k++ ) {
-                wavs = wave[blockIdx.x]*( 1. + (k - .5*(nexbin-1)) * binlen * binvel/2.99792458E5 );
-                v = 2.99792458E5*((params[pidx+3]*(1.+params[pidx+2])/wavs)-1.0)/params[pidx+1];
-
-        /*	Voigt function is symmetric, so -v = v */
-                if (v < 0.) {
-                v = -v;
-                }
-        /*	If a is exactly zero go to 3 for exact expression */
-                if (a == 0.) {
-                goto L3;
-                }
-        /*	Scale up v for ease with lookup tables */
-                v0 = v * 10.;
-                n = (int) v0;
-        /*	If u < 10, go to 1. Otherwise use asymptotic expression. */
-                if (n < 100) {
-                goto L1;
-                }
-                r = 1. / (v * v);
-                vval = a * r * oneonsqrtpi * (r * (r * (r * (r *
-                    59.0625 + 13.125) + 3.75) + 1.5) + 1. - a * a * r * (r * (
-                    r * 26.25 + 5.) + 1.));
-                goto L4;
-        /*	Arrive here if v < 10 */
-            L1:
-                v0 = v * 2. * 10.;
-        /*	Scale up v again by 2, then find closet integer. This gives */
-        /*	the index for the lookup table array. */
-                n = (int) v0;
-        /*	Add one to the integer value because Fortran arrays */
-        /*	are unit offset. Then find the next two array indices. */
-                p = n + 1;
-                p1 = p + 1;
-                p2 = p1 + 1;
-        /*	Calculate the abcissa values associated with each entry */
-        /*	in the lookup table. */
-                x = ((double) p - 1) * .5;
-                y = x + .5;
-                z = y + .5;
-        /*	Now rescale v0 back by 1/2 */
-                v0 *= .5;
-        /*	Use optimised Lagrange classical interpolation formula for */
-        /*	a quadratic. Interpolation is done three times, for h0, h1 and h2. */
-        /*	As the absicssa points are equally spaced the result has */
-        /*	been factored further. */
-                vval = ((v0 - y) * (v0 - z) * (hA[p - 1] + a * (hB[p - 1] + a * (
-                    hC[p - 1] + a * hD[p - 1]))) - (v0 - x) * (v0 - z) * 2. * (hA[
-                    p1 - 1] + a * (hB[p1 - 1] + a * (hC[p1 - 1] + a * hD[p1 - 1])))
-                    + (v0 - x) * (v0 - y) * (hA[p2 - 1] + a * (hB[p2 - 1] + a * (
-                    hC[p2 - 1] + a * hD[p2 - 1])))) * 2.;
-                goto L4;
-            L3:
-                vval = exp(-(v * v));
-                goto L4;
-            L4:
-                sum += exp(-(c * vval) );
-            } // END OF FOR LOOP
-
-            model[idx] = sum*binlen;
-
-        }
-        """)
-        if getinst: return
+        Generated by RJC and Claude.
+        """
+        from alis import gpu
+        if not gpu.is_available():
+            return self.call_CPU(wave, pin, ae=ae, mkey=mkey, ncpus=ncpus)
+        from alis.functions import voigt_gpu
+        return voigt_gpu.evaluate(wave, pin, ae=ae, mkey=mkey)
 
     def call_CPU(self, wave, pin, ae='ab', mkey=None, ncpus=1):
         """

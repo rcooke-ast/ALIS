@@ -17,6 +17,14 @@ class LineEmission(voigt.Voigt) :
     p[2] =
     p[3] =
     """
+
+    # Subclassing Voigt would otherwise inherit its Stage 4.2 GPU opt-in, and
+    # with it Voigt.call_GPU -- but call_CPU below is a different model with a
+    # different parameterisation, so the Voigt kernel would silently return
+    # the wrong profile. Overridden explicitly until this function gets a
+    # kernel of its own.
+    _gpu_supported = False
+
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'lineemission'															# ID string for this class
         self._pnumr   = 5																		# Total number of parameters fed in

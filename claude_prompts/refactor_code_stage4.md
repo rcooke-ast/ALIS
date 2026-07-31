@@ -67,7 +67,7 @@ see `logs/refactor_code_stage4_log.md`]**
   never import them and need no CUDA toolchain (plan intro; Q4.11). A missing
   `numba`/GPU at GPU-selection time falls back to CPU with a clear message.
 
-**4.2 — GPU Voigt profile.**
+**4.2 — GPU Voigt profile.** [COMPLETE]
 - Implement `call_GPU` for the Voigt profile (`alis/functions/voigt.py`, which
   has a `GPU_kernal` stub, commented `pycuda` imports, and the CPU `model`)
   using the `context/voigt_gpu/` example (Faddeeva function), validated close to
@@ -425,3 +425,4 @@ you foresee this as a problem for our implementation?
 
 4. Please read this doc, including my responses to your queries, and execute Task 4.1.
 
+5. Please read this doc, including my responses to your queries, and execute Task 4.2.
