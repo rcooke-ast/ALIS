@@ -17,35 +17,37 @@ pytestmark = pytest.mark.unit
 
 # -- _DictLike behaviour ------------------------------------------------------
 
+
 def test_dictlike_get_set_roundtrip():
     run = RunConfig()
-    assert run['ncpus'] == run.ncpus     # subscript == attribute
-    run['ncpus'] = 4
-    assert run.ncpus == 4                 # __setitem__ writes through
+    assert run["ncpus"] == run.ncpus  # subscript == attribute
+    run["ncpus"] = 4
+    assert run.ncpus == 4  # __setitem__ writes through
 
 
 def test_dictlike_contains_and_keys():
     run = RunConfig()
-    assert 'cache' in run
-    assert 'not_a_field' not in run
+    assert "cache" in run
+    assert "not_a_field" not in run
     keys = run.keys()
-    assert 'ncpus' in keys and 'cache' in keys
+    assert "ncpus" in keys and "cache" in keys
     assert isinstance(keys, list)
 
 
 def test_dictlike_unknown_key_raises_keyerror():
     run = RunConfig()
     with pytest.raises(KeyError):
-        run['not_a_field']
+        run["not_a_field"]
     with pytest.raises(KeyError):
-        run['not_a_field'] = 1
+        run["not_a_field"] = 1
 
 
 # -- documented defaults ------------------------------------------------------
 
+
 def test_run_defaults_include_stage3_cache_on():
     run = RunConfig()
-    assert run.cache is True             # Stage 3.1/3.4: caching default flipped on
+    assert run.cache is True  # Stage 3.1/3.4: caching default flipped on
     assert run.blind is True
     assert run.logn is True
     assert run.bintype == "km/s"
@@ -54,7 +56,7 @@ def test_run_defaults_include_stage3_cache_on():
 
 def test_out_report_defaults():
     out = config.OutConfig()
-    assert out.report is True            # Stage 3.2
+    assert out.report is True  # Stage 3.2
     assert out.reportsig == 3.0
 
 
@@ -67,17 +69,18 @@ def test_sim_convergence_defaults():
 
 # -- ArgFlag nested composition ----------------------------------------------
 
+
 def test_argflag_nested_access():
     cfg = ArgFlag()
     # dict-style, two levels deep (the historical argflag['run']['cache'] form).
-    assert cfg['run']['cache'] is True
-    assert cfg['out']['report'] is True
-    assert cfg['sim']['convergetest'] == "maxdev"
-    cfg['run']['ncpus'] = 8
-    assert cfg.run.ncpus == 8            # attribute view sees the same object
+    assert cfg["run"]["cache"] is True
+    assert cfg["out"]["report"] is True
+    assert cfg["sim"]["convergetest"] == "maxdev"
+    cfg["run"]["ncpus"] = 8
+    assert cfg.run.ncpus == 8  # attribute view sees the same object
 
 
 def test_argflag_sections_are_independent_instances():
     a, b = ArgFlag(), ArgFlag()
-    a['run']['ncpus'] = 99
-    assert b['run']['ncpus'] == -1       # default_factory -> no shared mutable state
+    a["run"]["ncpus"] = 99
+    assert b["run"]["ncpus"] == -1  # default_factory -> no shared mutable state

@@ -26,6 +26,7 @@ CLIGHT = 2.99792458e5  # km/s (as used inside get_binsize)
 
 # -- cpucheck -----------------------------------------------------------------
 
+
 @pytest.fixture
 def fixed_cpu_count(monkeypatch):
     """Pin the reported core count so the resolution logic is deterministic."""
@@ -56,6 +57,7 @@ def test_cpucheck_over_request_clamps(fixed_cpu_count):
 
 # -- get_binsize --------------------------------------------------------------
 
+
 def test_get_binsize_angstrom_uniform_grid():
     wave = np.array([100.0, 101.0, 102.0, 103.0])
     assert np.isclose(load.get_binsize(wave, bintype="A"), 1.0)
@@ -79,14 +81,15 @@ def test_get_binsize_unknown_bintype_is_defensive():
 
 # -- getis / load_tied (tied-parameter expression remapping) ------------------
 
+
 def test_getis_remaps_global_indices_to_free_indices():
     # infl = [opinfl (free ids), pinfl (global ids)], indexed [sp][sn][j].
-    pinfl = [[[5, 3]]]     # region (0,0) contains global params 5 and 3
-    opinfl = [[[1, 0]]]    # global 5 -> free 1, global 3 -> free 0
+    pinfl = [[[5, 3]]]  # region (0,0) contains global params 5 and 3
+    opinfl = [[[1, 0]]]  # global 5 -> free 1, global 3 -> free 0
     infl = [opinfl, pinfl]
     jval, pstr = load.getis("p[3]*2.0", 5, infl)
-    assert jval == 1                 # LHS (global 5) -> free 1
-    assert pstr == "p[0]*2.0"        # RHS global 3 -> free 0
+    assert jval == 1  # LHS (global 5) -> free 1
+    assert pstr == "p[0]*2.0"  # RHS global 3 -> free 0
 
 
 def test_getis_retlhs_false_returns_expression_only():
@@ -100,35 +103,37 @@ def test_load_tied_applies_direct_expressions():
     p = np.array([1.0, 2.0, 0.0])
     ptied = ["", "", "p[0]+p[1]"]
     out = load.load_tied(p, ptied)
-    assert out[2] == 3.0             # p[2] = p[0] + p[1]
+    assert out[2] == 3.0  # p[2] = p[0] + p[1]
 
 
 # -- load_atomic (schema / smoke) --------------------------------------------
 
+
 def test_load_atomic_schema_and_lya_present():
     cfg = ArgFlag()
-    cfg['run']['atomic'] = str(Path(alis.__file__).parent / "data" / "atomic.xml")
-    cfg['out']['verbose'] = 0
+    cfg["run"]["atomic"] = str(Path(alis.__file__).parent / "data" / "atomic.xml")
+    cfg["out"]["verbose"] = 0
     atm = load.load_atomic(SimpleNamespace(_argflag=cfg))
 
     assert isinstance(atm, AtomicData)
-    n = len(atm['Ion'])
+    n = len(atm["Ion"])
     assert n > 100
     # Parallel arrays are the same length.
-    assert len(atm['Wavelength']) == n
-    assert len(atm['fvalue']) == n
-    assert len(atm['Gamma']) == n
+    assert len(atm["Wavelength"]) == n
+    assert len(atm["fvalue"]) == n
+    assert len(atm["Gamma"]) == n
 
     # A known transition: HI Lyman-alpha near 1215.67 A with f ~ 0.416.
-    lya = atm['Ion'] == "1H_I"
+    lya = atm["Ion"] == "1H_I"
     assert lya.any()
-    waves = atm['Wavelength'][lya]
+    waves = atm["Wavelength"][lya]
     near = np.abs(waves - 1215.67) < 0.1
     assert near.any(), "HI Lyman-alpha not found in atomic data"
-    assert atm['fvalue'][lya][near][0] > 0.0
+    assert atm["fvalue"][lya][near][0] > 0.0
 
 
 # -- pinfl_changed (Stage 3.5.2 influence-stability check) --------------------
+
 
 def _pinfl(pinfl):
     """Wrap a pinfl table (global param ids per [sp][sn]) as [opinfl, pinfl]."""

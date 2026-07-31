@@ -28,12 +28,7 @@ pytest tmp_path copy of the example directory (see alisrun.py).
 import shutil
 
 import pytest
-
-from alisrun import (
-    make_fixedparam_mod,
-    run_alis,
-    stage_case,
-)
+from alisrun import make_fixedparam_mod, run_alis, stage_case
 from compare import (
     CHISQ_RTOL_FIXEDPARAM,
     CHISQ_RTOL_MINIMISATION,
@@ -74,10 +69,8 @@ _GEN_CASES = [c for c in _CASES if c.kind == "generate"]
 #   any sane error fraction (RJC was content to drop it; Q0.15). Its
 #   minimisation test (mode a) still runs.
 FIXEDPARAM_EXCLUDE = {
-    "examples/brokenpowerlaw/model/fit_spectra":
-        "reference point (chi2 374.98 vs recorded 338.15); Q0.12",
-    "examples/tophat/model/fit_spectra":
-        "sharp edge (~14x error at edge pixel); Q0.15",
+    "examples/brokenpowerlaw/model/fit_spectra": "reference point (chi2 374.98 vs recorded 338.15); Q0.12",
+    "examples/tophat/model/fit_spectra": "sharp edge (~14x error at edge pixel); Q0.15",
 }
 
 # Fixed-parameter evals normally all run on every commit (batch
@@ -134,9 +127,7 @@ def _params(cases, batch=None, overrides=None):
         # refactor-only reference fits and are excluded from CI.
         source = case.name.split("/", 1)[0]
         source_mark = getattr(pytest.mark, source)
-        params.append(
-            pytest.param(case, id=case.name, marks=[mark, source_mark])
-        )
+        params.append(pytest.param(case, id=case.name, marks=[mark, source_mark]))
     return params
 
 
@@ -166,13 +157,7 @@ def _assert_clean(failures, case, note):
 
 @pytest.mark.parametrize(
     "case",
-    _params(
-        [
-            c
-            for c in _FIT_CASES
-            if c.name not in MINIMISATION_KNOWN_DIVERGENCE
-        ]
-    ),
+    _params([c for c in _FIT_CASES if c.name not in MINIMISATION_KNOWN_DIVERGENCE]),
 )
 def test_minimisation(case, tmp_path):
     """
@@ -198,7 +183,8 @@ def test_minimisation(case, tmp_path):
     for pair in case.data_pairs:
         for ref in pair.reference_fits:
             failures += compare_fit_dat(
-                staged.fit_output_for(ref), ref,
+                staged.fit_output_for(ref),
+                ref,
                 errfrac=FITDAT_ERRFRAC_MINIMISATION,
             )
     if case.covar_reference is not None:
@@ -213,11 +199,7 @@ def test_minimisation(case, tmp_path):
 @pytest.mark.parametrize(
     "case",
     _params(
-        [
-            c
-            for c in _FIT_CASES
-            if not c.is_blind and c.name not in FIXEDPARAM_EXCLUDE
-        ],
+        [c for c in _FIT_CASES if not c.is_blind and c.name not in FIXEDPARAM_EXCLUDE],
         batch="fast",
         overrides=FIXEDPARAM_BATCH_OVERRIDE,
     ),
@@ -290,9 +272,7 @@ def test_generate(case, tmp_path):
     failures = []
     for pair in case.data_pairs:
         for ref in pair.reference_fits:
-            failures += compare_generated_data(
-                staged.staged(pair.input_file), ref
-            )
+            failures += compare_generated_data(staged.staged(pair.input_file), ref)
     _assert_clean(failures, case, "generate")
     # Keep the staged copy only when the test fails (for debugging).
     shutil.rmtree(staged.root, ignore_errors=True)

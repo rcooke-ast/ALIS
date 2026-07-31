@@ -46,9 +46,7 @@ RUNTIME_TIMEOUT_FACTOR = 4.0
 
 # Active settings lines to strip when building a fixed-parameter
 # .mod file from a .mod.out.reference (they are re-inserted as 0).
-_CHISQ_ITER_RE = re.compile(
-    r"^\s*chisq\s+(miniter|maxiter)\b", re.IGNORECASE
-)
+_CHISQ_ITER_RE = re.compile(r"^\s*chisq\s+(miniter|maxiter)\b", re.IGNORECASE)
 # The fixed-parameter gate compares chi-squared, DOF and the model
 # column only -- never the covariance. Computing/writing the
 # covariance for the large real-world models is expensive (a
@@ -63,9 +61,7 @@ _OUT_COVAR_RE = re.compile(r"^\s*out\s+covar\b", re.IGNORECASE)
 # fixed-parameter evaluation that is an unbounded loop (DH/HS0105p1619
 # spun past the timeout re-printing "ITERATION 1 ... CONVERGENCE").
 # Strip it so mode (b) performs exactly one evaluation.
-_RUN_CONVERGENCE_RE = re.compile(
-    r"^\s*run\s+convergence\b", re.IGNORECASE
-)
+_RUN_CONVERGENCE_RE = re.compile(r"^\s*run\s+convergence\b", re.IGNORECASE)
 # ALIS prints the voigt default damping explicitly (as a suffixless
 # "damping=0.0000000") in .mod.out even when the input did not set
 # it, and on re-read an explicit suffixless keyword parameter is
@@ -222,8 +218,13 @@ def run_alis(mod_file, runtime_hrs=None):
     # so the .mod file must stay the last argument.
     proc = subprocess.run(
         [
-            sys.executable, str(RUN_ALIS),
-            "-f", "-w", "-p", "0", mod_file.name,
+            sys.executable,
+            str(RUN_ALIS),
+            "-f",
+            "-w",
+            "-p",
+            "0",
+            mod_file.name,
         ],
         cwd=mod_file.parent,
         env=env,
@@ -309,7 +310,8 @@ def make_fixedparam_mod(staged):
             raw = _ZERO_DAMPING_RE.sub(" ", raw)
             if stripped.split()[:1] == ["random"]:
                 tokens = [
-                    t for t in stripped.split()[1:]
+                    t
+                    for t in stripped.split()[1:]
                     if not t.startswith(("command=", "start="))
                 ]
                 raw = "  variable   " + "      ".join(tokens)

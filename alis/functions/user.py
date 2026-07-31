@@ -10,6 +10,7 @@
 
 ##########################
 
+
 def load_user_functions():
     # If your function requires the atomic data used by ALIS,
     # you need to include the name of your function in the

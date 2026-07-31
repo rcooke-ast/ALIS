@@ -16,6 +16,7 @@ pytestmark = pytest.mark.unit
 
 # -- numtorn / rntonum (roman numerals <-> ion charge) -----------------------
 
+
 def test_numtorn_neutral_state_toggle():
     # subone=False: cnt == 1 is the neutral state ("I").
     assert utils.numtorn(1) == "I"
@@ -55,6 +56,7 @@ def test_numtorn_out_of_range_errors():
 
 # -- numtoelem (atomic number -> element) ------------------------------------
 
+
 def test_numtoelem_representative_values():
     assert utils.numtoelem(1) == "H"
     assert utils.numtoelem(2) == "He"
@@ -78,6 +80,7 @@ def test_numtoelem_out_of_range_errors():
 
 
 # -- getreason (convergence-reason id -> message) ----------------------------
+
 
 def test_getreason_known_ids():
     assert "ftol" in utils.getreason(1)

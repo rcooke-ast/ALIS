@@ -27,6 +27,41 @@
   tutorial (walk a user through preparing, running, and analysing a fit), the
   expanded example suite, and API autodoc. Add `CONTRIBUTING.md`.
 
+**6.5 — Repo-wide formatting + clear the legacy ruff findings.**
+> Deferred here deliberately from Stage 4.1, which introduced *incremental*
+> lint adoption instead: the linters are enforced on every file except an
+> explicit exclusion list in `pyproject.toml` (black `force-exclude`, ruff
+> `extend-exclude`, isort `extend_skip`). That list is a shrinking to-do list --
+> this task empties it.
+- Scope measured 2026-07-30: **46 excluded files** (39 legacy `alis/` modules;
+  the rest is vendored reference code under `context/voigt_gpu/` and standalone
+  example scripts, which stay excluded permanently). Under ruff's default rule
+  set the `alis/` modules carry **~1518 findings**, of which only ~21 are
+  auto-fixable: 1217 E701 (`if x: return y` one-liners, which black rewrites),
+  66 E722 bare excepts, 70 F841 unused variables, 39 F821 undefined names.
+- **Do black + isort first, ruff by hand.** Black is AST-preserving and so
+  cannot change behaviour; `ruff --fix` is *not* safe to apply blindly here --
+  it auto-removes "unused" imports (F401), which breaks side-effect imports,
+  and E711 (`== None` -> `is None`) is a genuine semantic change for numpy
+  arrays, where `arr == None` returns an array and `arr is None` a bool. ALIS
+  has 6 live `== None` / `!= None` comparisons (`main.py` x2, `minimise.py`,
+  `model_eval.py`, `load.py`).
+- Each file must stay green under the Stage 0 gate as it is un-excluded; do it
+  in small batches, not one sweep, so a regression stays attributable.
+- **F821 undefined names are real latent bugs, not style** (found 2026-07-30,
+  worth fixing regardless of the reformat):
+  - `szflx` is undefined in the wavelength-dependent-resolution branch of
+    **four convolution functions** -- `afwhm.py:63,66`, `vfwhm.py:63,66`,
+    `voigtconv.py:70,73`, `vsigma.py:63,66`. That branch raises `NameError` if
+    reached; the shipped examples only use scalar resolution, so no test
+    covers it.
+  - `alis/plot.py` ~698-725: ~20 references to an undefined `slf`.
+  - `alis/prepfit/specplot.py:391`: `self` used at module scope.
+  - `alis/convergence.py:188` `nput`; `alis/functions/lsfspline.py:221`
+    `sidlist`; `alis/functions/chebyshev.py:73` `sys` (missing import).
+  - `SourceModule` in `constant.py`/`linear.py`/`voigt.py` is the dead PyCUDA
+    scaffolding -- removed as part of the Stage 4 GPU port, not here.
+
 **6.4 — Unit tests for this stage's stable surface (do last).**
 - Following the cross-cutting unit-test policy
   (`claude_prompts/refactor_code_unit_tests.md`), add `unit`-marked tests for the

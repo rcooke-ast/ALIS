@@ -130,3 +130,43 @@ numerical-equivalence tests are `gpu`-marked and belong with the kernel (4.2/4.6
 
 No fitting behaviour is touched: nothing in the fit path calls `call_GPU`, and
 `alis/gpu.py` is not yet imported by any runtime module.
+
+## Lint rollout (between 4.1 and 4.2) -- incremental adoption, not a big-bang
+
+RJC asked for a recommendation on lint before 4.2. Measured the ground truth
+first: the `alis/` package carries **~1518 ruff findings** under the default
+rule set (1217 E701 `if x: return y` one-liners, 66 E722 bare excepts, 70 F841
+unused variables, 39 F821 undefined names), of which only ~21 are auto-fixable.
+A repo-wide rollout is therefore a multi-session task in its own right, not a
+pre-4.2 step -- and `ruff --fix` is *not* semantically safe to apply blindly
+(it auto-removes F401 "unused" imports, and E711 `== None` -> `is None` changes
+behaviour for numpy arrays; ALIS has 6 live `== None`/`!= None` comparisons).
+
+**Adopted instead: enforce everywhere except an explicit exclusion list.**
+- `pyproject.toml`: black `force-exclude` (verbose regex), ruff
+  `extend-exclude` + `force-exclude = true`, isort `extend_skip` -- 46 files
+  (39 legacy `alis/` modules; the rest vendored `context/voigt_gpu/` code and
+  example scripts). Both `force-exclude` settings and isort's `--filter-files`
+  are *required*, because pre-commit passes explicit filenames and the plain
+  exclude settings do not filter those. Verified each one individually.
+- `.pre-commit-config.yaml`: added `--filter-files` to the isort hook.
+- **Brought 14 files up to standard** rather than excluding them (they were
+  black-only failures, ruff-clean): `config.py`, `logger.py`, `report.py`,
+  `functions/user.py`, `data/convert_datFormat_to_xmlFormat.py`, and 9
+  `tests/` modules. Black is AST-preserving, so this cannot change behaviour.
+  Also removed one genuinely unused import (`dataclasses.fields` in
+  `config.py`, F401).
+- `context/voigt_gpu/numba_test.py` is excluded because **it is not Python** --
+  it is byte-identical to `faddeeva.cc` (C++ saved with a `.py` extension), and
+  black cannot parse it.
+
+Result: black / ruff (pinned v0.6.9 rule set) / isort are **all clean across
+every non-excluded file**, so the CI `lint` job goes green and is meaningful for
+all new code, while the legacy reformat is sequenced as **Stage 6.5** (added to
+`refactor_code_stage6.md`, with the F821 findings recorded as real latent bugs
+-- notably `szflx`, undefined in the variable-resolution branch of four
+convolution functions).
+
+Note on the measurement: an early pass used `black --check -q`, whose `-q` flag
+suppresses the "would reformat" line, so 14 files were mis-classified as clean.
+Corrected by splitting black-only failures from ruff findings and re-measuring.

@@ -80,14 +80,188 @@ alis = ["data/*"]
 # --- Formatting / linting (Task 1.3) -------------------------------------
 # Line length 88 (black default). Linting is introduced config-first: the
 # legacy codebase is not yet reformatted, so CI lints only changed files.
+
+# ---------------------------------------------------------------------------
+# Incremental lint adoption (Stage 4.1).
+#
+# The linters are enforced on every file EXCEPT those listed below, so all new
+# and already-cleaned code is held to the standard while the un-formatted
+# legacy modules stay out of the way. This list is a shrinking to-do list:
+# delete a path from it once that file has been formatted and its ruff findings
+# resolved.
+#
+# The legacy `alis/` modules (39 files) are not merely mis-formatted -- ruff
+# reports ~1518 findings across them under its default rule set, of which only
+# ~21 are auto-fixable (1217 are E701 "if x: return y" one-liners that black
+# rewrites, plus 66 bare excepts, 70 unused variables and 39 genuinely
+# undefined names). Clearing them is a dedicated task, not a side effect of
+# another change -- see Stage 6.5.
+#
+# The non-`alis/` entries (6 files) are vendored reference code
+# (context/voigt_gpu/) and standalone example scripts; they are not ALIS source
+# and are excluded permanently rather than pending.
+# ---------------------------------------------------------------------------
+
 [tool.black]
 line-length = 88
 target-version = ["py313"]
+# force-exclude (not exclude) is required: pre-commit passes explicit filenames,
+# which plain `exclude` does not filter.
+force-exclude = '''
+(?x)
+^/(
+      alis/convergence\.py
+    | alis/functions/afwhm\.py
+    | alis/functions/apod\.py
+    | alis/functions/base\.py
+    | alis/functions/brokenpowerlaw\.py
+    | alis/functions/chebyshev\.py
+    | alis/functions/constant\.py
+    | alis/functions/gaussian\.py
+    | alis/functions/legendre\.py
+    | alis/functions/linear\.py
+    | alis/functions/lineemission\.py
+    | alis/functions/lsf\.py
+    | alis/functions/lsffile\.py
+    | alis/functions/lsfspline\.py
+    | alis/functions/multivfwhm\.py
+    | alis/functions/phionxs\.py
+    | alis/functions/polynomial\.py
+    | alis/functions/powerlaw\.py
+    | alis/functions/random\.py
+    | alis/functions/shift\.py
+    | alis/functions/spline\.py
+    | alis/functions/splineabs\.py
+    | alis/functions/thar\.py
+    | alis/functions/tophat\.py
+    | alis/functions/variable\.py
+    | alis/functions/vfwhm\.py
+    | alis/functions/voigt\.py
+    | alis/functions/voigtconv\.py
+    | alis/functions/vsigma\.py
+    | alis/load\.py
+    | alis/main\.py
+    | alis/minimise\.py
+    | alis/model_eval\.py
+    | alis/plot\.py
+    | alis/prepfit/specplot\.py
+    | alis/save\.py
+    | alis/scripts/run_alis\.py
+    | alis/simulate\.py
+    | alis/utils\.py
+    | context/voigt_gpu/backup\.py
+    | context/voigt_gpu/faddeeva\.py
+    | context/voigt_gpu/numba_test\.py
+    | context/voigt_gpu/simple_test\.py
+    | examples/lsf_file/model/make_lsf\.py
+    | examples/prepfit/myobjects\.py
+    | examples/prepfit/select_fitting_regions\.py
+)$
+'''
 
 [tool.isort]
 profile = "black"
 line_length = 88
+extend_skip = [
+    "alis/convergence.py",
+    "alis/functions/afwhm.py",
+    "alis/functions/apod.py",
+    "alis/functions/base.py",
+    "alis/functions/brokenpowerlaw.py",
+    "alis/functions/chebyshev.py",
+    "alis/functions/constant.py",
+    "alis/functions/gaussian.py",
+    "alis/functions/legendre.py",
+    "alis/functions/linear.py",
+    "alis/functions/lineemission.py",
+    "alis/functions/lsf.py",
+    "alis/functions/lsffile.py",
+    "alis/functions/lsfspline.py",
+    "alis/functions/multivfwhm.py",
+    "alis/functions/phionxs.py",
+    "alis/functions/polynomial.py",
+    "alis/functions/powerlaw.py",
+    "alis/functions/random.py",
+    "alis/functions/shift.py",
+    "alis/functions/spline.py",
+    "alis/functions/splineabs.py",
+    "alis/functions/thar.py",
+    "alis/functions/tophat.py",
+    "alis/functions/variable.py",
+    "alis/functions/vfwhm.py",
+    "alis/functions/voigt.py",
+    "alis/functions/voigtconv.py",
+    "alis/functions/vsigma.py",
+    "alis/load.py",
+    "alis/main.py",
+    "alis/minimise.py",
+    "alis/model_eval.py",
+    "alis/plot.py",
+    "alis/prepfit/specplot.py",
+    "alis/save.py",
+    "alis/scripts/run_alis.py",
+    "alis/simulate.py",
+    "alis/utils.py",
+    "context/voigt_gpu/backup.py",
+    "context/voigt_gpu/faddeeva.py",
+    "context/voigt_gpu/numba_test.py",
+    "context/voigt_gpu/simple_test.py",
+    "examples/lsf_file/model/make_lsf.py",
+    "examples/prepfit/myobjects.py",
+    "examples/prepfit/select_fitting_regions.py",
+]
 
 [tool.ruff]
 line-length = 88
 target-version = "py313"
+# force-exclude is required so the exclusions apply when pre-commit passes
+# explicit filenames.
+force-exclude = true
+extend-exclude = [
+    "alis/convergence.py",
+    "alis/functions/afwhm.py",
+    "alis/functions/apod.py",
+    "alis/functions/base.py",
+    "alis/functions/brokenpowerlaw.py",
+    "alis/functions/chebyshev.py",
+    "alis/functions/constant.py",
+    "alis/functions/gaussian.py",
+    "alis/functions/legendre.py",
+    "alis/functions/linear.py",
+    "alis/functions/lineemission.py",
+    "alis/functions/lsf.py",
+    "alis/functions/lsffile.py",
+    "alis/functions/lsfspline.py",
+    "alis/functions/multivfwhm.py",
+    "alis/functions/phionxs.py",
+    "alis/functions/polynomial.py",
+    "alis/functions/powerlaw.py",
+    "alis/functions/random.py",
+    "alis/functions/shift.py",
+    "alis/functions/spline.py",
+    "alis/functions/splineabs.py",
+    "alis/functions/thar.py",
+    "alis/functions/tophat.py",
+    "alis/functions/variable.py",
+    "alis/functions/vfwhm.py",
+    "alis/functions/voigt.py",
+    "alis/functions/voigtconv.py",
+    "alis/functions/vsigma.py",
+    "alis/load.py",
+    "alis/main.py",
+    "alis/minimise.py",
+    "alis/model_eval.py",
+    "alis/plot.py",
+    "alis/prepfit/specplot.py",
+    "alis/save.py",
+    "alis/scripts/run_alis.py",
+    "alis/simulate.py",
+    "alis/utils.py",
+    "context/voigt_gpu/backup.py",
+    "context/voigt_gpu/faddeeva.py",
+    "context/voigt_gpu/numba_test.py",
+    "context/voigt_gpu/simple_test.py",
+    "examples/lsf_file/model/make_lsf.py",
+    "examples/prepfit/myobjects.py",
+    "examples/prepfit/select_fitting_regions.py",
+]

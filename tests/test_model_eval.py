@@ -20,8 +20,19 @@ def test_minimiser_eval_does_not_copy_state(monkeypatch):
     # Spy on myfunct: record the exact state object it is handed.
     seen = {}
 
-    def _spy(p, fjac=None, x=None, y=None, err=None, state=None, ddpid=None,
-             pp=None, getemab=False, emab=None, output=0):
+    def _spy(
+        p,
+        fjac=None,
+        x=None,
+        y=None,
+        err=None,
+        state=None,
+        ddpid=None,
+        pp=None,
+        getemab=False,
+        emab=None,
+        output=0,
+    ):
         seen["state"] = state
         return [0, "resid"]
 

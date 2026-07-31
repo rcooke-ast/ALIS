@@ -23,7 +23,6 @@ import subprocess
 import sys
 
 import pytest
-
 from manifest import REPO_ROOT
 
 RUN_ALIS = REPO_ROOT / "alis" / "scripts" / "run_alis.py"
@@ -40,8 +39,11 @@ CASES = [
     ("examples/emission_line_ratio", "fit_spectra.mod", "fast"),
     ("examples/lls", "fit_spectra.mod", "fast"),
     ("examples/chebyshev", "fit_spectra.mod", "fast"),
-    ("context/fitting_examples/helium34/Her36",
-     "fit_polyvoigt_linear_Thermal_FINAL_MODEL.mod", "medium"),
+    (
+        "context/fitting_examples/helium34/Her36",
+        "fit_polyvoigt_linear_Thermal_FINAL_MODEL.mod",
+        "medium",
+    ),
 ]
 
 # Each case carries its runtime batch marker *and* a source marker derived from
@@ -50,10 +52,12 @@ CASES = [
 # repository, so the CI "examples" batch must not select the helium34 case --
 # on a clean checkout its directory does not exist and copytree would fail.
 _PARAMS = [
-    pytest.param(path, mod, id=path.split("/")[-1] if "examples/" in path
-                 else path.split("/")[-2],
-                 marks=[getattr(pytest.mark, mark),
-                        getattr(pytest.mark, path.split("/", 1)[0])])
+    pytest.param(
+        path,
+        mod,
+        id=path.split("/")[-1] if "examples/" in path else path.split("/")[-2],
+        marks=[getattr(pytest.mark, mark), getattr(pytest.mark, path.split("/", 1)[0])],
+    )
     for path, mod, mark in CASES
 ]
 
@@ -63,7 +67,10 @@ def _run(model_dir, mod):
     env["MPLBACKEND"] = "Agg"
     proc = subprocess.run(
         [sys.executable, str(RUN_ALIS), "-f", "-w", "-p", "0", mod],
-        cwd=str(model_dir), env=env, capture_output=True, text=True,
+        cwd=str(model_dir),
+        env=env,
+        capture_output=True,
+        text=True,
         timeout=1800,
     )
     assert proc.returncode == 0, (
@@ -84,22 +91,25 @@ def test_cache_bitwise_equivalence(path, mod, tmp_path):
     shutil.copytree(REPO_ROOT / path, on)
     # Force the setting explicitly on both copies (robust to the default).
     (off / "model" / mod).write_text(
-        "run cache False\n" + (off / "model" / mod).read_text())
+        "run cache False\n" + (off / "model" / mod).read_text()
+    )
     (on / "model" / mod).write_text(
-        "run cache True\n" + (on / "model" / mod).read_text())
+        "run cache True\n" + (on / "model" / mod).read_text()
+    )
 
     _run(off / "model", mod)
     _run(on / "model", mod)
 
     # .mod.out: fitted parameters, 1-sigma errors, chi-squared.
-    assert _clean(off / "model" / (mod + ".out")) == \
-        _clean(on / "model" / (mod + ".out")), \
-        f"{path}: cached .mod.out is not bitwise-identical to uncached"
+    assert _clean(off / "model" / (mod + ".out")) == _clean(
+        on / "model" / (mod + ".out")
+    ), f"{path}: cached .mod.out is not bitwise-identical to uncached"
 
     # .covar: full covariance matrix (the sensitive, Jacobian-derived check).
     covs_off = sorted((off / "model").glob("*.covar"))
     covs_on = sorted((on / "model").glob("*.covar"))
     assert [c.name for c in covs_off] == [c.name for c in covs_on]
     for co, cn in zip(covs_off, covs_on):
-        assert co.read_text() == cn.read_text(), \
-            f"{path}: cached {co.name} is not bitwise-identical to uncached"
+        assert (
+            co.read_text() == cn.read_text()
+        ), f"{path}: cached {co.name} is not bitwise-identical to uncached"

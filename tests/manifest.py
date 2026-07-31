@@ -319,9 +319,7 @@ def _detect_random(settings: list[str], modellines: list[str]) -> bool:
     return False
 
 
-def _resolve_data_file(
-    token: str, model_dir: Path, datadirc: str | None
-) -> Path:
+def _resolve_data_file(token: str, model_dir: Path, datadirc: str | None) -> Path:
     """
     Resolve a data-block filename token to an absolute path.
 
@@ -431,19 +429,14 @@ def _build_case(
         token = line.split()[0]
         resolved = _resolve_data_file(token, model_dir, datadirc)
         seen.setdefault(resolved, None)
-    pairs = tuple(
-        DataFilePair(path, _pair_references(path, kind))
-        for path in seen
-    )
+    pairs = tuple(DataFilePair(path, _pair_references(path, kind)) for path in seen)
 
     # Covariance: the fit writes the file named by the active
     # "out covar" setting; its golden copy is that name + ".reference"
     # (e.g. J1419p0829.covar.reference, but also the longer
     # J0814p5029.mod.out.covar.reference naming in VMP_DLA).
     covar_out = _get_setting(settings, "out covar")
-    covar_output = (
-        (model_dir / covar_out).resolve() if covar_out else None
-    )
+    covar_output = (model_dir / covar_out).resolve() if covar_out else None
     covar_reference = None
     if covar_output is not None:
         cand = Path(str(covar_output) + ".reference")
@@ -468,9 +461,7 @@ def _build_case(
             batch = "slow"
 
     return RegressionCase(
-        name=str(
-            mod_file.relative_to(REPO_ROOT).with_suffix("")
-        ),
+        name=str(mod_file.relative_to(REPO_ROOT).with_suffix("")),
         kind=kind,
         example_dir=model_dir.parent,
         mod_file=mod_file,
@@ -569,8 +560,7 @@ def main() -> int:
             for pair in case.data_pairs:
                 if not pair.input_file.exists():
                     problems.append(
-                        f"{case.name}: missing input data file "
-                        f"{pair.input_file}"
+                        f"{case.name}: missing input data file " f"{pair.input_file}"
                     )
             if nref == 0:
                 problems.append(
@@ -579,9 +569,7 @@ def main() -> int:
                 )
     # Orphan references (a golden file not paired with any case).
     paired_covars = {
-        case.covar_reference
-        for case in cases
-        if case.covar_reference is not None
+        case.covar_reference for case in cases if case.covar_reference is not None
     }
     for root in SEARCH_ROOTS:
         # Scan every *.reference file: anything that is neither a
@@ -590,9 +578,7 @@ def main() -> int:
         # so match broadly rather than on '.covar.reference').
         for ref in sorted(root.rglob("*.reference")):
             if ref.name.endswith(".mod.out.reference"):
-                mod_file = (
-                    ref.parent / ref.name[: -len(".out.reference")]
-                )
+                mod_file = ref.parent / ref.name[: -len(".out.reference")]
                 if not mod_file.exists():
                     problems.append(f"orphan reference: {ref}")
             elif ref not in paired_covars:
@@ -604,9 +590,7 @@ def main() -> int:
     nblind = sum(c.is_blind for c in cases)
     nrand = sum(c.uses_random for c in cases)
     ncovar = sum(c.covar_reference is not None for c in cases)
-    nadj = sum(
-        c.mod_out_reference_adjusted is not None for c in cases
-    )
+    nadj = sum(c.mod_out_reference_adjusted is not None for c in cases)
     print("-" * len(header))
     print(
         f"total {len(cases)} cases | fast {counts['fast']}, "

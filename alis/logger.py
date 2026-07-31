@@ -43,8 +43,8 @@ logging.addLevelName(BUG, "BUG")
 class Colors:
     """ANSI colour codes for coloured console text (as in the old almsgs)."""
 
-    start = "\x1B["
-    end = "\x1B[" + "0m"
+    start = "\x1b["
+    end = "\x1b[" + "0m"
     black_CL = "1;30m"
     blue_CL = "1;34m"
     yellow_CL = "1;33m"
@@ -72,8 +72,14 @@ _PREFIX = {
     "TEST": _band(Colors.white_BL, "[TEST]    ::"),
     "BUG": _band(Colors.white_BK, "[BUG]     ::"),
     # work() historically printed a two-line [WORK IN ] / [PROGRESS] banner
-    "PROGRESS": (Colors.start + Colors.black_CL + "[WORK IN ]::" + Colors.end
-                 + "\n" + _band(Colors.yellow_CL, "[PROGRESS]::")),
+    "PROGRESS": (
+        Colors.start
+        + Colors.black_CL
+        + "[WORK IN ]::"
+        + Colors.end
+        + "\n"
+        + _band(Colors.yellow_CL, "[PROGRESS]::")
+    ),
 }
 
 
@@ -81,8 +87,9 @@ class AlisFormatter(logging.Formatter):
     """Render records with ALIS's coloured ``[LEVEL] ::`` prefixes."""
 
     def format(self, record):
-        prefix = _PREFIX.get(record.levelname,
-                             _band(Colors.green_CL, "[%s] ::" % record.levelname))
+        prefix = _PREFIX.get(
+            record.levelname, _band(Colors.green_CL, "[%s] ::" % record.levelname)
+        )
         return prefix + record.getMessage()
 
 

@@ -20,12 +20,12 @@ pytestmark = pytest.mark.unit
 
 def _slf(tmp_path, test="maxdev", sig=3.0, newstart=True):
     cfg = ArgFlag()
-    cfg['sim']['convergetest'] = test
-    cfg['sim']['convergesig'] = sig
-    cfg['sim']['newstart'] = newstart
-    cfg['out']['modelname'] = str(tmp_path / "m.mod.out")
-    cfg['out']['verbose'] = 0
-    cfg['run']['modname'] = "m.mod"
+    cfg["sim"]["convergetest"] = test
+    cfg["sim"]["convergesig"] = sig
+    cfg["sim"]["newstart"] = newstart
+    cfg["out"]["modelname"] = str(tmp_path / "m.mod.out")
+    cfg["out"]["verbose"] = 0
+    cfg["run"]["modname"] = "m.mod"
     return SimpleNamespace(_argflag=cfg)
 
 
@@ -35,8 +35,9 @@ def test_maxdev_converged(tmp_path):
     rng = np.random.default_rng(0)
     restarts = ref + rng.normal(0, [0.1, 0.2, 0.0], size=(40, 3))
     converged, nfail, nfree = convergence.assess_restarts(
-        _slf(tmp_path, "maxdev"), restarts, ref, perr)
-    assert nfree == 2            # fixed param excluded
+        _slf(tmp_path, "maxdev"), restarts, ref, perr
+    )
+    assert nfree == 2  # fixed param excluded
     assert converged and nfail == 0
     assert (tmp_path / "m.mod.out.converge").exists()
 
@@ -48,7 +49,8 @@ def test_maxdev_flags_stuck_restart(tmp_path):
     restarts = ref + rng.normal(0, [0.1, 0.2], size=(40, 2))
     restarts[7, 0] = ref[0] + 8.0 * perr[0]  # one restart stuck 8 sigma away
     converged, nfail, nfree = convergence.assess_restarts(
-        _slf(tmp_path, "maxdev"), restarts, ref, perr)
+        _slf(tmp_path, "maxdev"), restarts, ref, perr
+    )
     assert not converged and nfail == 1 and nfree == 2
 
 
@@ -59,12 +61,12 @@ def test_scatter_ignores_single_outlier(tmp_path):
     rng = np.random.default_rng(1)
     restarts = ref + rng.normal(0, [0.1, 0.2], size=(200, 2))
     restarts[3, 0] = ref[0] + 6.0 * perr[0]  # one 6-sigma outlier
-    maxdev = convergence.assess_restarts(_slf(tmp_path, "maxdev"),
-                                         restarts, ref, perr)
-    scatter = convergence.assess_restarts(_slf(tmp_path, "scatter"),
-                                          restarts, ref, perr)
-    assert maxdev[0] is False      # maxdev flags the outlier
-    assert scatter[0] is True      # scatter (std ~ 1 sigma) stays converged
+    maxdev = convergence.assess_restarts(_slf(tmp_path, "maxdev"), restarts, ref, perr)
+    scatter = convergence.assess_restarts(
+        _slf(tmp_path, "scatter"), restarts, ref, perr
+    )
+    assert maxdev[0] is False  # maxdev flags the outlier
+    assert scatter[0] is True  # scatter (std ~ 1 sigma) stays converged
 
 
 def test_all_parameters_fixed(tmp_path):
@@ -73,7 +75,8 @@ def test_all_parameters_fixed(tmp_path):
     perr = np.array([0.0, 0.0])
     restarts = np.tile(ref, (5, 1))
     converged, nfail, nfree = convergence.assess_restarts(
-        _slf(tmp_path), restarts, ref, perr)
+        _slf(tmp_path), restarts, ref, perr
+    )
     assert nfree == 0
     assert converged and nfail == 0
 
@@ -91,9 +94,7 @@ def test_convergesig_scales_pass_fail_boundary(tmp_path):
     ref = np.array([10.0])
     perr = np.array([0.1])
     restarts = np.array([[10.0], [10.4]])  # maxdev/sigma = 4.0
-    strict = convergence.assess_restarts(_slf(tmp_path, sig=3.0), restarts,
-                                         ref, perr)
-    lenient = convergence.assess_restarts(_slf(tmp_path, sig=5.0), restarts,
-                                          ref, perr)
-    assert strict[0] is False      # 4 sigma > 3 sigma tolerance
-    assert lenient[0] is True      # 4 sigma <= 5 sigma tolerance
+    strict = convergence.assess_restarts(_slf(tmp_path, sig=3.0), restarts, ref, perr)
+    lenient = convergence.assess_restarts(_slf(tmp_path, sig=5.0), restarts, ref, perr)
+    assert strict[0] is False  # 4 sigma > 3 sigma tolerance
+    assert lenient[0] is True  # 4 sigma <= 5 sigma tolerance

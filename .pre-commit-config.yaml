@@ -1,18 +1,26 @@
-# Pre-commit hooks for ALIS (Task 1.3).
-# Formatting/linting is introduced config-first: the legacy codebase is not
-# yet reformatted, so these hooks run on changed files only (pre-commit's
-# default) rather than a repo-wide sweep. Run `pre-commit autoupdate` to
-# refresh the pinned revisions.
+# Pre-commit hooks for ALIS (Task 1.3; exclusions added in Stage 4.1).
+# Formatting/linting is introduced incrementally: the un-formatted legacy
+# modules are listed in pyproject.toml (black force-exclude / ruff
+# extend-exclude / isort extend_skip) and skipped, so these hooks enforce the
+# standard on all new and already-cleaned code without demanding a repo-wide
+# reformat. That reformat is its own task (Stage 6.5); delete a path from the
+# pyproject lists as each file is cleaned.
+# Run `pre-commit autoupdate` to refresh the pinned revisions.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.9
     hooks:
       - id: ruff
+        # force-exclude in pyproject makes the exclusions apply even though
+        # pre-commit passes explicit filenames.
         args: [--fix]
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
+        # isort ignores extend_skip for explicitly-named files unless
+        # --filter-files is given, which is exactly how pre-commit invokes it.
+        args: [--filter-files]
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:

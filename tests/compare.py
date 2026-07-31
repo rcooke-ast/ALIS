@@ -87,9 +87,7 @@ BLIND_MARKER = "------ BLIND MODEL ------"
 
 # Leading numeric part of a parameter token (the remainder is the
 # tied/fixed-parameter suffix, e.g. "4.998963da" -> 4.998963 + "da").
-_NUM_RE = re.compile(
-    r"^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)(.*)$"
-)
+_NUM_RE = re.compile(r"^([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)(.*)$")
 _CHISQ_RE = re.compile(r"Bestfit Chi-Squared\s*=\s*([0-9.eE+\-]+)")
 _DOF_RE = re.compile(r"Degrees-of-Freedom\s*=\s*(\d+)")
 
@@ -142,13 +140,8 @@ def parse_mod_out(path):
     chisq_m = _CHISQ_RE.search(text)
     dof_m = _DOF_RE.search(text)
     if chisq_m is None or dof_m is None:
-        raise ValueError(
-            "could not find chi-squared / DOF in header of "
-            f"{path}"
-        )
-    result = ModOut(
-        chisq=float(chisq_m.group(1)), dof=int(dof_m.group(1))
-    )
+        raise ValueError("could not find chi-squared / DOF in header of " f"{path}")
+    result = ModOut(chisq=float(chisq_m.group(1)), dof=int(dof_m.group(1)))
     values = {"model": [], "convolution": [], "shift": []}
     errors = {"model": [], "convolution": [], "shift": []}
     in_model = False
@@ -300,14 +293,11 @@ def _compare_value_line(out_line, ref_line, err_line, where):
         okey, oval, osuf = _token_parts(ot)
         rkey, rval, rsuf = _token_parts(rt)
         if oval is None or rval is None:
-            fails.append(
-                f"{where}, token {k}: '{ot}' != '{rt}'"
-            )
+            fails.append(f"{where}, token {k}: '{ot}' != '{rt}'")
             continue
         if okey != rkey or osuf != rsuf:
             fails.append(
-                f"{where}, token {k}: '{ot}' != '{rt}' "
-                "(keyword/suffix mismatch)"
+                f"{where}, token {k}: '{ot}' != '{rt}' " "(keyword/suffix mismatch)"
             )
             continue
         sigma = 0.0
@@ -328,10 +318,7 @@ def _compare_value_line(out_line, ref_line, err_line, where):
         if delta > PARAM_HARD_NSIGMA * sigma:
             soft = ""
             if delta > PARAM_SOFT_NSIGMA * sigma:
-                soft = (
-                    " [also exceeds the soft "
-                    f"{PARAM_SOFT_NSIGMA:.0%} bound]"
-                )
+                soft = " [also exceeds the soft " f"{PARAM_SOFT_NSIGMA:.0%} bound]"
             fails.append(
                 f"{where}, token {k}: |{oval} - {rval}| = "
                 f"{delta:.6g} > {PARAM_HARD_NSIGMA:.0%} of "
@@ -381,8 +368,7 @@ def _compare_error_line(out_line, ref_line, where):
             continue
         if okey != rkey or osuf != rsuf:
             fails.append(
-                f"{where}, token {k}: '{ot}' != '{rt}' "
-                "(keyword/suffix mismatch)"
+                f"{where}, token {k}: '{ot}' != '{rt}' " "(keyword/suffix mismatch)"
             )
             continue
         if abs(oval - rval) > ERROR_RTOL * abs(rval) + 1.0e-10:
@@ -423,13 +409,11 @@ def _compare_section(name, out_sec, ref_sec):
     ref_vals, ref_errs = ref_sec
     if len(out_vals) != len(ref_vals):
         return [
-            f"{name}: {len(out_vals)} value lines vs "
-            f"{len(ref_vals)} in reference"
+            f"{name}: {len(out_vals)} value lines vs " f"{len(ref_vals)} in reference"
         ]
     if len(out_errs) != len(ref_errs):
         return [
-            f"{name}: {len(out_errs)} error lines vs "
-            f"{len(ref_errs)} in reference"
+            f"{name}: {len(out_errs)} error lines vs " f"{len(ref_errs)} in reference"
         ]
     # The errors block mirrors the value block minus fix/lim settings
     # lines; blinded parameters keep their (real) 1-sigma error line
@@ -454,9 +438,7 @@ def _compare_section(name, out_sec, ref_sec):
             # Section marker or fix/lim settings line: must be
             # identical, and has no error counterpart.
             if ov != rv:
-                fails.append(
-                    f"{where}: '{ov}' != '{rv}'"
-                )
+                fails.append(f"{where}: '{ov}' != '{rv}'")
             continue
         err_line = err_fn[j] if j < len(err_fn) else None
         j += 1
@@ -472,8 +454,7 @@ def _compare_section(name, out_sec, ref_sec):
     return fails
 
 
-def compare_mod_out(out_path, ref_path, chisq_rtol,
-                    compare_params=True):
+def compare_mod_out(out_path, ref_path, chisq_rtol, compare_params=True):
     """
     Compare a produced .mod.out against its golden reference.
 
@@ -516,16 +497,13 @@ def compare_mod_out(out_path, ref_path, chisq_rtol,
     denom = max(abs(ref.chisq), 1.0e-30)
     if abs(out.chisq - ref.chisq) > chisq_rtol * denom:
         fails.append(
-            f"chi-squared {out.chisq} vs {ref.chisq} "
-            f"(> {chisq_rtol:.2%} relative)"
+            f"chi-squared {out.chisq} vs {ref.chisq} " f"(> {chisq_rtol:.2%} relative)"
         )
     if out.dof != ref.dof:
         fails.append(f"DOF {out.dof} != {ref.dof}")
     if compare_params:
         for name in ("model", "convolution", "shift"):
-            fails += _compare_section(
-                name, out.sections[name], ref.sections[name]
-            )
+            fails += _compare_section(name, out.sections[name], ref.sections[name])
     return [f"{out_path.name}: {f}" for f in fails]
 
 

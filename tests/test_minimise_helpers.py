@@ -20,34 +20,36 @@ pytestmark = pytest.mark.unit
 
 def _functkw(pinfl0):
     """Wrap an influence table the way fdjac2 sees it: functkw['state']._pinfl."""
-    return {'state': SimpleNamespace(_pinfl=[pinfl0])}
+    return {"state": SimpleNamespace(_pinfl=[pinfl0])}
 
 
 # -- _cache_key_spsn ----------------------------------------------------------
 
+
 def test_cache_key_spsn_component_key():
     # A component key is (sp, sn, ea, md, mm) -> (sp, sn).
-    assert minimise._cache_key_spsn((2, 3, 'ab', 0, 1)) == (2, 3)
+    assert minimise._cache_key_spsn((2, 3, "ab", 0, 1)) == (2, 3)
 
 
 def test_cache_key_spsn_wave_key():
     # A wave key is ('wave', sp, sn) -> (sp, sn).
-    assert minimise._cache_key_spsn(('wave', 2, 3)) == (2, 3)
+    assert minimise._cache_key_spsn(("wave", 2, 3)) == (2, 3)
 
 
 # -- _param_spsn_map ----------------------------------------------------------
 
+
 def test_param_spsn_map_inverts_influence_table():
     # sp0: sn0 influenced by params {0,1}; sn1 influenced by {2}.
     pinfl0 = [[[0, 1], [2]]]
-    m = minimise._param_spsn_map(_functkw(pinfl0), compcache={'x': 1})
+    m = minimise._param_spsn_map(_functkw(pinfl0), compcache={"x": 1})
     assert m == {0: {(0, 0)}, 1: {(0, 0)}, 2: {(0, 1)}}
 
 
 def test_param_spsn_map_shared_param_across_regions():
     # A param that influences two regions maps to both (sp, sn).
     pinfl0 = [[[7], [7]]]
-    m = minimise._param_spsn_map(_functkw(pinfl0), compcache={'x': 1})
+    m = minimise._param_spsn_map(_functkw(pinfl0), compcache={"x": 1})
     assert m == {7: {(0, 0), (0, 1)}}
 
 
@@ -55,23 +57,24 @@ def test_param_spsn_map_fallbacks_return_none():
     # No cache -> None (nothing to slice).
     assert minimise._param_spsn_map(_functkw([[[0]]]), None) is None
     # No 'state' in functkw -> None (send the whole cache).
-    assert minimise._param_spsn_map({}, {'x': 1}) is None
+    assert minimise._param_spsn_map({}, {"x": 1}) is None
     # state without _pinfl -> None.
-    bad = {'state': SimpleNamespace()}
-    assert minimise._param_spsn_map(bad, {'x': 1}) is None
+    bad = {"state": SimpleNamespace()}
+    assert minimise._param_spsn_map(bad, {"x": 1}) is None
     # _pinfl[0] is None -> None.
-    none_pinfl = {'state': SimpleNamespace(_pinfl=[None])}
-    assert minimise._param_spsn_map(none_pinfl, {'x': 1}) is None
+    none_pinfl = {"state": SimpleNamespace(_pinfl=[None])}
+    assert minimise._param_spsn_map(none_pinfl, {"x": 1}) is None
 
 
 # -- _slice_emab --------------------------------------------------------------
 
+
 def _cache():
     return {
-        (0, 0, 'ab', 0, 0): 'a',
-        (0, 1, 'ab', 0, 0): 'b',
-        ('wave', 0, 0): 'w0',
-        ('wave', 0, 1): 'w1',
+        (0, 0, "ab", 0, 0): "a",
+        (0, 1, "ab", 0, 0): "b",
+        ("wave", 0, 0): "w0",
+        ("wave", 0, 1): "w1",
     }
 
 
@@ -83,7 +86,7 @@ def test_slice_emab_no_param_map_passes_whole_cache():
     cache = _cache()
     out = minimise._slice_emab(cache, None, [])
     assert out[0] is None and out[1] is None
-    assert out[2] is cache            # whole-cache fallback
+    assert out[2] is cache  # whole-cache fallback
 
 
 def test_slice_emab_selects_only_influenced_regions():
@@ -92,8 +95,8 @@ def test_slice_emab_selects_only_influenced_regions():
     # chunk touches only param 5 -> region (0, 0).
     chunk = [(5, 0, 0.1, True)]
     out = minimise._slice_emab(cache, param_spsn, chunk)
-    assert out[0] is None and out[1] is None      # modelem/modelab dropped
-    assert set(out[2]) == {(0, 0, 'ab', 0, 0), ('wave', 0, 0)}
+    assert out[0] is None and out[1] is None  # modelem/modelab dropped
+    assert set(out[2]) == {(0, 0, "ab", 0, 0), ("wave", 0, 0)}
 
 
 def test_slice_emab_unions_regions_across_chunk():
@@ -101,14 +104,14 @@ def test_slice_emab_unions_regions_across_chunk():
     param_spsn = {5: {(0, 0)}, 6: {(0, 1)}}
     chunk = [(5, 0, 0.1, True), (6, 1, 0.1, True)]
     out = minimise._slice_emab(cache, param_spsn, chunk)
-    assert set(out[2]) == set(cache)              # both regions -> full cache
+    assert set(out[2]) == set(cache)  # both regions -> full cache
 
 
 # -- enorm --------------------------------------------------------------------
 
+
 def test_enorm_matches_sqrt_dot():
     # enorm doesn't use self, so call it unbound with a dummy self.
-    for vec in (np.array([3.0, 4.0]), np.arange(1.0, 11.0),
-                np.array([1e-8, 2e-8])):
+    for vec in (np.array([3.0, 4.0]), np.arange(1.0, 11.0), np.array([1e-8, 2e-8])):
         got = float(minimise.alfit.enorm(None, vec))
-        assert np.isclose(got, np.sqrt(np.sum(vec ** 2)))
+        assert np.isclose(got, np.sqrt(np.sum(vec**2)))

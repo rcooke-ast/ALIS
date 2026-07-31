@@ -17,7 +17,6 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
-
 from manifest import REPO_ROOT
 
 RUN_ALIS = REPO_ROOT / "alis" / "scripts" / "run_alis.py"
@@ -26,6 +25,7 @@ RUN_ALIS = REPO_ROOT / "alis" / "scripts" / "run_alis.py"
 @pytest.mark.unit
 def test_runs_z_detects_correlation():
     from alis.report import _runs_z
+
     rng = np.random.default_rng(0)
     # Independent residuals -> |z| small.
     assert abs(_runs_z(rng.normal(size=400))) < 3.0
@@ -40,6 +40,7 @@ def test_runs_z_detects_correlation():
 @pytest.mark.unit
 def test_runs_z_degenerate_inputs_return_zero():
     from alis.report import _runs_z
+
     # All the same sign -> only one run, undefined variance -> defined as 0.
     assert _runs_z(np.ones(50)) == 0.0
     # Fewer than two non-zero residuals -> 0.
@@ -50,14 +51,15 @@ def test_runs_z_degenerate_inputs_return_zero():
 @pytest.mark.unit
 def test_regions_restricts_to_fitted_pixels():
     from alis.report import _regions
-    wave = np.arange(1000.0, 1010.0)          # 1000 .. 1009 (10 pixels)
+
+    wave = np.arange(1000.0, 1010.0)  # 1000 .. 1009 (10 pixels)
     model = np.zeros(10)
     # Residual = (flux - model)/flue; set model so fitted pixels give a pattern.
     for idx, val in {2: -0.5, 3: 0.5, 5: -0.5, 6: 0.5, 7: -0.5}.items():
         model[idx] = val
     slf = SimpleNamespace(
-        _posnfull=[[0, 10]],                  # one specid, one snip: pixels 0..10
-        _posnfit=[[1002.0, 1007.0]],          # fit range covers 1002 .. 1007
+        _posnfull=[[0, 10]],  # one specid, one snip: pixels 0..10
+        _posnfit=[[1002.0, 1007.0]],  # fit range covers 1002 .. 1007
         # 1004 is in range but NOT fitted -> must be excluded by the isin mask.
         _wavefit=[np.array([1002.0, 1003.0, 1005.0, 1006.0, 1007.0])],
         _wavefull=[wave],
@@ -79,9 +81,10 @@ def test_regions_restricts_to_fitted_pixels():
 @pytest.mark.unit
 def test_regions_excludes_zero_error_pixels():
     from alis.report import _regions
-    wave = np.arange(1000.0, 1005.0)          # 1000 .. 1004
+
+    wave = np.arange(1000.0, 1005.0)  # 1000 .. 1004
     flue = np.ones(5)
-    flue[3] = 0.0                             # one bad pixel inside the fit range
+    flue[3] = 0.0  # one bad pixel inside the fit range
     slf = SimpleNamespace(
         _posnfull=[[0, 5]],
         _posnfit=[[1000.0, 1004.0]],
@@ -94,7 +97,7 @@ def test_regions_excludes_zero_error_pixels():
         _snipnames=[["reg1"]],
     )
     r = _regions(slf)[0]
-    assert r["resid"].size == 4               # flue == 0 pixel excluded
+    assert r["resid"].size == 4  # flue == 0 pixel excluded
 
 
 @pytest.mark.fast
@@ -107,7 +110,10 @@ def test_report_chi2_self_consistent(tmp_path):
     env["MPLBACKEND"] = "Agg"
     proc = subprocess.run(
         [sys.executable, str(RUN_ALIS), "-f", "-w", "-p", "0", mod],
-        cwd=str(ex / "model"), env=env, capture_output=True, text=True,
+        cwd=str(ex / "model"),
+        env=env,
+        capture_output=True,
+        text=True,
         timeout=600,
     )
     assert proc.returncode == 0, (proc.stdout + proc.stderr)[-2000:]
@@ -118,9 +124,10 @@ def test_report_chi2_self_consistent(tmp_path):
 
     total = float(re.search(r"chi-squared = ([0-9.eE+-]+)", text).group(1))
     # Region rows begin with two spaces then the specid (not a '#' comment).
-    region_chi2 = [float(ln.split()[5]) for ln in text.splitlines()
-                   if re.match(r"  \S", ln)]
+    region_chi2 = [
+        float(ln.split()[5]) for ln in text.splitlines() if re.match(r"  \S", ln)
+    ]
     assert region_chi2, "no region rows in the report"
-    assert np.isclose(sum(region_chi2), total, rtol=0, atol=1e-3), (
-        "per-region chi-squared %.4f != fit total %.4f"
-        % (sum(region_chi2), total))
+    assert np.isclose(
+        sum(region_chi2), total, rtol=0, atol=1e-3
+    ), "per-region chi-squared %.4f != fit total %.4f" % (sum(region_chi2), total)
