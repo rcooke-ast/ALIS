@@ -7,7 +7,7 @@ Measure test coverage for the ALIS codebase or a specific module, then recommend
 
 ## Steps
 
-1. Identify the scope from the user's request: all modules, or a specific file (e.g. `alis/alfunc_voigt.py`).
+1. Identify the scope from the user's request: all modules, or a specific file (e.g. `alis/functions/voigt.py`).
 
 2. Install `pytest-cov` if not already present:
    ```
@@ -20,7 +20,7 @@ Measure test coverage for the ALIS codebase or a specific module, then recommend
    ```
    For a specific module:
    ```
-   pytest tests/ --cov=alis/alfunc_voigt --cov-report=term-missing -v
+   pytest tests/ --cov=alis/functions/voigt --cov-report=term-missing -v
    ```
 
 4. Parse the `term-missing` output and report:

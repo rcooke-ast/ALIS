@@ -28,14 +28,14 @@ Profile an ALIS fit to identify where CPU time is spent, then prioritise which f
 3. Parse the profiler output and report:
    - Top 15 functions by **cumulative time**, with file path and line number
    - Top 5 functions by **self time** (most expensive individual calls)
-   - Which ALIS modules account for the most time (e.g. `alfunc_voigt`, `alconv`, `alcsmin`)
+   - Which ALIS modules account for the most time (e.g. `functions/voigt`, the convolution functions, `minimise`)
 
 4. Identify GPU porting candidates — functions that are:
    - Called inside the minimiser loop (executed thousands of times per fit)
    - Dominated by numpy array operations (naturally parallelisable)
    - Embarassingly parallel across spectral pixels
 
-5. Suggest concrete next steps: which `call_CPU` methods to port first, and whether Voigt profile evaluation (`alfunc_voigt`) or convolution (`alconv`) is the dominant cost.
+5. Suggest concrete next steps: which `call_CPU` methods to port first, and whether Voigt profile evaluation (`functions/voigt`) or convolution (`functions/vfwhm`, `functions/lsf`, ...) is the dominant cost.
 
 ## Notes
 

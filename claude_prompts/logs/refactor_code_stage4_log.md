@@ -789,3 +789,99 @@ pre-allocated an `m x n` Jacobian that `_run_jacobian` immediately replaces.
 **Gate.** `pytest -m unit --run-gpu`: **139 passed** (126 before). Stage 0 fast
 batch `pytest -m fast --run-gpu`: **63 passed, 159 deselected in 4:54**. Lint
 clean. All four backend modes smoke-tested end to end on metal_line_abs.
+
+## Task 4.4 -- New-function ergonomics [COMPLETE]
+
+The brief is "make it straightforward to add a new model function with both CPU
+and GPU paths plus its own unit tests". Three things were in the way, and the
+skills that were supposed to guide the work described a code base that has not
+existed since Stage 2.
+
+**1. The GPU warm-up hard-coded the Voigt.** 4.3a's `warm_up()` imported
+`voigt_gpu` by name, so a second ported function would not have been warmed and
+its ~0.9 s JIT would have landed inside the `run backend auto` timing probe --
+the exact failure the warm-up exists to prevent. Replaced with a per-function
+hook (flagged as a to-do in the 4.3a entry):
+- `Base.gpu_warmup_args()` returns `(x, p, kwargs)` for one tiny throwaway
+  launch, or `None`; `Voigt` returns a single Lyman-alpha profile on 64
+  sub-pixels.
+- `gpu_dispatch.gpu_capable_functions()` walks `Base`'s subclass tree -- *not*
+  the `base.call()` registry, which also loads the user's function module and
+  prints while doing it, neither of which belongs in a Pool initializer. Every
+  shipped function is imported at the bottom of `functions/base.py`, so the tree
+  is complete.
+- `warm_up()` now warms all of them and warns by name if one claims GPU support
+  without providing the hook.
+Porting a second function therefore needs no edit to `gpu_dispatch.py`. With
+several kernels this will compile some the model does not use; the initializer
+has no model to consult, and a wasted compile is far cheaper than one inside the
+timed Jacobian.
+
+**2. Nothing checked that a new function was well-formed.** Adding one means
+filling in a dozen parallel class attributes and registering it in *two* places,
+and every way of getting it wrong surfaces far from the mistake: a keyword
+silently ignored, an `IndexError` inside `parout`, or -- the nastiest --
+`'NoneType' object is not subscriptable` from inside `set_vars` because the
+function was never added to `sendatomic`. New `tests/test_function_interface.py`
+(255 tests, ~1.8 s) runs every invariant over every registered function:
+
+| Invariant | What it catches |
+|---|---|
+| registry key == `_idstr` | error messages naming something absent from the `.mod` |
+| `_parid`/`_defpar`/`_fixpar`/`_limited`/`_limits`/`_svfmt` same length | `IndexError` far from the typo |
+| `len(_parid) >= _pnumr` | miscounted parameters (`>=`, because `lsfspline` is genuinely variable-length) |
+| `_limited`/`_limits` entries are pairs | malformed bounds |
+| `_keywd`/`_keych`/`_keyfm` describe the same keywords | a keyword never validated, or `KeyError` when writing the model |
+| `_keywd['input']` covers every parameter and keyword | parameters silently dropped from `.mod.out` |
+| `_prekw` names real keywords | `msgs.bug("prekw variable ... bad argument")` |
+| every module defining a `Base` subclass is registered | "unknown function" from the model file |
+| everything that reads `self._atomic` receives it | the `NoneType` failure above |
+| GPU-capable functions provide `gpu_warmup_args()` | a cold kernel inside the `auto` probe |
+
+All 32 shipped functions pass every one. The atomic-data check works by passing
+a sentinel through `base.call(getinst=True, atomic=...)` and asserting that
+every function whose source *reads* `self._atomic` received it -- the regex
+excludes the `self._atomic = atomic` assignment every `__init__` carries, so it
+detects reads rather than the attribute's existence. **Each invariant was
+verified to bite** by constructing deliberately broken functions (short
+`_svfmt`, deleted `_keyfm` entry, missing `input` entry, bogus `_prekw`, wrong
+`_idstr`, GPU flag with no warm-up hook, an atomic reader): all eight caught.
+
+**3. The skills were stale.** `new-alfunc` still targeted
+`alis/alfunc_<name>.py` and `alfunc_base.Base`, which Stage 2 removed, and told
+the author to make `call_GPU` raise `NotImplementedError` -- which would break
+the 4.3 dispatcher, whose whole design is that it can call `call_CPU` or
+`call_GPU` uniformly (the inherited stub falls back to the CPU). Rewritten
+around `alis/functions/`, the real interface table, the two registration steps,
+the interface gate above, and what a test file should actually cover. Also
+updated:
+- `port-to-gpu`: the real `call_GPU` signature (it had `(self, x, p, ae='em')`,
+  missing `mkey`/`ncpus`); the **three** opt-in requirements rather than one
+  (`_gpu_supported`, same-class `call_CPU`/`call_GPU`, `gpu_warmup_args`); why
+  the kernel goes in a sibling `<name>_gpu.py` (`@cuda.jit` compiles at import,
+  so a module-scope kernel pulls numba into every CPU-only run); and a warning
+  that a freshly ported function will report *zero* launches until
+  `run gputhresh` is lowered -- otherwise the author reasonably concludes the
+  port is broken.
+- `port-to-gpu` also had two claims that Task 4.3 measured and disproved:
+  "keep intermediates on the device ... only the final convolved model comes
+  back" and the implication that batching spans spectra. Corrected to what the
+  dispatcher actually does, with the reason (no GPU convolution or shift
+  functions yet) and the pointer to 4.5.
+- `gen-tests`: `alfunc_voigt`/`alload` -> the real paths; the `unit` and `gpu`
+  markers; and "GPU tests that require **CuPy**" -> `numba.cuda` (Q4.11 chose
+  numba; CuPy was the Stage 1 placeholder).
+- `test-coverage`, `profile-fit`: stale `alfunc_*` / `alconv` / `alcsmin` paths
+  corrected in place (one line each; no rewrite).
+
+**Deliberately not done.** No template or scaffold *file* was added. A checked-in
+template that no test exercises rots exactly the way these skills did; the
+interface test file is the executable specification, and `gaussian.py` (minimal)
+and `voigt.py` (full, with GPU) are the worked examples the skill points at.
+
+**Gate.** `pytest -m unit --run-gpu`: **394 passed, 31 skipped** (139 before;
+the skips are the GPU warm-up check on the 31 functions with no GPU path).
+Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed, 445 deselected in
+4:54**. metal_line_abs and DH_orders **BITWISE-IDENTICAL**
+-- `Base` and `Voigt` gained a method and nothing else. Forced-GPU and
+`backend auto` runs re-checked end to end after the warm-up refactor. Lint clean.

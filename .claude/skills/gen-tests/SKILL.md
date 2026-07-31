@@ -7,7 +7,10 @@ Write pytest unit tests for an ALIS module or function.
 
 ## Steps
 
-1. Identify what to test from the user's request (e.g. "write tests for `alfunc_voigt`" or "test the `load_input` function in `alload`").
+1. Identify what to test from the user's request (e.g. "write tests for the
+   Voigt function" -> `alis/functions/voigt.py`, or "test `set_params` in
+   `alis/load.py`"). Model functions live in `alis/functions/<name>.py`; the
+   pre-Stage-2 `alfunc_*.py` / `alload` / `alcsmin` names no longer exist.
 
 2. Read the target module in full to understand:
    - All public functions and methods and their signatures
@@ -22,8 +25,10 @@ Write pytest unit tests for an ALIS module or function.
    - A **boundary** test (empty array, single element, parameter at its minimum or maximum limit)
    - An **error** test where applicable (confirm that bad input raises the expected exception)
 
-5. For model functions (`alfunc_*.py`), always include:
-   - Instantiation: `func = MyFunc(); assert func._idstr == '<name>'`
+5. For model functions (`alis/functions/<name>.py`), always include:
+   - Instantiation: `func = base.call(getinst=True)['<name>']`
+   - The shared interface invariants are already covered for *every* function by
+     `tests/test_function_interface.py` -- run it rather than duplicating it
    - Output shape: `assert func.call_CPU(x, p).shape == x.shape`
    - Both emission and absorption modes: `ae='em'` and `ae='ab'`
    - Numerical regression: compare `call_CPU` output against a hardcoded expected value for a fixed input, using `numpy.testing.assert_allclose`
@@ -35,6 +40,10 @@ Write pytest unit tests for an ALIS module or function.
 ## Notes
 
 - Tests must pass with `pytest tests/` from the repo root in the project virtual environment.
-- GPU tests that require CuPy should be marked: `@pytest.mark.skipif(not cupy_available, reason="no GPU")`.
+- Mark every test `pytest.mark.unit` -- that is the batch CI runs on each push
+  (`pytest -m unit`).
+- Tests needing a CUDA device are marked `pytest.mark.gpu`. They run wherever a
+  device is present and skip where one is not; `--run-gpu` turns a missing GPU
+  into an error instead of a skip. The GPU stack is `numba.cuda`, not CuPy.
 - Do not remove or modify existing tests.
 - Match the import style and fixture patterns of existing test files in `tests/`.

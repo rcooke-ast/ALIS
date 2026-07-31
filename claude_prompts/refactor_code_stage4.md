@@ -139,7 +139,15 @@ See `logs/refactor_code_stage4_log.md`.]**
 - The Stage 0 harness forces `backend cpu` so CI/regression stays deterministic
   and CPU-only (Q4.2); GPU coverage is the on-demand `gpu`-marked tests (Q4.9).
 
-**4.4 — New-function ergonomics.**
+**4.4 — New-function ergonomics.
+[COMPLETE — CPU path bitwise-identical; Stage 0 fast gate green (63 passed);
+unit batch 139 -> 394. New `tests/test_function_interface.py` runs 10 invariants
+over every registered function (all 32 pass; each verified to bite on a
+deliberately broken function); the GPU warm-up became a per-function
+`gpu_warmup_args()` hook, so porting a second function needs no dispatcher edit;
+`new-alfunc` rewritten (it still targeted the pre-Stage-2 `alfunc_*.py` layout)
+and `port-to-gpu` / `gen-tests` / `test-coverage` / `profile-fit` corrected.
+See `logs/refactor_code_stage4_log.md`.]**
 - Make it straightforward to add a new model function (`alis/functions/<name>.py`)
   with both CPU and GPU paths plus its own unit tests (reuse/extend the
   `new-alfunc` and `port-to-gpu` skills).
