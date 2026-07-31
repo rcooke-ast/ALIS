@@ -97,7 +97,7 @@ def perturb(slf, covar, bparams, parinfo):
         mr = alfit(p0new, parinfo=parinfo, functkw=fa,
                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                    atol=slf._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
-                   ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
+                   ncpus=slf._argflag['run']['ncpus'], ngpus=slf._argflag['run']['ngpus'], gputhresh=slf._argflag['run']['gputhresh'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
 #		mr = alfit(slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
@@ -228,7 +228,7 @@ def sim_random(slf, covar, bparams, parinfo):
         mr = alfit(slf._modpass['p0'], parinfo=parinfo, functkw=fa,
                    verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                    atol=slf._argflag['chisq']['atol'], ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
-                   ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
+                   ncpus=slf._argflag['run']['ncpus'], ngpus=slf._argflag['run']['ngpus'], gputhresh=slf._argflag['run']['gputhresh'], fstep=slf._argflag['chisq']['fstep'], limpar=slf._argflag['run']['limpar'])
 #		mr = alfit(slf._modpass['p0'], parinfo=parinfo, functkw=fa,
 #					verbose=0, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
 #					ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
@@ -361,7 +361,7 @@ def sim_systematics(slf, p0new, parinfo, ntxt, edgearr):
     ms = alfit(p0new, parinfo=parinfo, functkw=fa,
                 verbose=1, modpass=slf._modpass, miniter=slf._argflag['chisq']['miniter'], maxiter=slf._argflag['chisq']['maxiter'],
                 ftol=slf._argflag['chisq']['ftol'], gtol=slf._argflag['chisq']['gtol'], xtol=slf._argflag['chisq']['xtol'],
-                ncpus=slf._argflag['run']['ncpus'], fstep=slf._argflag['chisq']['fstep'])
+                ncpus=slf._argflag['run']['ncpus'], ngpus=slf._argflag['run']['ngpus'], gputhresh=slf._argflag['run']['gputhresh'], fstep=slf._argflag['chisq']['fstep'])
     tend=time.time()
     if ms.status <= 0:
         if ms.status == -20:

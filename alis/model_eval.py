@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 
+from alis import gpu_dispatch
 from alis import logger
 from alis import load
 
@@ -120,6 +121,14 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
         wavespx, contspx, zerospx, posnspx, nexbins = load.load_subpixels(state, p) # recalculate the sub-pixellation of the spectrum
     else:
         wavespx, contspx, zerospx, posnspx, nexbins = state._wavespx, state._contspx, state._zerospx, state._posnspx, state._nexbins
+    # GPU dispatch (Stage 4.3). ``None`` on the CPU backend -- a single module
+    # read, after which the evaluation follows the unchanged CPU path. The
+    # dispatcher is told which sub-pixel grid this evaluation uses so it can
+    # drop device wavelength buffers that a ``renew_subpix`` rebuild
+    # invalidated.
+    gpudisp = gpu_dispatch.active()
+    if gpudisp is not None:
+        gpudisp.note_grid(wavespx)
     # Stage 4.0: _pinfl is a per-fit constant -- set once before the fit and never
     # recomputed during it (RJC's set-once invariant; Stage 3.5 Finding F1). The
     # base call no longer rebuilds it here: that per-iteration write used to be
@@ -286,6 +295,11 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
             shind += 1
             wave = state._funcarray[1][shmtyp].call_CPU(state._funcarray[2][shmtyp], wavespx[sp][ll:lu], shparams)
 #				wave = wavespx[sp][ll:lu]
+            # Identity of the shifted grid, for the device wave cache (Stage
+            # 4.3): (sub-pixel grid, snip, shift model, shift parameters) fixes
+            # `wave` exactly, so an unchanged shift model reuses the resident
+            # device buffer instead of re-uploading it every evaluation.
+            shkey = np.asarray(shparams).tobytes() if gpudisp is not None else None
             # Component reuse (Stage 3.1) is only valid if the (shifted)
             # wavelength grid is also unchanged -- a perturbation that changes
             # the shift for this sp+sn invalidates every cached component here.
@@ -308,6 +322,28 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
                     mtyp = modtyp[sp][sn][ea][md]
                     if mtyp in ["variable","random"]: continue
                     if len(pararr[sp][sn][ea][md]) == 0: continue # OR PARAMETER NOT BEING VARIED!!!
+                    # GPU dispatch (Stage 4.3): send this whole (sp,sn,ea,md)
+                    # group -- every transition of every component of this model
+                    # type in this snip -- to the device in one launch, on the
+                    # device-resident wave grid. The reduction happens in the
+                    # kernel, in the same row order the CPU loop below uses. A
+                    # function with no GPU implementation, or a group below the
+                    # 'run gputhresh' size, falls through to that loop unchanged.
+                    if gpudisp is not None and gpudisp.should_dispatch(
+                            state._funcarray[2][mtyp], wave.size,
+                            pararr[sp][sn][ea][md].shape[0]):
+                        wdev = gpudisp.wave_device((sp, sn, shmtyp, shkey), wave)
+                        mout, mcnt = gpudisp.batch(
+                            state._funcarray[1][mtyp], state._funcarray[2][mtyp],
+                            wdev, pararr[sp][sn][ea][md],
+                            keyarr[sp][sn][ea][md], aetag)
+                        if ea%2 == 0: # emission
+                            modelem[sp][ll:lu] += mout
+                            if mcnt is not None: mcont[sp][ll:lu] += mcnt
+                        else: # absorption
+                            modelab[sp][ll:lu] *= mout
+                            if mcnt is not None: mcont[sp][ll:lu] *= mcnt
+                        continue
                     # Multiprocess here and send to either the CPU or GPU
 #						if state._argflag['run']['ngpus'] != 0:
 ##							pf.append([wave, pararr[sp][sn][ea][md], aetag])

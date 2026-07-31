@@ -81,7 +81,13 @@ see `logs/refactor_code_stage4_log.md`]**
   example is itself pure numba and already hits ~1e-15, which is the existence
   proof that these features are not required.
 
-**4.3 — Multiprocessed CPU/GPU dispatch (either-or, not hybrid).**
+**4.3 — Multiprocessed CPU/GPU dispatch (either-or, not hybrid).
+[COMPLETE — CPU path bitwise-identical; Stage 0 fast gate green (63 passed);
+unit batch 90 -> 120. Two sub-items carried forward to 4.5, with measurements:
+batching across *spectra* (needs a segmented kernel, so a 4.1 contract change)
+and full device residency (needs GPU ports of the shift/convolution functions).
+Measured on DH_orders: 1.17x at matched worker count. See
+`logs/refactor_code_stage4_log.md`.]**
 - The parallel backend is an **either-or**, chosen per fit: CPU (the Stage 3.4
   persistent Pool over `ncpus`) **or** GPU, never both computing derivative
   columns at once (resolved 2026-07-29; see Q4.8). Rationale: a GPU model-eval is
@@ -133,6 +139,18 @@ see `logs/refactor_code_stage4_log.md`]**
   `new-alfunc` and `port-to-gpu` skills).
 
 **4.5 — Shared-memory read-only arrays (carried forward from Task 3.4 Phase 3).**
+- **Carried in from 4.3 (2026-07-31), in priority order.** (a) *Batch across
+  spectra.* 4.3 batches components within a snip; the ~50x regime needs all 351
+  DH_orders spectra in one launch, which requires a **segmented** kernel (one
+  launch over concatenated wave grids, each profile row applying only to its own
+  segment) and a collect-then-scatter pass in `model_func`. That changes the 4.1
+  per-component `call_GPU` contract, so it is a decision for RJC, not a silent
+  refactor. Measured motivation: DH_orders groups reach only ~1e4-3e4
+  pixel-components today, where 4.2 measured ~5x; 1e6 is where 50x lives.
+  (b) *Full device residency* (shifted wave derived on-device, intermediates
+  kept there, only the convolved model downloaded) is blocked on GPU ports of
+  the shift and convolution functions and is worth ~10 kB of transfer per snip
+  per evaluation until then -- i.e. do it *with* a convolution port, not before.
 - Origin: the deferred "Phase 3" of Task 3.4. Phases 1-2 (persistent Pool +
   chunked derivatives + subset-pickling) already made the profile cache a
   universal win (`RunConfig.cache` now defaults True; DH_orders cache-on 0.54x

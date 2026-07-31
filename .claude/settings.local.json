@@ -32,7 +32,14 @@
       "Bash(CUDA_VISIBLE_DEVICES=\"\" python -m pytest tests/test_voigt_gpu.py -q --run-gpu)",
       "Bash(MPLBACKEND='' python -c ' *)",
       "Bash(env -u MPLBACKEND -u DISPLAY -u WAYLAND_DISPLAY python -c ' *)",
-      "Bash(pre-commit run *)"
+      "Bash(pre-commit run *)",
+      "Bash(MPLBACKEND=Agg python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)",
+      "Bash(black --check alis/gpu.py alis/gpu_dispatch.py alis/config.py tests/test_gpu_dispatch.py)",
+      "Bash(ruff check *)",
+      "Bash(isort --check-only --filter-files alis/gpu.py alis/gpu_dispatch.py alis/config.py tests/test_gpu_dispatch.py)",
+      "Bash(ruff --version)",
+      "Bash(MPLBACKEND=Agg timeout 3000 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 Q1243p307_orders.mod)",
+      "Bash(nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv)"
     ]
   }
 }

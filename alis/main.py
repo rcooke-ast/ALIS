@@ -277,7 +277,7 @@ class ClassMain:
                 m = alfit(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                        ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
+                        ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], gputhresh=self._argflag['run']['gputhresh'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
                 model = self.myfunct(m.params, output=2)
                 # Pass the fitted information to the user module and obtain and updated model and completion status
                 newmodln = save.modlines(self, m.params, self._modpass, verbose=self._argflag['out']['verbose'])
@@ -319,7 +319,7 @@ class ClassMain:
             m = alfit(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                        ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
+                        ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], gputhresh=self._argflag['run']['gputhresh'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
             # Influence must be fixed for the whole fit (Stage 3.5.2): warn if the
             # best-fit influence differs from the start-of-fit table (self._pinfl).
             load.check_par_influence(self, m.params, self._pinfl, verbose=self._argflag['out']['verbose'])
@@ -368,7 +368,7 @@ class ClassMain:
                         mc = alfit(mpars.params, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                                 verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                                 atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                                ncpus=self._argflag['run']['ncpus'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], convtest=True)
+                                ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], gputhresh=self._argflag['run']['gputhresh'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], convtest=True)
                         # Update parameters
                         mpars = copy.deepcopy(mc)
                         # Keep going until this run has reached the tolerances

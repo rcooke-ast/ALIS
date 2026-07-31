@@ -83,6 +83,20 @@ membership is by each case's reference runtime, so a regenerated reference can
 move a case between batches (e.g. J1419p0829 / J1358p6522_original became slow
 after regeneration).
 
+### The GPU batch
+
+Tests marked `gpu` need a working CUDA device. They are the other way round
+from `slow`: they are fast, so they run automatically wherever a device is
+present and *skip* where one is not (CI, in particular), rather than hiding
+behind a flag on a machine that could run them. To exercise them deliberately:
+
+```bash
+pytest --run-gpu -m gpu     # all GPU tests
+```
+
+`--run-gpu` turns a missing GPU into a `UsageError` instead of a skip, so a run
+meant to test the GPU cannot pass silently on a broken CUDA install.
+
 Useful flags: `-v` (per-test names), `--durations=15` (slowest tests),
 `-k <expr>` (select by name), `-x` (stop on first failure). A failing test
 leaves its staged working copy under pytest's `tmp_path` for inspection;

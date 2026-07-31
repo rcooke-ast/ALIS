@@ -371,7 +371,7 @@ is the wrong target -- but the sensitivity is reducible.**
   so this machine is already deterministic run-to-run and threading noise is
   not a live contributor. The divergence is genuinely between machines.
 
-## Task 4.3 -- groundwork and design (NOT started; handed over)
+## Task 4.3 -- groundwork and design (superseded; kept for the reasoning)
 
 Surveyed but deliberately not begun: 4.3 rewrites the hot path
 (`model_eval.model_func`) that every regression test depends on, and there was
@@ -425,3 +425,218 @@ execute. Two consequences to settle before building 4.3:
 `Base.supports_gpu()` / `call_GPU` contract, `Voigt.call_GPU` returning a
 device array without transferring, and the `gpu` pytest marker with
 `--run-gpu`.
+
+## Task 4.3 -- Multiprocessed CPU/GPU dispatch [COMPLETE]
+
+The backend is now an either-or choice per fit, the GPU backend distributes the
+Jacobian's derivative columns over one worker per device, and the model
+evaluation batches whole component groups into single kernel launches on a
+device-resident wave grid. The CPU path is **bitwise-identical**.
+
+**What landed**
+- `alis/gpu_dispatch.py` (new) -- the dispatch layer: routing (`should_dispatch`),
+  the device wavelength-buffer cache (`wave_device` / `note_grid` /
+  `begin_iteration`), and the batched launch plus its continuum split (`batch`).
+  No numba import at module scope, as in `alis/gpu.py`.
+- `alis/gpu.py` -- `resolve_backend()` (the either-or decision, clamping and CPU
+  fallback), `current_device()`, and the Q4.10 idle-GPU notice.
+- `alis/model_eval.py` -- a 22-line GPU branch in `model_func`, taken *instead of*
+  the per-row CPU loop. The CPU loop itself is untouched.
+- `alis/minimise.py` -- `ngpus`/`gputhresh` on `alfit`, backend resolution before
+  the first evaluation, `_make_gpu_pool` / `_gpu_worker_init` (spawn, one device
+  per worker), the `prepare_iteration` device hook, and `_report_dispatch`.
+- `alis/config.py`, `alis/data/settings.alis` -- the `run gputhresh` setting.
+- `alis/main.py`, `alis/simulate.py` -- `ngpus`/`gputhresh` threaded to all six
+  `alfit` call sites.
+- `doc/ALIS_workflow.md` -- a "Fitting on GPUs" section; `tests/README.md` -- the
+  `gpu` batch and `pytest --run-gpu -m gpu`.
+- `tests/test_gpu_dispatch.py` (new, 30 tests: 25 hardware-free, 5 `gpu`-marked).
+
+**Backend selection (the part of 4.3a that 4.3 needs).** `run ngpus N` (N > 0) is
+the opt-in, per Q4.10; `RunConfig.backend` and the timed `auto` probe stay with
+4.3a. `resolve_backend` clamps N to the devices present, and degrades to the CPU
+with a warning when the GPU is unusable -- so a `.mod` written on a GPU box still
+runs everywhere. When GPUs are present but idle it prints the Q4.10 notice once
+per process, gated on `importlib.util.find_spec("numba")` so a CPU-only install
+neither imports numba nor sees the message.
+
+**The GPU worker pool.** `fdjac2`'s persistent Pool is sized to `ngpus` instead of
+`ncpus`, created with `multiprocessing.get_context("spawn")` (a CUDA context does
+not survive `fork`, Q4.8), and given an initializer that binds one device per
+worker. The rank comes from a shared `Value` counter, not from
+`current_process()` -- Pool worker numbering is an implementation detail, the
+counter is exact. This is the one place where an initializer is right: the CPU
+Pool avoids one because on `spawn` it serialises the heavy re-import at Pool
+creation (Stage 3.4), but a CUDA context must be created once per worker and
+before any launch. A worker that cannot bind a device warns and falls back to the
+CPU rather than raising -- an exception in a Pool initializer makes the Pool
+respawn the worker indefinitely.
+
+**Dispatch shape.** Where the CPU loop evaluates one profile row at a time (Stage
+3.1 made the cache per-row), the dispatcher sends a whole `(sp, sn, ea, md)`
+group -- every transition of every component of one model type in one snip -- in
+a single launch, and the kernel reduces it in the same row order, so the result
+is not merely close to the CPU's incremental `+=` / `*=` but rounds the same way.
+Two details:
+- **The continuum split.** The CPU loop decides *per row* whether to accumulate
+  into `mcont`, which a batched reduction loses. A mixed group therefore gets a
+  second launch over just its continuum rows; an all-continuum group reuses the
+  first result, and a group with none skips it.
+- **The profile cache is bypassed on the device path** (it is still used, exactly
+  as before, by everything routed to the CPU). Caching is a per-row optimisation
+  and batching is a per-group one; keeping both would mean caching device arrays,
+  which cannot be pickled to the workers. The cost is nil in practice: within an
+  influenced snip only the group holding the perturbed component would ever have
+  to be relaunched anyway, and the other groups in these models are `legendre` /
+  `constant` continua, which have no GPU implementation and so still take the
+  cached CPU path.
+
+**Device residency.** The (shifted) sub-pixel wave grid is uploaded once and kept
+on the device, keyed by `(snip, shift model, shift parameters)` plus the identity
+of the sub-pixel grid itself. `renew_subpix` returns a fresh grid list from
+`load_subpixels`, so a changed identity is exactly the staleness signal -- no
+array comparison, no `id()` reuse hazard (the *current* grid is held by a strong
+reference, and a change clears the cache outright). `prepare_iteration` releases
+the buffers at the iteration boundary, which is what makes the upload
+once-per-iteration rather than once-per-fit, and bounds parent-side device memory
+when the shift model is free. Within an iteration the base call and every
+line-search evaluation share one upload; a worker keeps its buffers for the whole
+chunk.
+
+**The size threshold.** `run gputhresh` (default 10000) is the minimum
+sub-pixels x rows for a group to be launched; below it, the group falls through
+to the CPU loop. The default comes from the Stage 4.2 kernel benchmark (1000x1
+ran at 0.9x the CPU, 10000x1 at 5.2x). It is a real setting rather than a
+test-only hook, which answers the groundwork's worry that the Q4.9 GPU
+regression runs could pass vacuously: `run gputhresh 0` forces the device path,
+and `_report_dispatch` prints the launch counts, so a run can be shown to have
+used the GPU rather than merely asked for it.
+
+**Bitwise gate (CPU path).** metal_line_abs (full fit + covariance) and
+DH_orders (351 spectra, 1 iteration) are **BITWISE-IDENTICAL** to the pre-4.3
+baseline, all 1063 collected output files. Independently confirmed by accident:
+the first DH_orders "GPU" run silently stayed on the CPU (see the harness note
+below) and reproduced the baseline exactly.
+
+**GPU vs CPU numerics.** metal_line_abs on 1 GPU and on 4 GPUs are
+**bitwise-identical to each other** -- distributing the columns over devices does
+not change the answer -- and agree with the CPU fit to 2e-9 relative on the
+covariance and ~1e-9 on the fitted parameters (the redshift differs by 1e-17
+absolute against a 6.4e-7 error bar). That is far inside the Stage 0 tolerances
+and consistent with the 1e-12 profile budget of Q4.3: the covariance amplifies
+model differences by the condition number, exactly as recorded in the
+cross-machine section above. DH_orders at 1 iteration agrees to 3e-36 relative.
+
+**Performance on DH_orders (351 spectra, 1-iteration fit, RTX 2080 Ti x4 vs 20
+cores).** Times are the fit's own "Running Time" from `.mod.out`, so data
+loading and file writing are excluded.
+
+| Backend | workers | where the Voigt ran | time |
+|---|---:|---|---:|
+| CPU Pool | 12 (the model's `run ncpus`) | CPU | **327 s** |
+| CPU Pool | 4 | CPU | 419 s |
+| GPU Pool | 4 | CPU (`gputhresh 1e9`) | 432 s |
+| GPU Pool | 4 | GPU (`gputhresh 10000`, default) | **357 s** |
+| GPU Pool | 4 | GPU (`gputhresh 0`, forced) | 356 s |
+
+Run-to-run spread is about 3%: the default-threshold GPU configuration was
+measured three times at 357 / 348 / 345 s.
+
+Reading these:
+- **At matched worker count the GPU backend is 1.17x faster end-to-end**
+  (419 -> 357 s). Against the model's own 12-core setting it is 1.09x *slower*,
+  because the box has 12 usable cores and only 4 GPUs.
+- **The default threshold is already right for this model** (357 s vs 356 s
+  forced): DH_orders groups are mostly above 1e4 pixel-components, so almost
+  nothing is being left on the CPU by the default.
+- **This benchmark understates the derivative speed-up.** Going from 4 to 12 CPU
+  workers only buys 1.28x (419 -> 327 s), so most of a 1-iteration run is *not*
+  in the parallel Jacobian -- it is one-off setup plus the end-of-fit covariance
+  on a 75164 x N Jacobian, which a 75-iteration production fit amortises away.
+  An attempt to difference one iteration out (`maxiter` 1 vs 2) failed to
+  separate cleanly: both runs terminated after 2 iterations, so 419/357 s are the
+  numbers that can be stood behind.
+
+**Why the gain is ~1.2x and not the ~50x Q4.8 assumed.** It is entirely
+predicted by the Stage 4.2 kernel table, and the assumption -- not the
+implementation -- is what was wrong. A DH_orders snip is ~310 pixels x nsubpix 5
+= ~1550 sub-pixels; batching a group of ~7-20 profiles reaches ~1e4-3e4
+pixel-components, which 4.2 measured at 5x, not 50x. The 50x regime starts at
+~1e6 pixel-components, i.e. only if **all 351 spectra go into one launch**. That
+is the "/spectra" half of Q4.7's "batches same-type components/spectra", and it
+is the one thing in 4.3 that was not built -- see below.
+
+Two candidate optimisations were considered and rejected on the arithmetic
+rather than on effort:
+- *Asynchronous launches / CUDA streams* (removing the blocking `copy_to_host`
+  per group). A derivative column touches a handful of snips, so a Jacobian
+  issues order 1e3-1e4 round trips at ~30 us -> ~0.1-0.3 s against a 357 s run.
+  Not the bottleneck.
+- *Reusing a device output buffer* (avoiding one `cuda.device_array` per launch).
+  Same order of magnitude, and it would need an `out=` parameter on the 4.1
+  `call_GPU` contract, breaking the signature-parity test for a fraction of a
+  percent.
+The time is genuine kernel compute at a size the GPU is not yet good at. Only a
+bigger launch changes that.
+
+**Not done, deliberately: batching across spectra.** The dispatcher batches
+components *within* a snip, not across snips. Doing the latter needs a
+*segmented* kernel -- one launch over the concatenated wave grids of many snips,
+with each profile row applying only to its own segment -- because a single
+`call_GPU(wave, pin)` evaluates every row over every wavelength by definition.
+That changes the Task 4.1 per-component contract (agreed with RJC on 2026-07-29)
+and turns `model_func`'s single pass into collect-then-scatter. It is the right
+next move for performance and the wrong thing to bolt onto the end of a task
+that already rewrites the hot path; it should be a decision, not a side effect.
+Recorded as the first candidate for 4.5, where the buffer-lifecycle work lives.
+
+**Not done, for a concrete reason: full device residency.** The stage doc asks
+for the shifted wave to be derived on-device and for emission/absorption
+intermediates to stay there, "downloading only the final convolved model". Both
+require GPU implementations that do not exist: the shift functions
+(`vshift`/`Ashift`/...) and, above all, the convolution functions
+(`vfwhm`/`lsf`/...), which are numpy FFTs. Until those are ported the model must
+come back to the host to be convolved. What this costs is small and now
+measured-by-construction: the alternative would save ~10 kB of transfer per snip
+per evaluation (12 kB downloaded per group instead of ~2.5 kB after
+convolution), i.e. it is worth doing *when the convolution itself moves to the
+GPU*, not before. The wave-grid half of the requirement -- the part that is
+per-iteration and read-only -- **is** implemented, and the shifted grid is cached
+on the device keyed by the shift parameters, which avoids the re-upload without
+needing a GPU shift kernel.
+
+**A harness trap worth recording.** The first DH_orders GPU run showed no
+speed-up and outputs bitwise-identical to the CPU baseline -- because the
+benchmark *prepended* `run ngpus 4` to a `.mod` that already contained
+`run ngpus 0` further down, and settings are applied in file order, so the later
+line won. Any future GPU benchmark must **replace** the existing setting, not
+prepend. (The accident was useful: it is an independent confirmation that the
+CPU path is untouched.)
+
+**Tests** (`tests/test_gpu_dispatch.py`, 30). Hardware-free (25): backend
+resolution in all five states (unset / requested / over-provisioned / no device /
+broken CUDA / unreadable value), the once-per-process idle-GPU notice, the
+dispatcher lifecycle and threshold arithmetic, wave-buffer caching and its three
+invalidation paths, and -- with the launch replaced by the numpy reduction it has
+to reproduce -- the row reduction, the em/ab distinction and all three continuum
+cases. `gpu`-marked (5): the batched launch against the per-row CPU loop for both
+`ae` values and for a mixed-continuum group (all within 1e-12 of Q4.3), device
+buffer reuse, and the multi-GPU Pool actually binding one distinct device per
+worker under `spawn`.
+
+**Gate.** `pytest -m unit --run-gpu`: **120 passed** (90 before this task).
+Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed, 140 deselected in
+5:24**, unchanged from 4.2. Lint (pinned pre-commit: ruff v0.6.9 / isort 5.13.2 /
+black 24.10.0) clean on every changed file. No reference or golden file changed.
+
+**One cost worth knowing about.** The Q4.10 idle-GPU notice has to probe to know
+how many GPUs are present, and the probe imports numba (~0.3 s) and initialises
+the CUDA driver (~0.5 s). So on a machine that *has* the `gpu` extra installed,
+every ALIS run -- including CPU-only ones -- now pays ~0.8 s once at start-up,
+which adds ~2 minutes across the ~150-run regression suite. It is nothing against
+a real fit and it is what makes the feature RJC asked for possible; a CPU-only
+install pays nothing, because `find_spec` finds no numba and the probe is never
+reached. Cheap Linux-only alternatives (stat-ing `/dev/nvidia*`) were rejected as
+platform-specific guesswork. Verified that importing numba and calling `cuInit`
+in the parent does not upset the *fork*-started CPU Pool (the children make no
+CUDA calls).

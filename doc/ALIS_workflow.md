@@ -84,7 +84,8 @@ the defaults in `settings.alis`. Examples:
 
 ```
 run  ncpus        4          # CPUs to use (-1 = all bar one, -2 = all bar two)
-run  ngpus        0          # GPUs to use (0 = none, future feature)
+run  ngpus        0          # GPUs to use (0 = CPU backend; see below)
+run  gputhresh    10000      # Smallest model group worth sending to a GPU
 run  nsubpix      5          # Sub-pixels per 1σ for profile integration
 run  blind        False      # Global blind analysis flag
 run  convergence  False      # Run convergence checker
@@ -109,12 +110,44 @@ Key `run` sub-settings:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `ncpus` | −1 | CPU count; −1 = all bar one, −2 = all bar two |
-| `ngpus` | 0 | GPU count (future use) |
+| `ngpus` | 0 | GPU count; 0 keeps the CPU backend (see *Fitting on GPUs*) |
+| `gputhresh` | 10000 | Smallest model group (sub-pixels × profiles) sent to a GPU |
 | `nsubpix` | 5 | Sub-pixel oversampling (fixed count) |
 | `nsubmin`/`nsubmax` | 5/21 | Min/max sub-pixel oversampling (adaptive) |
 | `blind` | True | Global blind analysis |
 | `convergence` | False | Enable convergence testing |
 | `datatype` | default | Data format: `default`, `HIRESredux`, `UVESpopler` |
+
+#### Fitting on GPUs
+
+The parallel backend is an either-or choice made once per fit: the Jacobian's
+derivative columns are computed **either** by a pool of `ncpus` CPU workers **or**
+by a pool of `ngpus` GPU workers (one CUDA device each), never both. The CPU is
+the default; `run ngpus N` (N > 0) opts in, and ALIS prints a notice at start-up
+when it finds GPUs you are not using.
+
+GPU support needs the optional extra and a CUDA toolkit matching your driver
+(the toolkit is *not* installed by pip):
+
+```
+pip install "alis[gpu]"
+```
+
+If no usable GPU is found, `run ngpus N` warns and falls back to the CPU, so a
+model file written on a GPU machine still runs everywhere.
+
+Only model functions with a GPU implementation are dispatched to the device
+(currently `voigt`); everything else is computed on the CPU as usual, within the
+same fit. A group of profiles is sent to the device only if it is large enough
+to be worth a kernel launch — `sub-pixels × profiles ≥ gputhresh` — because
+below roughly 10⁴ pixel-components the launch and transfer cost more than the
+kernel saves. Lower `gputhresh` to push more work onto the device (`0` forces
+every supported group there); raise it to keep small snips on the CPU.
+
+The GPU and CPU paths agree to better than 10⁻¹² in the profile, but they are
+not bit-for-bit identical, so a fit repeated on a different backend will differ
+in the last digits. Pick one backend for a piece of work if you need
+reproducible output.
 
 ### 2.2 Data Block
 
@@ -386,7 +419,9 @@ Internally, the call sequence is:
 
 The minimizer (`alcsmin.alfit`, wrapping a customised version of `mpfit`) uses the
 Levenberg-Marquardt algorithm. Each iteration, model profiles are computed for all spectra
-in parallel using Python multiprocessing. The number of processes is set by `run ncpus`.
+in parallel using Python multiprocessing. The number of processes is set by `run ncpus`
+— or, when `run ngpus` is greater than zero, by `run ngpus`, with one CUDA device bound
+per worker (see *Fitting on GPUs* above).
 
 ### 4.1 Worked example: `examples/metal_line_abs/`
 

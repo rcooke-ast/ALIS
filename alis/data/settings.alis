@@ -10,7 +10,8 @@ run  datatype     default       # Specify the type of data being read in (the de
 run  limpar       False         # If an initial parameter's value is outside the model limits, set the initial value to the limit. Otherwise, and error is raised.
 run  logn         True			# Use the log of the column density (True) or the column density (False)
 run  ncpus        -1			# Number of CPUs to use (-1 means all bar one CPU, -2 means all bar two CPUs)
-run  ngpus        0				# Number of processes to send to the GPU/GPUs (must be >= 0)
+run  ngpus        0				# Number of GPUs to fit on (0 uses the CPU; needs the 'gpu' extra and a CUDA toolkit)
+run  gputhresh    10000			# Smallest model group (sub-pixels x profiles) worth sending to a GPU -- smaller ones use the CPU
 run  nsubpix      5				# Number of sub-pixels per 1 standard deviation to interpolate all models over -- higher values give higher precision.
 run  nsubmin      5				# Minimum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision.
 run  nsubmax      21			# Maximum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision.

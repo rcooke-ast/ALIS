@@ -62,6 +62,10 @@ class RunConfig(_DictLike):
     limpar: bool = False
     ncpus: int = -1
     ngpus: Optional[int] = None
+    # Stage 4.3: minimum sub-pixels x profile rows for a model component group
+    # to be sent to the GPU (below it, the launch costs more than the kernel
+    # saves and the CPU path is used). Ignored unless ngpus > 0.
+    gputhresh: int = 10000
     nsubpix: int = 5
     nsubmin: int = 5
     nsubmax: int = 21
