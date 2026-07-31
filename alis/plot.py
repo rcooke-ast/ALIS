@@ -1,6 +1,16 @@
+import os
 import numpy as np
 import matplotlib
-matplotlib.use("TkAgg")
+# Forcing an interactive backend at import time makes ALIS unimportable
+# wherever there is no display -- CI, batch fits over SSH, cluster nodes --
+# because matplotlib raises rather than falling back. Honour MPLBACKEND when
+# the user has set it, and degrade to the non-interactive Agg when Tk is
+# unavailable, so only the on-screen plotting is lost and the fit still runs.
+if not os.environ.get("MPLBACKEND"):
+    try:
+        matplotlib.use("TkAgg")
+    except (ImportError, RuntimeError):
+        matplotlib.use("Agg")
 from matplotlib import pyplot as plt
 from matplotlib import ticker
 from alis import logger

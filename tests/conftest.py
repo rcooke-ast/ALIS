@@ -50,6 +50,18 @@ def pytest_addoption(parser):
         )
     except ValueError:
         pass
+    try:
+        parser.addoption(
+            "--skip-machine-dependent",
+            action="store_true",
+            default=False,
+            help=(
+                "skip the mode (a) minimisations whose references only "
+                "reproduce on the machine that generated them"
+            ),
+        )
+    except ValueError:
+        pass
 
 
 def pytest_collection_modifyitems(config, items):
@@ -74,6 +86,28 @@ def pytest_collection_modifyitems(config, items):
         for item in items:
             if "slow" in item.keywords:
                 item.add_marker(skip_slow)
+
+    if config.getoption("--skip-machine-dependent"):
+        skip_md = pytest.mark.skip(
+            reason="reference only reproduces on the machine that generated it"
+        )
+        for item in items:
+            if "machine_dependent" in item.keywords:
+                item.add_marker(skip_md)
+
+    # linetools is an optional dependency -- only the 'lsf' model function
+    # needs it -- so cases that use it are skipped where it is absent rather
+    # than failing the whole batch. Same principle as the gpu gate below.
+    if any("linetools" in item.keywords for item in items):
+        try:
+            import linetools  # noqa: F401
+        except ImportError:
+            skip_lt = pytest.mark.skip(
+                reason="linetools is not installed (needed by the 'lsf' function)"
+            )
+            for item in items:
+                if "linetools" in item.keywords:
+                    item.add_marker(skip_lt)
 
     if not any("gpu" in item.keywords for item in items):
         return

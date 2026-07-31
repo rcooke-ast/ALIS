@@ -304,3 +304,69 @@ returns a device array and does not transfer, per the contract.
 (0 failures). `-m unit --run-gpu`: 90 passed. The CPU path is unchanged --
 `call_CPU` was not touched, and the only edits to `voigt.py` were the opt-in
 flag, the new `call_GPU`, and deleting the dead PyCUDA method.
+
+## CI fixes and the cross-machine QA policy (post-4.2)
+
+Three fixes after the first GitHub run of the Stage 4 branch.
+
+**1. Headless matplotlib -- a real bug, not just a CI annoyance.**
+`alis/plot.py:3` called `matplotlib.use("TkAgg")` unconditionally at module
+scope, so *importing* ALIS raised `ImportError: Cannot load backend 'TkAgg'
+which requires the 'tk' interactive framework, as 'headless' is currently
+running` anywhere without a display. That is not only CI: it breaks batch fits
+over SSH and on cluster nodes. Note `matplotlib.use()` overrides `MPLBACKEND`,
+so setting the environment variable in the test would have masked it rather
+than fixed it. Now honours a non-empty `MPLBACKEND` and falls back to `Agg`
+when Tk is unavailable, so only on-screen plotting is lost and the fit still
+runs. `test_importing_alis_does_not_import_numba` is deliberately left
+importing ALIS with no backend forced, so it keeps guarding this.
+
+**2. linetools is optional; the harness now treats it that way.**
+`alis/functions/lsf.py` caught the `ImportError` with a warning but left
+`ltLSF` unbound, so using the `lsf` function without linetools failed with a
+bare `NameError: name 'ltLSF' is not defined` from inside the model
+evaluation. `ltLSF` is now bound to `None` and both call sites go through
+`_require_linetools()`, which reports what is missing and how to install it.
+The harness gained a `linetools` marker, applied automatically to any case
+whose `.mod` uses `lsf(` (matching that literal distinguishes it from the pure
+ALIS `lsfspline(` and `lsffile(`), and auto-skipped when linetools is absent --
+the same "skip where impossible" principle as the `gpu` marker. Only
+`examples/lsf_hst` is affected: 2 tests, and the `examples` batch stays at 54.
+
+**3. Cross-machine minimisation divergence -- `--skip-machine-dependent`.**
+The nine mode (a) `context/` failures are now tagged `machine_dependent` and
+skipped *only* when `--skip-machine-dependent` is passed, so the reference
+machine and CI stay strict. This is an opt-out for working on a second
+machine, not a relaxation.
+
+**On whether identical cross-OS results are achievable: no, and chasing them
+is the wrong target -- but the sensitivity is reducible.**
+- Bit-identical floating point across operating systems is not deliverable by
+  any package choice. `exp`/`log`/`pow` are only accurate to ~1 ulp and differ
+  between glibc, macOS and Windows libm; BLAS differs (OpenBLAS / Accelerate /
+  MKL) and *multi-threaded* BLAS reductions are non-deterministic even on one
+  machine; compilers contract `a*b+c` into FMA differently; and SIMD width
+  changes numpy's pairwise-summation blocking. Arbitrary-precision arithmetic
+  (mpmath) would fix it and is far too slow to fit with.
+- The quantity actually diverging is the **covariance**, not the fit. All nine
+  fail `compare_covar`; only one also misses the 1% chi-squared band; all nine
+  pass the 0.1-sigma parameter check. The covariance is `(J^T J)^-1` with `J`
+  finite-differenced at `sqrt(eps)`, so `J` carries ~1e-8 relative noise, which
+  the inverse amplifies by the condition number -- large for these blended,
+  near-degenerate real-world fits. Percent-level covariance spread across
+  platforms is the expected behaviour of that construction.
+- **The one change that would genuinely help is analytic derivatives for the
+  Voigt.** `dw/dz = -2 z w(z) + 2i/sqrt(pi)`, so the derivatives with respect
+  to column density, redshift and Doppler parameter are closed-form in terms
+  of the `w(z)` already being evaluated. That replaces a `sqrt(eps)`-accurate
+  Jacobian with a ~1e-15-accurate one, removing the dominant amplifier, and it
+  is *faster* (no extra model evaluation per free parameter per iteration). It
+  does not guarantee bit-identity, but it would shrink the cross-machine
+  covariance spread by orders of magnitude. Worth considering as a Stage 3/4
+  follow-on; it interacts well with the GPU port, since the kernel already has
+  `w(z)` in hand.
+- Pinning `OPENBLAS_NUM_THREADS=1` is worth doing as a guard, but it will not
+  explain the current spread: J0903p2628 gave chi-squared 5111.503747 on two
+  independent runs here (current code and the extracted 182bc20), bit for bit,
+  so this machine is already deterministic run-to-run and threading noise is
+  not a live contributor. The divergence is genuinely between machines.
