@@ -13,6 +13,7 @@ run  ncpus        -1			# Number of CPUs to use (-1 means all bar one CPU, -2 mea
 run  backend      auto			# Which backend computes the Jacobian: cpu, gpu, or auto (time both, keep the faster)
 run  ngpus        0				# Number of GPUs to fit on (0 uses the CPU; needs the 'gpu' extra and a CUDA toolkit)
 run  gputhresh    10000			# Smallest model group (sub-pixels x profiles) worth sending to a GPU -- smaller ones use the CPU
+run  shmem        True			# Share the derivative workers' read-only arrays through /dev/shm instead of copying them to each worker
 run  nsubpix      5				# Number of sub-pixels per 1 standard deviation to interpolate all models over -- higher values give higher precision.
 run  nsubmin      5				# Minimum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision.
 run  nsubmax      21			# Maximum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision.

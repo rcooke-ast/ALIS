@@ -39,7 +39,20 @@
       "Bash(isort --check-only --filter-files alis/gpu.py alis/gpu_dispatch.py alis/config.py tests/test_gpu_dispatch.py)",
       "Bash(ruff --version)",
       "Bash(MPLBACKEND=Agg timeout 3000 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 Q1243p307_orders.mod)",
-      "Bash(nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv)"
+      "Bash(nvidia-smi --query-gpu=index,utilization.gpu,memory.used --format=csv)",
+      "Bash(mkdir -p pay)",
+      "Bash(cp -r ab/base/DH_orders pay/)",
+      "Bash(cp -r ab/base/metal_line_abs pay/)",
+      "Bash(MPLBACKEND=Agg timeout 3000 python /home/rcooke/.claude/jobs/faab15d1/tmp/payload.py Q1243p307_orders.mod)",
+      "Bash(mkdir -p memA)",
+      "Bash(cp -r ab/base/DH_orders memA/)",
+      "Bash(cp -r ab/base/metal_line_abs memA/)",
+      "Bash(cp fit_spectra.mod shmoff.mod)",
+      "Bash(MPLBACKEND=Agg timeout 900 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 shmoff.mod)",
+      "Bash(mkdir -p gpu45)",
+      "Bash(cp -r ab/base/metal_line_abs gpu45/)",
+      "Bash(MPLBACKEND=Agg timeout 1200 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)",
+      "Bash(MPLBACKEND=Agg timeout 900 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 cacheoff.mod)"
     ]
   }
 }

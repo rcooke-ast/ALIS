@@ -64,6 +64,12 @@ still evolving). File-format I/O loaders and GPU code are intentionally excluded
 here; their unit tests are added in the stage that reshapes them (I/O in
 Stage 5, GPU in Stage 4). See `claude_prompts/refactor_code_unit_tests.md`.
 
+Two of these files are checked in a second way, because a test over an interface
+can pass while asserting nothing: `test_function_interface.py` (Stage 4.4) and
+`test_shared_arrays.py` (Stage 4.5) were each run against deliberately broken
+versions of the code they cover, and every invariant was confirmed to fail on
+the mistake it names. Keep that property when adding to them.
+
 ## Running the batches
 
 Tests are marked `fast`, `medium`, or `slow` by per-test wall-time:

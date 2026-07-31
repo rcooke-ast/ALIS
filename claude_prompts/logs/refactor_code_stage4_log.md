@@ -885,3 +885,175 @@ Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed, 445 deselected in
 4:54**. metal_line_abs and DH_orders **BITWISE-IDENTICAL**
 -- `Base` and `Voigt` gained a method and nothing else. Forced-GPU and
 `backend auto` runs re-checked end to end after the warm-up refactor. Lint clean.
+
+## Task 4.5 -- Shared-memory read-only arrays [COMPLETE]
+
+Carried in from Task 3.4 Phase 3. The brief is to back the read-only arrays
+passed to `_worker_chunk` with `multiprocessing.shared_memory`, keep the
+Jacobian bitwise-identical, and benchmark memory and wall on DH_orders and a
+compact fit.
+
+**What the payload actually is.** The stage doc's figure was ~1.1 GB per
+evaluation, from the Phase 2 measurement. Measured again now, on DH_orders
+(413 free parameters, 12 chunks):
+
+| Per chunk | | Per Jacobian |
+|---|---|---|
+| constant fit state (`functkw`) | 102.1 MB | 1.23 GB |
+| profile-cache slice | 157 MB (chunk 0), 429 MB mean | 5.15 GB |
+| `fvec` / `xall` / job list | 0.6 MB | 7 MB |
+| | | **6.38 GB** |
+
+So the doc's 1.1 GB was the *constant* part, and it is the smaller half. Inside
+the 100.4 MB `FitState`, three lists account for 86 MB: `_wavespx`, `_contspx`
+and `_zerospx`, the sub-pixel grids. The cache slices are individually smaller
+than the whole cache but overlap heavily across chunks, which is why sending
+them separately costs 4x what the cache itself is worth.
+
+**Design.** New `alis/shared_arrays.py`. Each publisher owns **one** segment,
+not one per array -- DH_orders would otherwise need ~4000 of them. The segment
+holds a header, a pickled *skeleton* (the original structure with each large
+array replaced by an offset/shape/dtype triple), then the array bytes at
+64-byte alignment. What travels through `pool.map` is a `Handle`: tag, segment
+name, generation, and optionally a tuple of dict keys -- ~100 bytes in place of
+hundreds of megabytes. A worker attaches once and rebuilds each array as a
+**view**, so the arrays exist once in RAM however many workers there are.
+
+Two publishers, because the payloads have different lifetimes: `functkw`
+(constant for the fit, but republished each Jacobian, see below) and
+`compcache` (rebuilt by every base evaluation). Both are released in
+`_close_pool`, after the Pool, with a `weakref` registry and an `atexit` sweep
+behind them.
+
+**Decisions worth recording.**
+
+- *Views are read-only.* Not tidiness: 12 workers share one buffer, so a write
+  is a data race across processes. `writeable = False` converts it into an
+  immediate `ValueError` in the worker that did it. That the full fits run
+  clean is therefore also the evidence that nothing on the derivative path
+  writes to this data.
+- *Republished per Jacobian, not once per fit.* `FitState._modfinal` /
+  `_contfinal` / `_zerofinal` are rebound by the parent's base evaluation each
+  iteration. `model_func` overwrites them before reading, so publishing once
+  would probably be safe -- but "probably" is not a basis for a silent staleness
+  bug, and re-copying 100 MB costs ~30 ms against a 110 s Jacobian.
+- *The cache selection is preserved exactly.* Phase 2 sends each chunk only the
+  entries its parameters influence; the shared path sends the same **keys**, so
+  the dict a worker sees has the same entries in the same order. `_slice_emab`
+  was refactored onto the new `_chunk_cache_keys` so the two paths cannot drift
+  apart -- and the test for it checks the selection rule directly rather than
+  the two paths against each other, which after that refactor would have been a
+  tautology (it was, and the mutation check caught it).
+- *The hydrated object is cached per generation.* `model_func` keys the Stage
+  4.3 device wave cache on the **identity** of the sub-pixel grid list, so a
+  worker that rebuilt the state per task would invalidate the GPU's resident
+  buffers on every task.
+- *The generation is stored in the segment as well as in the handle.* Reading
+  through a stale handle then raises instead of returning whatever the segment
+  holds now. This was found by a test, not by reasoning: the first version
+  silently hydrated one payload's handle into another's contents.
+- *`track=False` when attaching in a worker* (Python 3.13). The parent owns the
+  segment; a worker that registered it with its own resource tracker would
+  unlink it on exit and report it as leaked.
+- *Best-effort, with a switch.* An `OSError` from `SharedMemory` -- a
+  container's 64 MB `/dev/shm` is the realistic case -- warns once and falls
+  back to the pickle path. `run shmem False` (new `RunConfig.shmem`, default
+  True) forces that path outright.
+- Only C-contiguous, non-object, non-structured arrays >= 4 kB are shared;
+  anything else would have to be repacked, which is what pickle already does
+  well. Dataclasses are shallow-copied and written field by field rather than
+  rebuilt through `dataclasses.replace`, which re-runs `__init__` and would
+  drop any field the constructor does not take.
+
+**Carried-in items, and why two of them are still deferred.**
+
+- *(a) Batch across spectra.* Unchanged from the 4.3 assessment: it needs a
+  segmented kernel and a collect-then-scatter pass in `model_func`, which
+  changes the 4.1 per-component `call_GPU` contract. The stage doc says
+  explicitly that this is RJC's decision rather than a silent refactor, so it
+  stays open.
+- *(b) Full device residency.* Still blocked on GPU ports of the shift and
+  convolution functions, and still worth only ~10 kB per snip per evaluation
+  until then.
+- *(c) The Stage 3.5.5 conditional `renew_subpix` recompute.* **Declined**, and
+  the reason is concrete rather than an estimate of effort: no fit anywhere in
+  the repository sets `run renew_subpix True` -- every occurrence in `examples/`
+  and `context/fitting_examples/` is `False`. A change to the derivative's
+  sub-pixel path therefore could not be gated bitwise against anything, and an
+  ungated numerics change to the Jacobian is precisely what the Stage 0
+  discipline exists to prevent. It also turns out not to interact with the
+  buffer lifecycle at all (a `renew_subpix` grid is built inside the worker and
+  was never shared), so it can be done later at no extra cost.
+
+**Tests.** New `tests/test_shared_arrays.py`, 31 `unit` tests: round-trip
+fidelity (dtype, shape, nesting, container types, dataclass fields), what is
+deliberately *not* shared, that the results are views rather than copies and are
+read-only, segment reuse and growth, generation invalidation, the subset
+selection, lifecycle and cleanup, and one test that publishes in the parent and
+hydrates in a real `spawn`ed child. As in 4.4, **each was verified to bite**:
+13 deliberate breakages of the module (views copied, views left writeable, no
+generation check, hydration not cached, outgrown segment left mapped,
+`replace()` instead of field assignment, strided arrays repacked, segment not
+unlinked, no fallback, two ways of getting the key selection wrong, an unknown
+key skipped instead of raising, worker ignoring handles) -- **13/13 caught**.
+Three assertions had to be strengthened when a run showed them missing their
+mutation, and the third was the interesting one:
+- one was simply too weak -- it checked that a dict entry had been replaced,
+  not that the outgrown segment had actually been unmapped;
+- one had become a tautology when the two selection paths were refactored onto
+  shared code, so it agreed with any mistake they made together;
+- the generation check looked untestable because the cached arrays are *views
+  into the segment*: republishing the same shapes writes new bytes at the same
+  offsets, so a stale skeleton still reads correct data. It only bites when the
+  layout changes, and only if the segment does not also grow -- growing gets a
+  new name, and re-attaching drops the caches for a different reason. The test
+  now republishes a smaller payload into the same segment.
+
+**Measured.** DH_orders (351 spectra, 413 free parameters, `ncpus 12`, one
+iteration), three paired runs of `run shmem` False vs True on the same binary.
+"PSS" is proportional set size summed over the process tree -- the tree's true
+physical footprint, which charges a shared page once rather than once per
+sharer.
+
+| | `shmem False` | `shmem True` |
+|---|---|---|
+| peak PSS (whole tree) | 13.08 / 13.20 / 13.39 GB | **7.68 / 7.67 / 7.67 GB** |
+| peak RSS (sum over tree) | 25.93-26.11 GB | 26.16 GB |
+| `/dev/shm` in use | 0 | 1.30 GB |
+| wall | 381.8 / 378.9 / 373.2 s | 368.7 / 365.9 / 371.0 s |
+| left behind after the fit | -- | nothing |
+
+**The footprint is the result: 13.2 GB -> 7.7 GB, a 42% cut**, and the ON
+figures repeat to 0.01 GB. RSS is *unchanged*, which is the expected companion
+result rather than a contradiction: RSS charges a shared page to every process
+that touches it, so 12 workers reading one 530 MB region look the same as 12
+workers each holding their own. PSS is the metric that distinguishes them.
+
+Wall time improved ~2.5% (means 378.0 s -> 368.5 s, with the three ON runs all
+below the three OFF runs). Real but secondary, and consistent with the stage
+doc's own prediction: serialisation was only ~0.3-0.4% of the Jacobian's CPU,
+so most of that 9.5 s is the allocation and page-fault churn of building and
+freeing 6.4 GB of buffers per Jacobian, not the pickling itself.
+
+On the **compact fit** (metal_line_abs, 8 free parameters) there is no
+difference to measure, which is the right answer: wall 3.4 s either way, PSS
+0.23 -> 0.24 GB. Its whole payload is a fraction of a megabyte, of which only
+the sub-pixel grids clear the 4 kB threshold. The point of checking was that
+the machinery costs nothing when it has nothing to do.
+
+**Gate.**
+- metal_line_abs (full fit + covariance) and DH_orders (one iteration):
+  **BITWISE-IDENTICAL** to the pre-4.3 baseline, all 1065 files.
+- `run shmem False` produces byte-identical output to `run shmem True`, so the
+  fallback path is not a second set of numbers.
+- Forced-GPU smoke test (`backend gpu`, `ngpus 2`, `gputhresh 0`) unchanged:
+  "9 kernel launches over 18 profiles, 9 component groups on the GPU and 9 on
+  the CPU". This matters because the GPU Pool uses `spawn` -- a different start
+  method, and the one macOS uses for the CPU Pool too. Attaching with
+  `track=False` is what keeps a spawned worker from unlinking the parent's
+  segment on exit.
+- `run cache False` (no profile cache to publish) also byte-identical.
+- `pytest -m unit --run-gpu`: **425 passed, 31 skipped** (394 before).
+- Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed, 476
+  deselected in 4:46**.
+- Lint (ruff / isort / black) clean.

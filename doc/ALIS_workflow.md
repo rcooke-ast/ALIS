@@ -114,6 +114,7 @@ Key `run` sub-settings:
 | `backend` | auto | Which backend computes the Jacobian: `cpu`, `gpu` or `auto` |
 | `ngpus` | 0 | GPU count; 0 keeps the CPU backend (see *Fitting on GPUs*) |
 | `gputhresh` | 10000 | Smallest model group (sub-pixels × profiles) sent to a GPU |
+| `shmem` | True | Share the workers' read-only arrays via `/dev/shm` (see *Memory during a fit*) |
 | `nsubpix` | 5 | Sub-pixel oversampling (fixed count) |
 | `nsubmin`/`nsubmax` | 5/21 | Min/max sub-pixel oversampling (adaptive) |
 | `blind` | True | Global blind analysis |
@@ -170,6 +171,24 @@ The GPU and CPU paths agree to better than 10⁻¹² in the profile, but they ar
 not bit-for-bit identical, so a fit repeated on a different backend will differ
 in the last digits. Pick one backend (`run backend cpu` or `gpu`) for a piece of
 work if you need reproducible output.
+
+#### Memory during a fit
+
+Each derivative worker needs the same read-only arrays — the data, the sub-pixel
+grids and the cached model components — and used to be handed its own copy of
+them. On a large fit that is the single biggest thing ALIS holds in memory:
+DH_orders shipped 6.4 GB per Jacobian and kept about 0.5 GB resident in every
+one of its 12 workers.
+
+With `run shmem True` (the default) those arrays are placed in one shared
+segment instead, and the workers read them in place. Nothing changes in the
+result — the fit is bit-for-bit the same — but on DH_orders the total footprint
+drops from 13.1 GB to 7.7 GB and the segment is released when the fit ends.
+
+Set `run shmem False` if `/dev/shm` is small; a container's default is 64 MB,
+which is not enough for a large fit. ALIS also falls back on its own, with a
+warning, if a segment cannot be created — the fit then behaves as it did before,
+carrying the arrays with each chunk of work.
 
 ### 2.2 Data Block
 

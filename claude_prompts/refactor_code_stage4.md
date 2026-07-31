@@ -152,7 +152,20 @@ See `logs/refactor_code_stage4_log.md`.]**
   with both CPU and GPU paths plus its own unit tests (reuse/extend the
   `new-alfunc` and `port-to-gpu` skills).
 
-**4.5 — Shared-memory read-only arrays (carried forward from Task 3.4 Phase 3).**
+**4.5 — Shared-memory read-only arrays (carried forward from Task 3.4 Phase 3).
+[COMPLETE — CPU path bitwise-identical; Stage 0 fast gate green (63 passed);
+unit batch 394 -> 425. New `alis/shared_arrays.py` publishes the constant fit
+state and the per-iteration profile cache to one shared segment each, so a
+chunk carries a ~100-byte handle instead of 259 MB and the workers read
+read-only views. Re-measured payload: **6.4 GB shipped per Jacobian**, not the
+~1.1 GB in the note below — that was the constant part only, and the cache
+slices are the larger half. Result on DH_orders: peak PSS **13.2 -> 7.7 GB
+(-42%)**, wall ~2.5% better, nothing left in `/dev/shm`. New `run shmem`
+(default True) forces the old path; publishing also falls back on its own.
+The three carried-in items below are *not* done — (a) and (b) for the reasons
+they give, (c) declined because no fit in the repository sets
+`run renew_subpix True`, so it could not be gated bitwise. See
+`logs/refactor_code_stage4_log.md`.]**
 - **Carried in from 4.3 (2026-07-31), in priority order.** (a) *Batch across
   spectra.* 4.3 batches components within a snip; the ~50x regime needs all 351
   DH_orders spectra in one launch, which requires a **segmented** kernel (one
@@ -464,3 +477,7 @@ you foresee this as a problem for our implementation?
 7. Please read this doc, including my responses to your queries, and execute Task 4.3a.
 
 8. Please read this doc, including my responses to your queries, and execute Task 4.4.
+
+9. Please read this doc, including my responses to your queries, and execute Task 4.5.
+
+10. Please read this doc, including my responses to your queries, and execute Task 4.6.

@@ -71,6 +71,12 @@ class RunConfig(_DictLike):
     # to be sent to the GPU (below it, the launch costs more than the kernel
     # saves and the CPU path is used). Ignored unless ngpus > 0.
     gputhresh: int = 10000
+    # Stage 4.5: hand the derivative workers their read-only arrays through
+    # shared memory instead of pickling a copy per chunk. Set False if the
+    # machine has little /dev/shm (a container's default is 64 MB); the fit
+    # then behaves exactly as it did before 4.5, and falls back automatically
+    # if a segment cannot be created anyway.
+    shmem: bool = True
     nsubpix: int = 5
     nsubmin: int = 5
     nsubmax: int = 21
