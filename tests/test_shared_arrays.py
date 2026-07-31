@@ -425,3 +425,16 @@ def test_a_stale_handle_is_refused_rather_than_misread(publisher):
     publisher.publish({"b": _big(seed=1)})
     with pytest.raises(RuntimeError, match="republished"):
         shared_arrays.hydrate(stale)
+
+
+def test_the_atexit_sweep_releases_every_live_publisher():
+    # A fit normally releases its segments in alfit._close_pool. This is the
+    # backstop for the paths that do not get there -- an unhandled exception,
+    # a SIGINT during a long fit -- where the segment would otherwise survive
+    # the process and be reported as leaked by the resource tracker.
+    pub = shared_arrays.Publisher("atexit")
+    name = pub.publish({"a": _big()}).name
+    assert _exists(name)
+    shared_arrays._release_all()
+    assert not _exists(name)
+    pub.close()  # already closed; must not raise

@@ -97,11 +97,30 @@ present and *skip* where one is not (CI, in particular), rather than hiding
 behind a flag on a machine that could run them. To exercise them deliberately:
 
 ```bash
-pytest --run-gpu -m gpu     # all GPU tests
+pytest --run-gpu -m gpu             # all GPU tests (~7 min)
+pytest --run-gpu -m "gpu and unit"  # just the fast ones (~10 s)
 ```
 
 `--run-gpu` turns a missing GPU into a `UsageError` instead of a skip, so a run
 meant to test the GPU cannot pass silently on a broken CUDA install.
+
+The batch has two layers, which catch different things (Stage 4.6):
+
+| | what it checks | sensitivity |
+|---|---|---|
+| `test_voigt_gpu.py`, `test_gpu_dispatch.py` (`gpu and unit`) | the kernel against `call_CPU`, and the batched dispatch against the per-row loop | 1e-12 absolute (Q4.3) |
+| `test_gpu_regression.py` | each shipped example fit that uses `voigt` (19 of 25) re-run on the GPU backend at `ngpus 1` and `4`, against the **CPU** references | ~1e-3 relative |
+
+The second layer is deliberately blunt: it uses the ordinary Stage 0 tolerances
+(1% on χ², model columns within 1% of the error bar), so it catches a broken
+dispatch, a wrong reduction or a mis-bound device, not a slightly wrong profile.
+Both numbers above were measured by perturbing the kernel until each layer
+noticed. Neither replaces the other.
+
+Two things stop the regression layer quietly testing nothing: it forces
+`run gputhresh 0` (at the shipped default *no* example is big enough to
+dispatch), and it asserts on the kernel-launch count ALIS prints at the end of
+the fit.
 
 Everything *else* is pinned to the CPU: `alisrun.force_cpu_backend` rewrites each
 staged `.mod` with `run backend cpu` before it runs, so a regression case can

@@ -209,7 +209,21 @@ they give, (c) declined because no fit in the repository sets
   fits naturally with the per-iteration buffer management here; do it only if it
   stays simple and does not complicate the buffer lifecycle.
 
-**4.6 — Unit tests for this stage's stable surface (do last).**
+**4.6 — Unit tests for this stage's stable surface (do last).
+[COMPLETE — Stage 0 fast gate green (63 passed in 4:44); unit batch 425 -> 440;
+`pytest --run-gpu -m gpu` now 65 tests. Scoped from a coverage run, not a
+guess: gpu.py 86%, gpu_dispatch.py 93%, shared_arrays.py 95% were already
+covered, so the work went to the real gaps — the GPU Voigt had *no* coverage
+without a device (its host-side `_encode_keywords` now has nine tests that run
+with numba and no GPU), the keyword defaults are written in three places, two
+unbounded-growth guards were untested, and 4.4's warm-up warning was
+unverified. New `tests/test_gpu_regression.py` re-runs all 19 voigt-bearing
+example fits at `ngpus 1` and `4` against the CPU references (40 tests, 6:31),
+forcing `run gputhresh 0` and asserting on the launch count so it cannot pass
+on CPU-computed numbers. **Measured:** that layer's sensitivity is ~1e-3
+relative, six orders from the 1e-12 unit gate — both are needed, and the
+difference is now written down. 11/11 mutations caught. See
+`logs/refactor_code_stage4_log.md`.]**
 - Following the cross-cutting unit-test policy
   (`claude_prompts/refactor_code_unit_tests.md`), add `unit`-marked tests for the
   *stable* code introduced in Stage 4 once its interfaces settle: the CPU/GPU
@@ -481,3 +495,4 @@ you foresee this as a problem for our implementation?
 9. Please read this doc, including my responses to your queries, and execute Task 4.5.
 
 10. Please read this doc, including my responses to your queries, and execute Task 4.6.
+

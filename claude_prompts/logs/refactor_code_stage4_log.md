@@ -1057,3 +1057,129 @@ the machinery costs nothing when it has nothing to do.
 - Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed, 476
   deselected in 4:46**.
 - Lint (ruff / isort / black) clean.
+
+## Task 4.6 -- Unit tests for this stage's stable surface [COMPLETE]
+
+Two halves: `unit` tests for the Stage 4 surface now that it has settled, and
+the Q4.9 GPU regression tests that re-run the example fits on the GPU backend
+against the CPU references.
+
+**Half 1: what was actually missing.** Most of the surface was already covered
+by the tests written alongside 4.1/4.3/4.3a/4.5, so this began with a coverage
+run rather than a guess: `alis/gpu.py` 86%, `gpu_dispatch.py` 93%,
+`shared_arrays.py` 95%. (`voigt_gpu.py` reads 20%, but that is an artefact --
+almost all of it is inside `@cuda.jit` device functions, which are compiled and
+so invisible to a Python line counter, even on a GPU run.) The real gaps:
+
+- **The GPU Voigt had no coverage at all without a device.** Every test in
+  `test_voigt_gpu.py` was `gpu`-marked, so on CI nothing in it ran. Its
+  module-level mark is now `unit`, with `gpu` on the tests that genuinely need
+  a device, and nine host-side tests were added for `_encode_keywords` -- the
+  one part of the file that is ordinary Python. They run with `numba` installed
+  and no device, by substituting a stand-in for `cuda` whose `to_device` is the
+  identity. This is the "mocked" half of Q4.2.
+- **The keyword defaults are written three times** -- in `Voigt._keywd`, and
+  *twice* inside `_encode_keywords` (a literal for "no mkey at all", a per-key
+  fallback for "mkey given, this key absent"). A divergence gives a model that
+  omits the keyword one value on the CPU and another on the GPU. Now asserted
+  against `Voigt._keywd` for both branches.
+- **Two unbounded-growth guards were untested**: the device wave-buffer cache
+  (`_WAVE_CACHE_MAX`) and the keyword cache (`_KEY_CACHE_MAX`). Each holds a
+  device allocation per distinct key, and a fit with a free shift parameter
+  makes a new wave key on every derivative evaluation -- so without the bound
+  the failure is an opaque out-of-memory error hours into a long fit.
+- **The 4.4 warm-up warning was untested.** The 4.4 log claims `warm_up()`
+  "warns by name if one claims GPU support without providing the hook"; nothing
+  checked it, and that warning is the only thing that makes a forgotten
+  `gpu_warmup_args()` diagnosable rather than just slow.
+- `gpu.current_device()` and `shared_arrays._release_all()` (the atexit
+  backstop) had no test.
+
+**Half 2: the GPU regression batch.** New `tests/test_gpu_regression.py`: every
+shipped example fit that contains a `voigt` -- 19 of the 25 -- re-run with
+`run backend gpu` at `run ngpus 1` and `run ngpus 4`, compared against the same
+golden references the CPU produced, through the same `compare_mod_out` /
+`compare_fit_dat` the CPU suite uses. **40 tests, all passing, 6:31.**
+
+The six examples without a `voigt` cannot launch a kernel, so re-running all of
+them would have doubled the batch time to re-verify the CPU path. One of them
+(the cheapest) is covered instead by a test asserting the *opposite*: a GPU-
+backend fit of a model with no GPU-capable function produces the right answer
+with zero launches -- which exercises the spawned pool, the per-worker CUDA
+context and the 4.5 shared-memory payload travelling through `spawn` rather
+than `fork`.
+
+Two things stop this batch quietly testing nothing:
+
+- **`run gputhresh 0` is forced.** At the shipped default of 10000
+  pixel-components *no* example is large enough to dispatch, so a GPU run of
+  them is a CPU run wearing a different hat. There is a test asserting that too,
+  so if the default ever changes the reason for forcing it gets re-read.
+- **Every test asserts on the launch count** ALIS prints at the end of the fit.
+  This caught its own first bug immediately: the count was being read from
+  `proc.stdout`, but ALIS's logger writes to stderr, so the first run failed
+  with "the dispatcher was never enabled -- this ran on the CPU". Without that
+  assertion the whole batch would have passed on CPU-computed numbers.
+
+`alisrun.force_cpu_backend` was generalised to `force_settings(mod, **run)`,
+keeping the strip-then-insert shape that the Stage 4.3 harness trap made
+necessary (settings apply in file order, so a prepended override loses to a
+later line).
+
+**What the two layers actually catch (measured, not assumed).** The stage doc
+notes that 1e-12 << the Stage 0 tolerances, which is the argument that the GPU
+cannot cause *spurious* failures. It is worth being explicit that the converse
+also holds: the regression layer is not a 1e-12 gate. Perturbing the kernel's
+output by a relative factor and asking which layer notices:
+
+| kernel error | `test_voigt_gpu.py` (1e-12) | `test_gpu_regression.py` |
+|---|---|---|
+| 1e-6 | fails | **passes** |
+| 1e-4 | fails | passes |
+| 1e-3 | fails | fails |
+| 1e-2 | fails | fails |
+
+So the regression layer's sensitivity is ~1e-3 relative -- unsurprising, since
+its tolerances are 1% on chi-squared and model columns within 1% of the error
+bar. It is there to catch a broken dispatch, a wrong reduction or a mis-bound
+device; the 1e-12 profile accuracy is the unit layer's job. Six orders of
+magnitude apart, and neither replaces the other. Recorded in `tests/README.md`
+so the next reader does not assume the fits are checking the kernel's accuracy.
+
+**Each new test was verified to bite**, as in 4.4 and 4.5: 11 deliberate
+breakages (kernel off by 1e-6 and by 1e-3, dispatcher sending nothing to the
+device, keyword defaults diverging, an un-defaulted absent keyword, a cache
+confusing configurations, both unbounded-growth guards removed, an unchanged
+grid re-uploaded, the missing warm-up hook passing silently, `current_device`
+not reporting absence) -- **11/11 caught**. Three needed the test strengthened
+first:
+- the 1e-6 kernel error was originally aimed at the regression layer, which is
+  the measurement in the table above rather than a test weakness;
+- the keyword-defaults test covered only the `mkey is None` literal, leaving
+  the per-key fallback free to drift -- it is now parametrised over both;
+- the `current_device` fake had no `current_context`, so removing the
+  `device_count()` guard was unobservable; the fake now names a device, and the
+  guard is the only thing preventing a false claim that device 0 exists.
+
+**One cross-test bug found by running the whole batch rather than the file.**
+The fake "forgot its warm-up hook" function was written as a `base.Base`
+subclass, which put it permanently into the subclass tree that
+`gpu_capable_functions()` walks -- so `test_function_interface.py`'s "the walk
+matches the registry" check failed whenever both files ran in one session. It
+is now a plain class; `warm_up()` needs only three members, and nothing that
+fakes a model function should be discoverable as one.
+
+**Gate.**
+- `pytest -m unit --run-gpu`: **440 passed, 31 skipped** (425 before).
+- `pytest -m unit` (no device): the 25 `gpu and unit` tests skip, and the nine
+  new host-side Voigt tests still run -- which is the coverage the GPU Voigt
+  had none of before.
+- `pytest --run-gpu -m gpu`: **65 tests, all passing** -- 25 fast unit-level
+  (8.8 s) and the 40 regression fits (6:31). The whole batch was run green end
+  to end at 6:59; the regression 40 have now passed on three independent runs,
+  which matters because they are real minimisations and a fit landing near a
+  tolerance boundary would show up as flakiness.
+- No `/dev/shm` segment left behind by any of it (the Stage 4.5 payload travels
+  through `spawn` in every GPU run here).
+- Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed in 4:44**.
+- Lint (ruff / isort / black) clean.
