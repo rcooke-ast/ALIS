@@ -110,7 +110,13 @@ Measured on DH_orders: 1.17x at matched worker count. See
   shifted wave on-device, and keep emission/absorption intermediates on-device,
   downloading only the final convolved model.
 
-**4.3a — Backend selection (`run backend = auto | cpu | gpu`).**
+**4.3a — Backend selection (`run backend = auto | cpu | gpu`).
+[COMPLETE — CPU path bitwise-identical; Stage 0 fast gate green (63 passed,
+5:23 -> 4:54); unit batch 126 -> 139. The probe times one Jacobian at p0 on
+each backend at the first `fdjac2` call. Measured on DH_orders (12 cores vs
+4 GPUs): CPU 109.9 s, GPU 176.7 s per Jacobian, so `auto` keeps that fit on the
+CPU — the GPU is 1.86x faster per worker but there are 3x fewer workers.
+See `logs/refactor_code_stage4_log.md`.]**
 - New `RunConfig.backend` setting (default `auto`). `cpu`/`gpu` force a backend
   -- use these for **reproducibility**, since `auto`'s choice can vary run-to-run
   when timings are close, which would flip CPU-bitwise vs GPU-1e-12 numerics.
@@ -446,3 +452,7 @@ you foresee this as a problem for our implementation?
 5. Please read this doc, including my responses to your queries, and execute Task 4.2.
 
 6. Please read this doc, including my responses to your queries, and execute Task 4.3.
+
+7. Please read this doc, including my responses to your queries, and execute Task 4.3a.
+
+8. Please read this doc, including my responses to your queries, and execute Task 4.4.

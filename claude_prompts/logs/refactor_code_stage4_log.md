@@ -684,3 +684,108 @@ there would warn on every run.
 
 **Gate.** `pytest -m unit`: **126 passed** (120 after 4.3). Stage 0 fast batch:
 **63 passed, 146 deselected in 5:23**. Lint clean.
+
+## Task 4.3a -- Backend selection (`run backend = auto | cpu | gpu`) [COMPLETE]
+
+**What landed**
+- `alis/config.py`, `alis/data/settings.alis` -- the `run backend` setting
+  (default `auto`); `alis/load.py` validates it at start-up, so a typo is an
+  error rather than a fit that silently ran on the wrong backend.
+- `alis/gpu.py` -- `resolve_backend(backend, ngpus)` now returns one of
+  `("cpu", 0)`, `("gpu", n)` or `("probe", n)`.
+- `alis/gpu_dispatch.py` -- `warm_up()`: creates the CUDA context and compiles
+  and launches the kernel once.
+- `alis/minimise.py` -- `_probe_backends` (the timed decision), `_run_jacobian`
+  (the Jacobian split out of `fdjac2` so both backends run the identical
+  computation), `_make_cpu_pool`, `_gpu_wins`, `_await_siblings` /
+  `_cpu_worker_init` / `_pool_is_ready` (the warm-up barrier), and `backend` on
+  `alfit` plus its six call sites in `main.py` / `simulate.py`.
+- `tests/alisrun.py` -- `force_cpu_backend`, applied to every staged `.mod`.
+- `doc/ALIS_workflow.md`, `tests/README.md`.
+- `tests/test_gpu_dispatch.py` -- 43 tests (was 30).
+
+**Where the probe happens, and why there.** `auto` cannot answer without a
+Jacobian to time, so `resolve_backend` returns `"probe"` and `alfit` settles it
+at the **first `fdjac2` call** -- which is already at `p0`, exactly the sample
+the stage doc asks for. No restructuring of the LM loop was needed: `fdjac2`
+already holds `fvec`, the step vector and the influence-sliced payload. The
+losing backend's Jacobian is discarded and the whole fit continues on the
+winner, so no fit ever mixes CPU- and GPU-computed derivative columns.
+
+The one seam: the `p0` *base* evaluation has already happened (it is what
+produced `fvec`) and is therefore always CPU. Re-running it on the winner would
+desynchronise `fvec` from the Jacobian the caller is about to use, so it is left
+alone; the cost is a ~1e-12 shift in the first iteration's residuals, against
+`ftol` 1e-10 and a typical `atol` of 0.01.
+
+**Warming, and the mistake it took to get right.** The stage doc is right that a
+cold probe would mis-pick: measured on an RTX 2080 Ti, a first launch costs
+0.58 s of CUDA context plus **0.94 s** of `@cuda.jit` compile, against 0.25 ms
+steady-state. Both pools are therefore fully started before either is timed.
+
+The first attempt warmed via `pool.map` of one warm task per worker, which is
+wrong twice over: a `Barrier` **cannot be sent through `map`** at all
+(`RuntimeError: Condition objects should only be shared between processes
+through inheritance`), and without one a fast worker can take every warm task
+while a straggler is still importing -- whose start-up then lands inside the
+timed Jacobian. The working shape puts the barrier in the Pool *initializer*
+(inherited via `initargs`, which is the sanctioned route) and relies on a
+property that makes a single trivial task sufficient afterwards: a worker cannot
+accept its first task until its initializer returns, and the initializer returns
+only once every worker has reached the barrier. `_pool_is_ready` is that task.
+The CPU Pool gains an initializer *only* on the probe path, so the Stage 3.4
+lazy-start behaviour is untouched for normal fits.
+
+**The measurement that justifies the whole feature.** One Jacobian of DH_orders
+(351 spectra), timed by the probe itself on a 12-core / 4-GPU box:
+
+| Backend | one Jacobian at p0 |
+|---|---:|
+| CPU, 12 workers | **109.9 s** |
+| GPU, 4 devices | 176.7 s |
+
+so `auto` correctly keeps that fit on the **CPU**. This is a much cleaner
+measurement than the 4.3 full-run differencing, and it sharpens that entry: per
+*worker* the GPU is 12 x 109.9 / (4 x 176.7) = **1.86x** faster -- there are
+simply three times fewer of them. On the small `metal_line_abs` example the
+probe reads 0.02 s vs 0.04 s and also picks the CPU.
+
+**So `auto`'s main job on this hardware is to stop people using the GPU**, which
+is the opposite of the assumption behind Q4.8 but is exactly what a
+reproducibility-conscious default should do. Probe overhead is one discarded
+Jacobian (110-177 s here), ~1% of a 75-iteration DH_orders fit -- the stage
+doc's "negligible for long fits" holds.
+
+**`backend cpu` is a genuine fast path, not just a label.** It returns before
+any probe, so it never imports numba or initialises CUDA -- which is why the
+Stage 0 harness now sets it (`alisrun.force_cpu_backend`, strip-then-insert on
+the staged `.mod`, per the lesson recorded above). Measured side benefit: the
+fast batch went from 5:23 to **4:54**, because ~54 subprocess runs stopped paying
+the ~0.8 s idle-GPU probe flagged as a cost in the 4.3 entry. That cost is now
+confined to `backend auto` on a machine that has the `gpu` extra.
+
+A CLI `--backend` flag was considered and rejected: `load.optarg` runs *before*
+the model file is parsed, so a flag would be silently overridden by any `run
+backend` line -- a worse trap than the one this session just fixed. The setting
+and the harness helper are the single mechanism.
+
+**Resolution table** (all covered by tests):
+
+| `run backend` | `run ngpus` | GPU present | result |
+|---|---|---|---|
+| `cpu` | anything | either | CPU, no probe (says so if `ngpus` was set) |
+| `gpu` | unset/0 | yes | GPU on **every** device |
+| `gpu` | N | yes | GPU on min(N, ndev) |
+| `auto` | unset/0 | yes | CPU + the Q4.10 idle-GPU notice |
+| `auto` | N | yes | **probe**, then commit |
+| `gpu`/`auto` | any | no | warn, fall back to CPU |
+
+**Bitwise gate.** metal_line_abs (full fit + covariance) and DH_orders (1
+iteration) are **BITWISE-IDENTICAL** to the pre-4.3 baseline -- all 1063 files --
+so neither the `backend` plumbing nor the `fdjac2` split moved the CPU numbers.
+Also removed a 204 MB dead allocation spotted during that split: `fdjac2`
+pre-allocated an `m x n` Jacobian that `_run_jacobian` immediately replaces.
+
+**Gate.** `pytest -m unit --run-gpu`: **139 passed** (126 before). Stage 0 fast
+batch `pytest -m fast --run-gpu`: **63 passed, 159 deselected in 4:54**. Lint
+clean. All four backend modes smoke-tested end to end on metal_line_abs.

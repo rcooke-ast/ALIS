@@ -1,6 +1,7 @@
 import numpy as np
 import os, sys
 import copy
+from alis import gpu
 from alis import logger
 from alis.config import (
     ArgFlag, AtomicData, ColumnMap, ColumnPosition, DataOpt, LinkPass,
@@ -259,6 +260,13 @@ def check_argflag(argflag, curcpu=None):
     argflag['sim']['beginfrom'] = argflag['sim']['beginfrom'].strip("\"'")
     # Check requested CPUs
     argflag['run']['ncpus'] = cpucheck(argflag['run']['ncpus'], curcpu=curcpu, verbose=argflag['out']['verbose'])
+    # Check the requested Jacobian backend (Stage 4.3a). Caught here, at
+    # start-up, rather than at the first Jacobian: a typo that silently ran the
+    # whole fit on the wrong backend is exactly what this setting exists to
+    # prevent.
+    argflag['run']['backend'] = str(argflag['run']['backend']).strip("\"'").lower()
+    if argflag['run']['backend'] not in gpu.BACKENDS:
+        msgs.error("Unknown 'run backend' value: "+argflag['run']['backend']+msgs.newline()+"Please choose from - "+", ".join(gpu.BACKENDS))
     # Change some arguments if the analysis is to be blind
     if argflag['run']['blind']:
         msgs.info("Running a blind analysis",verbose=argflag['out']['verbose'])

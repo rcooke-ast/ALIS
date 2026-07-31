@@ -62,6 +62,11 @@ class RunConfig(_DictLike):
     limpar: bool = False
     ncpus: int = -1
     ngpus: Optional[int] = None
+    # Stage 4.3a: which parallel backend computes the Jacobian -- "cpu", "gpu",
+    # or "auto" (time one Jacobian on each and commit the fit to the faster).
+    # Force cpu/gpu for reproducibility: auto's choice can vary run to run when
+    # the two are close, which flips CPU-bitwise vs GPU-1e-12 numerics.
+    backend: str = "auto"
     # Stage 4.3: minimum sub-pixels x profile rows for a model component group
     # to be sent to the GPU (below it, the launch costs more than the kernel
     # saves and the CPU path is used). Ignored unless ngpus > 0.

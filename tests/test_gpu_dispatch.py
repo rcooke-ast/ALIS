@@ -77,34 +77,90 @@ def test_cpu_is_the_default_when_ngpus_is_unset(monkeypatch):
     # Q4.10: a GPU machine stays on the CPU until the user opts in, so CI and
     # the regression suite need no special-casing to stay CPU-only.
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
-    assert gpu.resolve_backend(None) == ("cpu", 0)
-    assert gpu.resolve_backend(0) == ("cpu", 0)
+    assert gpu.resolve_backend("auto", None) == ("cpu", 0)
+    assert gpu.resolve_backend("auto", 0) == ("cpu", 0)
 
 
-def test_requesting_gpus_selects_the_gpu_backend(monkeypatch):
+def test_auto_defers_to_the_probe_when_gpus_are_requested(monkeypatch):
+    # 'auto' cannot answer without timing a Jacobian, so it returns "probe" and
+    # alfit settles it at the first fdjac2 call.
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
-    assert gpu.resolve_backend(2) == ("gpu", 2)
-    assert gpu.resolve_backend(4) == ("gpu", 4)
+    assert gpu.resolve_backend("auto", 2) == ("probe", 2)
+    assert gpu.resolve_backend("auto", 4) == ("probe", 4)
+
+
+def test_backend_gpu_commits_without_probing(monkeypatch):
+    monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
+    assert gpu.resolve_backend("gpu", 2) == ("gpu", 2)
+
+
+def test_backend_gpu_without_ngpus_uses_every_device(monkeypatch):
+    monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
+    assert gpu.resolve_backend("gpu", None) == ("gpu", 4)
+    assert gpu.resolve_backend("gpu", 0) == ("gpu", 4)
+
+
+def test_backend_cpu_ignores_the_gpus(monkeypatch):
+    # What the Stage 0 harness sets: CPU whatever the model file asks for.
+    monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
+    assert gpu.resolve_backend("cpu", None) == ("cpu", 0)
+    assert gpu.resolve_backend("cpu", 4) == ("cpu", 0)
+
+
+def test_backend_cpu_never_probes_for_a_gpu(monkeypatch):
+    # An explicit 'cpu' must not import numba or initialise CUDA: that is what
+    # keeps a regression run free of any GPU cost, and it is the one setting
+    # that has to work on a machine with a broken CUDA install.
+    fake = _FakeNumba(ndevices=4)
+    monkeypatch.setitem(sys.modules, "numba", fake)
+    rec = _Recorder()
+    monkeypatch.setattr(gpu, "msgs", rec)
+    assert gpu.resolve_backend("cpu", None) == ("cpu", 0)
+    assert [t for t in rec.said if "not in use" in t] == []
+    assert gpu._PROBE is None, "'backend cpu' probed for a GPU"
+
+
+def test_backend_cpu_says_so_when_it_overrides_ngpus(monkeypatch):
+    monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
+    rec = _Recorder()
+    monkeypatch.setattr(gpu, "msgs", rec)
+    gpu.resolve_backend("cpu", 4)
+    assert any("overrides 'run ngpus 4'" in t for t in rec.said)
+
+
+def test_an_unknown_backend_falls_back_to_auto(monkeypatch):
+    monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=4))
+    rec = _Recorder()
+    monkeypatch.setattr(gpu, "msgs", rec)
+    assert gpu.resolve_backend("cuda", None) == ("cpu", 0)
+    assert any("Unknown 'run backend' value" in t for t in rec.said)
+
+
+def test_backend_is_case_and_whitespace_insensitive(monkeypatch):
+    monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=2))
+    assert gpu.resolve_backend(" CPU ", 2) == ("cpu", 0)
+    assert gpu.resolve_backend("Gpu", 1) == ("gpu", 1)
 
 
 def test_more_gpus_than_are_present_is_clamped(monkeypatch):
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=2))
-    assert gpu.resolve_backend(8) == ("gpu", 2)
+    assert gpu.resolve_backend("auto", 8) == ("probe", 2)
+    assert gpu.resolve_backend("gpu", 8) == ("gpu", 2)
 
 
 def test_requesting_gpus_without_one_falls_back_to_the_cpu(monkeypatch):
     # A .mod file written on a GPU box must still run everywhere else.
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=0))
-    assert gpu.resolve_backend(4) == ("cpu", 0)
+    assert gpu.resolve_backend("auto", 4) == ("cpu", 0)
 
 
 def test_broken_cuda_falls_back_to_the_cpu(monkeypatch):
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(raise_on_probe=True))
-    assert gpu.resolve_backend(1) == ("cpu", 0)
+    assert gpu.resolve_backend("auto", 1) == ("cpu", 0)
 
 
 def test_unreadable_ngpus_falls_back_to_the_cpu():
-    assert gpu.resolve_backend("banana") == ("cpu", 0)
+    assert gpu.resolve_backend("auto", "banana") == ("cpu", 0)
 
 
 class _Recorder:
@@ -127,8 +183,8 @@ def test_the_idle_gpu_notice_is_printed_once(monkeypatch):
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=3))
     rec = _Recorder()
     monkeypatch.setattr(gpu, "msgs", rec)
-    gpu.resolve_backend(None)
-    gpu.resolve_backend(None)
+    gpu.resolve_backend("auto", None)
+    gpu.resolve_backend("auto", None)
     hits = [t for t in rec.said if "not in use" in t]
     assert len(hits) == 1
     assert "3 CUDA GPU(s)" in hits[0]
@@ -138,7 +194,7 @@ def test_an_unusable_gpu_is_reported_not_silently_ignored(monkeypatch):
     monkeypatch.setitem(sys.modules, "numba", _FakeNumba(ndevices=0))
     rec = _Recorder()
     monkeypatch.setattr(gpu, "msgs", rec)
-    gpu.resolve_backend(2)
+    gpu.resolve_backend("auto", 2)
     assert any("no GPU is usable" in t for t in rec.said)
     assert any("Falling back to the CPU" in t for t in rec.said)
 
@@ -449,3 +505,72 @@ def test_the_gpu_pool_binds_one_device_per_worker():
         pool.close()
         pool.join()
     assert set(seen) == set(range(ndev))
+
+
+# -- the auto probe (Stage 4.3a) ---------------------------------------------
+
+
+def test_the_faster_backend_wins():
+    from alis import minimise
+
+    fjac = np.zeros((3, 2))
+    assert minimise._gpu_wins(fjac, 10.0, fjac, 4.0) is True
+    assert minimise._gpu_wins(fjac, 4.0, fjac, 10.0) is False
+
+
+def test_a_failed_backend_cannot_win_however_fast():
+    # _run_jacobian returns None when a derivative column failed; the whole fit
+    # is about to run on the winner, so a broken backend must never be it.
+    from alis import minimise
+
+    fjac = np.zeros((3, 2))
+    assert minimise._gpu_wins(fjac, 10.0, None, 0.1) is False
+    assert minimise._gpu_wins(None, 0.1, fjac, 10.0) is True
+    assert minimise._gpu_wins(None, 0.1, None, 0.2) is False
+
+
+def test_a_warmed_pool_is_fully_started_before_it_is_timed():
+    # The probe must measure steady-state throughput, so no worker may still be
+    # starting up when the timed Jacobian begins. The initializer barrier is
+    # what guarantees it: a worker cannot accept its first task until its
+    # initializer returns, and the initializer returns only once every worker
+    # has reached the barrier -- so one trivial task proves the pool is ready.
+    # If a worker had failed to start, this would block on the barrier.
+    from alis import minimise
+
+    pool = minimise._make_cpu_pool(3, warm=True)
+    try:
+        assert minimise._pool_is_ready(pool) > 0
+    finally:
+        pool.terminate()
+        pool.join()
+
+
+def test_an_unwarmed_cpu_pool_has_no_initializer():
+    # The normal path keeps the Stage 3.4 behaviour: lazily started workers, no
+    # initializer (on spawn one serialises the heavy re-import at Pool creation).
+    from alis import minimise
+
+    pool = minimise._make_cpu_pool(2)
+    try:
+        assert pool._initializer is None
+    finally:
+        pool.terminate()
+        pool.join()
+
+
+@pytest.mark.gpu
+def test_warm_up_compiles_and_launches_the_kernel():
+    # A cold launch costs a CUDA context plus the @cuda.jit compile (~1.5 s
+    # measured); paying it here is what stops the probe timing the compiler.
+    assert gpu_dispatch.warm_up() is True
+
+
+@pytest.mark.gpu
+def test_warm_up_leaves_the_kernel_hot():
+    import time
+
+    gpu_dispatch.warm_up()
+    t0 = time.perf_counter()
+    gpu_dispatch.warm_up()
+    assert time.perf_counter() - t0 < 0.25, "the kernel was recompiled"

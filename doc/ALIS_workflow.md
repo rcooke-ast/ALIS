@@ -84,6 +84,7 @@ the defaults in `settings.alis`. Examples:
 
 ```
 run  ncpus        4          # CPUs to use (-1 = all bar one, -2 = all bar two)
+run  backend      auto       # Jacobian backend: cpu, gpu, or auto (time both)
 run  ngpus        0          # GPUs to use (0 = CPU backend; see below)
 run  gputhresh    10000      # Smallest model group worth sending to a GPU
 run  nsubpix      5          # Sub-pixels per 1σ for profile integration
@@ -110,6 +111,7 @@ Key `run` sub-settings:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `ncpus` | −1 | CPU count; −1 = all bar one, −2 = all bar two |
+| `backend` | auto | Which backend computes the Jacobian: `cpu`, `gpu` or `auto` |
 | `ngpus` | 0 | GPU count; 0 keeps the CPU backend (see *Fitting on GPUs*) |
 | `gputhresh` | 10000 | Smallest model group (sub-pixels × profiles) sent to a GPU |
 | `nsubpix` | 5 | Sub-pixel oversampling (fixed count) |
@@ -125,6 +127,26 @@ derivative columns are computed **either** by a pool of `ncpus` CPU workers **or
 by a pool of `ngpus` GPU workers (one CUDA device each), never both. The CPU is
 the default; `run ngpus N` (N > 0) opts in, and ALIS prints a notice at start-up
 when it finds GPUs you are not using.
+
+`run backend` decides how the choice is made:
+
+| Value | Behaviour |
+|---|---|
+| `auto` (default) | CPU, unless `run ngpus N` (N > 0) is set — then ALIS warms both backends, times **one Jacobian on each** at the starting parameters, and commits the whole fit to the faster one. |
+| `cpu` | The CPU pool, `ngpus` ignored. Nothing is probed, so this is also the cheapest start-up and the most reproducible setting. |
+| `gpu` | The GPU pool: `ngpus` devices, or every device present if `ngpus` is unset. |
+
+**Do not assume the GPU is faster.** Whether it wins depends on your model and
+on how many devices you have against how many cores. On a 12-core, 4-GPU machine
+one Jacobian of the 351-spectrum `DH_orders` model takes 110 s on the CPU and
+177 s on the GPUs — so `auto` correctly keeps that fit on the CPU. Per *worker*
+the GPU is about 1.9× faster; there are simply three times fewer of them. The
+probe costs one discarded Jacobian on the losing backend, which is ~1% of a
+75-iteration fit.
+
+Use `backend cpu` or `backend gpu` when you need reproducibility: `auto` can
+pick differently between runs when the two are close, and the CPU and GPU paths
+agree only to ~1e-12, not bit for bit.
 
 GPU support needs the optional extra and a CUDA toolkit matching your driver
 (the toolkit is *not* installed by pip):
@@ -146,8 +168,8 @@ every supported group there); raise it to keep small snips on the CPU.
 
 The GPU and CPU paths agree to better than 10⁻¹² in the profile, but they are
 not bit-for-bit identical, so a fit repeated on a different backend will differ
-in the last digits. Pick one backend for a piece of work if you need
-reproducible output.
+in the last digits. Pick one backend (`run backend cpu` or `gpu`) for a piece of
+work if you need reproducible output.
 
 ### 2.2 Data Block
 

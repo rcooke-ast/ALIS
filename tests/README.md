@@ -97,6 +97,11 @@ pytest --run-gpu -m gpu     # all GPU tests
 `--run-gpu` turns a missing GPU into a `UsageError` instead of a skip, so a run
 meant to test the GPU cannot pass silently on a broken CUDA install.
 
+Everything *else* is pinned to the CPU: `alisrun.force_cpu_backend` rewrites each
+staged `.mod` with `run backend cpu` before it runs, so a regression case can
+never wander onto the GPU (or into an `auto` timing probe, whose choice can vary
+run to run) whatever the model file asks for.
+
 Useful flags: `-v` (per-test names), `--durations=15` (slowest tests),
 `-k <expr>` (select by name), `-x` (stop on first failure). A failing test
 leaves its staged working copy under pytest's `tmp_path` for inspection;
