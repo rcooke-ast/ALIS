@@ -370,3 +370,58 @@ is the wrong target -- but the sensitivity is reducible.**
   independent runs here (current code and the extracted 182bc20), bit for bit,
   so this machine is already deterministic run-to-run and threading noise is
   not a live contributor. The divergence is genuinely between machines.
+
+## Task 4.3 -- groundwork and design (NOT started; handed over)
+
+Surveyed but deliberately not begun: 4.3 rewrites the hot path
+(`model_eval.model_func`) that every regression test depends on, and there was
+not enough context budget left to finish it safely. Starting an invasive
+change to that function and stopping half way is worse than not starting.
+Findings so far, so the next session does not re-derive them:
+
+**Shape of the problem.** `model_func` (`model_eval.py:106-440`) is a triple
+nested loop -- spectra `sp` x snips `sn` x model components `i` -- calling
+`call_CPU` at six sites and accumulating into host arrays `modelem` /
+`modelab` / `mzero` / `mcont`, then convolving and downsampling. Making the
+intermediates device-resident, as the task requires, means threading a device
+path through all of that while keeping the CPU path bitwise-identical.
+
+**The decomposition, in dependency order:**
+1. *GPU worker pool* (`minimise.py`): `fdjac2` already holds a persistent
+   `mpPool(processes=self.ncpus)` (line ~1410) with chunked columns and
+   per-chunk `_slice_emab` subset-pickling. The GPU backend sizes it to
+   `ngpus`, needs `multiprocessing.get_context("spawn")` (CUDA contexts do not
+   survive `fork`, Q4.8), and calls `gpu.select_device(rank)` in the child.
+   Note `alis/gpu.py:select_device` was written in 4.1 for exactly this.
+   Worker rank is not currently available -- chunks are dispatched by
+   `starmap`-style args, so rank must be threaded through or derived from
+   `multiprocessing.current_process()`.
+2. *Backend resolution* -- overlaps 4.3a; `RunConfig` has `ncpus` and `ngpus`
+   (`config.py:63-64`) but no `backend` field yet.
+3. *Device path through `model_func`* -- the bulk of the work and the whole of
+   the risk.
+4. *Size threshold + CPU fallback.*
+
+Item 1 alone is not worth landing early: it touches the regression-critical
+Jacobian path while having no observable effect until item 3 exists.
+
+**A finding that affects the plan (and Q4.9's test strategy).** The 4.2
+benchmark put the CPU/GPU crossover at roughly 1e4 pixel-components (1000x1
+was 0.9x, i.e. a loss; 10000x20 was 25x). The shipped examples carry 388-2762
+data pixels per file, which after sub-pixellation is order 1e4 sub-pixels for
+a handful of Voigt rows -- *straddling* that threshold. So the Q4.9 plan of
+validating by running existing examples with `run ngpus 1` and `ngpus 4`
+against the same CPU references risks being **vacuous**: the size threshold
+would route many of those snips to the CPU path and the GPU kernel would never
+execute. Two consequences to settle before building 4.3:
+- the threshold needs to be overridable (a setting, or a test-only hook), so
+  the `gpu`-marked regression runs can force the device path; and
+- the 4.6 GPU regression tests should assert that the GPU path was *actually
+  taken*, not merely that the answer matched -- otherwise they pass by
+  falling back to the CPU and prove nothing.
+
+**Already in place from 4.1/4.2 that 4.3 builds on:** `alis/gpu.py`
+(`is_available`, `device_count`, `select_device`, `unavailable_reason`), the
+`Base.supports_gpu()` / `call_GPU` contract, `Voigt.call_GPU` returning a
+device array without transferring, and the `gpu` pytest marker with
+`--run-gpu`.
