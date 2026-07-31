@@ -640,3 +640,47 @@ reached. Cheap Linux-only alternatives (stat-ing `/dev/nvidia*`) were rejected a
 platform-specific guesswork. Verified that importing numba and calling `cuInit`
 in the parent does not upset the *fork*-started CPU Pool (the children make no
 CUDA calls).
+
+## Post-4.3 -- duplicate-setting warning (the general fix for the harness trap)
+
+RJC asked whether the `.mod` files carrying `run ngpus 0` should be edited so
+the 4.3 benchmark trap cannot recur. They should not, and the reasons are worth
+recording:
+- **It would change nothing that ships.** All 18 `.mod` files with a `run ngpus`
+  line are under `context/`, which is not in the repository; `examples/` has
+  none, and all 18 set it to `0` (which is also the `settings.alis` default, so
+  the lines are redundant rather than wrong).
+- **It would not stop the trap recurring**, which fires on any repeated key
+  (`run ncpus`, `chisq maxiter`, `out covar`), not on `ngpus` specifically.
+- It *would* have been harmless: `compare.parse_mod_out` only reads the header
+  chi-squared/DOF and the `model read` ... `model end` block, so the settings
+  block is never compared and no reference would have needed regenerating. The
+  edit is simply low-value, not risky.
+
+**What was done instead.** `load.set_params` now warns when a setting appears
+more than once *within one call* -- i.e. within one file -- naming the setting
+and both values. Repeats *across* calls are untouched: that is the intended
+override mechanism (`settings.alis`, then the model file). The message goes to
+stderr, so no `.mod.out` or golden file is affected. Verified end to end on
+metal_line_abs: silent on the shipped file, and on a copy with `run ngpus 4`
+prepended and `run ngpus 0` appended it reports exactly the situation that
+fooled the benchmark.
+
+**A second, latent instance of the same bug, found while checking.**
+`tests/test_cache_equivalence.py` *prepended* `run cache False` / `run cache
+True` to force its A/B. None of its six cases sets `run cache` today, so the
+test works -- but a case that ever did would have silently run both halves with
+the same setting and passed vacuously, which is precisely the failure mode the
+cache A/B exists to prevent. Now strips then inserts, matching
+`alisrun.make_fixedparam_mod`, which was already correct (it strips
+`chisq miniter`/`maxiter`, `out covar` and `run convergence` before re-inserting
+them). Those two are the only places in the harness that inject settings.
+
+**Tests.** Six `unit` tests in `tests/test_load_units.py`: last-one-wins is
+unchanged; the warning fires once with both values and the `setstr` context; it
+stays silent for single settings, for repeats in comments, and across separate
+calls; and the shipped `settings.alis` is checked to have no repeats, since one
+there would warn on every run.
+
+**Gate.** `pytest -m unit`: **126 passed** (120 after 4.3). Stage 0 fast batch:
+**63 passed, 146 deselected in 5:23**. Lint clean.

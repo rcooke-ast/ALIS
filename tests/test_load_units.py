@@ -162,3 +162,79 @@ def test_pinfl_changed_reports_every_changed_region():
     ref = _pinfl([[np.array([0]), np.array([1])], [np.array([2])]])
     new = _pinfl([[np.array([9]), np.array([1])], [np.array([2, 5])]])
     assert load.pinfl_changed(ref, new) == [(0, 0), (1, 0)]
+
+
+# -- set_params duplicate detection -------------------------------------------
+
+
+class _Recorder:
+    """Collects what ``alis.load`` reports, without going through logging."""
+
+    def __init__(self):
+        self.said = []
+
+    def info(self, text, verbose=None):
+        self.said.append(text)
+
+    def warn(self, text, verbose=None):
+        self.said.append(text)
+
+    def error(self, text, verbose=None):  # pragma: no cover - must not fire
+        raise AssertionError(text)
+
+    def newline(self, verbose=None):
+        return "\n"
+
+
+@pytest.fixture
+def recorder(monkeypatch):
+    rec = _Recorder()
+    monkeypatch.setattr(load, "msgs", rec)
+    return rec
+
+
+def test_set_params_applies_the_last_value_of_a_repeated_setting(recorder):
+    # Last-one-wins is the documented behaviour and must not change: it is how a
+    # model file overrides settings.alis.
+    cfg = load.set_params(["run ngpus 4\n", "run ngpus 0\n"], ArgFlag())
+    assert cfg["run"]["ngpus"] == 0
+
+
+def test_set_params_warns_when_a_setting_is_repeated_in_one_block(recorder):
+    # Silent last-one-wins is how a benchmark that prepended 'run ngpus 4' to a
+    # file already carrying 'run ngpus 0' ran on the CPU while claiming the GPU
+    # (Stage 4.3). The values must appear so the message is actionable.
+    load.set_params(["run ngpus 4\n", "run ngpus 0\n"], ArgFlag(), setstr="Model ")
+    hits = [t for t in recorder.said if "set more than once" in t]
+    assert len(hits) == 1
+    assert "run ngpus" in hits[0]
+    assert "Model " in hits[0]
+    assert "'4'" in hits[0] and "'0'" in hits[0]
+
+
+def test_set_params_is_silent_when_every_setting_appears_once(recorder):
+    load.set_params(
+        ["run ngpus 0\n", "run ncpus 2\n", "chisq ftol 1.0E-8\n"], ArgFlag()
+    )
+    assert [t for t in recorder.said if "set more than once" in t] == []
+
+
+def test_set_params_ignores_repeats_in_comments_and_blank_lines(recorder):
+    load.set_params(["run ngpus 0\n", "# run ngpus 4\n", "\n"], ArgFlag())
+    assert [t for t in recorder.said if "set more than once" in t] == []
+
+
+def test_set_params_does_not_warn_across_separate_calls(recorder):
+    # Repeats *across* calls are the intended override mechanism: settings.alis
+    # is read first, then the model file overrides it.
+    cfg = load.set_params(["run ngpus 0\n"], ArgFlag())
+    cfg = load.set_params(["run ngpus 2\n"], cfg)
+    assert cfg["run"]["ngpus"] == 2
+    assert [t for t in recorder.said if "set more than once" in t] == []
+
+
+def test_the_shipped_default_settings_have_no_repeats(recorder):
+    # settings.alis is read on every run; a repeat there would warn every time.
+    path = Path(alis.__file__).parent / "data" / "settings.alis"
+    load.set_params(path.read_text().splitlines(), ArgFlag(), setstr="Default ")
+    assert [t for t in recorder.said if "set more than once" in t] == []
