@@ -1183,3 +1183,279 @@ fakes a model function should be discoverable as one.
   through `spawn` in every GPU run here).
 - Stage 0 fast batch `pytest -m fast --run-gpu`: **63 passed in 4:44**.
 - Lint (ruff / isort / black) clean.
+
+## Pre-4.7 analysis -- two proposed performance changes (RJC, 2026-08-01)
+
+RJC asked, before closing the stage, whether two changes would be faster on
+DH_orders: **(A)** dropping the parameter-influence table and applying one flat
+list of Voigt profiles to every snip at once, and **(B)** fixing the
+sub-pixellation at the start of the fit so the wavelength arrays reach the GPU
+only once. Both were measured rather than argued.
+
+**Method.** One Jacobian of DH_orders (351 spectra, 413 free parameters), timed
+in-process around `fdjac2` and stopped after it, so no run-to-run fit-path
+variation enters. `load_par_influence` already takes a `setall` flag, so "remove
+all influence" is measurable without writing a fused kernel; a `freevoigt`
+variant replaces `Voigt.call_CPU` with a constant, which prices the *limit* of
+an infinitely fast GPU -- no kernel, however good, can be cheaper than free.
+
+| configuration | workers | Jacobian |
+|---|---|---|
+| **current** | CPU-12 | **100.25 s** |
+| current, Voigt arithmetic free | CPU-12 | 74.68 s |
+| nothing influences anything | CPU-12 | 20.46 s |
+| influence removed (`setall`) | CPU-12 | 159.15 s |
+| influence removed **and** Voigt free | CPU-12 | 138.72 s |
+| `renew_subpix True` | CPU-12 | 164.15 s |
+| **current** | GPU-4 | **169.6 / 171.1 s** |
+| influence removed **and** Voigt free | GPU-4 | 379.47 s |
+
+**(A) Dropping influence is slower, and cannot be rescued by fusing the
+launches.** 100.25 -> 159.15 s (1.59x) on its own. The bound is the decisive
+figure: with the Voigt costing *nothing*, the influence-free design still takes
+138.72 s at 12 workers (1.38x worse than today's real 100.25 s) and 379.47 s at
+4 workers (2.24x worse than today's real 169.6 s). The reason is the split of
+the Jacobian:
+
+- **25.6 s (25.5%)** -- the Voigt profile arithmetic, the only part a kernel
+  touches (100.25 - 74.68);
+- **20.5 s (20.4%)** -- machinery that runs whatever the influence table says
+  (measured directly by emptying the table);
+- **54.2 s (54.1%)** -- influence-*dependent* host marshalling.
+
+Each parameter influences a mean of 39.9 of the 351 snips (median 14, p90 120,
+max 311) -- 11.4% -- so removing the table multiplies the host marshalling,
+which is three quarters of the cost, by **8.8x**. Accelerating a quarter cannot
+pay for that.
+
+**Correction to the Task 4.3/4.5 entries.** Those say "DH_orders groups reach
+only ~1e4-3e4 pixel-components today". That is wrong by an order of magnitude.
+Measured by spying on the real `Dispatcher.should_dispatch` calls of one base
+evaluation: 351 voigt groups, 7985 rows, **118,694,903 pixel-components**, mean
+**338,162** per group, median 125,664, max 4,047,519 -- and **301 of the 351
+already clear the shipped `gputhresh` of 10000**. The groups are not small, so
+the premise behind carrying "batch across spectra" forward was mistaken: fusing
+351 launches into 1 saves launch overhead (351 x ~5-10 us, a few ms) against a
+base evaluation, not a factor. This makes the 4.5 carry-in (a) low-value at
+DH_orders scale, and it should not be prioritised on the strength of the old
+figure.
+
+**(B) The sub-pixellation is already fixed, and the grids already upload once.**
+`RunConfig.renew_subpix` defaults to **False** and DH_orders does not set it, so
+`load_subpixels` runs once before the fit and `model_func` reuses
+`state._wavespx` unchanged. Forcing `True` costs 164.15 s against 100.25 s, so
+the default is already worth **1.64x** -- there is no further gain to take,
+only that loss to avoid. The GPU half of the premise is also already satisfied
+by the 4.3 device wave cache: the first evaluation uploads all 351 grids
+(28.8 MB total) and every later one reuses them -- measured **351 uploads / 0
+reuses** on the first evaluation and **0 uploads / 187 reuses** across
+subsequent derivative columns.
+
+**What the measurements do point at.** RJC's underlying instinct -- that the
+per-snip Python work dominates -- is right; it is the proposed *mechanism* that
+backfires. Profiling four derivative columns (cProfile inflates Python-level
+calls relative to numpy, so this is for composition, not for shares):
+
+| | calls in 4 columns | note |
+|---|---|---|
+| `config._DictLike.__getitem__` | 1,724,030 | the dataclass-as-dict shim |
+| `builtins.getattr` | 1,824,189 | |
+| `voigt.set_vars` | 5,326 | parameter marshalling |
+| `numpy.fft._raw_fft` | 765 | the convolution, on the host |
+| `voigt.model` | 72 | the actual profile arithmetic |
+
+Two specific wastes, both re-deriving quantities that are constant for the whole
+fit, on every one of the 413 derivative columns:
+
+1. The setup loop (`model_eval.py` ~154-240) evaluates the shift model
+   (`set_vars` + `call_CPU`) for **all 351 snips** before any `ddpid` test; the
+   influence check at line 209 skips *components*, not the snip.
+2. The convolution loop is influence-gated (line 398), but its skip path still
+   runs `np.where` + `np.isin` over each snip's wavelengths to advance
+   `stf`/`enf` -- counts that depend only on `x`, `_posnfit` and `_wavefit`, all
+   fixed for the fit. That is ~145,000 `np.isin` calls per Jacobian.
+
+Together these are the 20.5 s influence-independent floor, and the marshalling
+above is most of the 54.2 s. Proposed as tasks 4.7 and 4.8 in the stage doc,
+for RJC to accept or decline; no task was written for (A) or (B), since the
+measurements do not support either.
+
+## Task 4.7 -- Precompute the fit-constant model structure [COMPLETE]
+
+The setup loop of `model_func` re-derived, on every model evaluation, which
+components apply to each snip and how they group -- 351 snips x ~245 components
+of `emab`/`specid` tests, plus a model-type list searched and grown with
+`np.where`/`np.append`. None of it depends on the parameters.
+
+**Sized first.** Timing the three phases of `model_func` over 12 DH_orders
+derivative columns:
+
+| phase | before |
+|---|---|
+| setup loop | 2.534 s (58.1%) |
+| — of which: shift `set_vars` + `call_CPU` | 0.052 s (1.2%) |
+| — of which: component `set_vars` | 0.669 s (15.3%) |
+| — of which: **structure derivation** | **1.814 s (41.6%)** |
+| evaluation loop | 0.834 s (19.1%) |
+| convolution + assembly | 0.995 s (22.8%) |
+
+**The change.** New `SnipPlan` / `build_model_plan` / `model_plan` in
+`model_eval.py`. Once per fit, each (sp, sn) gets its zero-level components, its
+ordered `(i, mtyp, ea, mid)` entries and its per-group model-type slots; the
+loop then walks that list instead of rediscovering it. Cached on a new
+`FitState._mplan`, keyed on the snip layout so the plotting, simulation and
+`iterate` paths cannot be served a stale plan (they pass different positions or
+build a fresh state). `getattr`/`setattr` because `state` is a `ClassMain` on
+some paths, not always a `FitState`.
+
+Two smaller things came with it:
+- The per-component `np.append` accumulation became one `np.concatenate` per
+  slot. The old form recopied the whole block for every row added -- quadratic
+  in a group's row count, which reaches 134 on DH_orders. Same pieces in the
+  same order, so the same bytes, copied once.
+- The influence test moved to a single `influenced` decision per snip rather
+  than being retested for each of the ~245 components.
+
+**Result (one Jacobian, DH_orders, CPU-12):**
+
+| | before | after |
+|---|---|---|
+| Jacobian | 100.25 / 100.28 s | **85.95 / 86.82 s** |
+| | | **1.16x** |
+
+The mechanism worked as designed -- re-measuring the phases afterwards, the
+structure derivation fell from **1.814 s to 0.202 s** (89% removed) and the
+setup loop from 2.534 s to 0.930 s, taking the in-process wall for 12 columns
+from 4.517 s to 2.936 s (**1.54x**).
+
+**Be careful with the 41.6% figure: the Jacobian gained 14%, not 42%.** The
+in-process measurement isolates `model_func` on an idle machine; the Jacobian
+is 12 workers contending for 20 cores with the memory traffic of a 351-spectrum
+model, and there the per-column cost is several times higher. So the phase
+percentages size the *work removed* correctly but overstate the *wall* gain,
+and the honest number for the change is the end-to-end 1.16x. The gap between
+1.54x in-process and 1.16x end-to-end says the remaining Jacobian time is
+mostly outside `model_func`; that is where any further work should look, and it
+is worth re-checking before starting 4.8.
+
+**Also measured, and it revises 4.8.** The shift `set_vars` + `call_CPU` that
+4.8(a) proposes to skip for un-influenced snips is only **1.2%** of a derivative
+column -- not the large share the "influence-independent floor" of 20.5 s
+suggested. 4.8(a) is therefore not worth the ordering hazard it carries;
+4.8(b), the `np.isin` bookkeeping in the convolution loop's skip path, is
+untouched by this measurement and remains the part worth doing. The stage doc
+entry for 4.8 has been updated to say so.
+
+**Tests.** New `tests/test_model_plan.py`, 17 `unit` tests pinning the
+resolution rules directly on small synthetic models: what the `emab`/`specid`
+filters exclude, that the zero level is separated (it is read before the
+influence test, so an un-influenced snip still sets it) and belongs to the first
+snip only, the grouping rules (a change of `emab` opens a group, `va` does not,
+the same model type twice shares one slot), the caching and its invalidation,
+that the plan pickles (it travels to every worker through the 4.5 shared
+segment), and that concatenating the pieces equals appending them one by one.
+The equivalence with the old per-call derivation is held by the Stage 0 bitwise
+gate, which is the right instrument for it. The model-validity error
+("must specify emission before absorption") moved into the builder with the loop
+it came from -- it now fires once, at the first evaluation, and there is a test
+that it still fires.
+
+**Gate.** metal_line_abs (full fit + covariance) and DH_orders (one iteration)
+**BITWISE-IDENTICAL** to the pre-4.3 baseline, all 1065 files.
+`pytest -m unit`: **457 passed, 31 skipped** (440 before). Lint clean.
+
+## Task 4.8 -- Load balance and per-snip constants [COMPLETE]
+
+The task's own last bullet said to re-measure before starting, because after
+4.7 the in-process `model_func` wall had improved 1.54x but the Jacobian only
+1.16x -- so most of the remaining time was somewhere else. That measurement
+found something an order of magnitude larger than either item the task was
+scoped for.
+
+**Where the Jacobian's time was going.** Timing every one of the 406 columns
+serially:
+
+| | |
+|---|---|
+| total serial work | 276.7 s |
+| perfectly balanced over 12 workers | 23.1 s |
+| column cost | mean 0.681 s, median 0.285 s, **max 8.682 s** |
+| **slowest contiguous chunk** | **84.1 s** (fastest 4.4 s) |
+| measured Jacobian | 86 s |
+
+The Jacobian wall *was* the slowest chunk. Per-chunk totals under the Stage 3.4
+contiguous split: `[12.2, 9.1, 18.4, 8.1, 4.4, 4.7, 61.9, 84.1, 23.2, 14.4,
+7.7, 28.6]` s -- a 19x spread. Column cost is roughly a fixed 0.23 s plus the
+model evaluation of every snip the parameter influences (0 to 311 snips), and
+parameters for the same object sit together in the model file, so contiguous
+blocks concentrate the expensive columns.
+
+**The fix is to deal the columns round-robin.** Compared on the measured costs:
+
+| assignment | slowest chunk | vs balanced |
+|---|---|---|
+| contiguous (Stage 3.4) | 82.7 s | 3.61x |
+| **round-robin** | **28.2 s** | **1.23x** |
+| greedy on the true costs | 22.9 s | 1.00x |
+| greedy on an influence-table cost model | 27.9 s | 1.22x |
+
+A cost model built from `_pinfl` was tried and did **not** beat dealing: it
+correlates with the true cost at only r ~ 0.7, and greedy on the raw predictor
+is actively worse (3.2x) because it heaps all the zero-weight columns -- which
+still cost 0.23 s each -- into one bin. Dealing needs no model, no measurement
+and no tuning, so it is the whole fix.
+
+Reordering is numerically inert: each column is computed independently and
+written to its own column of `fjac`. Stage 3.4 chose contiguous blocks so a
+chunk's parameters would touch overlapping sp/sn and need a smaller cache
+slice; **Stage 4.5 removed that reason** by moving the cache into shared
+memory, where a chunk names its entries instead of carrying them. Measured on
+the fallback path too (`run shmem False`): 49.1 s dealt, against a contiguous
+floor of >=84 s that is compute-bound whatever the transport, so dealing wins
+there as well.
+
+**Item (b), the originally scoped one, was also done.** The convolution loop
+skips a snip the derivative does not influence, but still ran a `np.where` plus
+a `np.isin` over the snip's wavelengths to work out how far to step in the
+packed model vector -- a count fixed for the whole fit. New `build_fit_windows`
+/ `fit_windows` computes it once (cached on `FitState._nfitpix`, keyed on the
+identity of `x` as well as the snip layout, because `ClassMain.model_func` lets
+a caller pass a different wavelength array). That removes ~145,000 `np.isin`
+calls per Jacobian. **Measured at 4.2% of a derivative column** -- real, but a
+fifth of what the original "20.5 s influence-independent floor" estimate
+implied, since that floor also contained the structure work 4.7 removed.
+
+**Item (a) was dropped**, as the revised task said it should be: the shift
+`set_vars` + `call_CPU` it proposed to skip is 1.2% of a column, which does not
+justify its ordering hazard (`wvrng` from the shift feeds `set_vars` for the
+components).
+
+**Result (one Jacobian, DH_orders, CPU-12):**
+
+| | Jacobian |
+|---|---|
+| before 4.7 | 100.25 / 100.28 s |
+| after 4.7 | 85.95 / 86.82 s |
+| after 4.8 dealing | 34.61 / 35.40 s |
+| **after 4.8 dealing + fit windows** | **31.81 / 32.91 s** |
+
+**3.09x against the pre-4.7 baseline**, 2.66x from 4.8 alone. The remaining
+32 s sits against a perfectly balanced floor of 23.1 s for the same work, so
+what is left is ~1.2x of residual imbalance plus pool overhead -- close enough
+to the floor that further gains have to come from making the columns cheaper,
+not from scheduling them better.
+
+**Tests.** `tests/test_model_plan.py` grew 6 tests for the fitted-pixel counts
+(what the fit range and the fitted-pixel mask each exclude, per-snip
+separation, caching, and rebuilding when the wavelength array changes);
+`tests/test_minimise_helpers.py` grew 5 for the dealing (that it covers every
+column exactly once -- a dropped column leaves a zero in the Jacobian without
+failing any numerical gate -- that it is round-robin rather than contiguous,
+that it balances a cost that runs with the column index, that it never emits an
+empty chunk, and the fewer-columns-than-workers case). **16/16 mutations
+caught** across 4.7 and 4.8, including reverting the dealing to contiguous
+blocks and dropping the tail of the columns.
+
+**Gate.** metal_line_abs (full fit + covariance) and DH_orders (one iteration)
+**BITWISE-IDENTICAL** to the pre-4.3 baseline, all 1065 files.
+`pytest -m unit`: **468 passed, 31 skipped** (457 before). Lint clean.

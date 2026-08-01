@@ -52,7 +52,12 @@
       "Bash(mkdir -p gpu45)",
       "Bash(cp -r ab/base/metal_line_abs gpu45/)",
       "Bash(MPLBACKEND=Agg timeout 1200 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)",
-      "Bash(MPLBACKEND=Agg timeout 900 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 cacheoff.mod)"
+      "Bash(MPLBACKEND=Agg timeout 900 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 cacheoff.mod)",
+      "Bash(MPLBACKEND=Agg timeout 2400 python /home/rcooke/.claude/jobs/faab15d1/tmp/jactime.py Q1243p307_orders.mod)",
+      "Bash(MPLBACKEND=Agg timeout 1800 python /home/rcooke/.claude/jobs/faab15d1/tmp/profcol.py Q1243p307_orders.mod 4)",
+      "Bash(MPLBACKEND=Agg timeout 3600 python /home/rcooke/.claude/jobs/faab15d1/tmp/jactime.py Q1243p307_orders.mod setall freevoigt)",
+      "Bash(MPLBACKEND=Agg timeout 900 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)",
+      "Bash(MPLBACKEND=Agg timeout 2400 python /home/rcooke/.claude/jobs/faab15d1/tmp/balance.py Q1243p307_orders.mod)"
     ]
   }
 }

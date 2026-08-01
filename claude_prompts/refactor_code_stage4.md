@@ -240,6 +240,54 @@ difference is now written down. 11/11 mutations caught. See
   default and CI stays CPU-only. **On-demand local command (RJC asked):**
   `pytest --run-gpu -m gpu` (all GPU tests); document it in `tests/README.md`.
 
+**4.7 — Precompute the fit-constant model structure.
+[COMPLETE — bitwise-identical (metal_line_abs + DH_orders, 1065 files); unit
+batch 440 -> 457. DH_orders Jacobian **100.25/100.28 s -> 85.95/86.82 s
+(1.16x)** on CPU-12. The structure derivation itself fell 1.814 -> 0.202 s (89%
+removed) and the in-process wall for 12 columns 4.517 -> 2.936 s (1.54x); the
+end-to-end gain is smaller because the Jacobian is 12 workers contending for 20
+cores, so the phase percentages size the work removed but overstate the wall.
+See `logs/refactor_code_stage4_log.md`.]**
+- **Not** one of the two changes RJC proposed on 2026-08-01; both of those were
+  measured and rejected (see the "Pre-4.7 analysis" log entry). This is what the
+  same measurements point at instead, and it is where RJC's underlying instinct
+  — that the per-snip Python work dominates — is correct.
+- Measured target: **~54 s of a 100.25 s DH_orders Jacobian** (54%) is
+  influence-*dependent* host marshalling, against **25.6 s (25.5%)** for the
+  Voigt arithmetic that any GPU work can touch. Four derivative columns make
+  1,724,030 `config._DictLike.__getitem__` calls, 1,824,189 `getattr` calls and
+  5,326 `voigt.set_vars` calls.
+- Scope: build once per fit a flat table of (component, snip) -> parameter
+  slice, keyword dict and function instance, so a derivative column assembles
+  its rows by indexing rather than re-walking `_modpass` per snip per component.
+  Keep the influence table — it is what makes the column cheap (each parameter
+  touches 11.4% of snips; removing it costs 1.59x).
+- Must stay **bitwise-identical** under the Stage 0 gate, in individually gated
+  steps. The risk is that `set_vars` has per-call side effects (`_keywd` is
+  assigned on the shared function instance before every call), so the flattening
+  has to preserve evaluation order exactly.
+
+**4.8 — Jacobian load balance, and per-snip constants.
+[COMPLETE — bitwise-identical (metal_line_abs + DH_orders, 1065 files); unit
+batch 457 -> 468. DH_orders Jacobian **85.95/86.82 s -> 31.81/32.91 s (2.66x)**
+on CPU-12, and **3.09x** against the pre-4.7 baseline of 100.3 s.
+The task's instruction to re-measure first is what found this: the Jacobian's
+wall time *was* its slowest chunk (84.1 s against 23.1 s if balanced, because
+column cost runs from 0.06 s to 8.7 s and parameters for one object sit
+together in the model file). Dealing the columns round-robin instead of in
+contiguous blocks fixes it — 3.61x -> 1.23x of the balanced time — and a cost
+model built from the influence table did not beat it (r ~ 0.7). Stage 4.5 is
+what made this free: contiguous blocks existed to keep a chunk's cache slice
+small, and the cache now lives in shared memory. Item (b) (the `np.isin`
+bookkeeping) was also done and is worth 4.2% of a column; item (a) was dropped
+at 1.2%. See `logs/refactor_code_stage4_log.md`.]**
+- Original scope, kept for the record: (a) the setup loop evaluated the shift
+  model for all 351 snips before any `ddpid` test; (b) the convolution loop's
+  skip path recomputed, per snip, a fitted-pixel count fixed for the whole fit
+  (~145,000 `np.isin` calls per Jacobian). The 20.5 s "influence-independent
+  floor" that motivated both turned out to be mostly the structure work 4.7
+  removed, leaving (b) at 4.2% and (a) at 1.2%.
+
 ## Skills to use for this stage
 
 - `port-to-gpu` — port a `call_CPU` to `call_GPU`, verifying numerical equivalence.
@@ -496,3 +544,10 @@ you foresee this as a problem for our implementation?
 
 10. Please read this doc, including my responses to your queries, and execute Task 4.6.
 
+11. Before marking this stage as complete, there is one last thing I would like to consider. If we removed all parameter influence for all snips, and simply had a single large list of Voigt profiles that are simultaneously applied to all snips, would this be faster than the current implementation? If so, how much faster would it be for `DH_orders`? Also, if we fixed the subpixellation at the beginning of the fit and did not allow it to change, would this be faster than the current implementation? If so, how much faster would it be for `DH_orders`? Please provide a detailed analysis of these two scenarios and their potential impact on performance. I suspect these two simple changes may drastically improve the performance relative to the baseline, since all Voigt profiles are processed simultaneously, and the subpixellation is only computed once at the beginning of the fit (meaning the large wavelength arrays are only transferred to the GPU once at the beginning of the fit). However, I would like to confirm this with you before we proceed with these changes. If you think this could be beneficial to explore, for now, please write new tasks (starting with 4.7) that would implement these improvements but *only* if your quick benchmarks suggest they would be beneficial. Please provide a detailed analysis of these two scenarios and their potential impact on performance.
+
+12. Please read this doc, including my responses to your queries, and execute Task 4.7.
+
+13. Please read this doc, including my responses to your queries, and execute Task 4.8.
+
+14. Before completing the GPU stage, is it worthwhile implementing GPU support for the other functional forms in the `functions/` directory? For example, the `legendre` polynomial funtions or the convolution operations like `vfwhm`? If so, please write new tasks (starting with 4.9) that would implement GPU support for these other functional forms. Please provide a detailed analysis of the potential impact on performance and whether it is worth implementing GPU support for these other functional forms.

@@ -115,3 +115,60 @@ def test_enorm_matches_sqrt_dot():
     for vec in (np.array([3.0, 4.0]), np.arange(1.0, 11.0), np.array([1e-8, 2e-8])):
         got = float(minimise.alfit.enorm(None, vec))
         assert np.isclose(got, np.sqrt(np.sum(vec**2)))
+
+
+# -- _deal_chunks (Stage 4.8) -------------------------------------------------
+
+
+def _jobs(n):
+    """``n`` derivative jobs, as fdjac2 builds them."""
+    return [(j, j, 1e-8, True) for j in range(n)]
+
+
+def test_dealing_covers_every_column_exactly_once():
+    # A dropped column leaves a zero in the Jacobian and a duplicated one
+    # wastes a whole model evaluation; neither would fail a numerical gate,
+    # because each column is still computed correctly.
+    jobs = _jobs(37)
+    chunks = minimise._deal_chunks(jobs, 12)
+    seen = [job for chunk in chunks for job in chunk]
+    assert sorted(seen) == sorted(jobs)
+    assert len(seen) == len(jobs)
+
+
+def test_dealing_is_round_robin_not_contiguous():
+    # The whole point: consecutive columns -- which cost similarly, because
+    # they belong to the same object in the model file -- must land in
+    # different chunks.
+    chunks = minimise._deal_chunks(_jobs(12), 4)
+    assert [j[0] for j in chunks[0]] == [0, 4, 8]
+    assert [j[0] for j in chunks[1]] == [1, 5, 9]
+
+
+def test_dealing_balances_a_cost_that_runs_with_the_column_index():
+    # DH_orders' real distribution is milder than this, but the failure mode is
+    # the same shape: contiguous blocks concentrate the expensive columns.
+    cost = np.arange(120, dtype=float) ** 2
+    balanced = cost.sum() / 12
+    dealt = minimise._deal_chunks(list(range(120)), 12)
+    contiguous = [list(range(k * 10, (k + 1) * 10)) for k in range(12)]
+    worst_dealt = max(cost[c].sum() for c in dealt)
+    worst_block = max(cost[c].sum() for c in contiguous)
+    # A pool finishes when its slowest chunk does, so the ratio to the
+    # perfectly balanced load is the wall time.
+    assert worst_dealt < 1.25 * balanced
+    assert worst_block > 2.0 * balanced
+
+
+def test_dealing_never_returns_an_empty_chunk():
+    # pool.map would be handed a task with nothing to do, and _run_jacobian
+    # sizes its dispatch by the number of chunks.
+    for n in (1, 5, 11, 12, 13):
+        chunks = minimise._deal_chunks(_jobs(n), 12)
+        assert all(chunk for chunk in chunks)
+        assert sum(len(c) for c in chunks) == n
+
+
+def test_dealing_fewer_columns_than_workers_gives_one_each():
+    chunks = minimise._deal_chunks(_jobs(3), 12)
+    assert [len(c) for c in chunks] == [1, 1, 1]
