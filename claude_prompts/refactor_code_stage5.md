@@ -98,7 +98,11 @@
 and whether the old `atomic.xml` should be retained as a supported input during a
 deprecation period or replaced outright (with a one-off converter).
 
-
+**Response:** ECSV is a good choice for the atomic data file format. It is human-readable,
+self-describing, and aligns well with the existing dependencies in ALIS. The old `atomic.xml`
+can be retained as a supported input during a deprecation period to allow users time to
+transition to the new format. A one-off converter should be provided to facilitate this
+transition.
 
 **Q5.2 — YAML/TOML dependencies.** YAML support needs `PyYAML` at runtime for
 users who choose YAML, and TOML *writing* needs a small writer lib (e.g.
@@ -106,10 +110,23 @@ users who choose YAML, and TOML *writing* needs a small writer lib (e.g.
 (a) TOML-only (stdlib read, optional writer), (b) YAML too (add `PyYAML` as an
 optional extra), or (c) both as optional extras?
 
+**Response:** I think the current .mod files are OK, and we don't need to switch to
+YAML/TOML unless there is a strong reason to change the file format. If there's no
+clear need to using YAML, then I would leave it as is.
+
 **Q5.3 — Schema.** Should the YAML/TOML schema be a faithful 1:1 mapping of the
 text `.mod` structure (settings / data / model / link blocks), or a cleaner
 redesigned schema (with a converter between them)?
 
+**Response:** I think we should continue to use the current .mod file format as
+the primary format. If you strongly think YAML is a better alternative, could
+you please provide a comparison example of the two formats (perhaps alter the
+`metal_line_abs` example to show how it would look in YAML)? This will help us evaluate the
+benefits of switching to YAML and whether it is worth the effort to implement. I will
+then decide if we should pursue this conversion, or leave the .mod format as is.
+
 ## Prompts
 
-1. 
+1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing (please check all filenames mentioned in this document reflect all updates to the code so far, and update as needed). Ask further queries if needed.
+
+2. 
