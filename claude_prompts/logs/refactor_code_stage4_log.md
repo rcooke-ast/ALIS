@@ -1459,3 +1459,75 @@ blocks and dropping the tail of the columns.
 **Gate.** metal_line_abs (full fit + covariance) and DH_orders (one iteration)
 **BITWISE-IDENTICAL** to the pre-4.3 baseline, all 1065 files.
 `pytest -m unit`: **468 passed, 31 skipped** (457 before). Lint clean.
+
+## Pre-4.9 analysis -- GPU support for the other model functions (RJC, 2026-08-01)
+
+RJC asked whether the remaining functions in `functions/` -- `legendre`, the
+`vfwhm` convolution -- are worth porting to the GPU. Measured on DH_orders, one
+Jacobian, after 4.7/4.8.
+
+**A methodological correction first.** The first set of GPU numbers was wrong
+and had to be discarded. The measurement harness monkeypatches a function in
+the parent process to price it at zero; the **CPU pool is forked, so patches
+reach its workers, but the GPU pool is spawned, so they do not**. That made the
+convolution look like 1.0% of a GPU Jacobian when it is 20.0%. Redone by
+editing the source, which survives the re-import. The same flaw affects one
+figure in the Pre-4.7 analysis above: the GPU-4 row labelled "influence removed
+**and** Voigt free" (379.47 s) actually had the Voigt *not* free -- `setall`
+took effect (it changes `_pinfl`, computed in the parent and shipped) but
+`freevoigt` did not. The conclusion there is unaffected: it rested on the
+CPU-12 pair (100.25 s vs 138.72 s), which was forked and therefore valid.
+
+**Where the time goes now.** 4.7 and 4.8 removed the Python overhead that used
+to dominate, so what is left is the numerical work:
+
+| | CPU-12 (36.7 s) | GPU-4 (61.9 s) |
+|---|---|---|
+| `voigt` | 33.4% | on the device already |
+| `vfwhm` convolution | 28.3% | **20.0%** (12.4 s) |
+| `legendre` | 17.3% | **9.3%** (5.7 s) |
+| CUDA driver API | -- | ~13% of a column |
+
+GPU dispatch is worth **1.17x at matched worker count** (a 4-worker GPU pool
+with nothing dispatched takes 72.7 s, with the Voigt dispatched 61.9 s) --
+confirming the 4.3 figure.
+
+**The decisive context: the GPU backend loses on this machine.** GPU-4 is
+61.9 s against CPU-12's ~32-37 s, and `run backend auto` correctly picks the
+CPU. Per *worker* the GPU is 1.78x more efficient (248 vs 440 worker-seconds);
+the gap is the 4-versus-12 worker count, not the device.
+
+**`legendre`** is straightforwardly portable -- an elementwise polynomial over
+the sub-pixel grid, the same shape as the Voigt kernel. But its groups are one
+row of ~10,742 sub-pixels, barely over the shipped `gputhresh` of 10000, so at
+default settings most would stay on the CPU anyway; forcing them onto the
+device adds ~351 dispatches per evaluation where the CUDA API already costs
+~1.27 ms per dispatch (0.504 s over 396 dispatches, measured).
+
+**`vfwhm` cannot be ported without an FFT, and numba.cuda has none.** A direct
+convolution kernel is not a way round it: measured over the 702 convolutions of
+one base evaluation, the Gaussian half-width is a median of **300** taps and up
+to **13,292**, so direct convolution is **21x more arithmetic** than the FFT
+(12.0 G ops against 0.57 G). Porting it means adding CuPy -- reversing Q4.1 --
+or binding cuFFT.
+
+**Conclusion: not worth doing now, and no task was written for either port.**
+Together the two are 29.3% of the GPU-backend Jacobian, so even if both became
+*free* the GPU backend would go from 61.9 s to ~44 s -- still worse than the
+CPU backend's ~32-37 s on this machine. They would improve a backend that is
+not being used, and not by enough to change which backend wins.
+
+**What would change the answer** (all hardware, not code): more devices. At
+1.78x per-worker efficiency, a machine with >=8 GPUs would put the GPU backend
+ahead of 12 CPU cores, and then the 29.3% these two functions represent becomes
+worth having. The trigger to revisit is a GPU-rich machine or a fit large
+enough that per-group launch cost is amortised, not a change in the code.
+
+**What the measurements do point at**, if the GPU backend is ever to be made
+competitive: the CUDA driver API is ~13% of a GPU derivative column at ~1.27 ms
+per group dispatch, with 351 group dispatches per evaluation, each ending in a
+synchronising `copy_to_host`. Fewer, larger launches -- and keeping the model
+on the device between them -- is a bigger prize than either port, and a GPU
+convolution is worth having as the *enabler* for that (it is the last host-side
+step in the chain) rather than for its own arithmetic. Written up as a
+conditional task 4.9 in the stage doc, for RJC to accept or decline.

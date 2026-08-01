@@ -288,6 +288,31 @@ at 1.2%. See `logs/refactor_code_stage4_log.md`.]**
   floor" that motivated both turned out to be mostly the structure work 4.7
   removed, leaving (b) at 4.2% and (a) at 1.2%.
 
+**4.9 — Cut the GPU's per-group round trips. [PROPOSED — conditional; awaiting
+RJC]**
+- **Not** a port of `legendre` or `vfwhm`: RJC asked about those on 2026-08-01
+  and the measurements say no (see the "Pre-4.9 analysis" log entry). Together
+  they are 29.3% of a GPU-backend Jacobian, so even if both were *free* the GPU
+  backend would go 61.9 s -> ~44 s, still behind the CPU backend's ~32-37 s on
+  this machine. And `vfwhm` needs an FFT that numba.cuda does not have (direct
+  convolution is 21x more arithmetic — median 300 taps, up to 13,292), so it
+  would mean adding CuPy and reversing Q4.1.
+- **Only worth starting if the GPU backend is to be made competitive.** On this
+  machine (4 devices, 20 cores) it is not the backend that runs, and `run
+  backend auto` correctly picks the CPU. Per *worker* the GPU is 1.78x more
+  efficient, so >=8 devices would flip that — the trigger is hardware, not code.
+- Measured target if it is started: the CUDA driver API is ~13% of a GPU
+  derivative column, **~1.27 ms per group dispatch** (0.504 s over 396
+  dispatches), with 351 group dispatches per evaluation each ending in a
+  synchronising `copy_to_host`. Fewer, larger launches plus device residency
+  between them is a larger prize than either port.
+- This subsumes the 4.5 carry-in (a) *batch across spectra* and (b) *full device
+  residency*; a GPU convolution earns its place here as the **enabler** for (b)
+  — the last host-side step in the chain — rather than for its own arithmetic.
+- Note for whoever measures this: the CPU pool is forked but the **GPU pool is
+  spawned**, so a monkeypatch applied in the parent does not reach GPU workers.
+  Patch the source instead. This silently produced a 20x wrong figure once.
+
 ## Skills to use for this stage
 
 - `port-to-gpu` — port a `call_CPU` to `call_GPU`, verifying numerical equivalence.

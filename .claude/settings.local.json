@@ -57,7 +57,12 @@
       "Bash(MPLBACKEND=Agg timeout 1800 python /home/rcooke/.claude/jobs/faab15d1/tmp/profcol.py Q1243p307_orders.mod 4)",
       "Bash(MPLBACKEND=Agg timeout 3600 python /home/rcooke/.claude/jobs/faab15d1/tmp/jactime.py Q1243p307_orders.mod setall freevoigt)",
       "Bash(MPLBACKEND=Agg timeout 900 python /home/rcooke/Software/ALIS/alis/scripts/run_alis.py -f -w -p 0 fit_spectra.mod)",
-      "Bash(MPLBACKEND=Agg timeout 2400 python /home/rcooke/.claude/jobs/faab15d1/tmp/balance.py Q1243p307_orders.mod)"
+      "Bash(MPLBACKEND=Agg timeout 2400 python /home/rcooke/.claude/jobs/faab15d1/tmp/balance.py Q1243p307_orders.mod)",
+      "Bash(MPLBACKEND=Agg timeout 1800 python /home/rcooke/.claude/jobs/faab15d1/tmp/profcol.py Q1243p307_orders.mod 12)",
+      "Bash(cp alis/functions/vfwhm.py /tmp/claude-1000/vfwhm.bak)",
+      "Bash(cp alis/functions/legendre.py /tmp/claude-1000/legendre.bak)",
+      "Bash(MPLBACKEND=Agg timeout 3600 python /home/rcooke/.claude/jobs/faab15d1/tmp/jactime.py Q1243p307_orders.mod)",
+      "Bash(MPLBACKEND=Agg timeout 900 python -c ' *)"
     ]
   }
 }
