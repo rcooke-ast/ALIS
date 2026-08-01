@@ -1531,3 +1531,34 @@ on the device between them -- is a bigger prize than either port, and a GPU
 convolution is worth having as the *enabler* for that (it is the last host-side
 step in the chain) rather than for its own arithmetic. Written up as a
 conditional task 4.9 in the stage doc, for RJC to accept or decline.
+
+## Fix -- test suite could not be collected without numba (RJC, 2026-08-01)
+
+RJC hit `ModuleNotFoundError: No module named 'numba'` on an install without
+the `gpu` extra, which also failed the examples batch.
+
+**Cause, mine from 4.4.** `test_function_interface.py`'s
+"every module defining a model function is registered" check sweeps the package
+with `pkgutil.iter_modules` and imports each module -- including
+`alis/functions/voigt_gpu.py`, whose module-scope `from numba import cuda` is
+there *by design*: `@cuda.jit` compiles at import time, which is precisely why
+Task 4.1 keeps kernel modules off the normal import path and has `call_GPU`
+import them lazily. So the test violated the boundary it was written alongside.
+
+**Why the examples failed too.** A collection error aborts the whole pytest
+session ("Interrupted: 1 error during collection"), so `pytest -m examples`
+errored even though no example ran. Confirmed by reverting the fix: pre-fix
+`-m examples --collect-only` reports the error; post-fix it collects 94 tests.
+The production path was never affected -- a real example fit runs clean with
+numba blocked, reaching the same chi-squared, and prints nothing about numba.
+
+**Fix.** `_import_function_module` tolerates an `ImportError` from a
+`<name>_gpu` module and only that: any other module failing to import is still
+a real failure and propagates. Where numba *is* installed the sweep still
+imports the kernel modules, so coverage is unchanged on a dev machine. Two
+tests pin both halves of the rule.
+
+**Gate.** `pytest -m unit`: **470 passed, 31 skipped** with numba; **436
+passed, 65 skipped** with numba blocked (the extra skips are the `gpu` batch and
+the host-side Voigt helpers). `pytest -m examples` collects 94 tests either way.
+Lint clean. No `alis/` file changed.

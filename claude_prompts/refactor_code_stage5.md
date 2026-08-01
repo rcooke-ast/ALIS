@@ -98,6 +98,8 @@
 and whether the old `atomic.xml` should be retained as a supported input during a
 deprecation period or replaced outright (with a one-off converter).
 
+
+
 **Q5.2 — YAML/TOML dependencies.** YAML support needs `PyYAML` at runtime for
 users who choose YAML, and TOML *writing* needs a small writer lib (e.g.
 `tomli-w`) — both would be new runtime/optional deps (plan Q12). Do you want:
@@ -110,4 +112,4 @@ redesigned schema (with a converter between them)?
 
 ## Prompts
 
-> RJC will be responsible for writing this section.
+1. 
