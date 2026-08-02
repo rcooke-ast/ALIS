@@ -471,24 +471,38 @@ def load_atomic(slf):
     atmdata['Gamma'] = np.array(table.array['Gamma'])
     atmdata['Qvalue'] = np.array(table.array['q'])
     atmdata['Kvalue'] = np.array(table.array['K'])
-    # seen = set()
-    # atmdata['Element'] = np.array([x for x in isotope if x not in seen and not seen.add(x)]).astype(str)
-    # seen = set()
-    # atmdata['AtomicMass'] = np.array([x for x in table.array['AtomicMass'] if x not in seen and not seen.add(x)])
-    seen = set()
-    fnl = []
-    for x in isotope:
-        if x not in seen:
-            fnl.append(x)
-            seen.add(x)
-    atmdata['Element'] = np.array(fnl).astype(str).copy()
-    seen = set()
-    fnl = []
-    for x in table.array['AtomicMass']:
-        if x not in seen:
-            fnl.append(x)
-            seen.add(x)
-    atmdata['AtomicMass'] = np.array(fnl).astype(float).copy()
+    # 'Element' and 'AtomicMass' are a per-isotope *mapping*: Element[i] is the
+    # isotope whose mass is AtomicMass[i]. Every consumer relies on that --
+    # voigt/splineabs/lineemission all do
+    #     m = np.where(atomic['Element'] == isotope); mass = atomic['AtomicMass'][m][0]
+    # -- so the two must be built together, in one pass.
+    #
+    # Stage 5.6 fix: they used to be de-duplicated *independently*, Element by
+    # isotope string and AtomicMass by mass **value**. That gives an AtomicMass
+    # array indexed by "order in which a distinct float first appeared", which
+    # is not an index space anything can address: it was 82 entries long
+    # against Element's 80, because 1H/1Ly/1TL share one mass. The index found
+    # in Element therefore landed in the wrong slot, and 132 of the 167
+    # isotope/ion combinations in atomic.xml were given another isotope's mass
+    # -- 1H got deuterium's, 16O got neon's -- which feeds straight into the
+    # thermal width, b = sqrt(b_turb^2 + 0.01662892444*T/m) (voigt.py:336).
+    mass_of = {}
+    warned = set()
+    for iso, mass in zip(isotope, table.array['AtomicMass']):
+        if iso not in mass_of:
+            mass_of[iso] = float(mass)
+        elif float(mass) != mass_of[iso] and iso not in warned:
+            warned.add(iso)
+            # One isotope, two masses: the file cannot say which applies to
+            # which transition, and the model has a single mass per component,
+            # so the first is used. atomic.xml was made self-consistent in
+            # Stage 5.6; this guards a user-supplied file.
+            msgs.warn("Atomic data gives {0:s} more than one AtomicMass "
+                      "({1:s} and {2:s});".format(iso, repr(mass_of[iso]), repr(float(mass)))
+                      + msgs.newline() + "using the first for the thermal broadening",
+                      verbose=slf._argflag['out']['verbose'])
+    atmdata['Element'] = np.array(list(mass_of.keys())).astype(str).copy()
+    atmdata['AtomicMass'] = np.array(list(mass_of.values())).astype(float).copy()
     return atmdata
 
 

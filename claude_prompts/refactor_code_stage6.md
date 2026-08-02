@@ -21,6 +21,14 @@
   interface that prepares a model, runs the fit, and inspects the result,
   iterating within one tool.
 
+**6.6 — Interactive plotting-script generation (from Stage 5.3, RJC 2026-08-01).**
+- Let the user generate the Stage 5.3 standalone plotting script *interactively*
+  from the GUI once a fit has completed, rather than only via a setting in the
+  model file — pick the mode (`metals`, ...), adjust the panel selection and
+  layout, then write the script out.
+- Depends on 5.3 having landed the script emitter and its modes; this task is
+  the GUI surface on top of it. Further details to be discussed in Stage 6.
+
 **6.3 — Documentation.**
 - Move from LaTeX/PDF to Sphinx + ReadTheDocs, using the *code* as the source of
   truth (the LaTeX in `doc/tex_files/` is reference only). Include a full
