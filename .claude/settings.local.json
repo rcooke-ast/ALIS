@@ -62,7 +62,8 @@
       "Bash(cp alis/functions/vfwhm.py /tmp/claude-1000/vfwhm.bak)",
       "Bash(cp alis/functions/legendre.py /tmp/claude-1000/legendre.bak)",
       "Bash(MPLBACKEND=Agg timeout 3600 python /home/rcooke/.claude/jobs/faab15d1/tmp/jactime.py Q1243p307_orders.mod)",
-      "Bash(MPLBACKEND=Agg timeout 900 python -c ' *)"
+      "Bash(MPLBACKEND=Agg timeout 900 python -c ' *)",
+      "Bash(ps -eo args)"
     ]
   }
 }

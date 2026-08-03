@@ -62,13 +62,13 @@ _OUT_COVAR_RE = re.compile(r"^\s*out\s+covar\b", re.IGNORECASE)
 # spun past the timeout re-printing "ITERATION 1 ... CONVERGENCE").
 # Strip it so mode (b) performs exactly one evaluation.
 _RUN_CONVERGENCE_RE = re.compile(r"^\s*run\s+convergence\b", re.IGNORECASE)
-# ALIS prints the voigt default damping explicitly (as a suffixless
-# "damping=0.0000000") in .mod.out even when the input did not set
-# it, and on re-read an explicit suffixless keyword parameter is
-# treated as FREE whereas the implicit default is fixed -- changing
-# the DOF (e.g. helium34/tet02OriA: 3 such lines, DOF 618 vs 621).
-# Strip the artifact when building the fixed-parameter input.
-_ZERO_DAMPING_RE = re.compile(r"\s+damping=0\.0+(?=\s)")
+# (Stage 5.4 removed a _ZERO_DAMPING_RE workaround here. The writer used to
+# print the voigt default damping explicitly as a suffixless
+# "damping=0.0000000" even when the input never set it, and on re-read a
+# suffixless keyword parameter is FREE whereas the implicit default is fixed --
+# changing the DOF. The cause was a shared _keywd['input'] record across all
+# lines of a function, fixed in load.call_function_load, so there is no longer
+# an artifact to strip.)
 # Stage 4.3a: the harness pins every regression run to the CPU backend, so the
 # suite stays deterministic and CPU-only whatever a model file asks for (Q4.2).
 # GPU coverage is the on-demand `gpu`-marked tests (Q4.9), which override that
@@ -366,7 +366,6 @@ def make_fixedparam_mod(staged):
         elif low.startswith("model end"):
             in_model = False
         elif in_model:
-            raw = _ZERO_DAMPING_RE.sub(" ", raw)
             if stripped.split()[:1] == ["random"]:
                 tokens = [
                     t

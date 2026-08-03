@@ -94,6 +94,33 @@
   when it was not left at its fixed default**; the explicitly-given tied line
   keeps its `damping=11.1360935damp` untouched. That also makes the fix agree
   with what `_ZERO_DAMPING_RE` has been doing by hand.
+
+  **Root cause, found on implementing (2026-08-03) — it is not specific to
+  `damping`, and it is not in the writer.** `parout` already refuses to echo a
+  parameter the user did not give: it tests
+  `mp['mkey'][i]['input'][parid]` (`alis/functions/base.py:500-505`), a
+  tri-state of 0/not given, 1/positional, 2/named. That record is simply wrong.
+  Since Stage 2 each function is instantiated **once** and reused for every line
+  of its type; `load()` records the parameters named on a line in the
+  *instance's* `self._keywd['input']` and then **shallow**-copies `_keywd` into
+  `mp['mkey']` (`base.py:384`). So the record is never cleared between lines,
+  *and* every line ends up sharing one `input` dict. Confirmed directly: on
+  `helium34/Her36` all 12 voigt lines had `id()`-identical `input` dicts and all
+  reported `damping` as named, though only 1 line names it.
+  The writer therefore echoed, on every line of a function, the **union of the
+  parameters named on any line of it**. Fixed in `load.call_function_load`
+  (`alis/load.py`), which gives the instance a fresh `input` dict per call —
+  clearing the record and de-aliasing the previous line's snapshot in one move.
+  All four `load()` call sites route through it.
+
+  **This subsumes the `locations=` item above and widens the reference churn.**
+  `splineabs`'s empty `locations=` was the same bug (inherited from a sibling
+  line), and needed no separate fix. But the same inheritance also invented
+  `blind=False`, `logN=`, `ColDensScale=` and others across many models, so more
+  than the 6 references predicted in Q5.20 move. Verified correct on
+  `examples/splineabs/fit_spectra_linear`, where line 23 names
+  `ColDensScale=1.0E13 logN=False` and line 24 does not: after the fix line 23
+  keeps them and line 24 drops them, which is what re-reading needs.
 - **Best-accepted vs rejected step. [NOT IN SCOPE — RJC, Q5.4: option (c).]**
   `examples/brokenpowerlaw` stays excluded from the fixed-parameter gate; the
   model is unlikely ever to be needed. Left here as a record of the suspected
@@ -129,6 +156,25 @@
      selects the same pixels whatever the fitted resolution became. It changes
      no first-run behaviour, so the Stage 0 gate stays **bitwise** and no
      reference moves.
+     **Encoding changed during implementation (2026-08-03) — a wavelength range
+     does not work.** `load_data` widens an *explicit* `loadrange` by the same
+     10-sigma resolution rule (`alis/load.py:935`), so writing the loaded range
+     simply re-inflates it: `metal_line_abs` went 392 px -> **414 px** on
+     re-read. Making an explicit `loadrange` authoritative instead was rejected
+     — the only models using one (`helium34/Her36`, `helium34/HD319718`) are
+     *in the harness*, so it would change their loaded pixels and hence their
+     fits, not just their echo.
+     The buffer is therefore recorded as a **pixel count**, reusing the
+     `bufferpix` keyword approved as item 2 — a count is independent of the
+     resolution, which is the whole point. Both sides are stored
+     (`bufferpix=[left,right]`) because the resolution rule extends by a
+     *wavelength* and so does not cover the same number of pixels either side:
+     `lsf_hst` measures `[3492,3490]`. Round-trip now verified exact (identical
+     `sha256` of the loaded wavelength array) on `metal_line_abs` and on
+     `summed_coldens`, which has a genuinely fitted resolution
+     (`vfwhm(7.0va)` -> `vfwhm(7.000va)`). Lines with an explicit `loadrange`
+     (including `loadrange=all`, e.g. `voigtconv`) get no `bufferpix` and are
+     left exactly as they were.
   2. **Extra-pixels keyword as an optional override, with no default** — the
      resolution rule stays in charge unless the user asks otherwise.
   3. **Keep the "insufficient buffer" warning**, based on the resolution width

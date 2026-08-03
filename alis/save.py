@@ -518,6 +518,11 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     snum=0
     dstrarr = ["" for all in slf._datlines]
     for sp in range(len(slf._specid)):
+        # Index of the loaded snip within this specid. One data line produces
+        # exactly one snip (checked across the shipped examples and the 351-line
+        # DH_orders model), so this advances in step with the matched lines,
+        # like cnum/snum above.
+        sn = 0
         for i in range(len(slf._datlines)):
             if slf._datlines[i].lstrip() == "": continue # This line is needed for OneFits.
             if slf._datlines[i].lstrip()[0] == "#": dstrarr[i] += slf._datlines[i]
@@ -536,7 +541,16 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
                 dspl = datspl[j].split("=")
                 if dspl[0] == "resolution":
                     cspl = cvastring.split("\n")[cnum].split()
-                    cpars = ",".join(cspl[1:])
+                    # Sub-keywords inside the parentheses are separated with
+                    # ':', not '=' (Stage 5.4). load_data splits each data-line
+                    # token on '=' and keeps only field 1, so an '=' in here
+                    # truncates the value -- 'resolution=lsf(name=STIS,...)'
+                    # reads back as the function 'lsf(name'. The convolution
+                    # loaders that take keywords (lsf, lsffile, lsfspline,
+                    # apod, multivfwhm) all undo this with
+                    # instr.replace(":", "=") on the way in. Purely numeric
+                    # parameters contain no '=', so this is a no-op for them.
+                    cpars = ",".join(cspl[1:]).replace("=", ":")
                     datspl[j] = "resolution={0:s}({1:s})".format(cspl[0],cpars)
                     gotres = True
                 elif dspl[0] == "shift":
@@ -544,6 +558,35 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
                     spars = ",".join(sspl[1:])
                     datspl[j] = "shift={0:s}({1:s})".format(sspl[0],spars)
                     gotshf = True
+            # Record the pixel-load buffer that was actually used (Stage 5.4).
+            # ALIS sizes the buffer from the resolution at load time, and the
+            # line above has just been rewritten with the *fitted* resolution --
+            # so without this, re-reading a .mod.out loads a different set of
+            # pixels from the run that produced it.
+            #
+            # This is recorded as a pixel *count* rather than as a
+            # 'loadrange=[wmin,wmax]', because an explicit loadrange is itself
+            # widened by the resolution rule on the way back in
+            # (load.load_data), so writing the loaded range simply re-inflates
+            # it. A count is independent of the resolution, which is the whole
+            # point. The two sides are stored separately: the resolution rule
+            # extends by a wavelength, so it does not in general cover the same
+            # number of pixels on each side.
+            #
+            # Only added when the user gave no loadrange of their own: an
+            # explicit one (including 'loadrange=all', used 1231 times in this
+            # repo) already round-trips, and states an intent that must not be
+            # narrowed to whatever this particular fit happened to need.
+            if not any(t.split("=")[0] in ("loadrange", "bufferpix")
+                       for t in datspl[1:]):
+                posn = slf._posnfull[sp]
+                lwave = slf._wavefull[sp][posn[sn]:posn[sn+1]]
+                fitlo, fithi = slf._posnfit[sp][2*sn], slf._posnfit[sp][2*sn+1]
+                if lwave.size != 0:
+                    nleft = int(np.sum(lwave < fitlo))
+                    nright = int(np.sum(lwave > fithi))
+                    datspl.append("bufferpix=[{0:d},{1:d}]".format(nleft, nright))
+            sn += 1
             cnum += 1
             snum += 1
 
@@ -654,8 +697,13 @@ def save_covar(slf, covar):
         plt.title("Correlation Matrix for: "+filename)
         tks=np.linspace(-1.0,1.0,11,endpoint=True)
         cbar=plt.colorbar(ticks=tks)
-        plt.savefig(filename.rstrip(fnspl[-1])+'png')
-        msgs.info("Saved image of covariance matrix to:"+msgs.newline()+filename.rstrip(fnspl[-1])+'png', verbose=slf._argflag['out']['verbose'])
+        # os.path.splitext, not str.rstrip: rstrip removes any trailing
+        # characters *in that set*, so a covariance name with no extension
+        # ('out covar mycovar') had every character stripped and the image was
+        # written to a file called 'png' (Stage 5.4).
+        imgname = os.path.splitext(filename)[0] + '.png'
+        plt.savefig(imgname)
+        msgs.info("Saved image of covariance matrix to:"+msgs.newline()+imgname, verbose=slf._argflag['out']['verbose'])
     return
 
 
