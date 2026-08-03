@@ -31,8 +31,9 @@
 > `examples/lsf_hst`, `examples/spline/…_splineContAbs`) should be removed so
 > the gate uses the plain reference.
 >
-> **Which references 5.4 moves (measured 2026-08-03) — see Q5.20.** Not all of
-> them, but not none either. `compare.compare_mod_out` ignores the `data read`
+> **Which references 5.4 moves (measured 2026-08-03). RJC chose option (a) in
+> Q5.20: I regenerate these six as part of 5.4 and he verifies from the git
+> diffs.** Not all of them, but not none either. `compare.compare_mod_out` ignores the `data read`
 > block entirely and compares chi-squared, DOF and the model/convolution/shift
 > sections; within a section `_compare_value_line` (`tests/compare.py:281-298`)
 > compares **token by token**, failing on a differing token count, keyword name
@@ -77,6 +78,22 @@
   vs 621). The Stage 0 harness strips it as a workaround; fix the writer so the
   echo round-trips the free/fixed status, then drop the workaround
   (`alisrun.make_fixedparam_mod`).
+  **Mechanism, established 2026-08-03 — the fix is to omit, not to annotate.**
+  `damping` is positional parameter 4 of `voigt`, and
+  `alis/functions/voigt.py:31-32` gives it `_defpar = 0.0` with
+  `_fixpar = True` — so a line with **no** `damping=` gets 0.0 *and is fixed*,
+  while a suffixless `damping=0.0000000` is free. Measured on
+  `helium34/Her36`: the input has `damping=` on **1 of 12** voigt lines (the
+  `1Ly_a` line, `damping=11.1360935damp`, tied via the `damp` label), and the
+  output reference has it on **12 of 12** — the writer adds it unconditionally,
+  and the 11 it invents are exactly the ones that flip to free.
+  There is no per-token "fixed" marker to annotate with: the suffix letters are
+  *tie* labels, and fixing is done by a `fix voigt damping True` line, which
+  applies to the whole function and which `save_model` already echoes
+  (`alis/save.py:487`). So the correct writer rule is **emit the parameter only
+  when it was not left at its fixed default**; the explicitly-given tied line
+  keeps its `damping=11.1360935damp` untouched. That also makes the fix agree
+  with what `_ZERO_DAMPING_RE` has been doing by hand.
 - **Best-accepted vs rejected step. [NOT IN SCOPE — RJC, Q5.4: option (c).]**
   `examples/brokenpowerlaw` stays excluded from the fixed-parameter gate; the
   model is unlikely ever to be needed. Left here as a record of the suspected
@@ -121,8 +138,24 @@
   `resolution=` and `shift=` (lines 537-546); every other keyword, `loadrange=`
   included, passes through verbatim. So today a model with no `loadrange=` in it
   writes none, and the re-read recomputes the buffer from the fitted resolution.
-  The fix is to insert/replace `loadrange=[wmin,wmax]` in that loop from the
-  loaded extent (`slf._wavefull[sp][ll:lu]`).
+  The fix is to insert `loadrange=[wmin,wmax]` in that loop from the loaded
+  extent (`slf._wavefull[sp][ll:lu]`).
+  *Two traps, both established 2026-08-03.*
+  1. **Only add; never rewrite an explicit `loadrange=`.** The repo already
+     contains **1231** `loadrange=all` keywords across 21 `.mod` files (the
+     DH/DH_orders models, which have one data line per echelle order), plus 24
+     explicit ranges (`loadrange=[3880,3900]`, `[3180,3200]`). An explicit
+     keyword already round-trips correctly and states the user's intent —
+     replacing `all` with a concrete range would rewrite 1231 lines and silently
+     narrow "load everything" to "load what this particular fit happened to
+     need". So insert the keyword **only when the data line has none**, and pass
+     any existing one through untouched.
+  2. **Write enough precision to reselect the same pixels.** The loaded range is
+     applied with `>=` / `<=` against float wavelengths, so a rounded bound can
+     drop or add a boundary pixel and quietly break the very round-trip this is
+     meant to fix. Emit full `repr`-precision bounds (or widen by one ULP), and
+     pin it with a test that re-reads a written `.mod.out` and asserts the pixel
+     count and the wavelength array are identical — not merely close.
   *Expressiveness — checked 2026-08-03, the design holds.* A single `loadrange=`
   keyword per data line is only enough if a line maps to exactly one loaded
   range. Measured by instrumenting `load_data` and counting `_posnfull` snips
@@ -1048,3 +1081,4 @@ yourself as part of 5.4. I can use the git diffs to verify the changes.
 
 3. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing. Ask further queries if needed.
 
+4. Please read this doc, including my responses to your queries, and execute Task 5.4.
