@@ -55,15 +55,19 @@ KCONST = 0.01662892444
 
 
 class _State:
-    """The attributes `load_model` / `load_parinfo` read, and nothing else."""
+    """The attributes `load_model` / `load_parinfo` read, and nothing else.
 
-    def __init__(self, atomic_file="atomic.xml"):
+    No `prognm` is set: since Stage 5.2 `load_atomic` finds `alis/data/` from
+    the `alis.load` module's own location, so `prognm` is not consulted. It used
+    to be set here to `alis/alis.py`, a file that has not existed since the
+    Stage 2 reorganisation -- the tests passed anyway, because only the
+    directory part was ever used.
+    """
+
+    def __init__(self, atomic_file="atomic.ecsv"):
         self._argflag = ArgFlag()
         self._argflag["run"]["atomic"] = atomic_file
         self._argflag["out"]["verbose"] = 0
-        self._argflag["run"]["prognm"] = os.path.join(
-            os.path.dirname(load.__file__), "alis.py"
-        )
         self._specid = np.array(["0"])
         self._resn = []
         self._shft = []
@@ -71,27 +75,69 @@ class _State:
         self._funcused = []
 
 
-def _atomic_path(name="atomic.xml"):
+def _atomic_path(name="atomic.ecsv"):
     return os.path.join(os.path.dirname(load.__file__), "data", name)
 
 
 def _file_masses(path):
-    """isotope -> set of AtomicMass values the file records, read directly."""
+    """isotope -> set of AtomicMass values the file records, read directly.
+
+    Reads the data file itself rather than going through `load_atomic`, so this
+    is the half of the suite that has to know the format. It dispatches on the
+    extension so the ECSV that ALIS now ships and a user's legacy VOTable are
+    both covered.
+    """
     import warnings
 
-    from astropy.io.votable import parse_single_table
-
     warnings.filterwarnings("ignore")
-    arr = parse_single_table(path).array
 
     def text(v):
         return v.decode() if isinstance(v, bytes) else str(v)
 
+    if path.lower().endswith(".xml"):
+        from astropy.io.votable import parse_single_table
+
+        rows = parse_single_table(path).array
+    else:
+        from astropy.table import Table
+
+        rows = Table.read(path, format="ascii.ecsv")
+
     out = defaultdict(set)
-    for row in arr:
+    for row in rows:
         iso = f"{int(row['MassNumber'])}{text(row['Element']).strip()}"
         out[iso].add(float(row["AtomicMass"]))
     return out
+
+
+@pytest.fixture
+def logmsgs():
+    """Messages emitted through `msgs`, as a list of formatted strings.
+
+    The shared 'alis' logger's stderr handler binds its stream at import, so
+    neither capsys nor capfd sees these; attaching a handler is what
+    `tests/test_logger.py` does too.
+    """
+    import logging
+
+    from alis import logger
+
+    records = []
+
+    class _Collect(logging.Handler):
+        def __init__(self):
+            super().__init__(level=logging.DEBUG)
+
+        def emit(self, record):
+            records.append(record.getMessage())
+
+    log = logger.msgs()
+    handler = _Collect()
+    log.addHandler(handler)
+    try:
+        yield records
+    finally:
+        log.removeHandler(handler)
 
 
 @pytest.fixture(scope="module")
@@ -262,3 +308,160 @@ def test_named_ions_broaden_with_the_right_mass(broadening, ion, mass):
     assert ion in broadening
     expected = np.sqrt(BTURB**2 + KCONST * TEMPERATURE / mass)
     assert broadening[ion][0] == pytest.approx(expected, rel=1e-10)
+
+
+# -- Stage 5.2: the ECSV migration ------------------------------------------
+
+# The 15 3He I lines RJC chose to add on top of atomic.xml (Q5.8): the 3He
+# isotope structure of He I 6678 and 7065, plus three EUV lines.
+_HE3_ADDED = [
+    515.644042,
+    522.240605,
+    537.058103,
+    6680.49529,
+    6680.49737,
+    6680.49768,
+    7067.0362456,
+    7067.1114159,
+    7067.1158630,
+    7067.1225450,
+    7067.1455316,
+    7067.2207042,
+    7067.2318337,
+    7067.5794614,
+    7067.6887640,
+]
+
+
+def test_ecsv_is_the_xml_plus_exactly_the_agreed_rows():
+    # The whole constraint on 5.2 in one assertion: nothing but those 15 rows.
+    from astropy.table import Table
+
+    ecsv = Table.read(_atomic_path("atomic.ecsv"), format="ascii.ecsv")
+    xml_masses = _file_masses(_atomic_path("atomic.xml"))
+    assert len(ecsv) == 830, f"{len(ecsv)} rows, expected 815 + 15"
+    waves = [float(w) for w in ecsv["RestWave"]]
+    for want in _HE3_ADDED:
+        assert any(abs(w - want) <= 1e-9 for w in waves), f"missing 3He line {want}"
+    # and no isotope gained or lost a mass in the process
+    assert set(_file_masses(_atomic_path("atomic.ecsv"))) == set(xml_masses) | {"3He"}
+
+
+def test_every_value_in_the_xml_survived_the_conversion():
+    """Cell-by-cell equality on the 815 rows the two files share.
+
+    This is the check that a transcription error cannot slip past. It compares
+    the files directly, not through `load_atomic`, so it would catch a change
+    to a column ALIS does not currently read.
+    """
+    import warnings
+
+    from astropy.table import Table
+
+    warnings.filterwarnings("ignore")
+    from astropy.io.votable import parse_single_table
+
+    # `.array`, not `.to_table()`: astropy *masks* NaN in a double column, and a
+    # masked cell does not compare equal to anything. The file's own value is
+    # NaN -- it literally contains <TD>NaN</TD> for every q and K -- so the raw
+    # array is what "the value in the file" means here.
+    xml = parse_single_table(_atomic_path("atomic.xml")).array
+    ecsv = Table.read(_atomic_path("atomic.ecsv"), format="ascii.ecsv")
+    assert len(ecsv) >= len(xml)
+    wrong = []
+    for name in xml.dtype.names:
+        col = xml[name]
+        data = col.data if hasattr(col, "data") else col
+        for i in range(len(xml)):
+            a, b = ecsv[name][i], data[i]
+            if isinstance(b, bytes):
+                b = b.decode()
+            if isinstance(a, (float, np.floating)):
+                same = (a == b) or (np.isnan(a) and np.isnan(b))
+            else:
+                same = str(a).strip() == str(b).strip()
+            if not same:
+                wrong.append((i, name, a, b))
+    assert not wrong, f"{len(wrong)} cells differ, e.g. {wrong[:5]}"
+
+
+def test_the_two_formats_load_to_the_same_mapping():
+    # A user's legacy .xml and the shipped .ecsv must agree about every isotope
+    # they share -- otherwise the deprecation path silently changes results.
+    from_xml = _State("atomic.xml")
+    from_ecsv = _State("atomic.ecsv")
+    a = load.load_atomic(from_xml)
+    b = load.load_atomic(from_ecsv)
+    ma = dict(
+        zip(
+            np.asarray(a["Element"]).astype(str),
+            np.asarray(a["AtomicMass"]).astype(float),
+        )
+    )
+    mb = dict(
+        zip(
+            np.asarray(b["Element"]).astype(str),
+            np.asarray(b["AtomicMass"]).astype(float),
+        )
+    )
+    assert set(ma) <= set(mb)
+    for iso, mass in ma.items():
+        assert mb[iso] == mass, iso
+
+
+def test_duplicate_transitions_finds_the_known_isotope_groups():
+    """The Q5.8 check. Reports, never modifies.
+
+    The shipped file has four *legitimate* groups; the test pins them so that a
+    fifth appearing (a line entered twice under a wrong mass number, which is
+    what this exists to catch) fails here rather than silently shipping.
+    """
+    from astropy.table import Table
+
+    table = Table.read(_atomic_path("atomic.ecsv"), format="ascii.ecsv")
+    found = {(e, i, round(w, 4)) for e, i, w, _ in load.duplicate_transitions(table)}
+    assert found == {
+        ("Li", "I", 6709.7720),
+        ("C", "II*", 1335.6627),
+        ("Fe", "II", 2260.7791),
+    }
+
+
+def test_duplicate_transitions_bites():
+    # Guard the guard: a genuinely duplicated line must be reported.
+    from astropy.table import Table
+
+    table = Table.read(_atomic_path("atomic.ecsv"), format="ascii.ecsv")
+    before = len(load.duplicate_transitions(table))
+    row = dict(zip(table.colnames, table[0]))
+    row["MassNumber"] = int(row["MassNumber"]) + 40  # same line, wrong isotope
+    table.add_row(row)
+    assert len(load.duplicate_transitions(table)) == before + 1
+
+
+def test_reading_a_votable_warns_that_it_is_deprecated(logmsgs):
+    load.read_atomic_table(_atomic_path("atomic.xml"), verbose=2)
+    text = "\n".join(logmsgs)
+    assert "deprecated" in text.lower()
+    # the warning has to say what to do instead, not just that it is deprecated
+    assert "convert_xmlFormat_to_ecsvFormat" in text
+
+
+def test_reading_the_ecsv_does_not_warn(logmsgs):
+    load.read_atomic_table(_atomic_path("atomic.ecsv"), verbose=2)
+    assert "deprecated" not in "\n".join(logmsgs).lower()
+
+
+def test_missing_columns_are_reported(tmp_path):
+    from astropy.table import Table
+
+    table = Table.read(_atomic_path("atomic.ecsv"), format="ascii.ecsv")
+    table.remove_column("Gamma")
+    with pytest.raises(SystemExit):
+        load.check_atomic_table(table, "synthetic")
+
+
+def test_the_data_directory_is_found_without_prognm():
+    # Stage 5.2 replaced a prognm string-split with the module's own location.
+    assert os.path.isdir(load.atomic_datadir())
+    assert os.path.exists(os.path.join(load.atomic_datadir(), load.DEFAULT_ATOMIC))

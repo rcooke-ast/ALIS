@@ -1,6 +1,34 @@
 To make things complicated,
 
-atomic.dat  <--- This is used for prepfit
-atomic.xml  <--- This is used by ALIS
+atomic.dat   <--- This is used for prepfit
+atomic.ecsv  <--- This is used by ALIS
+atomic.xml   <--- The old format. Still readable, but deprecated.
 
 I know... terrible... this will all resolve itself one day...
+
+--------------------------------------------------------------------------
+Stage 5.2 (2026-08-03): atomic.ecsv replaced atomic.xml as the file ALIS
+reads.
+
+ECSV is plain text with a self-describing header, so the table can be read
+and edited without a VOTable parser, and there is no hand-maintained "nrows"
+attribute to fall out of step with the data.
+
+atomic.ecsv is atomic.xml transcribed unchanged (815 rows), plus exactly 15
+3He I lines taken from RJC's atomic_rjc2.xml -- the 3He isotope structure of
+He I 6678 and 7065, and three EUV lines (515.6440, 522.2406, 537.0581).
+830 rows in total. Every other value, including the O I 918-920 wavelengths
+and the 10834.374575 3He line, is the default file's.
+
+atomic.xml is kept for reference and is still accepted by "run atomic", but
+reading it prints a deprecation warning. To bring your own file forward:
+
+    python convert_xmlFormat_to_ecsvFormat.py yours.xml yours.ecsv
+
+The converter checks its own output cell by cell against the source and
+fails if anything differs, and reports any transition listed under more than
+one MassNumber. The shipped file has four such groups (6/7Li, 12/13C,
+54/56/57/58Fe) which are genuine isotopes, not duplicates.
+
+Better still, ask RJC to add new transitions to the shipped atomic.ecsv so
+everyone gets them.

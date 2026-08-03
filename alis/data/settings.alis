@@ -1,7 +1,7 @@
 ## This file is designed to set the default parameters for ALIS
 ##
 # RUNNING ALIS
-run  atomic       atomic.xml    # The name of the table that contains the relevant atomic transitions
+run  atomic       atomic.ecsv   # The name of the table that contains the relevant atomic transitions
 run  bintype      km/s			# Set the type of pixels to use -- If pixels have constant velocity use "km/s", if pixels have constant Angstroms use "A".
 run  blind        True			# Run a blind analysis -- In order to print out the best-fitting model, this must be set to False.
 run  convcriteria 0.2           # Convergence criteria in units of the parameter error

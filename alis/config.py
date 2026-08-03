@@ -52,7 +52,7 @@ class RunConfig(_DictLike):
 
     prognm: str = "alis.py"
     last_update: str = "Last updated 27th May 2024"
-    atomic: str = "atomic.xml"
+    atomic: str = "atomic.ecsv"
     datadirc: str = ""
     modname: str = "model.mod"
     convergence: bool = False

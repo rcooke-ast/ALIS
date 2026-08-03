@@ -245,3 +245,106 @@ regeneration also was.
 exclusion lists (the Stage 6.3 to-do list), so the linters skip them; the
 additions match the files' existing style, where 295 of 2083 lines already
 exceed 88 characters.
+
+## Task 5.2 -- Atomic data modernisation [COMPLETE]
+
+`alis/data/atomic.ecsv` replaces `atomic.xml` as the file ALIS reads. 830 rows:
+the 815 of `atomic.xml` transcribed unchanged, plus exactly the 15 3He I lines
+RJC selected in Q5.8.
+
+**The converter is shipped, not a one-off** (Q5.17):
+`alis/data/convert_xmlFormat_to_ecsvFormat.py`, alongside the existing
+`convert_datFormat_to_xmlFormat.py`. Users need it for their own files.
+
+- Unit strings are taken **verbatim from the VOTable's FIELD attributes**, not
+  from astropy's parsed `field.unit`, which normalises `1.66053886x10-24g` to
+  `1.66054e-24 g` and loses digits from what is meant to document the file's own
+  convention. ECSV stores an unrecognised unit string as written and reads it
+  back unchanged, so the original survives. Recognised units are normalised to
+  exactly equivalent forms (`s-1` -> `1 / s`, `0.1nm` -> `0.1 nm`).
+- The data lines are padded so the columns line up. ECSV's space delimiter
+  tolerates runs of spaces, so alignment costs nothing at read time and makes
+  the table readable in an editor -- the point of leaving VOTable.
+- `--append-from` / `--append-wave` selects specific transitions from a second
+  VOTable, and **errors unless each requested wavelength matches exactly one
+  row**. That is how the 15 3He lines were added, and it is auditable: the exact
+  command is in this log's git history.
+- The script verifies its own output cell by cell and exits non-zero on any
+  difference.
+
+**The 16th 3He line was excluded on purpose.** `atomic_rjc2.xml` has 16 3He rows
+absent from the default, not 15. The extra one is 10834.374576 (f=0.17974),
+which is a near-duplicate of the default's own 10834.374575 (f=0.0239733) --
+same line, differing in the 10th decimal place, with an irreconcilable
+oscillator strength. RJC's "no other 3He change" covers it; selecting by
+explicit wavelength rather than by set difference is what keeps it out.
+
+**Loader.** `atomic.ecsv` is the default (`config.RunConfig.atomic`,
+`data/settings.alis`). `read_atomic_table` dispatches on the extension: ECSV
+normally, VOTable still accepted so a user's own `.xml` keeps working, with a
+deprecation warning that says what to do instead. 5.6 is not regressed --
+`Element`/`AtomicMass` are still built as one isotope -> mass mapping.
+
+**Data-directory lookup tidied.** `load_atomic` located `alis/data/` by
+splitting `argflag['run']['prognm']` on `'/'`; it now uses the module's own
+location (`load.atomic_datadir`). `prognm` is no longer consulted, so
+`tests/test_atomic_mass.py` stopped setting it to `alis/alis.py` -- a file that
+has not existed since Stage 2, which the tests never noticed because only the
+directory part was ever used.
+
+**Validation -- and one deviation from the doc, deliberately.** The duplicate
+check (Element+Ion+RestWave ignoring MassNumber) is implemented as
+`load.duplicate_transitions`, but it runs in the **converter**, not on every
+load. Running it on load would warn on every single fit, because the shipped
+file legitimately contains four such groups -- 6/7Li (different `fval`), 12/13C
+and 54/56/57/58Fe (identical `fval` and `Gamma`). Those are real isotopes, not
+the mislabelling the check exists to catch, and a warning that always fires
+trains users to ignore it. Conversion is also when a bad row would actually be
+introduced. What does run on load is a missing-column check, which fails early
+and legibly instead of as a KeyError inside the profile calculation.
+
+**Repointed the dead `run atomic` lines** (Q5.13 option b): 13 occurrences
+across 11 context models, `atomic_rjc.xml` -> `atomic.ecsv`. (The doc said ten
+models; the count had grown.)
+
+**Tests.** `tests/test_atomic_mass.py` 20 -> 29. Only the format-specific half
+was touched -- `_file_masses` now dispatches on extension. **The
+format-agnostic half needed no edits**, which was the doc's stated condition for
+the conversion being faithful. New:
+
+- every cell of the 815 shared rows is identical between the two files. This
+  compares the raw VOTable `.array`, not `.to_table()`: astropy *masks* NaN in a
+  double column and a masked cell compares equal to nothing, which first showed
+  up as 1483 spurious differences. The file's own value is NaN -- it literally
+  contains `<TD>NaN</TD>` for all 815 K values and 664 of the q values.
+- the ECSV is the XML plus exactly the 15 agreed rows, each present by wavelength;
+- both formats load to the same isotope -> mass mapping;
+- `duplicate_transitions` finds exactly the four known groups, plus a mutation
+  test that a genuinely duplicated line is reported;
+- the VOTable path warns and names the converter; the ECSV path does not warn;
+- a missing column is fatal;
+- the data directory is found without `prognm`.
+
+Verified to bite: perturbing one `fval` in `atomic.ecsv` by one digit in the
+last decimal place (1 cell of 8150) fails the fidelity test.
+
+The `logmsgs` fixture attaches a handler to the shared 'alis' logger, as
+`test_logger.py` does. Neither `capsys` nor `capfd` sees `msgs` output -- the
+logger's stderr handler binds its stream at import, before pytest's capture.
+
+**No fit can have changed, and that was checked rather than argued.** All 85
+model files in `examples/` and `context/fitting_examples/` were scanned: not one
+has a `fitrange` within 50 A of any added 3He line (the nearest work is
+`helium34` at 3187-3190, 3888-3891 and 10827-10838; the added lines are at
+515/522/537/6680/7067).
+
+**Gate.**
+- `pytest -m unit`: **499 passed, 31 skipped** (490 before; +9 new).
+- `pytest -m "unit or fast"`: **571 passed, 31 skipped, 0 failed**.
+- `pytest --run-slow`: **622 passed, 31 skipped, 0 failed** (2:22:16) --
+  613 + the 9 new tests, with every pre-existing case unchanged, including the
+  `slow`, `gpu` (40/40) and `machine_dependent` batches.
+- ruff / black / isort clean on both new files.
+- No golden file was regenerated for this task, and none needed to be. That is
+  the point worth keeping: 5.2 swapped the atomic data file that every fit in
+  the repository reads, and not one reference moved.

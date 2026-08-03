@@ -1128,3 +1128,5 @@ yourself as part of 5.4. I can use the git diffs to verify the changes.
 3. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing. Ask further queries if needed.
 
 4. Please read this doc, including my responses to your queries, and execute Task 5.4.
+
+5. Please read this doc, including my responses to your queries, and execute Task 5.2.
