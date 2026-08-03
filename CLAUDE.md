@@ -3,8 +3,8 @@
 ## Project Overview
 
 ALIS (Absorption LIne Software) is a Python package for model fitting of spectroscopic data.
-The main package lives in the `alis/` directory. The entry point is `alis/alis.py`, which
-contains `ClassMain`. Model fitting functions are defined in `alis/alfunc_*.py` files.
+The main package lives in the `alis/` directory. The entry point is `alis/main.py`, which
+contains `ClassMain`. Model fitting functions are defined in `alis/functions/*.py`.
 Atomic data are stored in `alis/data/atomic.xml`. Examples live in `examples/`.
 
 ## Git Operations
@@ -40,8 +40,9 @@ This is a Python project. Follow these conventions:
 - Docstrings use triple double-quotes; inline comments use `#`
 - Imports are ordered: standard library, then third-party (`numpy`, `astropy`), then
   local `alis` modules
-- Messaging to the user goes through the `msgs` object (`almsgs.msgs()`) rather than
-  bare `print` calls
+- Messaging to the user goes through the `msgs` object rather than bare `print`
+  calls. Each module does `from alis import logger` then `msgs = logger.msgs()`
+  at module scope (`alis/logger.py:161`)
 
 ## Branches
 

@@ -47,13 +47,21 @@
   set the `alis/` modules carry **~1518 findings**, of which only ~21 are
   auto-fixable: 1217 E701 (`if x: return y` one-liners, which black rewrites),
   66 E722 bare excepts, 70 F841 unused variables, 39 F821 undefined names.
+  *Re-measured 2026-08-03 (after Stage 4):* E701 **1215**, E722 66, F841 70,
+  F821 **37**. The two lost F821s are the `voigt.py` `SourceModule` pair the
+  Stage 4 GPU port removed — see the last bullet below. Reproduce with
+  `ruff check --isolated --select F821 alis/`: **`--isolated` is required**,
+  because every file listed here is in `extend-exclude`, so a plain
+  `ruff check alis/` reports "All checks passed" and tells you nothing.
 - **Do black + isort first, ruff by hand.** Black is AST-preserving and so
   cannot change behaviour; `ruff --fix` is *not* safe to apply blindly here --
   it auto-removes "unused" imports (F401), which breaks side-effect imports,
   and E711 (`== None` -> `is None`) is a genuine semantic change for numpy
   arrays, where `arr == None` returns an array and `arr is None` a bool. ALIS
-  has 6 live `== None` / `!= None` comparisons (`main.py` x2, `minimise.py`,
-  `model_eval.py`, `load.py`).
+  has **5 live** `== None` / `!= None` comparisons (`main.py:483,489`,
+  `minimise.py:1422`, `model_eval.py:653`, `load.py:22`), plus one commented out
+  at `minimise.py:1833`. (Verified 2026-08-03; the doc previously said 6 live,
+  which counted the commented one.)
 - Each file must stay green under the Stage 0 gate as it is un-excluded; do it
   in small batches, not one sweep, so a regression stays attributable.
 - **F821 undefined names are real latent bugs, not style** (found 2026-07-30,
@@ -63,12 +71,28 @@
     `voigtconv.py:70,73`, `vsigma.py:63,66`. That branch raises `NameError` if
     reached; the shipped examples only use scalar resolution, so no test
     covers it.
-  - `alis/plot.py` ~698-725: ~20 references to an undefined `slf`.
+  - `alis/plot.py` **700-735: 23** references to an undefined `slf` (re-counted
+    2026-08-03; previously recorded as ~698-725/~20).
   - `alis/prepfit/specplot.py:391`: `self` used at module scope.
   - `alis/convergence.py:188` `nput`; `alis/functions/lsfspline.py:221`
     `sidlist`; `alis/functions/chebyshev.py:73` `sys` (missing import).
-  - `SourceModule` in `constant.py`/`linear.py`/`voigt.py` is the dead PyCUDA
-    scaffolding -- removed as part of the Stage 4 GPU port, not here.
+  - **`alis/load.py:611` calls `imp.load_source(...)` and `imp` is neither
+    imported nor importable** — the module was deleted from the standard library
+    in Python 3.12, and ALIS targets 3.13. Found 2026-08-03; not previously
+    recorded. This is the worst of the F821s because the call sits inside
+    `try: ... except: msgs.error("Could not import module {0:s}")`, so the
+    `NameError` is swallowed and reported as a missing user module: the
+    `systmodule=` (user systematics module) feature is **dead**, and anyone using
+    it is told their own file is at fault. No test covers it because every
+    `systmodule=` line in the repo is commented out (three DH context models).
+    Replace with `importlib.util.spec_from_file_location`, and narrow the bare
+    `except` so a real import error is still distinguishable.
+  - `SourceModule` is the dead PyCUDA scaffolding. The Stage 4 GPU port removed
+    it from `voigt.py` (which now has no PyCUDA remnant at all), so what is left
+    is **`constant.py:38` and `linear.py:39`** — plus a commented-out
+    `#from pycuda.compiler import SourceModule` in `lineemission.py`,
+    `lsfspline.py`, `phionxs.py`, `splineabs.py`, `main.py` and `model_eval.py`.
+    Clear the remaining two here.
 
 **6.4 — Unit tests for this stage's stable surface (do last).**
 - Following the cross-cutting unit-test policy

@@ -244,7 +244,7 @@ to add for ALIS development. All skills should be prepared according to the stru
 |-------|-------------|----------|
 | `run-tests` | Run the ALIS pytest suite, optionally filtering by module or test name; reports pass/fail counts and tracebacks for any failures | [.claude/skills/run-tests/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/run-tests/SKILL.md) |
 | `run-example` | Run a named example from `examples/` with the current version of ALIS and verify it converges to the expected result | [.claude/skills/run-example/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/run-example/SKILL.md) |
-| `new-alfunc` | Scaffold a new model-function module (`alfunc_<name>.py`) from the `alfunc_base` interface, filling in all required methods and docstrings | [.claude/skills/new-alfunc/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/new-alfunc/SKILL.md) |
+| `new-alfunc` | Scaffold a new model-function module (`alis/functions/<name>.py`) from the `Base` interface in `alis/functions/base.py`, filling in all required methods and docstrings | [.claude/skills/new-alfunc/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/new-alfunc/SKILL.md) |
 | `build-docs` | Build the Sphinx documentation locally (ReadTheDocs target) and report any warnings or broken cross-references | [.claude/skills/build-docs/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/build-docs/SKILL.md) |
 | `check-fit` | Parse ALIS output files (`.mod.out`) and summarise fit quality: per-region reduced chi-squared, free-parameter count, and any convergence warnings | [.claude/skills/check-fit/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/check-fit/SKILL.md) |
 | `profile-fit` | Profile an ALIS fit with `cProfile` / `line_profiler`, identify the top bottlenecks, and suggest optimisation targets ahead of GPU porting | [.claude/skills/profile-fit/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/profile-fit/SKILL.md) |
@@ -260,7 +260,7 @@ to add for ALIS development. All skills should be prepared according to the stru
 
 | Skill | Description | Location |
 |-------|-------------|----------|
-| `port-to-gpu` | Port an existing `call_CPU` model function to `call_GPU` using CuPy or numba CUDA, following the `alfunc_base.Base` interface; verifies numerical equivalence against the CPU version | [.claude/skills/port-to-gpu/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/port-to-gpu/SKILL.md) |
+| `port-to-gpu` | Port an existing `call_CPU` model function to `call_GPU` using CuPy or numba CUDA, following the `Base` interface in `alis/functions/base.py`; verifies numerical equivalence against the CPU version | [.claude/skills/port-to-gpu/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/port-to-gpu/SKILL.md) |
 | `gpu-benchmark` | Benchmark CPU vs GPU throughput for a given ALIS model function or full fit, and report the speedup | [.claude/skills/gpu-benchmark/SKILL.md](https://github.com/rcooke-ast/ALIS/blob/alis_v2/.claude/skills/gpu-benchmark/SKILL.md) |
 
 **Unit test generation**

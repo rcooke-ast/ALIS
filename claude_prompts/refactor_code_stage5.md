@@ -12,9 +12,10 @@
 > Complete **in the order below** (RJC, Q5.10): the writer round-trip
 > (5.4) first, because it is the one with a user-visible correctness
 > payoff and 5.5's round-trip tests need it in place; then the atomic
-> data (5.2), the plotting script (5.3), and the unit tests (5.5). **5.6 was
-> added on 2026-08-02 and is unscheduled pending Q5.14** — it must be settled
-> before 5.2, since 5.2 rewrites the same loader.
+> data (5.2), the plotting script (5.3), and the unit tests (5.5). **5.6 is
+> DONE** (2026-08-02/03): it was added mid-stage, fixed, and its references
+> regenerated, so it no longer blocks 5.2 — but 5.2 rewrites the same loader
+> and must preserve what 5.6 established.
 > **The numbers are kept as they were** rather than renumbered, so that
 > references from Stage 6.6, the appendices below and the logs stay
 > valid. 5.1 is dropped and is listed last for the record.
@@ -29,12 +30,47 @@
 > hand-fixed `<name>.mod.out.reference_adjusted` in `tests/` (currently
 > `examples/lsf_hst`, `examples/spline/…_splineContAbs`) should be removed so
 > the gate uses the plain reference.
+>
+> **Which references 5.4 moves (measured 2026-08-03) — see Q5.20.** Not all of
+> them, but not none either. `compare.compare_mod_out` ignores the `data read`
+> block entirely and compares chi-squared, DOF and the model/convolution/shift
+> sections; within a section `_compare_value_line` (`tests/compare.py:281-298`)
+> compares **token by token**, failing on a differing token count, keyword name
+> or suffix. So:
+> - **Data-line fixes are free.** The `lsf` `=`->`:` echo and the new
+>   `loadrange=` are both in the data line, which is not compared. **0 references
+>   move.**
+> - **Model-line fixes are not.** Dropping `locations=` changes the token count;
+>   giving `damping=0.0000000` its fixed-status suffix changes the suffix. Both
+>   trip the comparison. **6 of 41 references move:** the three `helium34`
+>   (`Her36`, `HD319718`, `tet02OriA`) for damping, and
+>   `examples/splineabs/{fit_spectra,fit_spectra_linear}` plus
+>   `examples/spline/fit_spectra_splineContAbs` for locations.
+>
+> These are cheap to regenerate (the six are seconds-to-~75s each, not the
+> 2.5-hour full harness), and the change is **cosmetic by construction** — the
+> writer emits a different keyword token for the same fit. So verify rather than
+> assume: after regenerating, diff each new reference against the old and confirm
+> that *only* the `damping=`/`locations=` tokens differ, with chi-squared, DOF and
+> every parameter value byte-identical. If anything else moves, the writer fix has
+> changed the fit and must be reverted.
 - **`lsf` keyword echo.** The writer emits `resolution=lsf(name=STIS,grating=…)`
   but the reader requires colons (`lsf(name:STIS,grating:…)`); re-reading a saved
-  `.mod.out` crashes. Emit the reader's syntax. (`examples/lsf_hst`.)
+  `.mod.out` crashes. Emit the reader's syntax. (`examples/lsf_hst`.) Confirmed
+  2026-08-03 against `fit_spectra.mod.out.reference_adjusted`, whose only
+  difference from the plain reference is exactly that `=` -> `:` swap **inside
+  the `lsf(...)` parentheses only** — the surrounding `specid=`/`fitrange=`
+  keywords keep their `=`. Note this is the sub-keyword separator inside a
+  resolution function's argument list, so the fix belongs where the resolution
+  string is composed (`save.py:537-540`), not in a blanket substitution.
 - **`splineabs` `locations=` echo.** The writer emits an empty `locations=`
   keyword whose element count no longer matches the parameters; re-reading
   crashes. Emit a valid (or omitted) `locations=`. (`examples/…_splineContAbs`.)
+  **Omission is the intended answer** — RJC's hand-fixed
+  `fit_spectra_splineContAbs.mod.out.reference_adjusted` drops the keyword and
+  its trailing whitespace entirely (2 lines, one live and one commented), so
+  match that rather than synthesising a locations list. Verified 2026-08-03 by
+  diffing the adjusted reference against the plain one.
 - **Explicit default `damping=0.0000000`.** The writer prints the voigt default
   damping as a *suffixless* keyword, which on re-read becomes a **free**
   parameter (implicit default is fixed) and changes the DOF (helium34: DOF 618
@@ -60,27 +96,63 @@
   resolution in the data line (e.g. `vfwhm(0.075va)`); because ALIS sizes the
   pixel-load buffer from the resolution at load time, re-reading loads a
   different pixel set.
-- **Resolved design (Q5.5, RJC 2026-08-01):** add a **new data-line keyword
-  giving the number of extra pixels to load either side of the `fitrange`**,
-  defaulting to **30 per side**, so the buffer no longer depends on a fittable
-  parameter. Keep the existing per-example `vfwhm` workaround as a check rather
-  than removing it. Warn when the loaded buffer is **insufficient for the fit
-  range**, and warn separately when **fewer than 30 pixels are available** on a
-  side, telling the user to adjust the keyword.
-  *Constraint:* the default must reproduce the current pixel selection for every
-  existing example, so the Stage 0 gate stays **bitwise** across this change —
-  verify that before adopting 30 as the default, and if 30 does not reproduce
-  it, say so rather than regenerating references.
+- **Design superseded (Q5.5 -> Q5.16, RJC 2026-08-02).** Q5.5 originally asked
+  for a data-line keyword defaulting to **30 extra pixels per side**. Measurement
+  killed the default: the current buffer is not a pixel count at all, but
+  **10 sigma of the instrumental profile in wavelength** (`vfwhm.getminmax`,
+  `alis/functions/vfwhm.py:122`, called from `load.load_data` at
+  `alis/load.py:867` and `:886`). That
+  comes to 10-12 pixels for the narrow-resolution examples but **~3491**
+  (`lsf_hst`) and **~4697** (`voigtconv`) for the broad ones — so a flat 30 would
+  change the loaded pixels for *every* example (breaking the bitwise gate) and
+  truncate the broad-LSF convolutions by two orders of magnitude. RJC agreed to
+  all three parts of the replacement:
+  1. **Write the concrete `loadrange` into `.mod.out`.** This is the actual fix
+     for the round-trip: record the range that was *loaded*, so re-reading
+     selects the same pixels whatever the fitted resolution became. It changes
+     no first-run behaviour, so the Stage 0 gate stays **bitwise** and no
+     reference moves.
+  2. **Extra-pixels keyword as an optional override, with no default** — the
+     resolution rule stays in charge unless the user asks otherwise.
+  3. **Keep the "insufficient buffer" warning**, based on the resolution width
+     rather than a flat 30.
+  *Where the fix goes.* `save.save_model` builds the output data line at
+  `alis/save.py:518-554` by copying the **input** line and substituting only
+  `resolution=` and `shift=` (lines 537-546); every other keyword, `loadrange=`
+  included, passes through verbatim. So today a model with no `loadrange=` in it
+  writes none, and the re-read recomputes the buffer from the fitted resolution.
+  The fix is to insert/replace `loadrange=[wmin,wmax]` in that loop from the
+  loaded extent (`slf._wavefull[sp][ll:lu]`).
+  *Expressiveness — checked 2026-08-03, the design holds.* A single `loadrange=`
+  keyword per data line is only enough if a line maps to exactly one loaded
+  range. Measured by instrumenting `load_data` and counting `_posnfull` snips
+  against live data lines:
+
+  | model | data lines | snips |
+  |---|---|---|
+  | metal_line_abs, lsf_hst, voigtconv, CNabs, summed_coldens, lls | 1 | 1 |
+  | DH/Q1243p307 | 51 | 51 |
+  | DH_orders/Q1243p307 | 351 | 351 |
+
+  One data line = one snip in every case, and the writer's loop emits one output
+  line per input line (`spmatch` breaks on the first `specid` keyword, and
+  specids are unique), so the mapping is 1:1 end to end.
 
 **5.2 — Atomic data modernisation.**
 - Replace `atomic.xml` with a human-readable, whitespace-aligned ECSV table
   (`astropy` is already a dependency): self-describing header, obvious rows, no
   manual `nrows`. Provide a converter from the current `atomic.xml`, and
   validation (units, duplicates).
-- **Decided (Q5.6, RJC 2026-08-01):** `atomic.ecsv` becomes the default and the
-  only file ALIS loads. `atomic.xml` is **kept in the repository but no longer
-  read**, as a reference for users who want to see the old format — so the XML
-  reader does not need to stay on the load path.
+- **Decided (Q5.6, RJC 2026-08-01; amended by Q5.17, RJC 2026-08-02):**
+  `atomic.ecsv` becomes the **default**, and `atomic.xml` is kept in the
+  repository. Q5.6 originally said the XML would no longer be read at all; Q5.17
+  supersedes that — **the VOTable reader stays on the load path** so a user's own
+  `.xml` still works, and reading one emits a **deprecation warning**. That
+  warning should tell the user what to do instead: ask RJC to include the new
+  atomic data in the shipped ECSV, or run the converter.
+- **Ship the converter as a script in `alis/data/`** (Q5.17), not as a one-off
+  used to produce `atomic.ecsv` and then discarded — users need it to bring their
+  own XML forward. It is also what the row-by-row equality check below runs on.
 - **Merge decision — settled (Q5.8, RJC 2026-08-01). `atomic.ecsv` is
   `atomic.xml` plus exactly 15 rows, and nothing else:**
   - take the **15 3He I lines** from `atomic_rjc2.xml` (now at
@@ -103,14 +175,36 @@
   those fits uses.
 - **Constraint (RJC, Q5.14): the conversion must not change a single value.**
   `atomic.xml` -> `atomic.ecsv` is a faithful transcription plus the 15 3He rows
-  already agreed, and nothing else. In particular the isotopes that carry two
-  different `AtomicMass` values (24Mg, 28Si, 47Ti, 56Fe) are **left exactly as
-  they are** — that is deliberate, because some transitions account for isotopes
-  and some do not. The conversion needs a row-by-row equality check against the
-  XML so a transcription error cannot slip in.
+  already agreed, and nothing else. The conversion needs a row-by-row equality
+  check against the XML so a transcription error cannot slip in.
+  **Amended by 5.6 (2026-08-02):** the second half of this bullet used to say the
+  isotopes carrying two different `AtomicMass` values (24Mg, 28Si, 47Ti, 56Fe)
+  were to be left as they are. That is no longer the state of the file — 5.6
+  changed 80 rows so each isotope carries **one** mass (RJC chose the isotopic
+  value in all four cases). Transcribe the **current** `atomic.xml`; the
+  duplicate-mass condition no longer exists to preserve.
+- **Do not regress 5.6 while rewriting the loader.** `load_atomic` now builds
+  `Element`/`AtomicMass` as a single isotope -> mass mapping; the ECSV path must
+  produce the same mapping, not two independently de-duplicated lists.
+  `tests/test_atomic_mass.py` is deliberately split so most of it survives this
+  change untouched — only the **format-specific** half (which parses the VOTable
+  directly, via `_file_masses`) needs a matching ECSV reader adding. The
+  format-agnostic half, which recovers the mass from the broadening ALIS actually
+  computes, must pass **unaltered** across the switch; if it needs editing to
+  pass, the conversion has changed a value.
 - Validation must include a **duplicate check keyed on Element+Ion+RestWave
   ignoring MassNumber** — that is exactly the check that would have caught the
   mislabelled isotopes. It should *report*, not modify.
+- **Tidy the data-directory lookup while in there.** `load_atomic`
+  (`alis/load.py:432-443`) locates `alis/data/` by string-splitting
+  `argflag['run']['prognm']` on `'/'` and re-joining everything before the last
+  separator. It works, but it is path-separator-specific and makes `prognm` look
+  like it must name a real file when only its directory is ever used — to the
+  point that `tests/test_atomic_mass.py` sets it to `alis/alis.py`, which has not
+  existed since the Stage 2 reorganisation, and the tests pass anyway. Replace
+  with `os.path.dirname` / `importlib.resources`, and fix the test's path so it
+  stops advertising a dead filename. Keep `run atomic <file>` resolving both an
+  explicit path and a bare name in `alis/data/`, exactly as now.
 
 **5.3 — Plotting-script output.**
 - Add an option to emit a **self-contained** matplotlib script that reproduces
@@ -119,6 +213,33 @@
   scripts `import plotting_routines as pr`, which is **not** in the directory —
   "self-contained" means the emitted script must not depend on it, so whatever
   it needs from `pr` has to be inlined.
+- **Settings: a new `plotscript` section (Q5.18, RJC 2026-08-02).** Not a single
+  `out plotscript` value — RJC asked for a section with customisable sub-settings,
+  because these all become editable from the interactive GUI in Stage 6.6, and
+  building the surface here is the point. The settings parser needs no change to
+  support this: `load.set_params` (`alis/load.py:186-229`) dispatches on
+  `linspl[0] in argflag.keys()`, so adding a `PlotScriptConfig` dataclass to
+  `ArgFlag` (`alis/config.py:320-334`, alongside `run`/`chisq`/`plot`/`out`/
+  `sim`/`generate`) makes `plotscript format DH` parse automatically.
+  - `plotscript format none|metals|DH` — **default `none`**; anything else emits
+    a script.
+  - `plotscript numcol auto|<int>` — `auto` uses the per-format default (3 for
+    `metals`, 2 for `DH`).
+  - `plotscript residuals True|False` — residual strip under each panel.
+  - `plotscript velrange auto|<vmin>,<vmax>` — e.g. `-150,150`.
+  - RJC invited further settings. Suggested, all defaulting to the current
+    hard-coded behaviour of the `context/plotting/` references so the emitted
+    script is unchanged unless asked: `plotscript filename` (output path, default
+    `<model>.mod.plot.py`), `plotscript ylim`, `plotscript fontsize`,
+    `plotscript figsize`, `plotscript labels True|False` (ion/transition
+    annotation per panel), and `plotscript overwrite True|False` matching
+    `out overwrite`.
+  - *Parser note for typed values:* `set_params` reads exactly one whitespace-
+    delimited token (`linspl[2]`) and converts by the **type of the default**. A
+    field that must accept both `auto` and `3`, or both `auto` and `-150,150`,
+    should default to `None` — that branch (lines 211-223) infers list/float/int/
+    str — with normalisation in `check_argflag`. Values containing a space will
+    not parse, so keep them comma-separated.
 - **Modes (Q5.7/Q5.9):**
   - `none` — emit nothing;
   - `metals` — panels **three columns** wide, as many rows as needed, with the
@@ -145,19 +266,21 @@
   GUI after a fit completes.
 
 **5.6 — Atomic masses are read off by one.
-[FIXED 2026-08-02 — RJC confirmed the bug independently and chose the isotopic
+[DONE 2026-08-03 — RJC confirmed the bug independently and chose the isotopic
 mass for all four conflicting isotopes. `atomic.xml` made self-consistent (80
 rows), `load_atomic` now builds Element/AtomicMass as one mapping, and
 `tests/test_atomic_mass.py` (20 unit tests, in two layers so they survive the
 ECSV switch) asserts it end to end. Unit batch 470 -> 490.
-**The Stage 0 references have NOT been regenerated** — the fast batch is 39
-failed / 24 passed, which is the intended signal that the thermal width
-changed. See Q5.15 and `logs/refactor_code_stage5_log.md`.]**
+**References regenerated by RJC** with the new `regen_harness.sh` (42 cases), and
+the **full harness is green**: `pytest --run-slow` gives 613 passed, 31 skipped,
+0 failed in 2:23:48 — including the `slow`, `gpu` (40/40, `ngpus` 1 and 4) and
+`machine_dependent` batches. All 31 skips are the structural "no GPU
+implementation" ones. See Q5.15 and `logs/refactor_code_stage5_log.md`.]**
 > RJC's Q5.14 response is that the lookup is by element name, so a shared mass
 > number cannot cause a problem. That is what the code *intends*; the measurement
 > below is what it *does*. Re-checked end-to-end rather than by reading the code.
 
-- **Probe inserted at the point of use** (`voigt.py:336`, the line that computes
+- **Probe inserted at the point of use** (`alis/functions/voigt.py:336`, the line that computes
   the Doppler width) and `examples/metal_line_abs` run normally:
 
 ```
@@ -288,6 +411,23 @@ have never actually received it — their committed references were produced wit
 crashes them). Since the two files disagree on the O I lambda-918-920
 wavelengths by up to 4.5 km/s, the `run atomic` lines are not only dead but
 misleading. See Q5.13.
+
+### Audit addendum (2026-08-02, third pass)
+
+Re-checked after 5.6 landed. Everything the doc names is still correct:
+`save.save_covar`'s `rstrip` is still at `alis/save.py:657-658`, the
+`_ZERO_DAMPING_RE` workaround is still at `tests/alisrun.py:71`, both
+`.mod.out.reference_adjusted` files still exist, `brokenpowerlaw` is still
+excluded, and `load_data`/`load_ascii`/`load_fits` are unchanged. The three
+`atomic_*.xml` are now in `context/atomic/`.
+
+**One consequence of the regeneration worth recording for 5.4.** The two
+`.mod.out.reference_adjusted` files are hand-made and cannot be produced by a
+run, so `regen_harness.sh` leaves them alone -- which left them holding the old
+parameters while the plain references held the new ones, and the mode-(b)
+`lsf_hst` test failed until they were refreshed by re-applying the same hand-fix
+to the new plain reference. 5.4 removes the need for both files, and should
+delete them.
 
 ## Appendix (answers Q5.3) -- what `metal_line_abs` looks like in YAML
 
@@ -731,7 +871,7 @@ converting from xml to ecsv.
 **Q5.15 — Atomic mass, re-verified (task 5.6).** Your Q5.14 answer is that the
 lookup is by element name so a shared mass number is harmless. That is what the
 code intends, but I have now measured it end-to-end rather than read it: a probe
-on `voigt.py:336` during a normal `metal_line_abs` run prints
+on `alis/functions/voigt.py:336` during a normal `metal_line_abs` run prints
 `ion=16O_I mass_used=20.18` — neon's weight, not oxygen's. The cause is that
 `load_atomic` de-duplicates `Element` and `AtomicMass` *separately*, so the
 index found in one list is used in the other and they align only by luck.
@@ -746,10 +886,165 @@ If you would still rather leave it, say so and I will drop it and note it as
 accepted behaviour. If you want it fixed, the choice is the same as before:
 regenerate the references in one labelled commit, or hold that for a release.
 
-**Response:**
+**Response:** OK, this bug is now resolved. Thanks for identifying the issue,
+and helping to find a solution using the script I started in the `context/atomic/` directory.
+
+**Q5.16 — The fixed pixel buffer (5.4) would break more than it fixes.** Your
+Q5.5 design adds a data-line keyword for the number of extra pixels either side
+of the fitrange, defaulting to 30. Before implementing I measured what the
+*current* rule loads. It is not a pixel count at all: `load_data` calls the
+resolution function's `getminmax`, which extends the fitrange by **10 sigma of
+the instrumental profile in wavelength** (`alis/functions/vfwhm.py:122`).
+Across the shipped
+examples that comes to:
+
+| example | buffer pixels per side |
+|---|---|
+| CNabs | 10 |
+| metal_line_abs, lls, summed_coldens | 12 |
+| lsf_hst | ~3491 |
+| voigtconv | ~4697 |
+
+So a fixed 30 would (a) change the loaded pixels for *every* example, breaking
+the bitwise gate you have just regenerated, and (b) cut `lsf_hst` and
+`voigtconv` by **two orders of magnitude** -- and those are exactly the cases
+with broad instrumental profiles, where the buffer exists so the convolution is
+not truncated at the fitrange edges. 30 pixels would corrupt the model there.
+
+There is a way to fix the actual bug -- a saved model reloading a different
+pixel set -- with **no change to the buffer rule and no reference movement**:
+have the writer record the **loaded wavelength range** in the `.mod.out` data
+line. `loadrange=` already exists as a keyword and is already echoed when the
+user sets it, but it is never written with the range the resolution rule
+produced. Emit that, and re-reading a `.mod.out` loads exactly the same pixels
+whatever the fitted resolution became.
+
+Proposed: (1) write the concrete `loadrange` into `.mod.out` -- fixes the
+round-trip, bitwise-safe; (2) add your extra-pixels keyword as an **optional
+override** for users who want explicit control, with no default so the
+resolution rule stays in charge; (3) keep the "insufficient buffer" warning you
+asked for, based on the resolution width rather than a flat 30. Does that meet
+what you were after, or do you specifically want the flat default?
+
+**Response:** I agree on all three suggestions.
+
+**Q5.17 — Should `load_atomic` still read VOTable after 5.2?** Q5.1 says
+`atomic.xml` should be "retained as a supported input during a deprecation
+period"; Q5.6 says it should be kept in the repo but "won't be loaded or used".
+Those point different ways: the first keeps a VOTable branch in `load_atomic`
+(so a user's own `.xml` still works), the second lets 5.2 delete it and read
+ECSV only. Which do you want? I lean on keeping the reader -- it is ~10 lines,
+`run atomic` accepts any filename, and users will have their own XML files --
+with ECSV as the shipped default and a deprecation warning when an XML is read.
+
+**Response:** OK, I agree with your suggestion. Let's maintain support for the
+xml format for now, and warn users if they are using a format that is about to
+be deprecated. We should also encourage users to request RJC to include new
+atomic information in the ECSV file or provide a python script in `alis/data/`
+that converts an xml file into an ecsv file.
+
+**Q5.18 — What setting selects the plotting mode (5.3)?** The three modes need
+a name in the model file. `out plots` is already taken (the PDF ALIS itself
+writes), so I suggest a sibling: `out plotscript none|metals|DH`, written beside
+the `.mod.out` as `<model>.mod.plot.py`. Happy to use another name/section if
+you have a preference -- and should the script be emitted on every run that
+sets it, or only when the fit completes successfully?
+
+**Response:** We should set `out plotscript none` as the default, and users can
+override this option in their `.mod` file. If `out plotscript` is not `none` then
+a plotting script will be produced. Another alternative is to provide a little more
+control to the user, by changing the three word output to something like
+`plotscript format none|metals|DH` and then their can be customisable settings like
+`plotscript numcol auto` (which would automatically select the number of columns, or, users can enter a number `3` that would set 3 columns as the default)
+`plotscript residuals True` (Show the residuals at the bottom of each panel)
+`plotscript velrange auto` (automatically set the velocity range of the plot, or users can select a two column list `-150,150`)
+These are just some examples, and if you think other settings would be helpful, feel free to add additional options. All of these settings will become customisable in a later stage when we incorporate an interactive plotscript tool as part of the GUI, so preparing some of that here might be beneficial. 
+
+**Q5.19 — `CLAUDE.md` names three files that no longer exist.** Not a Stage 5
+task, but it is the standing instruction file I read every session, so it is
+worth correcting before it misleads a later stage:
+
+| `CLAUDE.md` says | actual |
+|---|---|
+| "The entry point is `alis/alis.py`, which contains `ClassMain`" | `ClassMain` is at `alis/main.py:67`; `alis/alis.py` does not exist |
+| "Model fitting functions are defined in `alis/alfunc_*.py` files" | `alis/functions/*.py` |
+| "messaging ... through the `msgs` object (`almsgs.msgs()`)" | `almsgs.py` does not exist; `msgs()` is at `alis/logger.py:161` |
+
+("Atomic data are stored in `alis/data/atomic.xml`" is still right, and becomes
+`atomic.ecsv` in 5.2.) Shall I update those three lines? They are one-line
+corrections and I would rather not edit your instruction file uninvited. The
+same reorganisation is presumably unrecorded in the Stage 6+ prompt files too --
+say the word and I will sweep those for stale paths in the same pass.
+
+**Response:** Yes, please fix those three lines in CLAUDE.md. Also, if you can do
+a sweep of the Stage 6+ prompt files, that would be great. Thanks!
+
+**Outcome (2026-08-03).** Both done. The sweep of the forward-looking prompt
+files turned up more than paths:
+
+- **`CLAUDE.md`** -- three lines fixed (`alis/main.py`, `alis/functions/*.py`,
+  and the `from alis import logger` / `logger.msgs()` idiom).
+- **`refactor_code_stage6.md`** -- the 6.3 lint measurements had drifted and one
+  claim was wrong. Re-measured: E701 1215 (was 1217), F821 **37** (was 39),
+  E722/F841 unchanged; `== None` is **5 live**, not 6 (the sixth is commented
+  out); `plot.py`'s undefined `slf` is **700-735, 23 refs**, not ~698-725/~20;
+  and `SourceModule` is **no longer in `voigt.py`** (Stage 4's GPU port removed
+  it -- that is exactly the 39 -> 37 drop), leaving `constant.py:38` and
+  `linear.py:39`. Also recorded that `--isolated` is required to reproduce any of
+  this, since every file concerned sits in ruff's `extend-exclude`.
+- **A new latent bug found during that check** -- `alis/load.py:611` calls
+  `imp.load_source(...)`, but `imp` is neither imported nor importable (removed
+  from the stdlib in Python 3.12; ALIS targets 3.13). It is swallowed by a bare
+  `except` and reported as a missing *user* module, so `systmodule=` is dead and
+  misreports whose fault it is. Written up under 6.3.
+- **`context.md` / `setup.md`** -- the `new-alfunc` and `port-to-gpu` rows in the
+  skills tables still described the pre-Stage-2 `alfunc_<name>.py` /
+  `alfunc_base` convention (4 rows, now corrected). The `SKILL.md` files
+  themselves were already right. The surrounding prose in those two files
+  describes the *pre-refactor* code deliberately ("In the current version of
+  ALIS, the file alis.py ...") and was left alone, as were `stage2.md`,
+  `ALIS_v2_code_plan.md` and everything under `logs/`, which are historical
+  records. `stageX.md` and `refactor_code_unit_tests.md` were already clean.
+
+**Q5.20 — 5.4 moves 6 of the 41 references; may I regenerate them?** You asked
+in Q5.5 that I say so rather than regenerate silently, so: the Q5.16 `loadrange`
+work is genuinely reference-neutral, but two of 5.4's other items are not.
+`compare_mod_out` skips the `data read` block, so the `lsf` `=`->`:` fix and the
+new `loadrange=` cost nothing. The model section, though, is compared token by
+token — so dropping the empty `locations=` (token count) and giving
+`damping=0.0000000` its fixed-status suffix (suffix mismatch) both fail against
+the current references. Affected:
+
+| fix | references |
+|---|---|
+| `damping=` | `helium34/{Her36,HD319718,tet02OriA}` |
+| `locations=` | `examples/splineabs/{fit_spectra,fit_spectra_linear}`, `examples/spline/fit_spectra_splineContAbs` |
+
+That is minutes of runtime, not the 2.5-hour full harness. The change is cosmetic
+by construction — the same fit, a different keyword token — so I would verify
+rather than assume: regenerate those six, then diff each against its predecessor
+and confirm **only** the `damping=`/`locations=` tokens differ, with chi-squared,
+DOF and every parameter value byte-identical. Anything else moving would mean the
+writer fix changed the fit, and I would revert rather than accept it.
+
+Three ways to go: (a) I regenerate those six myself as part of 5.4 and report the
+diffs; (b) I make the code change and you run `regen_harness.sh` for those cases,
+as you did for 5.6; (c) I implement only the reference-neutral items now
+(`lsf`, `loadrange`, the `rstrip` tidy) and we hold `damping`/`locations` for a
+release. I would suggest (b) — it keeps regeneration in your hands, which is
+where it has been all stage, and the six are quick.
+
+Note the two `.reference_adjusted` files cannot be dropped until *both* the
+`lsf` and `locations` fixes are in, since one exists for each.
+
+**Response:** Let's go with option (a), that you regenerate those six references
+yourself as part of 5.4. I can use the git diffs to verify the changes.
 
 ## Prompts
 
 1. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing (please check all filenames mentioned in this document reflect all updates to the code so far, and update as needed). Ask further queries if needed.
 
-2. 
+2. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing (please check all filenames mentioned in this document reflect all updates to the code so far, and update as needed). Ask further queries if needed. I am currently running the fast and medium test suite in the background. Assuming it passes, please check in the meantime if you have any further queries about the tasks in this stage.
+
+3. Please read this doc, including my responses to your queries, and check if any updates need to be made to this document before commencing. Ask further queries if needed.
+
