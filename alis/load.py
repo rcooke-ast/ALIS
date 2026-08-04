@@ -1263,18 +1263,23 @@ def load_fits(filename, colspl, wfe, verbose=2, ext=0, datatype='default'):
         try:
             contin = datain[wfe['continuum'],:].astype(float)
             msgs.warn("Data found in column {0:d} for the file -".format(wfe['continuum']+1)+msgs.newline()+filename+msgs.newline()+"will not be used for the continuum", verbose=verbose)
-            contin = np.zeros(wavein.size).astype(float)
+            contin = np.ones(wavein.size).astype(float)
         except:
             msgs.warn("A continuum was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
             msgs.info("The continuum will be output for the above file", verbose=verbose)
-            contin = np.zeros(wavein.size).astype(float)
-    else: contin = np.zeros(wavein.size).astype(float)
+            contin = np.ones(wavein.size).astype(float)
+    else: contin = np.ones(wavein.size).astype(float)
     # Read in the zero-level
     if wfe['zerolevel'] != -1:
         try:
             zeroin = datain[wfe['zerolevel'],:]
             msgs.warn("Data found in column {0:d} for the file -".format(wfe['zerolevel']+1)+msgs.newline()+filename+msgs.newline()+"will not be used for the zero level", verbose=verbose)
-            contin = np.zeros(wavein.size).astype(float)
+            # zeroin, not contin: this branch discards the zero level it just
+            # read and substitutes the default, mirroring the continuum branch
+            # above. Writing to contin was harmless while contin was zeros
+            # either way, but it now undoes the continuum default whenever a
+            # zerolevel column is given (Stage 5.5).
+            zeroin = np.zeros(wavein.size).astype(float)
         except:
             msgs.warn("A zero-level was not provided as input for the file -"+msgs.newline()+filename, verbose=verbose)
             msgs.info("The zero-level will be output for the above file", verbose=verbose)

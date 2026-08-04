@@ -51,7 +51,7 @@ no golden files — so they run in seconds and localise failures to a single
 function. They cover the pure logic added/refactored through Stages 1–3
 (`utils` conversions, `config` dataclasses, the Stage 3.4 cache/Jacobian helpers
 in `minimise`, `convergence`, the `report` residual math, and the stable
-non-I/O parts of `load` and `logger`).
+non-I/O parts of `load` and `logger`), plus the Stage 4–5 additions below.
 
 ```bash
 pytest -m unit                                   # whole unit batch (seconds)
@@ -60,15 +60,29 @@ pytest -m unit --cov=alis --cov-report=term-missing   # with a coverage report
 
 The `unit` batch runs on every push via the `unit` CI job (Ubuntu + macOS,
 py3.13), which also prints the coverage report (no threshold gate — modules are
-still evolving). File-format I/O loaders and GPU code are intentionally excluded
-here; their unit tests are added in the stage that reshapes them (I/O in
-Stage 5, GPU in Stage 4). See `claude_prompts/refactor_code_unit_tests.md`.
+still evolving). See `claude_prompts/refactor_code_unit_tests.md`, which
+deferred the file-format loaders and GPU code to the stages that reshape them.
+Both deferrals are now discharged — GPU in Stage 4, I/O in Stage 5:
 
-Two of these files are checked in a second way, because a test over an interface
-can pass while asserting nothing: `test_function_interface.py` (Stage 4.4) and
-`test_shared_arrays.py` (Stage 4.5) were each run against deliberately broken
-versions of the code they cover, and every invariant was confirmed to fail on
-the mistake it names. Keep that property when adding to them.
+| file | what it covers |
+|---|---|
+| `test_load_files.py` | `load_ascii` / `load_fits` / `load_userdata` / `load_data`, on synthetic fixtures written into `tmp_path` |
+| `test_load_model.py` | the `.mod` model-block parser: named vs positional parameters, tie labels, `fix` and `lim` |
+| `test_save_helpers.py` | the writer: `print_model`, the data line it rebuilds, `save_covar`, and a save-then-reload round trip |
+| `test_writer_round_trip.py` | the other half of the round trip — re-reading all 40 committed `.mod.out.reference` files |
+| `test_atomic_mass.py`, `test_plotscript.py` | Stage 5.2 and 5.3 |
+
+`tests/conftest.py` provides two fixtures these share: `logmsgs`, which collects
+what `msgs` emits (neither `capsys` nor `capfd` sees it — the shared 'alis'
+logger binds its stderr handler at import), and `atomic_data`, which loads
+`alis/data/atomic.ecsv` once per session.
+
+Several of these files are checked in a second way, because a test over an
+interface can pass while asserting nothing: `test_function_interface.py`
+(Stage 4.4), `test_shared_arrays.py` (Stage 4.5) and the three Stage 5.5 files
+above were each run against deliberately broken versions of the code they cover,
+and every invariant was confirmed to fail on the mistake it names. Keep that
+property when adding to them.
 
 ## Running the batches
 

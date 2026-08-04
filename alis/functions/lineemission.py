@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from alis import logger
-from alis.functions import voigt
+from alis.functions import base, voigt
 from scipy.special import wofz
 #import pycuda.driver as cuda
 #import pycuda.autoinit
@@ -139,6 +139,7 @@ class LineEmission(voigt.Voigt) :
             tieval=ival.lstrip('-+.0123456789')
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
+            base.check_tie_label(ival, tieval, self._idstr)
             try:
                 inval=float(ival.rstrip(tieval))
             except:

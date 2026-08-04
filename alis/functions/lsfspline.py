@@ -116,6 +116,7 @@ class SplineLSF(base.Base) :
             tieval=ival.lstrip('-+.0123456789')
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
+            base.check_tie_label(ival, tieval, self._idstr)
             try:
                 inval=float(ival.rstrip(tieval))
             except:

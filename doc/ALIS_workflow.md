@@ -254,6 +254,16 @@ ALIS identifies parameters by a label string that immediately follows the numeri
 | **UPPERCASE** (e.g., `0.5RA`) | Fixed parameter, labelled `RA`; all instances of `RA` are fixed at the *first* value encountered |
 | No label | Free parameter, independent of all others |
 
+**Scientific notation must carry a sign on the exponent** — write `1.0E+04` or
+`1.0e-3`, not `1e4`. Because the label follows the value with no separator,
+`1e4` is indistinguishable from "the value 1.0, labelled `e4`", and that is how
+ALIS would read it: two lines both written `1e4` would silently share one free
+parameter set to 1.0 rather than both being 10000. ALIS therefore rejects a
+label that is `e`/`E` followed only by digits, and tells you to add the sign or
+rename the label. A label that merely begins that way (`E5t`, `e345j`) cannot
+be a number and is accepted as an ordinary label. The same applies inside a
+resolution or shift function — `resolution=vfwhm(1e4)` is rejected too.
+
 **Global `fix` and `lim` commands** (inside the `model read` section, before `emission`):
 
 ```

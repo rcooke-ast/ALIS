@@ -110,34 +110,8 @@ def _file_masses(path):
     return out
 
 
-@pytest.fixture
-def logmsgs():
-    """Messages emitted through `msgs`, as a list of formatted strings.
-
-    The shared 'alis' logger's stderr handler binds its stream at import, so
-    neither capsys nor capfd sees these; attaching a handler is what
-    `tests/test_logger.py` does too.
-    """
-    import logging
-
-    from alis import logger
-
-    records = []
-
-    class _Collect(logging.Handler):
-        def __init__(self):
-            super().__init__(level=logging.DEBUG)
-
-        def emit(self, record):
-            records.append(record.getMessage())
-
-    log = logger.msgs()
-    handler = _Collect()
-    log.addHandler(handler)
-    try:
-        yield records
-    finally:
-        log.removeHandler(handler)
+# The `logmsgs` fixture used below now lives in tests/conftest.py -- four test
+# modules want it, so Stage 5.5 moved it there.
 
 
 @pytest.fixture(scope="module")

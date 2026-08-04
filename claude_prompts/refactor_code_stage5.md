@@ -18,8 +18,12 @@
 > and must preserve what 5.6 established.
 > **The numbers are kept as they were** rather than renumbered, so that
 > references from Stage 6.6, the appendices below and the logs stay
-> valid. 5.1 is dropped and is listed last for the record.
+> valid. 5.1 is dropped and is listed last for the record. **5.7 was added
+> mid-stage** (2026-08-04), on a parser ambiguity 5.5's tests ran into.
 > Log each in `ALIS/claude_prompts/logs/refactor_code_stage5_log.md`.
+>
+> **Stage 5 is complete**: 5.6, 5.4, 5.2, 5.3, 5.5 and 5.7 are all done and
+> green; 5.1 is dropped.
 
 **5.4 — Output-writer round-trip faithfulness (deferred from Stage 0).**
 > A saved `.mod.out` is documented to be a valid `.mod` input, but the Stage 0
@@ -398,17 +402,26 @@ implementation" ones. See Q5.15 and `logs/refactor_code_stage5_log.md`.]**
   require editing the atomic data, which RJC has ruled out — the data are fine;
   it is the loader that mis-pairs them.
 
-**5.5 — Unit tests for this stage's stable surface (do last).**
-> **Starting position (2026-08-04).** 5.6, 5.4, 5.2 and 5.3 are all implemented
-> and green; read `logs/refactor_code_stage5_log.md` before starting, it records
-> why each was built the way it was.
-> *Already delivered, do not redo:* the atomic loader/converter is covered by
-> `tests/test_atomic_mass.py` (29 tests) and the plotting emitter by
-> `tests/test_plotscript.py` (10). **Still outstanding:** `load_fits` /
-> `load_ascii` / `load_data`, the model parser, the writer round-trip helpers,
-> and the `.mod` -> `.mod.out` -> `.mod` round-trip over the shipped examples.
-> Baseline to beat: `pytest -m unit` = 509 passed, 31 skipped;
-> `pytest -m "unit or fast"` = 581 passed, 0 failed.
+**5.5 — Unit tests for this stage's stable surface (do last).
+[DONE 2026-08-04 — `pytest -m unit` 588 -> **682 passed, 31 skipped**; 700 after 5.7.]**
+> **Delivered across the stage:** the atomic loader/converter by
+> `tests/test_atomic_mass.py` (29), the plotting emitter by
+> `tests/test_plotscript.py` (10), the `.mod` -> `.mod.out` -> `.mod` round trip
+> by `tests/test_writer_round_trip.py` (79), and finally the deferred I/O
+> surface by `tests/test_load_files.py` (41, the file-format loaders),
+> `tests/test_load_model.py` (31, the model parser) and
+> `tests/test_save_helpers.py` (22, the writer helpers, the Stage 4 settings
+> echo and a save-then-reload round trip on a synthetic spectrum). All 94 of the
+> last three were confirmed to fail against five deliberate mutations of the
+> Stage 5.4 fixes. `tests/test_load_units.py` (22) already covered `cpucheck`,
+> `get_binsize`, `getis`, `load_tied`, `pinfl_changed` and `set_params`.
+> **Both findings were acted on.** `load_fits` returned a continuum of **zeros**
+> where `load_ascii` returns ones, which multiplied the model by zero for any
+> FITS spectrum with no continuum column; it was recorded in a labelled test
+> first, then fixed by RJC (2026-08-04), together with the companion slip in the
+> zero-level branch that would have defeated the fix. The second finding -- that
+> `1e4` parses as the value **1.0** tied to a label `e4` -- became task 5.7
+> below.
 >
 > Three practical things that cost time this stage:
 > - **`msgs` output reaches neither `capsys` nor `capfd`** -- the shared 'alis'
@@ -436,6 +449,29 @@ implementation" ones. See Q5.15 and `logs/refactor_code_stage5_log.md`.]**
   `_ZERO_DAMPING_RE` / `reference_adjusted` workarounds only exist because
   nothing pins it. Cover the Stage 4 settings the writer now echoes
   (`run backend`/`ngpus`/`gputhresh`/`shmem`) while doing so.
+
+**5.7 — Reject an unsigned exponent in a parameter value.
+[DONE 2026-08-04 — added mid-stage on the 5.5 finding.]**
+- ALIS's parameter micro-syntax packs the value and the tie label into one word
+  (`5.0da`), and the only exponent it recognises is a **signed** one. So `1e4`
+  is read as the value 1.0 tied to a label `e4`, and two lines both written
+  `1e4` silently share one free parameter. Nothing downstream can notice — `e4`
+  is a legal label.
+- **RJC's rule, implemented exactly:** reject a tie label that is `e`/`E`
+  followed by digits *and nothing else* (`e345`, `E45`, `e4`, `E5`, `E054`).
+  A signed exponent (`E+345`, `e-03`, `e+1`, `E-34567`, `E+4`) is consumed
+  before the check and never reaches it; a label that merely starts that way
+  (`E5t`, `e345j`, `e293e`) cannot be a number and is left alone. The message
+  tells the user to add the sign or rename the label.
+- One `check_tie_label` in `alis/functions/base.py`, called from **25 sites**:
+  the 20 copies of `check_tied_param` (17 modules; `shift.py` has four) and the
+  5 `getminmax` parameter loops, so `resolution=vfwhm(1e4)` is caught too.
+- **No fit can move.** All 152 `.mod` / `.mod.out.reference` /
+  `.mod.out.reference_adjusted` files were scanned with the parser's own logic —
+  zero matches — and the writer cannot emit an unsigned exponent, since `%g`/`%E`
+  always sign the exponent.
+- 18 tests, including one that drives **all 32** registered model functions and
+  requires each to reject `1e4` with the specific message.
 
 **5.1 — YAML/TOML model files. [DROPPED — RJC, 2026-08-01]**
 - RJC's answers to Q5.2/Q5.3 keep `.mod` as the format, and the side-by-side he

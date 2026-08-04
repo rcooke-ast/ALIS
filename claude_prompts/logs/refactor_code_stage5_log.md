@@ -438,3 +438,274 @@ only DH model to hand (`DH/J1358p0349`) has **10** datasets, which is the
 unit-tested against RJC's Q5.9/Q5.11 descriptions, but no model in the harness
 has exactly one or two datasets covering a Lyman series, so they have not been
 seen end to end.
+
+## Task 5.5 -- Unit tests for the stage's stable surface [COMPLETE]
+##
+## (Finished 2026-08-04. The first half -- the `.mod` -> `.mod.out` -> `.mod`
+## round trip -- is written up immediately below; the file-format loaders, the
+## model parser and the writer helpers follow it.)
+
+Parts of 5.5 were delivered with the tasks they belong to: the atomic
+loader/converter by `tests/test_atomic_mass.py` (29 tests, Task 5.2) and the
+plotting emitter by `tests/test_plotscript.py` (10, Task 5.3). Checked before
+adding anything: `tests/test_load_units.py` already covers `cpucheck`,
+`get_binsize`, `getis`, `load_tied`, `pinfl_changed` and `set_params`, and none
+of the three overlaps.
+
+**Done here: `tests/test_writer_round_trip.py`, 79 tests, 4 seconds, no fits.**
+This is the check the doc singles out -- a saved `.mod.out` is documented to be
+a valid `.mod`, the Stage 0 harness carried `_ZERO_DAMPING_RE` and two
+hand-fixed `.mod.out.reference_adjusted` files *only* because nothing pinned it,
+and 5.4 deleted those workarounds.
+
+No fit is run: the committed `.mod.out.reference` files **are** saved models, so
+re-reading them is the round trip, and only the `model read` block is parsed, so
+no spectrum is touched. That is what makes 40 real models affordable as a `unit`
+test. It covers `examples/` and, when present, `context/fitting_examples/` --
+which is untracked, so on a clean checkout the test still runs on `examples/`.
+
+Two invariants per model:
+- the reader **accepts** the saved file (the `examples/lsf_hst` failure, where
+  the echoed `resolution=lsf(name=STIS,...)` crashed it outright);
+- the **free-parameter count is unchanged** by the round trip. DOF = Npix -
+  Nfree and the pixels do not move, so this is exactly the quantity the
+  `damping=` bug shifted (helium34: 618 against 621).
+
+**Blind models are excluded, and the exclusion is itself asserted.** Five
+references -- `examples/blind`, and DH's `J0814p5029`, `J1358p0349`,
+`J1558m0031_FINAL_MODEL`, `Q0913p072` -- are rejected by the reader, which is
+*correct*: `run blind` replaces the parameters with `------ BLIND MODEL ------`,
+so a blind output is meant not to be re-readable. A separate test asserts each
+of those contains the blind marker **and** that it fails to parse, so a model
+cannot quietly leave the round-trip suite by breaking for some other reason.
+
+**Verified to bite.** Re-introducing the pre-5.4 writer behaviour -- stamping a
+suffixless `damping=0.0000000` onto every voigt line that does not name one --
+takes `helium34/Her36` from 56 free parameters to **67**, and the test fails.
+The delta of 11 is exactly the 11 of its 12 voigt lines that do not name
+damping, which is the mechanism diagnosed in Task 5.4. A companion unit test
+pins that mechanism directly, so the round-trip test is known to remain capable
+of catching it.
+
+**Gate.** `pytest -m unit`: **588 passed, 31 skipped** (509 before; +79).
+ruff (E4/E7/E9/F, the pinned v0.6.9 set) / black / isort clean.
+
+### The rest of 5.5 (2026-08-04): the loaders, the parser and the writer
+
+Three new files, **94 tests, 5 seconds, no fits and no golden files**. Nothing
+in `alis/` changed -- this task is tests only.
+
+| file | tests | covers |
+|---|---|---|
+| `tests/test_load_files.py` | 41 | `load_ascii`, `load_fits`, `load_datafile`, `load_userdata`, `load_data` |
+| `tests/test_load_model.py` | 31 | the `.mod` model-block parser: named/positional parameters, ties, `fix`, `lim` |
+| `tests/test_save_helpers.py` | 22 | `print_model`, `modlines`, `save_model`'s data line, `save_covar`, and a save-then-reload round trip |
+
+Checked first, so nothing was written twice: `test_load_units.py` covers
+`cpucheck` / `get_binsize` / `getis` / `load_tied` / `pinfl_changed` /
+`set_params`; `test_atomic_mass.py` the atomic loader; `test_plotscript.py` the
+emitter; `test_writer_round_trip.py` the re-reading half of the round trip.
+None overlaps.
+
+**The writer half of the round trip was the gap worth closing.**
+`test_writer_round_trip.py` re-reads the 40 committed `.mod.out.reference`
+files, but it cannot *run* the writer -- those files are the output of fits
+that take hours. `test_save_helpers.py` builds a model over a 500-pixel
+synthetic spectrum, calls `save_model(save=False, getlines=True)` to get a full
+`.mod.out` in milliseconds, and feeds it straight back in. That closes the loop,
+and it is what makes the 5.4 fixes testable at all rather than only observable
+in a reference file.
+
+The strongest test in the set is the one that moves the resolution: the fit is
+told it ended on `vfwhm(40.0)` when it started at `vfwhm(7.0)`, the model is
+written and re-read, and the loaded wavelength array must be **identical**
+(`np.array_equal`, not `allclose`). Its control strips `bufferpix` from the same
+file -- the pre-5.4 writer's output -- and the pixel count changes. That is the
+5.4 `bufferpix` argument, reproduced in two seconds instead of by inspection.
+
+**Every test was checked to bite.** Five mutations were applied to `alis/`, each
+run against all 94, and each reverted:
+
+| mutation | tests that failed |
+|---|---|
+| writer stops converting `=` -> `:` in the resolution keywords | 1 |
+| `save_covar` back to `filename.rstrip(fnspl[-1]) + 'png'` | 1 |
+| writer stops emitting `bufferpix` | 3 |
+| `call_function_load` stops clearing `_keywd['input']` | 6 |
+| `load_data` ignores `bufferpix` | 7 |
+
+Two are worth recording. The `rstrip` mutation did not merely misname the file:
+with an absolute `out covar` path and no extension it stripped the path itself
+and wrote the correlation matrix to **`png.png` in the working directory** --
+worse than the "a file called `png`" in the task doc, and confirmation the fix
+was not cosmetic. And the `call_function_load` mutation fails the *writer*
+tests as well as the parser ones, which is the two ends of the 5.4 `damping=`
+bug meeting in the middle.
+
+**The `lsf` colon rule is now pinned at both ends**, which it was not before.
+`test_writer_round_trip.py` claims to cover the `lsf_hst` failure, but it parses
+only the `model read` block; the `resolution=lsf(name=STIS,...)` string lives in
+the *data* line, which that test never loads. So the writer's `=` -> `:`
+substitution had no test. It has two now: one that writes a model with an `lsf`
+resolution and asserts no `=` survives inside the parentheses, and one that
+loads the `=` form and finds the reader has kept `lsf(name`. Both are marked
+`linetools` and auto-skip where that optional package is absent. A third,
+dependency-free test shows the same truncation on `label=left=right`, so the
+underlying tokenizer rule is pinned even in CI without linetools.
+
+**One defect found, reported, and then fixed by RJC: `load_fits` returned a
+continuum of zeros where `load_ascii` returns ones.** `load_subpixels`
+(`alis/load.py:1889`) treats an all-ones continuum as "none supplied" and skips
+the interpolation; anything else is taken as a real continuum and multiplies the
+model (`model_eval.py:572`). So a FITS spectrum loaded without a `continuum`
+column got a continuum of 0.0 and the model was multiplied by zero. No shipped
+example or context fit loads FITS data -- all 85 use ascii -- so nothing in the
+harness exercised it. It was first recorded in a labelled test rather than
+fixed, on the grounds that Stage 5 must not move a fit; **RJC then changed the
+three `np.zeros` to `np.ones` himself (2026-08-04)**, which tripped that test
+exactly as it was designed to.
+
+**A companion slip went with it, and had to be fixed for the fix to hold.** The
+zero-level branch of `load_fits` reads its column, warns that it will not be
+used, and then substitutes the default -- but it assigned to `contin`, not
+`zeroin`. That was invisible while the continuum was zeros either way; once it
+is ones, a `zerolevel` column put the continuum straight back to zeros and
+defeated the fix. Corrected to `zeroin`, mirroring the continuum branch three
+lines above.
+
+The test was rewritten accordingly, and is now stronger than what it replaced:
+`test_every_loader_agrees_on_the_nothing_supplied_sentinels` compares
+`load_fits`, `load_ascii` and `load_userdata` against **each other** rather than
+against a literal, so they cannot drift apart again, and
+`test_load_fits_keeps_the_continuum_default_when_a_zerolevel_is_given` covers
+the companion slip (reverting it fails that test).
+
+**Three smaller things found while writing. One was then fixed on RJC's
+instruction (see the next section); the other two are recorded only.**
+- `1e4` is not a number to ALIS. `check_tied_param` strips leading
+  `+-.0123456789` and treats the rest as a tie label, and its scientific-notation
+  escape only recognises `E+`/`e+`/`E-`/`e-` -- so `1e4` parses as the value
+  **1.0** tied to a label `e4`. Two lines written `1e4` silently share one free
+  parameter. Bit these tests before the literals were changed to `10000.0`;
+  `1.0E+04` is the form the writer itself emits. **Now rejected at the parse
+  (2026-08-04).**
+- `load_input(textstr=...)` returns lines *without* their newlines (it splits on
+  `"\n"`), while `load_input(filename=...)` keeps them -- and `save_model`
+  concatenates `_parlines` assuming they end in one, so settings run together
+  as `run ngpus 0run backend cpu`. Only the interactive onefits menu uses
+  `textstr`, and only to plot, so it is not live. The tests write to a real file
+  and re-read it, which is what a user does anyway.
+- The **first** data line of a block must carry `columns=`, and the message if
+  it does not is wrong. `colspl` is assigned only inside the `columns` branch of
+  `load_data`'s loop, so omitting it on the first line raises `NameError`, which
+  the bare `except:` around the load turns into "Error reading in file". Later
+  lines are fine -- they inherit the previous line's `colspl`, which is why 131
+  of the 181 data lines in `examples/` can omit the keyword. Not pinned by a
+  test: cementing "raises SystemExit with a misleading message" is not worth it.
+
+**Runtime.** The three files together take **2.4 s**. `atomic_data` is loaded
+once per session; `build_funcarray` is 0.3 ms, so a fresh registry per test is
+free; and no test runs a fit, opens a subprocess or reads a golden file.
+
+**`logmsgs` moved to `tests/conftest.py`**, as the task doc asked once a third
+caller appeared (there are four now). A session-scoped `atomic_data` fixture
+went with it, so `atomic.ecsv` is read once for the whole run instead of once
+per module. `test_atomic_mass.py`'s local copy of `logmsgs` was removed; nothing
+else in it changed.
+
+Every test builds its **own** function registry. `load_model` writes `fix` and
+`lim` lines straight onto the shared function *instances* (`_fixpar`,
+`_limited`, `_limits`), so a shared registry would carry one test's `fix` into
+the next. `build_funcarray` costs 0.3 ms, so this is free.
+
+**Gate.**
+- `pytest -m unit`: **682 passed, 31 skipped** (588 before; +94). 701 after the
+  `load_fits` fix and 5.7's check landed.
+- `pytest -m "unit or fast"`: **754 passed, 31 skipped, 0 failed** (7:20) --
+  660 before, so the entire delta is the 94 new tests and no regression case
+  moved.
+- ruff (E4/E7/E9/F, the pinned v0.6.9 set) / black / isort clean on all five
+  touched test files.
+- No golden file moved, and at this point no file under `alis/` had changed, so
+  the Stage 0 gate could not have moved either. (The `load_fits` continuum fix
+  and 5.7 came afterwards; neither can move a fit, for the reasons recorded
+  above and below.)
+- `tests/README.md` updated: the unit section now names the Stage 4/5 files and
+  records that the I/O deferral from `refactor_code_unit_tests.md` is
+  discharged.
+
+## Task 5.7 -- An unsigned exponent is now an error, not a silent tie [COMPLETE]
+
+Added 2026-08-04 at RJC's request, on the `1e4` finding above.
+
+**The rule, exactly as RJC specified it.** A tie label that is `e` or `E`
+followed by digits **and nothing else** is rejected. Everything else is left
+alone:
+
+| token | tie label | verdict |
+|---|---|---|
+| `1e4`, `1.0e345`, `5.0E45`, `2.0E5`, `7E054` | `e4`, `e345`, `E45`, `E5`, `E054` | **error** |
+| `1.0E+04`, `1.0e-03`, `3.0e+1`, `1.0E-34567`, `2.0E+4` | none -- consumed as the exponent | number |
+| `1.0E5t`, `1.0e345j`, `1.0e293e` | `E5t`, `e345j`, `e293e` | ordinary tie label |
+| `5.0da`, `8000.0TA` | `da`, `TA` | ordinary tie label |
+
+A signed exponent never reaches the check: the existing `E+`/`e+`/`E-`/`e-`
+branch has already stripped it and left an empty label. A label that merely
+*starts* `E`+digits cannot be a number, so it is not ambiguous and is untouched.
+That is the whole of the rule -- reject only the case where the two readings
+genuinely collide.
+
+**Where it went.** One `check_tie_label` in `alis/functions/base.py`, called
+from **25 sites**: the 20 copies of `check_tied_param` across 17 modules
+(`shift.py` has four), and the 5 `getminmax` parameter loops, which parse a
+resolution string with the same micro-syntax -- so `resolution=vfwhm(1e4)` is
+caught as well as a model line. `lineemission.py` needed `base` adding to its
+imports; it had only imported `voigt`.
+
+The message names the model, states what ALIS *did* read, and gives both
+remedies:
+
+```
+[ERROR] :: Ambiguous parameter '1e4' for the 'voigt' model
+           ALIS reads this as the value 1 tied to a parameter labelled 'e4',
+           not as scientific notation. If you meant a number, give the exponent
+           a sign (1E+4 or 1E-4); if you meant a tie label, rename it so
+           it is not 'e' followed only by digits.
+```
+
+**Nothing in the repository trips it, and that was measured rather than
+assumed.** All 152 `.mod` / `.mod.out.reference` / `.mod.out.reference_adjusted`
+files were scanned with the parser's own `lstrip` logic, over both
+whitespace-separated model tokens and the comma-separated arguments inside
+`resolution=`/`shift=` parentheses: **zero** matches. The check can therefore
+only ever fire on input that was already being misread, so no fit can move.
+
+**The writer cannot emit an ambiguous token either.** Every `_svfmt` is a `g`
+or (via `gtoef`) an `E` format, and Python's `%g`/`%E` always write the exponent
+with a sign -- `1e+04`, `1.00000000E+04`. Checked across magnitudes. The
+round-trip tests re-read written output, so this is pinned as well as reasoned.
+
+**Tests: 18 new** in `test_load_model.py` (14) and `test_load_files.py` (4) --
+the five rejected forms with an assertion on the message content, the signed
+forms still parsing as numbers, the `E5t`-style labels still being labels, and
+the resolution-string path. Plus one that matters more than the rest:
+
+- `test_every_model_function_rejects_an_unsigned_exponent` drives **all 32**
+  functions in the registry with `1e4` and requires each to exit *with the
+  "Ambiguous" message*. Reading the source would not do -- `check_tied_param` is
+  copy-pasted 20 times, so patching one says nothing about the other 19 -- and
+  an exit-only assertion would pass vacuously on the functions that reject a
+  bare parameter list for a missing required keyword.
+
+**Verified to bite.** Making `_AMBIGUOUS_EXPONENT` match nothing fails 7 of them.
+
+**Gate.**
+- `pytest -m unit`: **701 passed, 31 skipped** (682 before; +18 for 5.7, +1 for
+  the `load_fits` zero-level test).
+- `pytest -m "unit or fast"`: **773 passed, 31 skipped, 0 failed** (7:42).
+- ruff clean. `alis/functions/*` are on black's and isort's exclusion lists
+  (the Stage 6.3/6.5 to-do), so the formatters skip them; the additions match
+  each file's existing style.
+- **Not run: the full `--run-slow` harness** (2.5 h). It cannot be affected --
+  the check only calls `msgs.error`, never alters a value, and no model file in
+  the repository matches it -- but it is the one gate not exercised.

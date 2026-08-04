@@ -141,6 +141,7 @@ class vSigma(base.Base) :
             tval=par[i].lstrip('+-.0123456789')
             if tval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tval=tval[2:].lstrip('.0123456789')
+            base.check_tie_label(par[i], tval, self._idstr)
             parsnd=float(par[i].rstrip(tval))
             pin[i] = self.parin(i, parsnd)
         # Use the parameters to now calculate the sigma width
@@ -170,6 +171,7 @@ class vSigma(base.Base) :
             tieval=ival.lstrip('+-.0123456789')
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
+            base.check_tie_label(ival, tieval, self._idstr)
             inval=float(ival.rstrip(tieval))
             if len(tieval) == 0: # Parameter is not tied
                 mps['mtie'][cntr].append(-1)
