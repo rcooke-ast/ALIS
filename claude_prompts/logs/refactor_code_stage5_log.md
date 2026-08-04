@@ -348,3 +348,93 @@ has a `fitrange` within 50 A of any added 3He line (the nearest work is
 - No golden file was regenerated for this task, and none needed to be. That is
   the point worth keeping: 5.2 swapped the atomic data file that every fit in
   the repository reads, and not one reference moved.
+
+## Task 5.3 -- Plotting-script output [COMPLETE]
+
+`alis/plotscript.py` emits a standalone matplotlib script beside the fit. ALIS
+already draws its own PDF (`out plots`); this is different -- it writes a
+*script*, so a publication figure can be edited without re-running the fit or
+working inside ALIS. Stage 6.6 drives the same emitter from the GUI.
+
+**Settings: a new `plotscript` section**, as RJC asked in Q5.18 --
+`format` (`none`/`metals`/`DH`, default `none`), `numcol`, `residuals`,
+`velrange`, `ylim`, `figsize`, `fontsize`, `labels`, `filename`, `overwrite`.
+As predicted in the audit, `load.set_params` needed no change: it dispatches on
+`linspl[0] in argflag.keys()`, so adding `PlotScriptConfig` to `ArgFlag` was
+enough. The fields that must accept a word *or* a number/list (`numcol`,
+`velrange`, `ylim`, `figsize`) default to `None`, since `set_params` converts by
+the type of the default and only the `None` branch infers int/float/list/str.
+
+**How the panels are found.** Each absorption component is asked which of its
+transitions fall in a snip's fitrange, using the `set_vars` call the fit itself
+uses -- so a panel shows what was actually modelled rather than a guess from the
+wavelength range. Its return columns are
+`[coldens, redshift, b, restwave, fvalue, gamma]`, which gives the centre
+wavelength, the label and the strength in one go.
+
+**One panel per transition, not per snip.** `metal_line_abs` fits O I 1302 and
+Si II 1304 in a single fitrange; they are ~460 km/s apart, far wider than a
+velocity panel shows, so one panel per snip silently dropped a line. Transitions
+closer together than the velocity window *are* merged, keeping the strongest as
+the centre -- those are blends, which the reference figures also draw in one
+panel.
+
+**Self-contained, and checked to be.** The reference figures in
+`context/plotting/` all `import plotting_routines as pr`, which is not
+distributed, and they are Python 2 (`xrange`). What is emitted is Python 3 with
+the handful of helpers inlined. The test runs the emitted script in a subprocess
+with `PYTHONPATH=""`, so a lingering dependency on ALIS or on `plotting_routines`
+fails there rather than in a user's hands.
+
+**Layouts.** `metals` is three columns with an ion's transitions adjacent. `DH`
+is two columns: with one dataset the series runs *down* the left column and
+continues down the right (the emitted order is column-major, since matplotlib
+fills row-major); with two datasets the columns are the datasets and the rows
+the transitions, so the same line can be compared across them; with more than
+two the user edits the script, as agreed in Q5.11.
+
+**Lyman labels.** The DH models write the series as the pseudo-element `Ly` with
+the member as its "ion stage" (`1Ly_a` is Ly-alpha), which came out as "Ly a".
+Now rendered as Ly-alpha/beta/gamma/delta and numbered after that, so `1Ly_g`
+gives "Ly7" -- matching the "to about Ly7" in RJC's Q5.9 description.
+
+**Two fixes found by looking at the output rather than the code.** The shared
+axis labels first overlaid the panels: the reference scripts' frameless
+`add_subplot(111)` trick needs hand-tuned margins, so the emitted script uses
+`supxlabel`/`supylabel` and reserves margins specified in *inches* (converted to
+figure fractions) so the spacing holds at any panel count. `bbox_inches='tight'`
+then had to go, since it cropped away the margins just reserved.
+
+**Never fatal.** `write_plotscript` catches its own errors and warns: a fit that
+has completed should not be lost to a plotting problem. It also warns when
+`out fits` is off, since the emitted script reads the `*_fit.dat` files that
+setting writes.
+
+**Tests.** New `tests/test_plotscript.py`, 10 `unit` tests: the settings parse
+(including `auto` and comma-list forms), the three layout orderings, and three
+end-to-end tests that run a real fit -- `none` emits nothing, the emitted script
+runs standalone and draws a non-empty figure, and both transitions of a shared
+snip get their own panel.
+
+Verified by eye as well as by assertion: the `metal_line_abs` figure was
+rendered and inspected -- two panels, data as black steps, model in red, dashed
+continuum and zero-level guides, each line centred at v = 0.
+
+**Gate.**
+- `pytest -m unit`: **509 passed, 31 skipped** (499 before; +10).
+- `pytest -m "unit or fast"`: **581 passed, 31 skipped, 0 failed** (571 before).
+- ruff / black / isort clean on both new files. Note the rule set that actually
+  gates is the one pinned in `.pre-commit-config.yaml` (ruff **v0.6.9**, whose
+  defaults are E4/E7/E9/F). A newer local ruff reports ~50 further findings on
+  these files, but it reports them on the already-cleaned modules too
+  (`gpu.py`, `report.py`, `shared_arrays.py`, `test_logger.py`), so that is a
+  repo-wide question for Stage 6.3, not a 5.3 one.
+- No golden file moved: `plotscript format` defaults to `none`, so no existing
+  model emits anything.
+
+**Not exercised on real data: the one- and two-dataset `DH` orderings.** The
+only DH model to hand (`DH/J1358p0349`) has **10** datasets, which is the
+">2, the user edits the script" branch of Q5.11. Both other orderings are
+unit-tested against RJC's Q5.9/Q5.11 descriptions, but no model in the harness
+has exactly one or two datasets covering a Lyman series, so they have not been
+seen end to end.

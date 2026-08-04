@@ -399,6 +399,29 @@ implementation" ones. See Q5.15 and `logs/refactor_code_stage5_log.md`.]**
   it is the loader that mis-pairs them.
 
 **5.5 — Unit tests for this stage's stable surface (do last).**
+> **Starting position (2026-08-04).** 5.6, 5.4, 5.2 and 5.3 are all implemented
+> and green; read `logs/refactor_code_stage5_log.md` before starting, it records
+> why each was built the way it was.
+> *Already delivered, do not redo:* the atomic loader/converter is covered by
+> `tests/test_atomic_mass.py` (29 tests) and the plotting emitter by
+> `tests/test_plotscript.py` (10). **Still outstanding:** `load_fits` /
+> `load_ascii` / `load_data`, the model parser, the writer round-trip helpers,
+> and the `.mod` -> `.mod.out` -> `.mod` round-trip over the shipped examples.
+> Baseline to beat: `pytest -m unit` = 509 passed, 31 skipped;
+> `pytest -m "unit or fast"` = 581 passed, 0 failed.
+>
+> Three practical things that cost time this stage:
+> - **`msgs` output reaches neither `capsys` nor `capfd`** -- the shared 'alis'
+>   logger binds its stderr handler at import, before pytest's capture. Attach a
+>   handler instead; there is a `logmsgs` fixture in `tests/test_atomic_mass.py`
+>   and the same pattern in `tests/test_logger.py`. If 5.5 needs it a third
+>   time, move it to `tests/conftest.py`.
+> - **Never run ALIS on a `.mod.out` inside the repo tree.** It leaves
+>   `.mod.out.out` / `.mod.out.report` behind, and `test_fit_report` copytree's
+>   the example directory, so the stray files fail it. Use a tmp copy.
+> - **`context/fitting_examples/` is untracked**, so `git diff` cannot review
+>   anything under it and `git show HEAD:` cannot recover a previous version.
+>   Copy a file aside before overwriting it.
 - Following the cross-cutting unit-test policy
   (`claude_prompts/refactor_code_unit_tests.md`), add `unit`-marked tests for the
   Stage 5 stable surface once the I/O is reshaped: this is where the deferred
@@ -1130,3 +1153,5 @@ yourself as part of 5.4. I can use the git diffs to verify the changes.
 4. Please read this doc, including my responses to your queries, and execute Task 5.4.
 
 5. Please read this doc, including my responses to your queries, and execute Task 5.2.
+
+6. Please read this doc, including my responses to your queries, and execute Task 5.3.

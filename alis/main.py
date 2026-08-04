@@ -18,6 +18,7 @@ from alis import convergence
 from alis import load
 from alis import model_eval
 from alis import plot
+from alis import plotscript
 from alis import report
 from alis import save
 from alis import utils
@@ -465,6 +466,9 @@ class ClassMain:
             # Post-fit quality report (Stage 3.2)
             if self._argflag['out']['report']:
                 report.write_report(self)
+            # Standalone matplotlib script for the figure (Stage 5.3). Written
+            # after save_modelfits, since it reads the *_fit.dat files.
+            plotscript.write_plotscript(self, m.params)
             # Plot the results
             plotCasePDF = ((self._argflag['out']['plots'].lower() == 'true') or ((self._argflag['out']['plots'].lower() != 'false') and (self._argflag['out']['plots'] != '')))
             if self._argflag['plot']['fits'] or self._argflag['plot']['residuals'] or plotCasePDF:
