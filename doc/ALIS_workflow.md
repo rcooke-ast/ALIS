@@ -80,7 +80,13 @@ link end
 ### 2.1 Global Settings
 
 Three-argument commands of the form `<category> <keyword> <value>` that override
-the defaults in `settings.alis`. Examples:
+the built-in defaults. Run **`run_alis --list-settings`** to see every setting
+with its default; the defaults live in `alis/config.py` (`ArgFlag`) and nowhere
+else, so that listing cannot go out of date. (There used to be a shipped
+`alis/data/settings.alis`; it was a second copy of the same defaults, the two
+had drifted apart on four settings, and it was removed in v2.) Any setting can
+also be given on the command line with `--set`, e.g. `--set 'run backend cpu'`,
+which beats the model file. Examples:
 
 ```
 run  ncpus        4          # CPUs to use (-1 = all bar one, -2 = all bar two)
@@ -323,7 +329,7 @@ Parameters (in order):
 3. `bturb` — turbulent Doppler b-parameter (km/s)
 4. `temperature` — kinetic temperature (K)
 
-The `ion=` keyword must specify one of the ions in the `atomic.xml` file, using the format
+The `ion=` keyword must specify one of the ions in the `atomic.ecsv` file, using the format
 `<MassNumber><ElementSymbol>_<IonStage>` (e.g., `1H_I`, `2H_I`, `28Si_II`). Special
 pseudo-ions `1Ly_a` and `1H_IB` are available as fictitious absorbers for forest modelling.
 
@@ -455,11 +461,11 @@ run_alis myfit.mod
 
 Internally, the call sequence is:
 
-1. **`alload.optarg`** — parse command-line arguments
-2. **`alload.load_settings`** — read `settings.alis` default settings
-3. **`alload.load_input`** — parse the `.mod` file (settings, data, model, link sections)
-4. **`alload.load_atomic`** — load `atomic.xml` atomic data
-5. **`alload.load_data`** — read all data files; apply `loadrange`, `fitrange`, column mapping
+1. **`load.optarg`** — apply the parsed command line to the defaults
+2. **`load.load_settings`** — the built-in defaults (`alis/config.py`)
+3. **`load.load_input`** — parse the `.mod` file (settings, data, model, link sections); the command line is then re-applied over it, so an explicit flag wins
+4. **`load.load_atomic`** — load `atomic.ecsv` atomic data
+5. **`load.load_data`** — read all data files; apply `loadrange`, `bufferpix`, `fitrange`, column mapping
 6. **`alload.load_model`** — parse emission, absorption, zerolevel, variable, and fix/lim commands
 7. **`alload.load_links`** — parse link expressions
 8. **`alload.load_subpixels`** — set up sub-pixel grids per spectrum
@@ -649,8 +655,7 @@ The source files in `alis/` perform the following roles:
 | `alfunc_vfwhm.py` | Gaussian instrumental broadening (velocity FWHM). |
 | `alfunc_variable.py` | Variable parameter (for use with links). |
 | … | Additional function files with `alfunc_` prefix |
-| `data/atomic.xml` | Atomic data (transitions, wavelengths, f-values, Gamma) |
-| `data/settings.alis` | Default ALIS settings |
+| `data/atomic.ecsv` | Atomic data (transitions, wavelengths, f-values, Gamma). `data/atomic.xml` is the superseded VOTable form, still readable |
 
 ### Key data structures (current v1)
 
@@ -733,15 +738,15 @@ b_total = sqrt(b_turb² + 2 k T / m)
 ```
 where m is the mass of the ion. At T = 0 K (ZEROT), the broadening is purely turbulent.
 
-The oscillator strength, wavelength, and damping constant are read from `atomic.xml` for
+The oscillator strength, wavelength, and damping constant are read from `atomic.ecsv` for
 the specified `ion`. The `damping=` keyword allows an override of the natural damping
 constant (used for e.g. custom telluric line shapes in the He I* models).
 
 ---
 
-## 10. Appendix: Atomic Data File (`atomic.xml`)
+## 10. Appendix: Atomic Data File (`atomic.ecsv`)
 
-The file `alis/data/atomic.xml` (or a custom variant such as `atomic_rjc.xml`) is a
+The file `alis/data/atomic.ecsv` (or a custom variant, including a legacy `.xml`) is a
 VOTable-format XML file with the following columns:
 
 | Column | Description |

@@ -79,7 +79,7 @@ class Legendre(polynomial.Polynomial) :
                 elif m ==10 : modret += par[m]*(46189.0*xt**10 - 109395.0*xt**8 + 90090.0*xt**6 - 30030.0*xt**4 + 3465.0*xt**2 - 63.0)/256.0
                 else:
                     msgs.bug("Legendre polynomials of order 11 and above are not implemented")
-                    sys.exit()
+                    sys.exit(1)
             return modret
         #############
         yout = np.zeros((p.shape[0],x.size))

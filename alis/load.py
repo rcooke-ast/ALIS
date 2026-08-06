@@ -19,7 +19,7 @@ def cpucheck(ncpu,curcpu=0,verbose=2):
     if ncpu == 'all':
         ncpu=cpucnt # Use all available cpus
         if cpucnt != curcpu: msgs.info("Setting %i CPUs" % (ncpu),verbose=verbose)
-    elif ncpu == None:
+    elif ncpu is None:
         ncpu=cpucnt-1 # Use all but 1 available cpus
         if ncpu != curcpu: msgs.info("Setting %i CPUs" % (ncpu),verbose=verbose)
     else:
@@ -80,77 +80,143 @@ def usage(name):
     return descs
 
 
-def optarg(pathname, argv=None, verbose=2):
+# How each command-line flag maps onto a setting, and whether it describes the
+# *model* or only *this invocation* (Stage 6.1, Q6.20).
+#
+#   (section, key, persist)
+#
+# 'persist' decides whether the flag is written into the .mod.out so that
+# re-running that file reproduces the run. A flag that describes how to draw or
+# what to write is safe; one that describes this particular invocation is not --
+# persisting 'plot only' would make the re-run never fit at all, persisting
+# 'out modelname' would make it clobber the original output, and persisting
+# 'sim random' would make it redo the whole simulation set. Machine-specific
+# choices (cpu/gpu counts) are not persisted either: the machine you re-run on
+# may not have the same hardware.
+CLI_SETTING_MAP = {
+    "cpus":     ("run",  "ncpus",     False),
+    "ngpus":    ("run",  "ngpus",     False),
+    "plot":     ("plot", "dims",      True),
+    "xaxis":    ("plot", "xaxis",     True),
+    "labels":   ("plot", "labels",    True),
+    "justplot": ("plot", "only",      False),
+    "verbose":  ("out",  "verbose",   False),
+    "fits":     ("out",  "fits",      True),
+    "model":    ("out",  "model",     True),
+    "outname":  ("out",  "modelname", False),
+    "writeover": ("out", "overwrite", False),
+    "repeat":   ("sim",  "repeat",    False),
+    "random":   ("sim",  "random",    False),
+    "startid":  ("sim",  "startid",   False),
+}
 
-    # Load the default settings
-    prgn_spl = pathname.split('/')
-    try:
-        fname = ""
-        for i in range(0, len(prgn_spl)-2):
-            fname += prgn_spl[i]+"/"
-        fname += 'data/settings.alis'
-        argflag = load_settings(fname, verbose=verbose)
-    except IOError:
-        fname = ""
-        for i in range(0, len(prgn_spl)-1):
-            fname += prgn_spl[i]+"/"
-        fname += 'data/settings.alis'
-        argflag = load_settings(fname, verbose=verbose)
-    argflag['run']['prognm'] = __file__  #pathname
+# Sections/keys that --set may not persist into the .mod.out, for the same
+# reasons as the False entries above.
+NO_PERSIST_KEYS = {(sec, key) for sec, key, keep in CLI_SETTING_MAP.values() if not keep}
+
+PLOT_XAXIS = ['observed', 'rest', 'velocity']
+
+# The block of settings the command line overrode, written into the .mod.out so
+# that re-running it reproduces the run (Q6.12/Q6.20).
+#
+# Each live setting carries CLI_OVERRIDE_MARK as a trailing comment, and that --
+# not the surrounding header -- is what the writer matches to replace the block
+# rather than accumulate one per generation (Q6.25). It has to be on the line
+# itself: load_input drops comment-only lines from parlines, so a header comment
+# never survives to be recognised. set_params reads the third whitespace token,
+# so a trailing comment is ignored on the way in.
+CLI_OVERRIDE_HEADER = "# --- applied from the command line ---"
+CLI_OVERRIDE_END = "# --- end of command-line overrides ---"
+CLI_OVERRIDE_MARK = "#[cli]"
+
+
+def apply_cli_settings(argflag, argv, verbose=2):
     """
-    if argv is not None:
-        # Load options from command line
-        try:
-            opt,arg=getopt.getopt(argv,'hc:p:x:v:r:s:gfmjwxl', ['help',
-                                                         'cpus',
-                                                         'plot',
-                                                         'xaxis',
-                                                         'verbose',
-                                                         'random',
-                                                         'startid',
-                                                         'gpu',
-                                                         'fits',
-                                                         'model',
-                                                         'justplot',
-                                                         'writeover',
-                                                         'labels',
-                                                        ])
-        except getopt.GetoptError, err:
-            msgs.error(err.msg)
-            usage(argflag)
+    Copy the parsed command line onto ``argflag``, and report what it changed.
+
+    Returns ``(argflag, overrides)`` where ``overrides`` is a list of
+    ``(section, key, old, new, persist)`` for every setting the command line
+    actually changed -- which is what :func:`alis.save.save_model` writes into
+    the ``.mod.out``.
+
+    Only flags the user actually gave are applied: an absent flag must not
+    overwrite a value that the model file sets.
+
+    Generated by RJC and Claude.
     """
-    plxaxis = ['observed','rest','velocity']
-    if argv is not None:
-        if argv.cpus is not None:
-            argflag['run']['ncpus']   = argv.cpus
-        if argv.gpu:
-            argflag['run']['ngpus']   = argv.gpu
-        if argv.plot is not None:
-            argflag['plot']['dims']   = argv.plot
-        if argv.xaxis is not None:
-            argflag['plot']['xaxis']  = plxaxis[argv.xaxis]
-        if argv.justplot:
-            argflag['plot']['only']   = argv.justplot
-        if argv.labels:
-            argflag['plot']['labels']  = argv.labels
-        if argv.verbose is not None:
-            argflag['out']['verbose']  = argv.verbose
-        if getattr(argv, 'quiet', False):
-            argflag['out']['verbose']  = 0
-        if argv.repeat is not None:
-            argflag['sim']['repeat']   = argv.repeat
-        if argv.random is not None:
-            argflag['sim']['random']   = argv.random
-        if argv.startid is not None:
-            argflag['sim']['startid']  = argv.startid
-        if argv.fits:
-            argflag['out']['fits']     = argv.fits
-        if argv.model:
-            argflag['out']['model']    = argv.model
-        if argv.outname:
-            argflag['out']['modelname']    = argv.outname
-        if argv.writeover:
-            argflag['out']['overwrite'] = argv.writeover
+    overrides = []
+    if argv is None:
+        return argflag, overrides
+    for attr, (section, key, persist) in CLI_SETTING_MAP.items():
+        value = getattr(argv, attr, None)
+        if value is None or value is False:
+            continue  # not given (store_true flags default to False)
+        if attr == "xaxis":
+            value = PLOT_XAXIS[value]
+        old = argflag[section][key]
+        if old == value:
+            continue
+        argflag[section][key] = value
+        overrides.append((section, key, old, value, persist))
+    if getattr(argv, "quiet", False):
+        if argflag['out']['verbose'] != 0:
+            overrides.append(("out", "verbose", argflag['out']['verbose'], 0, False))
+            argflag['out']['verbose'] = 0
+    # --set takes any settings.alis line, so the CLI cannot fall behind the
+    # config as it did through Stages 4 and 5 (Q6.7).
+    for line in getattr(argv, "set", None) or []:
+        parts = line.split()
+        if len(parts) < 3:
+            msgs.error("--set takes a whole setting, e.g. --set 'run backend cpu'"+msgs.newline()+"got: "+line)
+        section, key = parts[0], parts[1]
+        if section not in argflag.keys() or key not in argflag[section].keys():
+            msgs.error("--set does not recognise the setting '{0:s} {1:s}'".format(section, key)+msgs.newline()+"Run 'run_alis --list-settings' to see what is available.")
+        old = argflag[section][key]
+        set_params([line], argflag, setstr="Command-line ", verbose=verbose)
+        new = argflag[section][key]
+        if new != old:
+            overrides.append((section, key, old, new, (section, key) not in NO_PERSIST_KEYS))
+    return argflag, overrides
+
+
+def reapply_cli_overrides(argflag, overrides, verbose=2):
+    """
+    Re-apply the command line on top of the model file's own settings.
+
+    Settings arrive in three passes -- defaults, command line, then the model
+    file's ``par`` block -- so until Stage 6.1 the *file* had the last word and
+    an explicit flag was silently discarded whenever the file mentioned the same
+    setting. 44 of the 48 shipped examples set ``plot dims``, so
+    ``run_alis -p 0 fit.mod`` did not actually suppress plotting (Q6.12).
+
+    Generated by RJC and Claude.
+    """
+    for section, key, _old, new, _persist in overrides or []:
+        if argflag[section][key] != new:
+            msgs.info("Command line overrides the model file: {0:s} {1:s} = {2!s}".format(section, key, new), verbose=verbose)
+            argflag[section][key] = new
+    return argflag
+
+
+def optarg(pathname=None, argv=None, verbose=2, overrides=None):
+    """
+    Build the settings for a run: defaults, then the command line.
+
+    The model file's own ``par`` lines are applied afterwards by
+    :func:`load_input`; since Stage 6.1 the command line is re-applied after
+    them, so an explicit flag beats the file (Q6.12).
+
+    ``pathname`` is accepted and ignored -- it used to locate
+    ``data/settings.alis`` by splitting a path on ``'/'``, and that file no
+    longer exists (Q6.21). ``overrides``, if given, is a list the settings the
+    command line changed are appended to, for the writer to record.
+
+    Generated by RJC and Claude.
+    """
+    argflag = load_settings(verbose=verbose)
+    argflag, applied = apply_cli_settings(argflag, argv, verbose=verbose)
+    if overrides is not None:
+        overrides.extend(applied)
     #######################
     # Now do some checks: #
     #######################
@@ -158,11 +224,6 @@ def optarg(pathname, argv=None, verbose=2):
     # Check requested CPUs
     argflag['run']['ncpus'] = cpucheck(argflag['run']['ncpus'],verbose=verbose)
 
-    # Check that fits files are being generated if supermongo scripts are generated
-    if argflag['out']['sm'] == True and argflag['out']['fits'] == False:
-        msgs.warn("You must set the 'fits' flag if you want to"+msgs.newline()+"produce a SuperMongo file",verbose=verbose)
-        msgs.info("Setting the fits flag",verbose=verbose)
-        argflag['out']['fits'] = True
     # Apply the console verbosity (0/1/2 -> WARNING/INFO/DEBUG); Stage 2.5
     logger.set_verbosity(argflag['out']['verbose'])
     return argflag
@@ -191,7 +252,10 @@ def set_params(lines, argflag, setstr="", verbose=None):
             if linspl[1] in argflag[linspl[0]].keys():
                 setkey = (linspl[0], linspl[1])
                 setval = linspl[2] if len(linspl) > 2 else ""
-                if setkey in seen:
+                # A line carrying CLI_OVERRIDE_MARK is deliberately shadowing an
+                # earlier one -- that is what the command-line override block is
+                # for -- so it is not the accident this warning exists to catch.
+                if setkey in seen and CLI_OVERRIDE_MARK not in lines[i]:
                     msgs.warn(setstr + "'{0:s} {1:s}' is set more than once; the last value wins".format(*setkey)+msgs.newline()+"'{0:s}' (earlier) is being overridden by '{1:s}'".format(seen[setkey], setval), verbose=verbose)
                 seen[setkey] = setval
                 if linspl[0] == 'out' and linspl[1] == 'verbose' and verbose is not None:
@@ -230,26 +294,33 @@ def set_params(lines, argflag, setstr="", verbose=None):
     return argflag
 
 
-def load_settings(fname,verbose=2):
-    def initialise():
-        """
-        Initialise the default settings called argflag
+def load_settings(fname=None, verbose=2):
+    """
+    Return the default settings.
 
-        Returns a typed :class:`alis.config.ArgFlag` (Stage 2.1). It still
-        supports ``argflag['section']['key']`` access, so the rest of the
-        code base is unchanged; the field defaults mirror the historical
-        nested-dict defaults exactly.
-        """
-        return ArgFlag()
+    The defaults live in :class:`alis.config.ArgFlag` and nowhere else
+    (Stage 6.1, Q6.21). Until then they were written down twice -- in the
+    dataclass and in a shipped ``alis/data/settings.alis`` that was read over
+    it on every run -- and the two had already drifted apart on four settings,
+    two of which change fits (``chisq fstep`` 1.0 against 20.0,
+    ``chisq maxiter`` 20000 against 2000). The file won, so the dataclass was
+    documentation that lied; the dataclass has since adopted the file's values
+    and the file is gone. ``run_alis --list-settings`` prints what this returns.
 
-    # Read in the default settings
+    ``fname`` is accepted and ignored, so a caller that still passes a path
+    (or a user with their own settings file) does not crash; a settings file is
+    now just an ordinary set of ``par`` lines, which any model file can carry.
+
+    Generated by RJC and Claude.
+    """
     msgs.info("Loading the default settings", verbose=verbose)
-    argflag = initialise()
+    argflag = ArgFlag()
     if verbose != argflag['out']['verbose']:
         argflag['out']['verbose'] = verbose
-    infile = open(fname, 'r')
-    lines = infile.readlines()
-    argflag = set_params(lines, argflag, setstr="Default ", verbose=verbose)
+    if fname is not None and os.path.exists(fname):
+        msgs.info("Reading additional settings from:"+msgs.newline()+fname, verbose=verbose)
+        with open(fname, 'r') as infile:
+            argflag = set_params(infile.readlines(), argflag, setstr="Default ", verbose=verbose)
     return argflag
 
 def call_function_load(funccall, funcinst, instr, cntr, modpass, specid, **kwargs):
@@ -282,6 +353,38 @@ def call_function_load(funccall, funcinst, instr, cntr, modpass, specid, **kwarg
     return funccall.load(funcinst, instr, cntr, modpass, specid, **kwargs)
 
 
+def import_user_module(path, verbose=2):
+    """
+    Import a user's systematics module from a file path.
+
+    This used ``imp.load_source``, and ``imp`` was deleted from the standard
+    library in Python 3.12 while ALIS targets 3.13 -- so the call raised
+    ``NameError``, the bare ``except`` around it swallowed that, and the user was
+    told "Could not import module <theirs>". The ``systmodule=`` feature was
+    therefore dead, and reported the user's own file as the fault (Stage 6.5,
+    Q6.17). Every ``systmodule=`` line in the repository is commented out, which
+    is why nothing noticed.
+
+    The ``except`` is deliberately narrow now: a module that exists but raises on
+    import reports its own error rather than being reported as missing.
+
+    Generated by RJC and Claude.
+    """
+    import importlib.util
+
+    if not os.path.exists(path):
+        msgs.error("Systematics module does not exist -"+msgs.newline()+path)
+    spec = importlib.util.spec_from_file_location("loader", path)
+    if spec is None or spec.loader is None:
+        msgs.error("Could not read the systematics module -"+msgs.newline()+path)
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as err:
+        msgs.error("The systematics module raised an error while being imported -"+msgs.newline()+path+msgs.newline()+"{0:s}: {1!s}".format(type(err).__name__, err))
+    return module
+
+
 def check_argflag(argflag, curcpu=None):
     # Make some final corrections to the input parameters
     argflag['out']['covar'] = argflag['out']['covar'].strip("\"'")
@@ -312,9 +415,6 @@ def check_argflag(argflag, curcpu=None):
             msgs.warn("For a blind analysis, you cannot save the best-fitting model profiles.",verbose=argflag['out']['verbose'])
             argflag['out']['fits'] = False
             argflag['out']['onefits'] = False
-        if argflag['out']['sm'] or argflag['out']['sm']:
-            msgs.warn("For a blind analysis, you cannot save a Supermongo file.",verbose=argflag['out']['verbose'])
-            argflag['out']['sm'] = False
         if argflag['out']['covar'] != "":
             msgs.warn("For a blind analysis, you cannot save the covariance matrix.",verbose=argflag['out']['verbose'])
             argflag['out']['covar'] = ""
@@ -724,8 +824,7 @@ def load_data(slf, datlines, data=None):
                             module += '.py'
                         if kwdspl[1] not in systload:
                             msgs.info("Attempting to import module: {0:s}".format(module),verbose=slf._argflag['out']['verbose'])
-                            try: usrmod = imp.load_source('loader',module)
-                            except: msgs.error("Could not import module {0:s}".format(module))
+                            usrmod = import_user_module(module, verbose=slf._argflag['out']['verbose'])
                             if 'loader' not in dir(usrmod): msgs.error("Systematics module {0:s} must contain function 'loader'".format(module))
 #							if defn != '':
 #								if defn not in dir(usrmod): msgs.error("Systematics module {0:s} must contain function {1:s}".format(module,defn))
@@ -1440,9 +1539,9 @@ def load_model(slf, modlines, updateself=True):
         for j in range(len(parid[cntr])):
             if slf._funcarray[2][mdlspl[0]]._fixpar[parid[cntr][j]] is None: pass
             else: slf._funcarray[1][mdlspl[0]].adjust_fix(slf._funcarray[2][mdlspl[0]], modpass, cntr, j, parid[cntr][j])
-            if slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][0] == (0 if modpass['mlim'][cntr][j][0]==None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][0] == modpass['mlim'][cntr][j][0]: pass
+            if slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][0] == (0 if modpass['mlim'][cntr][j][0] is None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][0] == modpass['mlim'][cntr][j][0]: pass
             else: slf._funcarray[1][mdlspl[0]].adjust_lim(slf._funcarray[2][mdlspl[0]], modpass, cntr, j, 0, parid[cntr][j])
-            if slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][1] == (0 if modpass['mlim'][cntr][j][1]==None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][1] == modpass['mlim'][cntr][j][1]: pass
+            if slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][1] == (0 if modpass['mlim'][cntr][j][1] is None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][1] == modpass['mlim'][cntr][j][1]: pass
             else: slf._funcarray[1][mdlspl[0]].adjust_lim(slf._funcarray[2][mdlspl[0]], modpass, cntr, j, 1, parid[cntr][j])
         cntr += 1
     # Now go through and adjust the parameters of the instrument resolution

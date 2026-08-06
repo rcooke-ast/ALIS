@@ -233,8 +233,59 @@ def test_set_params_does_not_warn_across_separate_calls(recorder):
     assert [t for t in recorder.said if "set more than once" in t] == []
 
 
-def test_the_shipped_default_settings_have_no_repeats(recorder):
-    # settings.alis is read on every run; a repeat there would warn every time.
-    path = Path(alis.__file__).parent / "data" / "settings.alis"
-    load.set_params(path.read_text().splitlines(), ArgFlag(), setstr="Default ")
+def test_there_is_no_shipped_settings_file_to_drift(recorder):
+    """The defaults live in `ArgFlag` and nowhere else (Stage 6.1, Q6.21).
+
+    `alis/data/settings.alis` used to restate 55 of them and was read *over* the
+    dataclass on every run, so the two could disagree -- and had, on four
+    settings, two of which change fits (`chisq fstep` 1.0 against 20.0,
+    `chisq maxiter` 20000 against 2000). This asserts the second copy has not
+    come back.
+    """
+    assert not (Path(alis.__file__).parent / "data" / "settings.alis").exists()
+
+
+def test_load_settings_returns_the_dataclass_defaults(recorder):
+    cfg = load.load_settings(verbose=0)
+    defaults = ArgFlag()
+    for section in defaults.keys():
+        for key in defaults[section].keys():
+            if section == "out" and key == "verbose":
+                continue  # set from the verbose argument
+            assert cfg[section][key] == defaults[section][key], (section, key)
+
+
+def test_the_fitting_defaults_are_the_ones_the_shipped_file_used_to_set(recorder):
+    """These four moved when `settings.alis` was deleted, and two of them change
+    every fit -- so they are pinned rather than left to be re-derived."""
+    cfg = ArgFlag()
+    assert cfg["chisq"]["fstep"] == 20.0
+    assert cfg["chisq"]["maxiter"] == 2000
+    assert cfg["run"]["ngpus"] == 0
+    assert cfg["generate"]["skyfrac"] == 0.1
+
+
+# -- the command line beats the model file (Stage 6.1, Q6.12) -----------------
+
+
+def test_the_command_line_is_reapplied_over_the_model_file(recorder):
+    """Settings arrive defaults -> command line -> model file, so the file used
+    to have the last word: `run_alis -p 0 fit.mod` ran with the file's
+    `plot dims`, not with 0. 44 of the 48 shipped examples set it."""
+    cfg = ArgFlag()
+    cfg["plot"]["dims"] = "2x2"  # as the model file's par block would leave it
+    overrides = [("plot", "dims", "3x3", "0", True)]
+    load.reapply_cli_overrides(cfg, overrides, verbose=0)
+    assert cfg["plot"]["dims"] == "0"
+
+
+def test_a_line_marked_as_a_command_line_override_does_not_warn(recorder):
+    """The override block deliberately shadows the model's own setting, so it is
+    not the accident the duplicate warning exists to catch."""
+    lines = [
+        "plot dims 2x2\n",
+        "plot dims 0   {0:s} was 3x3\n".format(load.CLI_OVERRIDE_MARK),
+    ]
+    cfg = load.set_params(lines, ArgFlag(), setstr="Model ")
+    assert cfg["plot"]["dims"] == "0"
     assert [t for t in recorder.said if "set more than once" in t] == []

@@ -34,20 +34,6 @@ class Linear(base.Base) :
         # Set the atomic data
         self._atomic = atomic
         if getinst: return
-
-    def GPU_kernal(self):
-        return SourceModule("""
-
-            __global__ void cnst(double *model, double *wave, double *params)
-            {
-            int idx = blockIdx.x + blockIdx.y*gridDim.x + threadIdx.x*gridDim.x*gridDim.y;
-            int pidx = blockIdx.y;
-
-            model[idx] = params[pidx];
-
-            }
-            """)
-
     def call_CPU(self, x, p, ae='em', mkey=None, ncpus=1):
         """
         Define the functional form of the model

@@ -219,7 +219,10 @@ class SplineLSF(base.Base) :
                     cpy_keywd[kwspl[0]] = float(kwspl[1])
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'specid':
                     typeval='list'
-                    cpy_keywd[kwspl[0]] = sidlist
+                    # ksspl is the comma-split keyword value, as in every other
+                    # function's loader. This clause referred to an undefined
+                    # 'sidlist' and would have raised NameError (Stage 6.5).
+                    cpy_keywd[kwspl[0]] = ksspl
                 elif type(cpy_keywd[kwspl[0]]) is list and kwspl[0] == 'locations':
                     typeval = 'list'
                     cpy_keywd[kwspl[0]] = scllist

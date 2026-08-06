@@ -159,6 +159,42 @@ force-exclude = '''
 )$
 '''
 
+[tool.ruff.lint]
+# E722 (bare `except:`) is off for now, not forgotten. 63 remain in the legacy
+# modules and several are load-bearing rather than lazy -- load_fits uses one to
+# work out which of three file formats it has been given, load_ascii to decide a
+# column is absent -- so narrowing them changes which errors are swallowed, in
+# code no test covers on the failure path. Turning it on file by file is on the
+# deferred-work list (Stage 6.5, Q6.15). Everything else in the default
+# E4/E7/E9/F set is enforced everywhere.
+# Pinned explicitly rather than left to ruff's default, which changed between
+# the v0.6.9 the pre-commit hook installs and current releases: on 0.16 the
+# default adds UP/C4/SIM/PLR and reports ~1,200 further findings in the legacy
+# modules. E4/E7/E9/F is what v0.6.9 selects, so this keeps the two in step and
+# makes the gate reproducible whatever ruff is installed locally.
+select = ["E4", "E7", "E9", "F"]
+# Two groups, both temporary and both tracked in
+# claude_prompts/deferred_work.md:
+#
+#   E701/E703/E401  formatting only, and exactly what the deferred black
+#                   reformat fixes -- 1,201 of the 1,205 are `if x: y`
+#                   one-liners. Enforcing them now would mean doing the
+#                   reformat now, which Q6.22 deliberately separated.
+#   E402/E712/E741  legacy style in the same modules: imports below code,
+#   F401/F841       `== True`, `l` as a name, unused imports and locals.
+#                   Each needs a per-site judgement (an "unused" import may be
+#                   there for its side effect), so they are not swept blind.
+#   E722            63 bare `except:`, several load-bearing: load_fits uses one
+#                   to work out which of three file formats it has, load_ascii
+#                   to decide a column is absent. Narrowing them changes which
+#                   errors are swallowed, in code no test covers on the failure
+#                   path (Q6.15).
+#
+# What *is* enforced everywhere is the part that catches real defects: F821
+# undefined names (36 of them, including the dead `imp.load_source` that
+# silently killed `systmodule=`), E9 syntax errors, and the rest of F.
+ignore = ["E701", "E703", "E401", "E402", "E712", "E741", "F401", "F841", "E722"]
+
 [tool.isort]
 profile = "black"
 line_length = 88
@@ -218,45 +254,10 @@ target-version = "py313"
 # explicit filenames.
 force-exclude = true
 extend-exclude = [
-    "alis/convergence.py",
-    "alis/functions/afwhm.py",
-    "alis/functions/apod.py",
-    "alis/functions/base.py",
-    "alis/functions/brokenpowerlaw.py",
-    "alis/functions/chebyshev.py",
-    "alis/functions/constant.py",
-    "alis/functions/gaussian.py",
-    "alis/functions/legendre.py",
-    "alis/functions/linear.py",
-    "alis/functions/lineemission.py",
-    "alis/functions/lsf.py",
-    "alis/functions/lsffile.py",
-    "alis/functions/lsfspline.py",
-    "alis/functions/multivfwhm.py",
-    "alis/functions/phionxs.py",
-    "alis/functions/polynomial.py",
-    "alis/functions/powerlaw.py",
-    "alis/functions/random.py",
-    "alis/functions/shift.py",
-    "alis/functions/spline.py",
-    "alis/functions/splineabs.py",
-    "alis/functions/thar.py",
-    "alis/functions/tophat.py",
-    "alis/functions/variable.py",
-    "alis/functions/vfwhm.py",
-    "alis/functions/voigt.py",
-    "alis/functions/voigtconv.py",
-    "alis/functions/vsigma.py",
-    "alis/load.py",
-    "alis/main.py",
-    "alis/minimise.py",
-    "alis/model_eval.py",
-    "alis/plot.py",
-    "alis/prepfit/specplot.py",
-    "alis/save.py",
-    "alis/scripts/run_alis.py",
-    "alis/simulate.py",
-    "alis/utils.py",
+    # alis/ is no longer excluded: Stage 6.5 cleared every F821, E711 and
+    # E9 in those files, so the linter guards them from here on. What is
+    # left on the black/isort lists below is the *formatting* backlog --
+    # a 43% reformat that is deliberately a separate decision (Q6.22).
     "context/voigt_gpu/backup.py",
     "context/voigt_gpu/faddeeva.py",
     "context/voigt_gpu/numba_test.py",

@@ -572,3 +572,54 @@ def test_the_lsf_resolution_survives_the_reader_only_in_its_colon_form(
     assert bad._resn[0][0] == "lsf(name"
     with pytest.raises(BaseException):
         load.load_model(bad, model)
+
+
+# -- the user systematics module (Stage 6.5, Q6.17) ---------------------------
+
+
+def test_a_user_systematics_module_can_be_imported(tmp_path):
+    """`systmodule=` was dead: it called `imp.load_source`, and `imp` left the
+    standard library in Python 3.12 while ALIS targets 3.13. The `NameError`
+    was swallowed by a bare `except` and reported as "Could not import module
+    <theirs>", so the user was told their own file was at fault."""
+    module = tmp_path / "syst.py"
+    module.write_text("def loader(*args, **kwargs):\n    return None\n")
+    loaded = load.import_user_module(str(module), verbose=-1)
+    assert hasattr(loaded, "loader")
+
+
+def test_a_missing_systematics_module_says_so(tmp_path):
+    with pytest.raises(SystemExit):
+        load.import_user_module(str(tmp_path / "nope.py"), verbose=-1)
+
+
+def test_a_systematics_module_that_raises_reports_its_own_error(tmp_path, logmsgs):
+    """The `except` is narrow now, so a module that exists but is broken is not
+    reported as missing."""
+    module = tmp_path / "bad.py"
+    module.write_text("raise ValueError('boom')\n")
+    with pytest.raises(SystemExit):
+        load.import_user_module(str(module), verbose=-1)
+    said = "\n".join(logmsgs)
+    assert "ValueError" in said and "boom" in said
+
+
+# -- a wavelength-dependent resolution is refused, not attempted (Q6.16) ------
+
+
+def test_an_array_valued_resolution_is_refused(atomic_data):
+    """The branch that would have handled this referred to an undefined name and
+    raised NameError on entry, so it had never run. Stage 6.5 replaced it with a
+    message that says what is supported."""
+    import numpy as np
+
+    registry = build_funcarray(ArgFlag(), atomic_data)
+    x = np.linspace(1300.0, 1301.0, 64)
+    y = np.ones_like(x)
+    inst, cls = registry[2]["vfwhm"], registry[1]["vfwhm"]
+    # A scalar resolution works ...
+    cls.call_CPU(inst, x, y, np.array([7.0]))
+    # ... one value per pixel -- which is what a `resolution` data column gives
+    # -- is refused rather than crashing with NameError.
+    with pytest.raises(SystemExit):
+        cls.call_CPU(inst, x, y, [np.full(x.size, 7.0)])

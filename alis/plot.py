@@ -83,6 +83,14 @@ def make_plots_all(slf, model=None):
     wavearr, fluxarr, fluearr, modlarr, contarr, zeroarr = slf._wavefull, slf._fluxfull, slf._fluefull, slf._modfinal, slf._contfinal, slf._zerofinal
     if model is not None: modlarr = model
     posnarr, dims = slf._posnfull, slf._argflag['plot']['dims']
+    # 'plot dims 0' means "draw nothing", which is what `-p 0` has always
+    # advertised and what the regression harness passes to stay headless. It
+    # never actually worked, because until Stage 6.1 the model file's own
+    # 'plot dims' overrode the command line, so this branch was unreachable
+    # (Q6.12).
+    if str(dims).strip() in ('0', '0x0'):
+        msgs.info("Screen plots are switched off ('plot dims 0')", verbose=slf._argflag['out']['verbose'])
+        return
     dspl = dims.split('x')
     if len(dspl) != 2:
         msgs.error("Panel plot dimensions passed incorrectly")
@@ -686,54 +694,3 @@ def plot_pdf(slf):
             pp.savefig()
         pp.close()
         msgs.info("Saved a pdf with filename:"+msgs.newline()+fn, verbose=slf._argflag['out']['verbose'])
-
-def prep_arrs(snip_ions, snip_detl, posnfit, verbose=2):
-    """
-    Not presently used in ALIS
-    """
-    elnames = np.array([])
-    elwaves = np.array([])
-    comparr = []
-    rdshft=0.0
-    max_CD = 0.0
-    testrds=1.0
-    for sn in range(0,len(slf._snip_ions)):
-        comparr.append([])
-        max_elm = None
-        max_col = 0.0
-        max_wav = 0.0
-        max_fvl = 0.0
-        for ln in range(0,len(slf._snip_ions[sn])):
-            wavl = (1.0+slf._snip_detl[sn][ln][3])*slf._snip_detl[sn][ln][0]
-            if wavl >= slf._posnfit[2*sn] and wavl <= slf._posnfit[2*sn+1]:
-                if slf._snip_detl[sn][ln][1] > max_col:
-                    max_elm = slf._snip_ions[sn][ln]
-                    if slf._snip_detl[sn][ln][2] > max_fvl:
-                        max_wav = slf._snip_detl[sn][ln][0]
-                        max_fvl = slf._snip_detl[sn][ln][2]
-                    max_col = slf._snip_detl[sn][ln][1]
-                    tmp_rds = slf._snip_detl[sn][ln][3]
-        if max_elm is None:
-            max_elm = "None"
-            max_wav = 0.5*(slf._posnfit[2*sn] + slf._posnfit[2*sn+1])
-        elnames = np.append(elnames, max_elm)
-        elwaves = np.append(elwaves, max_wav)
-        if max_col > max_CD:
-            max_CD = max_col
-            rdshft = tmp_rds
-    testrds=rdshft
-    tri = np.where(elnames == "None")
-    if np.size(tri) != 0: elwaves[tri] /= (1.0+testrds)
-    if rdshft == 0.0:
-        msgs.warn("Couldn't find the redshift of the main component for plotting", verbose=verbose)
-        msgs.info("Assuming z=0", verbose=verbose)
-    for sn in range(0,len(slf._snip_ions)):
-        for ln in range(0,len(slf._snip_ions[sn])):
-            compvel = 299792.458 * (slf._snip_detl[sn][ln][0]*(1.0+slf._snip_detl[sn][ln][3])/(elwaves[sn]*(1.0+rdshft)) - 1.0)
-            if slf._snip_ions[sn][ln] == elnames[sn]: comparr[sn].append('1')
-            else: comparr[sn].append('0')
-            elnameID = '%s %5.1f' % (slf._snip_ions[sn][ln],slf._snip_detl[sn][ln][0])
-            comparr[sn].append( '%8.3f' % (compvel) )
-            comparr[sn].append( '%s' % (elnameID) )
-    return elnames, elwaves, rdshft, comparr
-

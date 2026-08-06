@@ -387,7 +387,7 @@ class props:
         self._outf = outf
         self._zabs = dla._zabs
 
-    def set_regions(arr):
+    def set_regions(self, arr):
         self._regions = arr.copy()
         return
 
@@ -488,7 +488,7 @@ class atomic:
             infile = open(molecule_file, "r")
         except IOError:
             print("The lines file:\n" + "molecule.dat\ndoes not exist!")
-            sys.exit()
+            sys.exit(1)
         molecule_list=infile.readlines()
         leninfile=len(molecule_list)
         infile.close()

@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from alis import logger
 from alis.functions import polynomial
@@ -70,7 +72,7 @@ class Chebyshev(polynomial.Polynomial) :
                 elif m == 9 : modret += par[m]*(256.0*xt**9 - 576.0*xt**7 + 432.0*xt**5 - 120.0*xt**3 + 9.0*xt)
                 else:
                     msgs.bug("Chebyshev polynomials of order 10 and above are not implemented")
-                    sys.exit()
+                    sys.exit(1)
             return modret
         #############
         yout = np.zeros((p.shape[0],x.size))

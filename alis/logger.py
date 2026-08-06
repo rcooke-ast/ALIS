@@ -10,8 +10,10 @@ levels for the SIMULATE / TEST / BUG / PROGRESS bands.
 
 Behaviour preserved from ``almsgs``:
 
-- ``error()`` prints ``[ERROR]`` then calls ``sys.exit()`` -- it is control
-  flow, not just a message (Q2.6).
+- ``error()`` prints ``[ERROR]`` then calls ``sys.exit(1)`` -- it is control
+  flow, not just a message (Q2.6). The status is 1 rather than the historical
+  bare ``sys.exit()``'s 0 so that a caller checking the return code sees the
+  failure (Stage 6.1, Q6.11).
 - ``newline()`` / ``indent()`` return the continuation-indent strings that are
   embedded inside message text throughout the code base.
 
@@ -124,8 +126,14 @@ class AlisLogger(logging.Logger):
         # Preserve almsgs semantics: report then terminate (Q2.6). Emit at
         # CRITICAL so it is never filtered by the configured level; the
         # formatter renders the [ERROR] prefix for CRITICAL records.
+        #
+        # Exit status 1, not the bare sys.exit()'s 0 (Stage 6.1, Q6.11): every
+        # error ALIS reports used to look like success to a shell, a Makefile or
+        # CI. The regression harness runs run_alis in a subprocess and asserts
+        # on returncode, so a mis-invoked fit passed silently -- which is how
+        # 'run_alis fit.mod -w' fitting a file called '-w' went unnoticed.
         self._emit(logging.CRITICAL, msg)
-        sys.exit()
+        sys.exit(1)
 
     # -- inline string helpers (embedded inside message text) ---------------
     def newline(self, verbose=None):
@@ -138,7 +146,7 @@ class AlisLogger(logging.Logger):
         return Colors.start + Colors.blue_CL + "[INPUT]   ::" + Colors.end + " "
 
     # -- misc -----------------------------------------------------------------
-    def alisheader(self, prognm, verbose=2):
+    def alisheader(self, prognm="run_alis", verbose=2):
         header = "##  "
         header += Colors.start + Colors.white_GR + "ALIS : "
         header += "Absorption LIne Software v1.0" + Colors.end + "\n"

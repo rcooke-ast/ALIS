@@ -420,3 +420,59 @@ def test_save_covar_writes_nothing_when_there_is_no_covariance(
     save.save_covar(state, None)
     assert list(tmp_path.iterdir()) == []
     assert any("interupt" in m or "None" in m for m in logmsgs)
+
+
+# -- the command-line override block (Stage 6.1, Q6.12/Q6.20/Q6.25) ----------
+
+
+def test_the_override_block_records_only_the_settings_that_may_persist():
+    from alis import load
+
+    block = save.cli_override_block(
+        [
+            ("plot", "dims", "3x3", "0", True),
+            ("out", "overwrite", False, True, False),
+        ]
+    )
+    assert "plot dims 0" in block
+    assert load.CLI_OVERRIDE_MARK in block
+    # the invocation-only one is recorded, but commented, so a re-run does not
+    # silently overwrite
+    assert "#   out overwrite True" in block
+    live = [ln for ln in block.splitlines() if ln and not ln.startswith("#")]
+    assert live == [ln for ln in live if "plot dims" in ln]
+
+
+def test_an_empty_override_list_writes_nothing():
+    assert save.cli_override_block([]) == ""
+    assert save.cli_override_block(None) == ""
+
+
+def test_a_previous_block_is_carried_forward_not_duplicated():
+    """Re-fitting a `.mod.out` must produce a file that still reproduces the
+    run: the earlier overrides carry over, and this run's replace them key by
+    key rather than being appended alongside (Q6.25)."""
+    from alis import load
+
+    previous = [
+        "plot dims 0   {0:s} was 3x3\n".format(load.CLI_OVERRIDE_MARK),
+        "out fits True   {0:s} was False\n".format(load.CLI_OVERRIDE_MARK),
+    ]
+    block = save.cli_override_block(
+        [("plot", "dims", "3x3", "1x1", True)], previous=previous
+    )
+    live = [ln.split() for ln in block.splitlines() if ln and not ln.startswith("#")]
+    keys = [(p[0], p[1]) for p in live]
+    assert keys.count(("plot", "dims")) == 1, "the replaced setting is not duplicated"
+    assert ("out", "fits") in keys, "the untouched one is carried forward"
+    assert [p[2] for p in live if p[1] == "dims"] == ["1x1"]
+
+
+def test_the_writer_strips_a_previous_block_from_the_settings_it_echoes():
+    from alis import load
+
+    parlines = [
+        "run blind False\n",
+        "plot dims 0   {0:s} was 3x3\n".format(load.CLI_OVERRIDE_MARK),
+    ]
+    assert save.strip_cli_override_block(parlines) == ["run blind False\n"]

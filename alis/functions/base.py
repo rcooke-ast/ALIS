@@ -881,7 +881,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
             tb = tb.tb_next
         filename=filename.split('/')[-1]
         msgs.bug("A bug has been spotted on Line "+line_no+" of "+filename+" with error:"+msgs.newline()+str(ev))
-        sys.exit()
+        sys.exit(1)
 
     # Incorporate the user-defined functions
     kvals = list(usr_fd.keys())
@@ -904,7 +904,7 @@ def call(prgname="",getfuncs=False,getinst=False,atomic=None,verbose=2):
     # Don't touch anything below
     if getfuncs and getinst:
         msgs.bug("Two keywords in base.py unexpectedly set to 'True' ...", verbose=2)
-        sys.exit()
+        sys.exit(1)
     if getinst:
         keys = list(fd.keys()) # Python 3
         for i in range(len(keys)):

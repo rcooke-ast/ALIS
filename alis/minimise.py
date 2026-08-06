@@ -1380,7 +1380,6 @@ class alfit(object):
     def __str__(self):
         return {'params': self.params,
                 'niter': self.niter,
-                'params': self.params,
                 'covar': self.covar,
                 'perror': self.perror,
                 'status': self.status,
@@ -1419,7 +1418,7 @@ class alfit(object):
         if verbose <= 0: return
         print("ITERATION ", ('%6i' % iter), "   CHI-SQUARED = ", ('%.10g' % fnorm), " DOF = ", ('%i' % dof),
               " (REDUCED = {0:f})".format(fnorm / float(dof)))
-        if verbose == 1 or modpass == None:
+        if verbose == 1 or modpass is None:
             return
         else:
             prstr, cvstr = print_model(x, modpass, verbose=verbose, funcarray=funcarray)

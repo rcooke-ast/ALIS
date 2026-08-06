@@ -50,7 +50,6 @@ class _DictLike:
 class RunConfig(_DictLike):
     """The ``run`` settings section."""
 
-    prognm: str = "alis.py"
     last_update: str = "Last updated 27th May 2024"
     atomic: str = "atomic.ecsv"
     datadirc: str = ""
@@ -61,7 +60,7 @@ class RunConfig(_DictLike):
     datatype: str = "default"
     limpar: bool = False
     ncpus: int = -1
-    ngpus: Optional[int] = None
+    ngpus: int = 0  # 0 uses the CPU (was None; settings.alis said 0 -- Q6.21)
     # Stage 4.3a: which parallel backend computes the Jacobian -- "cpu", "gpu",
     # or "auto" (time one Jacobian on each and commit the fit to the faster).
     # Force cpu/gpu for reproducibility: auto's choice can vary run to run when
@@ -94,12 +93,17 @@ class ChisqConfig(_DictLike):
     """The ``chisq`` settings section."""
 
     miniter: int = 0
-    maxiter: int = 20000
+    # maxiter and fstep are the values the shipped settings.alis carried, not the
+    # ones this dataclass used to declare (20000 and 1.0). Until Stage 6.1 the
+    # file was read over the dataclass on every run, so the file's values were
+    # what every fit actually used and these were documentation that lied. The
+    # file is gone; these are now the single source of truth (Q6.21).
+    maxiter: int = 2000
     atol: float = 1.0e-10
     xtol: float = 1.0e-10
     ftol: float = 1.0e-10
     gtol: float = 1.0e-10
-    fstep: float = 1.0
+    fstep: float = 20.0  # factor above machine precision for the derivative step
 
 
 @dataclass
@@ -159,7 +163,6 @@ class OutConfig(_DictLike):
     fits: bool = False
     onefits: bool = False
     overwrite: bool = False
-    sm: bool = False
     verbose: int = 2
     reletter: bool = False
     covar: str = ""
@@ -195,7 +198,7 @@ class GenerateConfig(_DictLike):
     data: bool = False
     overwrite: bool = False
     peaksnr: float = 0.0
-    skyfrac: float = 0.0
+    skyfrac: float = 0.1  # was 0.0; settings.alis said 0.1 (Q6.21)
 
 
 @dataclass

@@ -185,7 +185,7 @@ def save_convtest(slf,diff,thresh,info,printout=True,extratxt=["",""]):
     if os.path.exists(filename):
         while ans != 'y' and ans != 'n' and ans !='r':
             msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
-            ans = nput(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
+            ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
             if ans == 'r':
                 fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend

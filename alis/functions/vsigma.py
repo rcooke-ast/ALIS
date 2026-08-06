@@ -60,27 +60,16 @@ class vSigma(base.Base) :
                 ret = np.fft.ifft(conv).real.copy()
                 del conv
                 return ret[df:df+ysize]
-            elif np.size(sigd) == szflx:
-                yb = y.copy()
-                df=np.min([int(np.ceil(fsigd/dwav).max()), ysize/2 - 1])
-                for i in range(szflx):
-                    if sigd[i] == 0.0:
-                        yb[i] = y[i]
-                        continue
-                    yval = np.zeros(2*df+1)
-                    yval[df:2*df+1] = (x[df:2*df+1]/x[df] - 1.0)/sigd[i]
-                    yval[:df] = (x[:df]/x[df] - 1.0)/sigd[i]
-                    gaus = np.exp(-0.5*yval*yval)
-                    size = ysize + gaus.size - 1
-                    fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
-                    conv  = np.fft.fft(y, fsize)
-                    conv *= np.fft.fft(gaus/gaus.sum(), fsize)
-                    ret   = np.fft.ifft(conv).real.copy()
-                    yb[i] = ret[df:df+ysize][i]
-                del conv
-                return yb
             else:
-                msgs.error("vsigma and flux arrays have different sizes.")
+                # A wavelength-dependent resolution -- one sigma per pixel, read
+                # from the 'resolution' data column. The branch that did this was
+                # dead: it referred to an undefined name and raised NameError on
+                # entry, so it has never run and its numerics have never been
+                # checked. Rather than enable untested code, ALIS now says so
+                # plainly; only a single resolution value is supported (Stage 6.5,
+                # Q6.16). Reinstating it properly is on the deferred-work list.
+                msgs.error("A wavelength-dependent resolution is not supported."+msgs.newline()+
+                           "Give 'vsigma' a single value.")
         else: return y
 
 #	def call_CPU(self, x, y, p, ncpus=1):

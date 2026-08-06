@@ -273,8 +273,10 @@ def run_alis(mod_file, runtime_hrs=None, backend=None):
     # hangs a headless run (lineemission, voigtconv timed out at
     # ~10 min). Plotting does not affect the compared outputs
     # (.mod.out / _fit.dat / covar), so this only makes the run
-    # headless. NB: run_alis takes the mod filename from sys.argv[-1],
-    # so the .mod file must stay the last argument.
+    # headless. The .mod file used to have to stay last, because run_alis
+    # read it from sys.argv[-1]; Stage 6.1 takes it from the parser instead,
+    # so the order no longer matters (tests/test_cli.py pins that). Left
+    # last anyway -- it reads better and matches the other call sites.
     proc = subprocess.run(
         [
             sys.executable,

@@ -650,7 +650,7 @@ def myfunct(p, fjac=None, x=None, y=None, err=None, state=None, output=0, ddpid=
         return modf
     elif output == 3:
         return modconv_fit
-    if (fjac) == None:
+    if fjac is None:
         if getemab:
             return [status, (y-modf)/err, emabv]
         else:

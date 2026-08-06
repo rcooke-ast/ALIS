@@ -82,6 +82,11 @@ def test_invalid_verbosity_leaves_level_unchanged(cap):
 def test_error_reports_and_exits(cap):
     log, handler = cap
     logger.set_verbosity(0)  # even at the quietest level, errors show
-    with pytest.raises(SystemExit):
+    with pytest.raises(SystemExit) as exit_info:
         log.error("boom")
     assert "CRITICAL" in _levels(handler)  # ERROR band is emitted at CRITICAL
+    # Non-zero, so a shell / Makefile / CI sees the failure. It used to be a
+    # bare sys.exit(), i.e. status 0, which meant every error ALIS reported
+    # looked like success -- including a mis-invoked run_alis, which the
+    # regression harness checks by return code (Stage 6.1, Q6.11).
+    assert exit_info.value.code == 1
