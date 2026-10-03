@@ -1,11 +1,11 @@
-# Prompt file for ALIS software refactoring -- STAGE X
+# Prompt file for ALIS software dashboard creation -- STAGE X
 
 > General description of the tasks to be performed during this stage.
 
 ## Tasks
 
 > A list of distinct subtasks to be performed during this stage. Each task should be completed in order, and the results logged in a log.
-> The logs should be kept in `ALIS/claude_prompts/logs/refactor_code_stageX_log.md` and should include the date, a description of the tasks performed.
+> The logs should be kept in `ALIS/claude_prompts/logs/dashboard_stageX_log.md` and should include the date, a description of the tasks performed.
 
 ## Skills to use for this stage
 

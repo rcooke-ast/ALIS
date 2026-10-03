@@ -116,3 +116,63 @@ residuals centred on zero, within the ±1σ band, with no visible systematics.
 - Added §4.1.1 describing the PDF plot layout (upper spectrum + lower residuals panels)
 - Added §4.1.2 explaining the local minimum from the original (bugged) run and the
   importance of b-parameter starting values in Voigt profile fitting
+
+### 2026-10-03 (Expand §0 "Prepare fitting regions"; update workflow doc to v0.4)
+
+Expanded RJC's new §0 of `doc/ALIS_workflow.md` from the `prepfit` source
+(`alis/prepfit/specplot.py`), `examples/prepfit/`, and the snips and data blocks
+in `context/fitting_examples/`. Added §0.1–0.6: the snip file format and
+naming, setting up `prepfit`, the selection controls, turning snips into a
+`data read` block, alternatives to `prepfit`, and notes for the dashboard.
+Added step 0 to the Overview list, and bumped the doc to v0.4.
+
+What I learned:
+
+- `prepfit` writes **data files, not a model file**: one 4-column snip per
+  transition (wave, flux, error, 0/1 mask), named
+  `<stem>_<isotope+element>_<ion>_<λ0>_reg.dat`. The `data read` block is written
+  by hand. The original §0 text said the output was a model file; this was corrected.
+- If the parent spectrum has a fifth column, `prepfit` treats it as the
+  continuum and multiplies the flux and error by it. Verified on J0814p5029:
+  0.0789 × 2020.06 = 159.3. The snips are therefore un-normalised, and ALIS
+  fits a local Legendre continuum per `specid`, with starting values at the
+  local flux level.
+- `w` writes every pixel within the current x-limits (±500 km/s by default), not
+  just the selected pixels. The snip is also the only saved state, and is
+  reloaded when a transition is revisited.
+- Bugs and gaps confirmed in the code: the unsaved-changes warning on `q`
+  never fires; `+`/`-` never update the Lyα overlay; `p` is unbound; the
+  fine-structure filter never matches (confirmed by running `specplot.atomic`,
+  which kept `I*`, `I**` and `II*` lines); line-ID drawing is unreachable; and
+  the continuum column is inferred from the column count. These are listed
+  in §0.6 as input to the dashboard design.
+
+### 2026-10-03 (Prompt 5: dashboard suggestions and queries)
+
+Read the `Functionality` section of `claude_prompts/ALIS_v2_dashboard_prompts.md`
+alongside `doc/ALIS_workflow.md` (v0.4), `deferred_work.md` §1.1, the Stage 6
+GUI queries (Q6.2, Q6.4, Q6.8, Q6.10), the fitting-example `context.md` files,
+and the code the dashboard will build on: `alis/prepfit/specplot.py`, the
+blinding code in `load.py` and `functions/base.py`, `report.py`,
+`plotscript.py`, and `main.alis()`.
+
+Filled in RJC's two placeholders for vetting. Proposed 11 dashboard-wide
+features (F1–F11) and 22 step-specific suggestions (S1–S22), grouped by the
+Voigt-mode steps. Added a `Queries` section with QF.1–QF.16, each giving a lean.
+
+What I learned:
+
+- The toolkit question is still open, and it depends on where the dashboard and
+  the fits run (QF.1/QF.2). My lean is Qt 6 (PySide6) with pyqtgraph if the
+  dashboard is used locally.
+- Under `run blind True`, ALIS writes no `.mod.out`, `_fit.dat` or covariance
+  matrix (`load.py:403-420`). The dashboard still needs the best-fit model to
+  plot it and to iterate from it, so blinding needs an explicit policy (QF.10).
+- Real fits need things the current Voigt-mode description does not yet cover:
+  several datasets (QF.6), several redshift systems, interlopers and telluric
+  lines (QF.9), and `.mod` files whose comments must survive a two-way sync (QF.3).
+- `main.alis()` already accepts model lines and data arrays in-process, and
+  `report.py` already provides per-region χ²_ν and a runs test. The
+  fit-quality display can be built on these.
+- `context/plotting/`, which `plotscript.py` cites for the reference figures, is
+  no longer in the working tree (QF.14).

@@ -74,24 +74,390 @@ Questions raised while drafting the dashboard document:
 - Convergence testing via external Monte Carlo (running many instances with random starting parameters) is not in the LaTeX docs; it was inferred from the fitting examples.
   **Response:** That is correct. There is no documentation about the Monte Carlo procedure at this stage. The authoritative reference for the Monte Carlo procedure is the source code.
 
+## Functionality
+
+This section of the document describes all the functionality that should be included in the new dashboard.
+The overall goal is to make the dashboard as user-friendly as possible, and to make it easy for a user to
+prepare, run, and analyse an ALIS fit.  The dashboard should be designed with the following goals in mind:
+
+- The dashboard should be designed to be as user-friendly as possible.  It should be easy for a user to prepare, run, and analyse an ALIS fit.
+- The dashboard should be designed to be as intuitive as possible.  It should be easy for a user to understand how to use the dashboard, and how to prepare, run, and analyse an ALIS fit.
+- The dashboard should be designed to be as efficient as possible.  It should be easy for a user to prepare, run, and analyse an ALIS fit in the least amount of time possible.
+- The dashboard should be designed to be as flexible as possible.  It should be easy for a user to prepare, run, and analyse an ALIS fit in a variety of ways, depending on the user's needs and preferences.
+
+Here are some specific features that should be included in the dashboard:
+
+- Users should be able to carry out four main tasks: (i) Prepare an ALIS fit, (ii) Run an ALIS fit, (iii) Analyse the results of an ALIS fit, and (iv) Generate a publication ready python plotting script. Step (iv) is not to be implemented in the first version of the dashboard, but this should be included as part of the design of the dashboard.
+- Several modes will be possible for the dashboard, including a "default" mode (this is the mode we will develop first, and it is called "Voigt mode"). The modes are described in more detail below. The dashboard should be designed to allow for additional modes to be added in the future.
+- *Proposed by Claude (2026-10-03), to be vetted by RJC.* These features apply to the
+  whole dashboard; suggestions for individual steps follow the Voigt-mode steps below. Each
+  has an ID so it can be accepted, changed or rejected on its own. "QF.n" refers to the
+  Queries section.
+  - **F1 — Never lose work.** A project file plus autosave restores the session exactly
+    as it was: spectrum, redshift(s), regions, continuum, components and view. Nothing is
+    discarded silently. (`prepfit` loses any selection that was not written to disk, as
+    described in `ALIS_workflow.md` §0.6, item 1.)
+  - **F2 — Undo/redo** for every action, whether interactive or typed, with one history
+    shared by the plots and the `.mod` editor.
+  - **F3 — Plain-file outputs.** Everything the dashboard builds is saved as ordinary snips
+    plus a `.mod` file, which `run_alis` runs without the dashboard (QF.4).
+  - **F4 — Open an existing fit**, as well as starting from a raw spectrum: an existing
+    `.mod` with its snips and `.mod.out`, e.g. any model in `context/fitting_examples/`
+    (QF.5).
+  - **F5 — Validate as you type.** The model is parsed continuously, and errors are
+    shown against the offending line before a fit is launched. Examples: an unknown ion; a
+    `1e4`-style label; a `specid` with no data or no continuum; tied labels given
+    conflicting starting values (`ALIS_workflow.md` §2.5); a fitrange with no pixels; a
+    buffer narrower than the instrumental convolution needs.
+  - **F6 — Background fit runner.** Fits run in a separate process, with live χ² and
+    iteration progress and a cancel button. The user can close the dashboard and re-attach
+    to a long fit later. `run backend` and `run ncpus`/`ngpus` are exposed.
+  - **F7 — Run history.** Every run is kept, with its input model, output, report, χ²
+    and time. The user can compare any two runs (overlaid models and a table of parameter
+    differences) and restore any run's model. This serves systematics tests such as
+    Thermal vs Turb in `helium34`. **RJC:** A note on this item, please see the response to QF.11. The user must choose if they wish to store a run in the run history.
+  - **F8 — One blinding gate.** Every parameter value that reaches the screen passes
+    through a single function that masks blinded values: the editor, tables, tooltips,
+    console, plot labels and exported scripts. Unblinding is an explicit action that the
+    user must confirm, and it is logged (QF.10).
+  - **F9 — Settings from the source.** The settings panel is generated from `ArgFlag` in
+    `alis/config.py`, the same source as `run_alis --list-settings`, so it cannot drift
+    from ALIS.
+  - **F10 — Discoverable controls.** A shortcut sheet and a command search are always
+    available, rather than `?` printing to the terminal. Every keyboard action can also be
+    reached with the mouse, and vice versa.
+  - **F11 — Modes as plug-ins.** A mode supplies five things: a data loader, a builder
+    for the "display spectrum", a mapper from regions to fitted data, a model template,
+    and plot presets. Voigt mode (the display spectrum is the one fitted dataset) and
+    Orders mode (the display spectrum is combined from many fitted orders) are the first
+    two. The data model holds N datasets from the start (QF.6, QF.13).
+
+The operating modes include the following two modes:
+- Voigt mode (this is the default mode): In this mode, the user will load a single input spectrum and the interactive dashboard will allow the user to select the fitting regions for each transition they wish to include in the fit. The dashboard will also allow the user to interactively set starting model parameters for the fit, such as interactively defining a first guess of the continuum parameters, and allow the user to interactively set the Voigt parameters. This starting model (i.e. the .mod file) should be displayed on part of the GUI and the user should be allowed to change the model parameters. The user should be allowed to add multiple emission models, and multiple absorption models, if they wish. The user will then be able to run the fit from the dashboard, and the dashboard will display the results of the fit, including the output data file, and a plot of the model on top of the data. Eventually, the user will also be able to generate a publication ready python plotting script.
+- Orders mode: This mode have all the same features as the default mode, but the user will be able to load multiple input spectra containing multiple orders. The dashboard will optimally combine all data into a single spectrum for display purposes only. The dashboard will then allow the user to select the fitting regions for each transition they wish to include in the fit (based on the combined spectra) and then the dashboard will apply these fitting regions to the individual orders of the multiple spectra. ALIS will perform the fits on the uncombined data. The dashboard will choose the FWHM values using information from the input files. Note that the input spectra will be the spec1d output products of PypeIt. Further information about this mode, the input data, and how to optimally combine and store the data will be provided in a future step of the refactoring process. For now, it is important to understand what will be required, so the dashboard is flexible enough to account for this feature in the future. If Claude requires further details at this stage, queries can be asked and RJC will provide responses.
+- There should be the option to include additional fitting modes in the future.
+
+The sequential process to prepare, run, and analyse an ALIS fit (for the "Voigt mode") is as follows:
+
+(1) Load a spectrum: The user will load a single input spectrum and set a guess of the absorber redshift.
+
+(2) Select transitions and fitting regions: The interactive dashboard will allow the user to select the fitting regions for each transition they wish to include in the fit (similar to the `prepfit` utility).
+
+(3) Set continuum parameters: The dashboard will then allow the user to interactively set the starting model parameters of the fit. such as interactively defining a first guess of the continuum parameters, and for any polynomial function used (e.g. polynomial, legendre, chebyshev) the user should set how many continuum parameters to use.
+
+(4) Set absorption parameters: The dashboard will then allow the user to interactively set the Voigt parameters. This process could involve the user clicking the plot to give an initial guess of the redshift of the absorber, horizontal dragging could set the Doppler parameter, and vertical dragging could set the column density. Note that this must be handled per ion (not per transition) and different ions should have the functionality to include components that have been defined for other ions. The user should be allowed to add multiple absorption components, if they wish.
+
+(5) Synchronise the model: The above properties should define the starting model (i.e. the .mod file). This should be generated by the GUI based on the information provided until this point. Ideally, the dashboard will have the functionality to display an editable version of the .mod file, so interactive changes or manual changes (including typing, copy-pasting, and editing) will be synchronised. This means the user can iterate between steps 2-4 and this will all work towards updating the .mod file.
+
+(6) Run an ALIS fit: The user will then be able to run the fit from the dashboard. The user should be allowed to display the initial model parameter on the data, or the final model parameters on the data. This will also help the user to iterate between steps 2-5, in case they need to make changes after a model has been run. Each transition displayed on the dashboard should be labelled with the ion name, and the quality of the fit (including residuals). The presentation of the fit quality should be similar to what is already implemented in ALIS.
+
+(7) Important note: For all steps above, it should also be possible for the user to choose if they wish to blind the model, or certain parameters, to avoid human bias. There is functionality in ALIS to support model parameter blinding, and the dashboard should support this functionality (of model blinding) and never display blinded model parameters to the user.
+
+(8) As a final step, the user should be able to generate a publication ready python plotting script, using the examples that have already been provided as context. The user will be able to choose the panel dimensions of the plot (e.g. 4 panels x 2 panels) and the output figure size. The user will then interactively select which transitions to display in each panel. The information presented in each panel should contain the same information as the publication quality figures provided as context. As a stretch goal, the user will be able to select different options for the linestyles, model colour, data colour, and properties of the residuals. The dashboard should then generate a publication ready python plotting script that can be run independently of the dashboard, so that the user can make minor tweaks and generate the final version of the figure themselves.
+
+Additional suggestions for the functionality, suggested by Claude (to be then vetted by RJC):
+
+*Proposed by Claude (2026-10-03), to be vetted by RJC.* These are grouped by the step
+they belong to, and their IDs continue from F1–F11 above. "§" refers to
+`doc/ALIS_workflow.md`.
+
+**(1) Load a spectrum**
+- **S1 — Redshift finder.** The strongest expected transitions are stacked in velocity
+  space at the trial redshift, and clicking a feature refines z. For DLAs, it adds the
+  damped Lyα overlay with an adjustable log N(H I) that `prepfit` intended to provide. **RJC:** This is not needed at this stage. However, we should allow the user multiple attempts to set the redshift. For example, they may wish to set the redshift based on one transition, and then refine it based on another transition. The user should be able to iterate between these two steps until they are happy with the redshift.
+- **S2 — Transition coverage table.** This lists every transition of the system that the
+  spectrum covers, ranked by expected strength (fλ). Transitions in the Lyα forest, in
+  telluric bands, or near gaps and spectrum edges are flagged. Tick boxes choose which
+  transitions go forward to step (2).
+- **S3 — Explicit column roles.** On loading, the user assigns each column a role (wave,
+  flux, error, continuum, mask) with a preview. `prepfit` instead infers the roles from
+  the number of columns (§0.6, item 5).
+
+**(2) Select transitions and fitting regions**
+- **S4 — Velocity-stack view.** All chosen transitions are shown on a common velocity
+  axis, next to the per-transition view. A region drawn in velocity can be copied to
+  every transition of that ion, or to every transition. **RJC:** This is not required.
+- **S5 — Line identifications** in each panel, for every system in the project: the
+  primary system, interlopers and telluric lines (§0.6, item 6).
+- **S6 — Snip extent separate from the mask.** The snip's edges are draggable handles,
+  distinct from the green fit regions. The user is warned when the unfitted buffer is
+  narrower than the convolution needs; ALIS already computes this for `bufferpix`.
+- **S7 — Mask helpers.** NaNs, non-positive errors and σ-clipped outliers are masked
+  automatically, and a brush masks individual pixels.
+
+**(3) Set continuum parameters**
+- **S8 — Automatic first guess.** A σ-clipped Legendre polynomial is fitted to the
+  selected pixels, away from the line cores of known components. The user changes the
+  order with +/− and sees the resulting change in χ² (or BIC) to judge it, then
+  fine-tunes the curve by dragging. **RJC:** There could also be +/- buttons on the GUI to allow the user to increase or decrease the order of the polynomial (or, they can use the keyboard +/- buttons).
+- **S9 — Normalised-view toggle.** The data are shown divided by the current continuum,
+  for judging the model by eye.
+- **S10 — Shared continua.** One polynomial can span overlapping or adjacent snips, via
+  `min=`/`max=`. Orders mode needs this anyway.
+- **RJC proposes an additional item here:** We should have the code check that the same pixel is not being included in the fit more than once. If two nearby snips are being fitted, the dashboard should ensure that the same pixel is not being included in the fit more than once. If it is, the dashboard should warn the user and ask them to fix this issue before proceeding. This is important because including the same pixel in multiple fits can lead to incorrect results.
+
+**(4) Set absorption parameters**
+- **S11 — Component matrix.** Rows are velocity components (z or v, b, T); columns are
+  ions, holding log N. Each cell has a free/fixed/tied toggle that writes the label case
+  and suffix, so users never type `ra`, `RA` or `ZEROT` by hand.
+- **S12 — First guess of log N from the apparent optical depth (AOD).** The guess for
+  each component comes from the weakest unsaturated transition of that ion, and saturated
+  transitions are flagged.
+- **S13 — Live preview.** While a component is dragged, the convolved model updates in
+  every panel that contains that ion. Dragging a component in O I 1302, for example, also
+  moves it in O I 1039. The residuals, (data − model)/σ, are shown underneath.
+- **S14 — One-click blends.** Add an interloper, fixed or free, either as a generic
+  absorber (`1H_IB` or `1Ly_a`) or as a transition of another system.
+- **S15 — Constraint editors.**
+  - Limits (`lim`) are set directly on table cells.
+  - A `link` editor autocompletes labels and checks the dependency list.
+  - Templates set up common structures: D/H using `ion=2H_I/1H_I`, D/H using
+    `variable` + `link`, and ³He/⁴He.
+- ** RJC proposes an additional item here:** We should also allow the user to remove components they have added. For example, if the user has added a component that they no longer wish to include in the fit, they should be able to remove it from the component matrix. This could be done by selecting the component and clicking a "remove" button, or by right-clicking on the component and selecting "remove" from a context menu.
+
+**(5) Synchronise the model**
+- **S16 — Cross-highlighting.** Selecting a component, panel or region highlights its
+  `.mod` line(s). Placing the cursor on a line highlights what that line describes.
+- **S17 — Pre-flight check before running.** It flags:
+  - more free parameters than the fitted pixels can support;
+  - components that no transition can constrain;
+  - starting values that sit at a limit;
+  - very small starting b values (the local-minimum trap in §4.1.2);
+  - `specid`s with no continuum.
+
+**(6) Run an ALIS fit**
+- **S18 — Fit-quality badges.** Each panel gets a green, amber or red badge from the
+  existing per-region report (`out report`: χ²_ν and the runs test). The full report is a
+  click away.
+- **S19 — Results table** showing value and error, with flags for parameters that are at
+  a limit or poorly constrained. A correlation-matrix view is built from `out covar`.
+- **S20 — "Continue from best fit"** in one click. This copies the `.mod.out` values into
+  the model, through the blinding gate.
+- **S21 — Convergence from the dashboard.** Launch the existing convergence checks and
+  random restarts (`run convergence` and the `sim` settings), then summarise whether the
+  runs agree.
+
+**(8) Publication plotting script**
+- **S22 — The preview is the output.** The layout preview is produced by running the
+  script that `alis/plotscript.py` emits, so the preview is exactly what the script will
+  draw. Layouts can be saved as presets. **RJC:** Please also see the response to QF.14.
+
+## Queries
+
+*Raised by Claude on 2026-10-03, in response to Prompt 5. Each query gives Claude's
+lean; RJC to respond under each one.*
+
+**QF.1 — Where will the dashboard be used?**
+- Will it run on the machine that holds the data (a laptop or desktop)? Or on a remote
+  server, viewed from elsewhere, such as the 12-core, 4-GPU machine that runs
+  `DH_orders`?
+- Should it ever submit fits to a cluster queue?
+
+This decides QF.2. A desktop toolkit is simplest when used locally but needs X11 or VNC
+for remote use. A browser-based dashboard works remotely through an SSH tunnel. My lean:
+the dashboard runs locally and v1 runs fits locally. The fit runner is designed so that
+a remote back-end ("run this fit over there") can be added later.
+
+**Response:** Yes, the fits will always be run locally on the machine that holds the data. The dashboard will also be generating a .mod file, so if the user wishes to run the fit on a remote server, they can copy the .mod file to the remote server and run the fit there. However, the dashboard itself will always be run locally on the machine that holds the data.
+
+**QF.2 — GUI toolkit** (deferred from plan Q8 and Q6.2). The options:
+- **(a) Qt desktop with embedded matplotlib canvases.** This is closest to `prepfit`,
+  but redrawing tens of panels on every mouse movement is slow.
+- **(b) Qt desktop with pyqtgraph for the interactive panels.** It is fast, and its
+  draggable region and line items map directly onto steps (2)–(4). matplotlib is kept
+  for the publication-script preview.
+- **(c) Browser-based, served from Python** (e.g. Panel/Bokeh or Dash). It works
+  remotely, but custom drag gestures need JavaScript, and every live Voigt update makes a
+  round trip to the server.
+
+For (a) or (b), I suggest Qt 6 via PySide6 rather than PyQt5. Qt 5 has reached end of
+support, and PySide6's LGPL licence sits more comfortably than PyQt's GPL alongside
+ALIS's BSD-3 licence. My lean: (b) if QF.1 is "local", and (c) if remote use is a
+requirement. Either way, the dashboard would be an optional extra:
+`pip install "alis[gui]"`.
+
+**Response:** We should use PyQT6 (following closely option b, above). Note that we do not need tens of panels on the screen at once when selecting fit regions. prepfit currently just displays a single panel. Before doing any design work, we should first prepare some example layouts of the dashboard and make sure that the layout is user-friendly and intuitive. Once we have a good layout, we can then proceed to implement the dashboard using PyQT6.
+
+**QF.3 — When the GUI and the `.mod` text disagree, which one wins?**
+- **(a) The text.** Every interactive action makes a targeted edit to the relevant
+  line(s), and the GUI re-parses the text after each edit. Comments, commented-out lines,
+  ordering and spacing all survive.
+- **(b) A structured model.** The GUI regenerates the text from it. This is simpler,
+  but it loses comments and formatting, which real models depend on. `J0903p2628.mod`,
+  for example, switches data lines on and off by commenting them out.
+
+My lean: (a). Parse errors are shown on the offending line, and edits from the GUI pause
+until the text parses again.
+
+**Response:** Agreed. The .mod file should be the authoritative source of the model. The GUI should parse the .mod file. If there are any parsing errors, they should be displayed to the user, and the user should be able to correct them in the .mod file.
+
+**QF.4 — The plain-file contract.** Should every dashboard project remain runnable as
+`run_alis model.mod`, without the dashboard installed? I propose the dashboard writes
+three things:
+- the snips, in `prepfit`'s four-column format, so old and new snips are interchangeable;
+- the `.mod` file;
+- one small project file for state that only the UI needs: the source spectrum,
+  redshift(s), view settings and run history.
+
+The `.mod` and the snips stay authoritative. My lean: yes.
+
+**Response:** Yes.
+
+**QF.5 — Opening existing work.** Should v1 also open an existing `.mod` with its snips
+and `.mod.out`, as well as starting from a raw spectrum? Any model in
+`context/fitting_examples/` would be an example. Without a source spectrum, step (2)
+would be limited to the extent of each snip. My lean: yes. This is how most iteration
+will actually happen. Opening every context example and writing it back unchanged would
+also be a strong test of QF.3.
+
+**Response:** Yes, this is possible. We will need to be careful though, because this will not allow the user to add any new transitions to the fit (because the .mod file does not contain any information about the full spectrum).
+
+**QF.6 — More than one spectrum in Voigt mode.** Step (1) loads a single spectrum, but
+several context fits combine datasets:
+- HIRES + UVES + ESPRESSO (`J0035m0918`);
+- new and archival HIRES (`Q1243p307`);
+- CRIRES + optical (`helium34`).
+
+Each dataset has its own resolution, shift (`vshift`/`vshiftscale`) and zero level. Is
+this in scope for Voigt mode? My lean: the data model handles N datasets from v1, since
+Orders mode needs this anyway. The v1 interface could support a small N, shown
+side-by-side for each transition.
+
+**Response:** Yes, this is a good suggestion. The dashboard should be able to handle multiple datasets in Voigt mode, and the user should be able to select which dataset they wish to use for each transition (multiple datasets should be an allowed option). The dashboard should also be able to handle different resolutions, shifts, and zero levels for each dataset.
+
+**QF.7 — Continuum convention.** When the input spectrum is normalised and comes with a
+continuum, how should the snips be written?
+- **(a) Un-normalised:** flux and error are multiplied by the continuum, as `prepfit`
+  does, so ALIS fits the continuum afresh in raw units.
+- **(b) Normalised:** the Legendre polynomial starts near 1.0, as in `J0035m0918`.
+- **(c) Normalised, with the continuum also in the `continuum` column**, which ALIS
+  multiplies into the model.
+
+Also, is Legendre the default continuum function? My lean: (a) with Legendre, for
+consistency with existing snips. Because S8 computes the starting coefficients, the user
+never sees the flux scale either way.
+
+**Response:** Correct, option (a) with Legendre as the default continuum function. This should only happen if there is a fourth column in the input spectrum. Otherwise, we should require that the input spectrum contains only 3 columns (wavelength, flux, error). If the input spectrum contains 4 columns (wavelength, flux, error, continuum), then we should multiply the flux and error by the continuum to un-normalise the spectrum, and present a warning message to the user.
+
+**QF.8 — Components and tying across ions.**
+- In step (4), should a component (z, b, T) be shared by every ion of a system by
+  default? That is, one velocity structure, with an independent log N for each ion, and
+  the option to untie individual ions.
+- Which b should a horizontal drag set? Either b_turb with T held fixed (default
+  `0.0ZEROT`, so that b = b_turb), or the total b.
+- Are isotopes separate ions that can be linked by a ratio (H I/D I, ³He/⁴He,
+  ¹²C/¹³C)?
+
+My lean: components are shared by default; a horizontal drag sets b_turb with T held at
+its current value; and isotopes are separate ions with a one-click ratio link.
+
+**Response:** Components are shared by default; a horizontal drag sets b_turb with T held at its current value (the user should be given the choice to set the temperature to 0 K, 100 K or 10000 K); and isotopes are treated as separate ions, but they should have the same component structure as all other isotopes of the same element.
+
+**QF.9 — Several redshift systems.** Step (1) asks for one absorber redshift. Real fits
+also include interlopers:
+- Lyα-forest H I and a C IV absorber (`J0903p2628`);
+- contaminant systems at z ≈ 2.05–2.44 (`DH_orders`);
+- telluric lines, modelled as `1Ly_a` (`helium34`).
+
+Should a project hold one primary system plus any number of secondary systems and
+generic absorbers, each with its own line IDs and components? My lean: yes, in v1.
+Without it, blends have to be typed in by hand.
+
+**Response:** Yes, a project should hold one primary system plus any number of additional systems and generic absorbers, each with its own line IDs and components. This will allow the user to easily add interlopers and contaminant systems to the fit, without having to type them in by hand. Note that some blends may have ions that appear in multiple transitions of the main system. Also, the user must be allowed to extract a snip for a specific transition of an absorption system that isn't the main system. For example, if the user has an absorption line from the main system, and there is a contaminant Fe II absorption line from another system that is blended with the main system, the user should be able to extract a snip for another Fe II transition of the contaminant absorption system, and add it to the fit.
+
+**QF.10 — Blinding in practice.**
+- **(a) Profiles.** ALIS draws blinded models in its PDF, so I assume the dashboard may
+  show blinded *profiles* and should hide only the *values*. Is that correct?
+- **(b) Interactive placement.** Dragging a blinded component would reveal its N and b.
+  Should blinded parameters be draggable only *before* blinding is switched on, and
+  locked afterwards?
+- **(c) Outputs.** With `run blind True`, ALIS writes no `.mod.out`, no `_fit.dat` and no
+  covariance matrix (`alis/load.py:403-420`). The dashboard still needs the best-fit
+  model, to plot it and to "continue from best fit". May it keep those values internally,
+  in memory or in a file it never displays? Or must it rerun from the user's starting
+  values every time?
+- **(d) `blindrange` offsets.** Should the dashboard show the offset values, as ALIS
+  prints them, or mask them?
+- **(e) Unblinding.** Should unblinding be an explicit action that the user confirms,
+  recorded with a timestamp in the project file?
+
+My lean: yes to (a), (b) and (e); for (c), keep the values internally and never display
+them; for (d), mask them.
+
+**Response:** These are my responses to the above questions:
+- (a) Yes, the dashboard may show blinded profiles and should hide only the values.
+- (b) When the user first opens a spectrum and sets the initial guess at the redshift, they should also have an option to globally blind the fit (equivalent to `run blind True`). In addition, when a user adds a component, there should be an option to blind some of the parameters of that component. When the user is interactively dragging to set the parameters of a blinded component, the user should not be able to see the values of the blinded parameters. Therefore, the user should not be able to see the initial model parameter values of the blinded parameter in the .mod file (as displayed by the dashboard). However, the .mod file written to disk will need to contain the initial model parameter values of the blinded parameters, so that the user can run the fit from the command line. As an alternative, the dashboard could write a single file that contains all information needed by the dashboard to return it to its previous state (for example a single file that contains the spectrum, the snips, the .mod file, and anything else needed to return the dashboard to its previous state). This file could be used to restore the dashboard to its previous state, and the user could also use this file to run the fit from the command line. The user should not be able to see the values of the blinded parameters in this file, but this could be a way to produce an equivalent .mod file hidden inside a single file that can be loaded/saved by the dashboard, and can also be used in the context run_alis filename.model (i.e. a `.model` file instead of a `.mod` file).
+
+**QF.11 — What "Analyse" covers in v1.** Which of these does the first version need?
+- the parameter table with errors and flags (S19);
+- per-panel fit-quality badges (S18);
+- the toggle between initial and final model (already in step 6);
+- run history and comparison (F7);
+- the correlation matrix (S19);
+- convergence and random-restart tools (S21).
+
+My lean: all except the last two.
+
+**Response:** All of these are good to include in v1. For the run history, perhaps it can be up to the user if they wish to store the output model parameters of a given fit in the run history. By default, the dashboard won't write all fits to the run history. There should be a button that commits a fit to the run history.
+
+**QF.12 — Emission models in Voigt mode.** Step (3) covers continuum polynomials. Should
+other emission functions (`gaussian`, `line_emission`, `powerlaw`) be placeable
+interactively in v1, or added only through the `.mod` editor? My lean: the polynomials
+(and `constant`) are interactive in v1. Everything else goes through the editor, where
+the validator (F5) and the plot preview still apply.
+
+**Response:** Agreed. The polynomials (and `constant`) should be interactive in v1. Everything else should go through the editor, where the validator (F5) and the plot preview still apply.
+
+**QF.13 — Orders mode (design-shaping questions only).** Two questions now, so that the
+Voigt-mode design does not get in the way of Orders mode later.
+- **(a)** Must the user be able to override a region on an individual order, e.g. to
+  mask a cosmic ray in one exposure? Or are regions defined only on the combined
+  spectrum?
+- **(b)** Is the default continuum one Legendre per (transition, dataset), shared across
+  its orders with `min=`/`max=`, plus one zero level per dataset, as in `DH_orders`?
+
+My lean: regions are defined in wavelength on the combined spectrum, with optional masks
+for individual orders; and yes to (b).
+
+**Response:** For (a), each order can have different pixels included in the fits, but the legendre polynomial that is used for the continuum must all have the same `min` and `max` variables if the same continuum is being used for the same transition across multiple orders. The user could perhaps choose one of the following options: (i) initially set the same region for all orders, and make edits to each individual order to remove cosmic rays etc.; or (ii) initially set the same region for all orders, and set a `sigma_clip` parameter to consider search for statistically significant deviations after the fit is complete and automatically mask those pixels and refit. For (b), yes, the default continuum should be one Legendre per (transition, dataset), Therefore, the same order (and transition) in a different dataset is expected to share the same legendre polynomial, and the same `min=`/`max=` values. We could add a multiplicative scale factor for each order (either a `constant` or a `linear` function) specified in the `absorption` block of the model with the variable `continuum=True`.
+
+**QF.14 — Reference figures for step (8).** `alis/plotscript.py` and the Stage 5 notes
+refer to reference figures in `context/plotting/`, but that directory is no longer in
+the working tree. Could it be restored before step (8) is designed?
+
+**Response:** Yes, RJC has added this context in now (see `context/plotting_examples/`).
+
+**QF.15 — The future of `prepfit`.** Does the dashboard replace
+`alis/prepfit/specplot.py`? My lean: keep `prepfit` until the dashboard covers all of its
+features, then deprecate it, but do not remove it in v2.0. The snip format stays the
+same either way.
+
+**Response:** Yes, the dashboard will eventually replace `alis/prepfit/specplot.py`. However, we should keep `prepfit` until the dashboard covers all of its features, and we should not remove it in v2.0. The snip format will stay the same either way.
+
+**QF.16 — Housekeeping for the design documents.**
+- **(a) Line length.** This document says 80 characters, but `CLAUDE.md` and
+  `pyproject.toml` say 88 (black). Which applies to the dashboard code?
+- **(b) Log location.** Three places disagree: Task 1 above says `claude_prompts/logs/`;
+  the Logging section says `logs/ALIS_v2_design_logs.md`; and `dashboard_stageX.md`
+  says `claude_prompts/logs/refactor_code_stageX_log.md`, carried over from the refactor
+  template. I propose `claude_prompts/logs/dashboard_stage<n>_log.md` for the stage
+  documents.
+- **(c) Code location.** Should the dashboard be a new package, `alis/dashboard/`
+  (reusing `alis/prepfit/` code where that helps), or should it grow `alis/prepfit/`?
+
+My lean: (a) 88, to match the enforced tooling; (b) as proposed; (c) `alis/dashboard/`.
+
+**Response:** (a) 88, to match the enforced tooling; (b) as proposed; (c) `alis/dashboard/`.
 
 ## Prompts
 
 1. Read this doc.  Perform Task 1 under Workflow doc
 2. Read this doc, as I have updated it, and responded to your clarification questions. I have also updated the `ALIS_workflow.md` document to correct some confusions and mistakes. Once you have checked these updates, please perform Task 2 under Workflow doc.
 3. Please perform the fit again from Task 2, there was a bug in the input file. Then examine the output files and the pdf file.  Update the `ALIS_workflow.md` document with your findings, and log your work in the Logs section.
+4. Please read this document and consider all relevant context. I have just updated the `ALIS_workflow.md` document, including a new section `0. Prepare fitting regions`. Please read the `ALIS_workflow.md` document for an understanding of the updates I've made, and expand upon Section 0 (Prepare fitting regions).
+5. Read this document and `ALIS_workflow.md`. In a future step, we will be generating design documents (based on the template provided in `dashboard_stageX.md`). Before we generate these documents, please do the following steps: (i) read the `Functionality` section of this document, (ii) ask queries, (iii) propose additional suggestions for the dashboard with a goal to improve user experience. RJC has marked several places in `Functionality` where Claude should provide additional suggestions. RJC will review these suggestions, and merge them into the `Functionality` section of this document.  Once this is done, and all queries are resolved, we will generate the design documents for the dashboard.
+
 
 ## Logging
 
 Create a file called `ALIS/logs/ALIS_v2_design_logs.md` to record Claude's work.  Please use the following format:
-
-### <Date> (Short summary of the work)
-
-Simple description of the work and what you learned
-
-### <Date> (Short summary of the work)
-
-Simple description of the work and what you learned
-
-...
-
