@@ -24,9 +24,27 @@ incomplete and may be out of date in places.
 
 ---
 
+## 0. Prepare fitting regions
+
+The very first step in the fitting process is to start with a single spectrum containing
+thousands to tens of thousands of pixels, and to identify the regions of the spectrum that
+are suitable for fitting.  Usually, small wavelength regions are selected around wavelength
+lines of interest, given an estimate of the redshift of the absorption line system. Typically,
+a user will use the `prepfit/` tool to interactively select the fitting regions.
+
+For an example of how to use the `prepfit` tool, see the `examples/prepfit/README` ascii file
+for further context. A user typically creates a simple python script that specifies the data
+file that contains all of the absorption lines of interest and an estimate of the absorber
+redshift. The `prepfit` tool will then allow the user to interactively select the fitting
+regions. The output of the `prepfit` tool is a model file that contains small extracted
+regions of the spectrum that contain the data and the fitting regions to be included in the
+fit.
+
+---
+
 ## 1. Data Preparation
 
-ALIS reads ASCII (column-delimited) or FITS data files. The minimum required columns are:
+ALIS currently supports ASCII (column-delimited) or FITS data files. The minimum required columns are:
 
 | Column | Description                                           |
 |--------|-------------------------------------------------------|
@@ -36,11 +54,11 @@ ALIS reads ASCII (column-delimited) or FITS data files. The minimum required col
 
 Optional columns (read using the `columns=` keyword in the data block):
 
-| Column | Description |
-|--------|-------------|
-| `fitrange` | Integer mask: 1 = include in fit, 0 = exclude |
-| `continuum` | Pre-computed continuum normalisation (multiplied into model) |
-| `zerolevel` | Pre-computed zero-level offset (added to model) |
+| Column | Description                                                                                                                                                                                    |
+|--------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `fitrange` | Integer mask: 1 = include this pixel in fit, 0 = exclude this pixel                                                                                                                            |
+| `continuum` | Pre-computed continuum normalisation (multiplied into model). If this column is not present in the input files, ALIS will store the best-fitting continuum in this column of the output files. |
+| `zerolevel` | Pre-computed zero-level offset (added to model). If this column is not present in the input files, ALIS will store the best-fitting zero-level in this column of the output files.             |
 
 Note that if the input data files do not contain information in one of the optional columns, the corresponding model block can still include a `zerolevel` or `continuum` model. ALIS will then generate these models as part of the fitting procedure, and store them in the corresponding columns of the output data files.
 
@@ -339,12 +357,12 @@ lines. Parameters are tied/fixed with the label convention (§2.3). For example,
 redshift of two components `a` and `b`:
 
 ```
-voigt ion=1H_I  19.5hia  2.5256ra  5.0da  1.0E4ta  specid=0
-voigt ion=2H_I  14.9dha  2.5256ra  5.0da  9.0E3ta  specid=0
+voigt ion=1H_I  19.5hia  2.5256ra  5.0da  1.0E+4ta  specid=0
+voigt ion=2H_I  14.9dha  2.5256ra  5.0da  9.0E+3ta  specid=0
 ```
 
 Here the redshift `ra`, b-parameter `da`, and kinetic temperature `ta` are shared (tied) between H I and D I.
-**Important note:** Even though the kinetic temperature for 2H_I is set to a different numerical value than the kinetic temperature for the 1H_I line, the fact that they both have the same suffix `ta` means that they are tied together, and will both start with the value `1.0E4`, which is the first instance where `ta` is used. The second instance of `ta` will be ignored, and the kinetic temperature for both lines will be set to `1.0E4` at the start of the fit.
+**Important note:** Even though the kinetic temperature for 2H_I is set to a different numerical value than the kinetic temperature for the 1H_I line, the fact that they both have the same suffix `ta` means that they are tied together, and will both start with the value `1.0E+4`, which is the first instance where `ta` is used. The second instance of `ta` will be ignored, and the kinetic temperature for both lines will be set to `1.0E+4` at the start of the fit.
 
 **The `ZEROT` label:** Setting temperature to `0.0ZEROT` fixes all lines with `ZEROT` at
 T = 0 K, which means broadening is entirely turbulent. This is the conventional way to
@@ -362,15 +380,15 @@ This sets log₁₀ N(Si II) = log₁₀ N(O I) − 1.0. The single parameter is
 between species (e.g., tying a metal to hydrogen or to another metal). It also works
 when generating synthetic data with `generate data True`.
 
-**Linear column density mode:** For very high column densities or special cases, the
+**Linear column density mode:** For very high column densities or special cases (e.g. undetected absorption lines), the
 column density parameter can be expressed in linear (not logarithmic) units:
 
 ```
-voigt ion=16O_I  1.0  0.0  5da  8.0E3TA  specid=0  logN=False  ColDensScale=1.0E14
+voigt ion=16O_I  1.0  0.0  5da  8.0E+3TA  specid=0  logN=False  ColDensScale=1.0E+14
 ```
 
 Here `logN=False` means the parameter value is N / ColDensScale rather than log₁₀(N).
-With `ColDensScale=1.0E14`, a parameter value of 1.0 corresponds to N = 10¹⁴ cm⁻².
+With `ColDensScale=1.0E+14`, a parameter value of 1.0 corresponds to N = 10¹⁴ cm⁻².
 
 **Lyman forest modelling:** `ion=1Ly_a` (or `ion=1H_IB`) is used for fictitious absorbers
 representing blended Lyman-alpha forest lines. The profile shape is identical to a Voigt
@@ -418,7 +436,7 @@ Syntax: `<linked_param>(<dependency1>,<dependency2>,...) = <expression>`
 - The parameter on the left-hand side is *computed* from the right-hand side and cannot
   be a free parameter. ALIS will not report an error for the linked parameter.
 - Expressions may use `+`, `-`, `*`, `/`, `**`, parentheses, numeric literals, and any
-  parameter label defined in the model block.
+  parameter label defined in the model block (provided it is included in the list of dependencies).
 - `numpy` functions are also available in expressions (e.g., `numpy.log10(...)`).
 
 Links are useful for:
@@ -676,43 +694,6 @@ instantiates a new `ClassMain` object and copies the entire state into it via
 `instance.__dict__.update(fdict)`. This is a workaround for Python multiprocessing's
 requirement that the function be picklable, and is the primary circular import issue
 targeted in ALIS v2.
-
----
-
-## 8. Known Issues Targeted in ALIS v2
-
-The following are the key technical issues identified for the ALIS v2 rewrite:
-
-1. **Circular import**: `myfunct_wrap` creates a new `ClassMain` instance at every
-   chi-squared iteration, importing and instantiating the entire class. This is slow
-   and architecturally fragile.
-
-2. **ClassMain / `self` passing**: The entire program state is carried in a single
-   class instance. This makes unit testing difficult and tightly couples all modules.
-
-3. **Nested dictionaries**: `_argflag`, `_modpass`, `_fdict` etc. are opaque nested
-   dicts. Python `dataclasses` (or `attrs`/`pydantic`) would make these inspectable
-   and type-checkable.
-
-4. **Custom messaging**: `almsgs.msgs()` should be replaced with Python's standard
-   `logging` module.
-
-5. **No type annotations**: Adding type hints throughout would enable `mypy` and
-   improve IDE autocompletion.
-
-6. **Python 2 compatibility stubs**: `from __future__ import ...` and `raw_input`
-   stubs should be removed.
-
-7. **GPU support**: Currently CPU-only. `run ngpus` is a placeholder; Voigt profile
-   computation on GPU is a high-priority v2 feature for large per-order models.
-
-8. **Model function instantiation**: `alfunc_*.py` classes are instantiated at every
-   model evaluation; they should be instantiated once and reused.
-
-9. **No unit tests**: All current testing is end-to-end via example model runs.
-
-10. **CLI**: The entry point uses a custom argument parser; `argparse` / `typer` would
-    give self-documenting `--help` output.
 
 ---
 
