@@ -172,6 +172,18 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
 - **S3 — Explicit column roles.** On loading, the user assigns each column a role (wave,
   flux, error, continuum, mask) with a preview. `prepfit` instead infers the roles from
   the number of columns (§0.6, item 5).
+- **S23 — Attach a source spectrum to an imported model** *(added in Prompt 6)*. This
+  removes the limitation in QF.5's response, that new transitions cannot be added
+  without the full spectrum. The user points the dashboard at the spectrum the snips
+  came from, and each snip is matched to it by wavelength and flux/error (the same test
+  used in QF.21). The project then behaves as if it had started from that spectrum.
+- **S24 — "Set z here" in any panel** *(added in Prompt 6)*. This implements RJC's note
+  on S1. Clicking a feature in any transition, of any system, sets that system's
+  redshift. Each change is shown as a velocity shift and kept in a history, so the user
+  can refine z from one transition, then another, and step back (QF.24).
+- **S25 — Dataset panel** *(added in Prompt 6)*. One row per dataset holds its
+  resolution, shift and zero level, and marks which dataset is the reference. It starts
+  from the defaults in QF.23.
 
 **(2) Select transitions and fitting regions**
 - **S4 — Velocity-stack view.** All chosen transitions are shown on a common velocity
@@ -195,6 +207,9 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
 - **S10 — Shared continua.** One polynomial can span overlapping or adjacent snips, via
   `min=`/`max=`. Orders mode needs this anyway.
 - **RJC proposes an additional item here:** We should have the code check that the same pixel is not being included in the fit more than once. If two nearby snips are being fitted, the dashboard should ensure that the same pixel is not being included in the fit more than once. If it is, the dashboard should warn the user and ask them to fix this issue before proceeding. This is important because including the same pixel in multiple fits can lead to incorrect results.
+- **S26 — Showing shared pixels** *(added in Prompt 6)*. This supports RJC's item above.
+  Pixels fitted by more than one snip are hatched in both panels, with two one-click
+  fixes: "merge these snips" and "keep these pixels in one snip only" (QF.21).
 
 **(4) Set absorption parameters**
 - **S11 — Component matrix.** Rows are velocity components (z or v, b, T); columns are
@@ -214,6 +229,10 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
   - Templates set up common structures: D/H using `ion=2H_I/1H_I`, D/H using
     `variable` + `link`, and ³He/⁴He.
 - ** RJC proposes an additional item here:** We should also allow the user to remove components they have added. For example, if the user has added a component that they no longer wish to include in the fit, they should be able to remove it from the component matrix. This could be done by selecting the component and clicking a "remove" button, or by right-clicking on the component and selecting "remove" from a context menu.
+- **S27 — Remove anything, safely** *(added in Prompt 6)*. This extends RJC's item above
+  to ions, snips, systems and datasets. Before removing anything, the dashboard lists the
+  `.mod` lines that will change, including ties, links and limits that refer to the
+  removed labels (QF.28). Every removal can be undone (F2).
 
 **(5) Synchronise the model**
 - **S16 — Cross-highlighting.** Selecting a component, panel or region highlights its
@@ -236,6 +255,15 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
 - **S21 — Convergence from the dashboard.** Launch the existing convergence checks and
   random restarts (`run convergence` and the `sim` settings), then summarise whether the
   runs agree.
+- **S28 — Reproduce an imported fit** *(added in Prompt 6)*. When an existing model is
+  opened together with its `.mod.out`, the dashboard offers to rerun it and compare the
+  χ² with the stored output, and the parameters too unless they are blinded. This
+  confirms that the dashboard has read everything correctly before the user changes
+  anything.
+- **S29 — Review clipped pixels** *(added in Prompt 6; applies if QF.26(c) makes
+  sigma-clipping a dashboard action)*. After a fit, statistically significant outliers
+  are highlighted. The user accepts or rejects them panel by panel, and then the fit is
+  rerun.
 
 **(8) Publication plotting script**
 - **S22 — The preview is the output.** The layout preview is produced by running the
@@ -449,6 +477,249 @@ My lean: (a) 88, to match the enforced tooling; (b) as proposed; (c) `alis/dashb
 
 **Response:** (a) 88, to match the enforced tooling; (b) as proposed; (c) `alis/dashboard/`.
 
+*Further queries raised by Claude on 2026-10-03, in response to Prompt 6. They follow
+from RJC's responses and notes above, and each gives Claude's lean.*
+
+**QF.17 — PyQt6 or PySide6?** QF.2's response says PyQt6. PyQt6 and PySide6 are both
+Qt 6 bindings with almost identical APIs, and pyqtgraph supports both. They differ in
+licence:
+- PyQt6 is GPL v3 (or commercial);
+- PySide6 is LGPL.
+
+ALIS is BSD-3. A GPL dependency in the `gui` extra means anyone who redistributes ALIS
+together with the dashboard must follow the GPL. Did you mean PyQt6 specifically? My
+lean: PySide6, or code written against the `qtpy` shim so that either binding can be
+installed.
+
+**Response:** Another option might be to change the license of ALIS to GPL v3. Then, we could use either PyQt6 or PySide6.
+
+**QF.18 — The example layouts.** QF.2's response asks for example layouts before any
+design work.
+- **(a) Form.** The options are:
+  - (i) wireframes (ASCII/Markdown) in a design document;
+  - (ii) static mockups drawn with realistic data (e.g. `VMP_DLA/J1358p6522`), viewable
+    in a browser;
+  - (iii) a clickable Qt skeleton with dummy data and no ALIS behind it.
+- **(b) Screens.** I propose four:
+  - the start screen (load datasets, set z, global blind);
+  - the main workspace for steps (2)–(5);
+  - the results screen (step 6);
+  - the plotting-script layout (step 8).
+- **(c) The main panel.** You noted that `prepfit` shows a single panel. Should the
+  workspace show only the current transition? Or the current transition large, plus
+  small thumbnails of the other transitions of the same ion, so that the live preview
+  (S13) is visible while a component is dragged?
+
+My lean: (a) (ii) first, with two or three alternative arrangements of the main
+workspace, because those are cheap to change; then (iii) for the arrangement chosen,
+which becomes the first code. (b) As listed. (c) One large panel plus a strip of
+thumbnails.
+
+**Response:** For (a) I think we should do (ii) first, with two or three alternative arrangements of the main workspace; then (iii) for the arrangement chosen, which becomes the first code. For (b) Would it be better to just have 1 screen with 4 tabs? I don't think users will need to see any two of these screens simultaneously, so the workspace might be clearer with a single screen with four tabs. This also has the added benefit of being extensible. If in the future a new functionality is included, we could simply add it in a new tab (instead of growing the number of windows). For (c) This depends if it's better to keep the fitrange selection separate from the component setup. I think the fitrange selection should be separate from the component setup, so that the user can select the fit range first, and then set up the components. Therefore, I think it would be better to have one large panel when deciding the fitrange, and when doing components, it would be best to show equally sized panels of all transitions for a given ion.
+
+**QF.19 — The single-file project bundle (`.model`) from QF.10's response.**
+- **(a)** Is the bundle *the* project format (replacing the small project file of QF.4),
+  or is it used only when something is blinded?
+- **(b) Contents.** I suggest a zip file containing:
+  - the `.mod`, with blinded values replaced by placeholders;
+  - the blinded values, stored separately in a form that is not human-readable;
+  - the snips;
+  - the UI state;
+  - the runs committed to the run history (F7).
+
+  Should the source spectra be copied in too? That makes the bundle self-contained but
+  large (`J0814p5029_HIRES.dat` alone is about 118,000 rows). The alternative is to
+  reference them by path and checksum.
+- **(c)** `run_alis project.model` needs a small change to ALIS itself: unpack the
+  bundle, restore the hidden values in memory, run the fit, and store the outputs back
+  in the bundle with blinded values hidden. Is that acceptable?
+- **(d)** "Hidden" here prevents accidental viewing, not a determined user: anyone who
+  reads the code can recover the values. Is that sufficient?
+- **(e)** Exporting a plain `.mod` with its snips (QF.4) while the project is blinded
+  would write the blinded starting values in plain text. Should export be allowed with
+  a warning, or refused until the project is unblinded?
+
+My lean: (a) the bundle is always the project format; (b) as described, with spectra
+referenced by default and an option to embed them for archiving; (c) yes; (d) yes;
+(e) allow it, with a warning.
+
+**Response:** For (a), the bundle should always be the project format. For (b), I agree with the suggested contents. A zip file is fine if that is the best option available. I would also be open to using something else if you have other recommendations (e.g. a fits file, or a hdf5 file). For (c), Could the bundle be stored in a DataContainer class? This would unpack everything, but it would only be in memory and not on disk. For (d), yes, this is sufficient. For (e), I think it should be allowed, but with a warning. This is not about preventing a determined user. Users appreciate the benefit of blinding, and do so willingly.
+
+**QF.20 — Blinding: what is hidden, and when.** Parts (c)–(e) of QF.10 are still open.
+With the bundle, my lean for those is:
+- (c) best-fit values are stored in the bundle in the same hidden form;
+- (d) `blindrange` values are masked;
+- (e) unblinding is an explicit action that the user confirms, and it is logged.
+
+**Response:** I agree with your lean for (c), (d), and (e). The best-fit values should be stored in the bundle in the same hidden form, the `blindrange` values should be masked, and unblinding should be an explicit action that the user confirms, and it should be logged.
+
+Further questions:
+- **(a) Global blind.** In ALIS, `run blind True` prevents every best-fit value from
+  being printed or written; only the errors are printed (`alis/main.py:455-462`). In the
+  dashboard, should global blind also hide the *starting* value of every parameter? Or
+  should it hide only best-fit values, with starting values hidden only for parameters
+  flagged `blind=True`?
+- **(b) Errors.** ALIS prints the errors of blinded parameters. Should the dashboard show
+  them?
+- **(c) Editing.** A hidden value appears in the editor as a mask, e.g. `▒▒▒▒da`. May the
+  user type a new value over it? They would see only what they typed, and it would be
+  hidden once committed.
+- **(d) Feedback while dragging.** When a blinded component is dragged, its values are
+  hidden. May the dashboard show the change in χ² since the drag began? That reveals no
+  parameter value.
+- **(e) Switching it on later.** Can global blinding be switched on part-way through a
+  project, not only at the start?
+
+My lean: (a) global blind hides best-fit values, and starting values are hidden only for
+parameters flagged `blind=True`; (b) yes; (c) yes; (d) yes; (e) yes. Switching blinding
+off happens only through the explicit unblind action.
+
+**Response:** I agree with your lean for (a), (b), (c), (d), and (e). Global blind should hide best-fit values, and starting values should be hidden only for parameters flagged `blind=True`. The dashboard should show the errors of blinded parameters. The user should be able to type a new value over a hidden value in the editor, and it should be hidden once committed. The dashboard should show the change in χ² since the drag began when a blinded component is dragged. Global blinding can be switched on part-way through a project, not only at the start.
+
+**QF.21 — Pixels fitted twice (RJC's new item under step 3).** I checked the context
+models. 14 of the 32 whose data I could load already fit some pixels in more than one
+snip, between 0.2% and 3.2% of their fitted pixels. The usual causes are:
+- O I 1302 and Si II 1304, about 500 km/s apart, cut as two separate snips;
+- neighbouring high-order Lyman lines;
+- a metal-line snip that lies inside a wide Lyα snip.
+
+Pixels were matched on wavelength and flux/error. That way, a snip that was multiplied
+by the continuum still matches its source, while different exposures on a common
+wavelength grid do not match.
+- **(a)** "Same pixel" means the same pixel of the same exposure. The same wavelength in
+  another dataset or exposure is independent data and is allowed. Agreed?
+- **(b) The fix.** Either:
+  - (i) merge the two snips into one that covers both transitions, with one continuum,
+    as `examples/metal_line_abs` does for O I 1302 + Si II 1304; or
+  - (ii) keep the shared pixels in one snip only.
+- **(c)** For imported models (QF.5) that already overlap: should the dashboard warn and
+  still allow the fit (e.g. to reproduce a published result exactly), or refuse until
+  the overlap is fixed?
+- **(d)** Should `run_alis` itself warn about shared pixels, so that command-line fits
+  get the same protection?
+
+My lean: (a) yes; (b) offer both, defaulting to (i) when the snips overlap
+substantially; (c) warn but allow the fit, with a one-click fix; (d) yes, as a warning
+when the data are loaded.
+
+**Response:** I agree with your lean for (a), (b), (c), and (d). The dashboard should warn the user about shared pixels, and offer both options for fixing the overlap, defaulting to merging the two snips into one that covers both transitions when the snips overlap substantially. For imported models that already overlap, the dashboard should warn the user but still allow the fit, with a one-click fix. The `run_alis` command-line tool should also warn about shared pixels when the data are loaded.
+
+**QF.22 — Input columns (QF.7's response).**
+- **(a)** A `prepfit` snip, or an old `_reg.dat` file, also has four columns, but its
+  fourth column is the 0/1 fit mask. Multiplying by it would set the flux and error to
+  zero outside the selected regions. If the fourth column holds only 0s and 1s, should
+  it be read as a mask instead?
+- **(b)** What about files with five or more columns, such as `J0814p5029_HIRES.dat`
+  (which has its continuum in the fifth)? Should they be rejected, or should the user
+  assign the column roles (S3, which you did not mark)?
+- **(c)** Is FITS input in Voigt mode (e.g. a PypeIt coadd1d spectrum) needed for v1, or
+  later?
+
+My lean: (a) yes, a fourth column of 0s and 1s is a mask; (b) use S3's column-role
+dialog for anything other than three columns, defaulting to your 3/4-column rule;
+(c) later, with Orders mode, which needs a FITS reader anyway.
+
+**Response:** I agree with your lean for (a), (b), and (c). A fourth column of 0s and 1s should be read as a mask. For files with five or more columns, the user should be able to assign the column roles using S3's column-role dialog, defaulting to the 3/4-column rule. FITS input in Voigt mode is not needed for v1, but will be needed later with Orders mode.
+
+**QF.23 — Defaults for several datasets (QF.6's response).**
+- **(a) Reference frame.** The first dataset loaded is the reference, with its shift
+  fixed at 0. Each further dataset gets one free `vshift`, shared by all of its snips.
+- **(b) Resolution.** One FWHM per dataset, fixed by default. The user can free it, or
+  override it for individual snips (as `J0035m0918` does for ESPRESSO).
+- **(c) Zero level.** Off by default. When switched on, one `constant` per dataset, as
+  in `DH_orders`.
+- **(d) Regions.** A region drawn for a transition on one dataset is copied to the same
+  transition in the other selected datasets as a starting point, then edited per
+  dataset. This is the same pattern as option (i) in QF.13.
+
+My lean: all four, as stated.
+
+**Response:** I agree.
+
+**QF.24 — Refining the redshift (RJC's note on S1).** If the system redshift is refined
+after snips and components already exist, what moves? My lean:
+- The system z only sets the reference for the velocity axes and for finding
+  transitions.
+- Changing it re-centres the views, but never moves existing snips (which are fixed in
+  wavelength) or components (which are stored as absolute z, as in the `.mod`).
+- The same applies to every additional system.
+- S24 provides "set z here" with a history.
+
+**Response:** Agree.
+
+**QF.25 — Temperature presets and isotopes (QF.8's response).**
+- **(a)** Are 0 K, 100 K and 10⁴ K *fixed* values (written in upper case, e.g.
+  `0.0ZEROT`), or starting values for a free T? Should "free T" be a fourth choice, as
+  in the `Temperature` examples?
+- **(b)** Is T set per component or per system?
+- **(c)** Isotopes of one element share z, b_turb and T, so their total b differs only
+  through the mass. Is this sharing compulsory? And are their column densities
+  independent unless they are linked by a ratio (e.g. `ion=2H_I/1H_I`)?
+
+My lean: (a) three fixed presets plus "free"; (b) set per system as the default for new
+components, and overridable per component; (c) compulsory, with independent column
+densities unless linked.
+
+**Response:** I agree with (a). For (b), if users are doing a temperature fit, it should be per component, and they can choose which components to turn off. There should also be an option to conduct a pure thermal fit (bturb=0). For (c), isotopes of one element should share z, b_turb, and T, so their total b differs only through the mass. This sharing should be compulsory, with independent column densities unless linked.
+
+**QF.26 — Orders mode follow-ups (QF.13's response).**
+- **(a) Terms.** The response says "one Legendre per (transition, dataset)", but also
+  that "the same order (and transition) in a different dataset is expected to share the
+  same legendre polynomial". I read this as using "dataset" in two senses, and propose
+  three terms:
+  - a *dataset* is an instrument or reduction that shares one resolution, shift and
+    zero level (HIRES, `prochaska`, `kirkman`);
+  - an *exposure* is one spec1d file;
+  - an *order* is one echelle order of one exposure.
+
+  The rule is then one Legendre per (transition, dataset). It spans all of that
+  dataset's exposures and orders, with `min=`/`max=` set to the union of their
+  extents, as in `DH_orders`. Is that correct?
+- **(b) Per-order scale factors.** These are a `constant` or `linear` in the absorption
+  block with `continuum=True`, which ALIS already folds into the continuum output
+  (`alis/model_eval.py:531`). If every scale factor and the shared Legendre are all
+  free, the overall normalisation is degenerate. Should one order per (transition,
+  dataset) be fixed at 1? And should scale factors be on or off by default?
+- **(c) `sigma_clip`** (option (ii) in QF.13). Is this a dashboard action that changes
+  the snip masks (visible, reviewable and undoable), or an ALIS setting, so that
+  command-line fits use it too? Should it be available in Voigt mode as well? Clipping
+  can also remove real absorption that the model is missing, such as an unmodelled
+  component, so a review step seems important.
+
+My lean: (a) yes; (b) off by default, and when on, the first order is fixed at 1 with an
+upper-case label; (c) a dashboard action in both modes, with the clipped pixels shown
+for review before refitting (S29).
+
+**Response:** For (a), Each exposure contains multiple orders, and a transition may only
+appear in one order. Therefore, a snip will extract only part of an order. Therefore, the
+rule is one Legendre per (transition, dataset, order). This is because some transitions may appear in two orders, and we will want to make sure that they can use different Legendre polynomials. For (b), one order per (transition, dataset, order) should be fixed at 1, but the scale factors should all be off by default. For (c), yes, `sigma_clip` should be a dashboard action in both modes, with the clipped pixels shown for review before refitting.
+
+**QF.27 — Plotting reference families (QF.14's response).** `context/plotting_examples/`
+includes layouts the emitter does not yet produce:
+- `blends_*.py`, a single column of panels showing interlopers;
+- the helium `model_fits*.py`, a 2×2 grid;
+- `DH_Lyseries.py`, which mixes grids.
+
+Step (8) describes a general grid with transitions assigned to panels. Should `metals`
+and `DH` become presets of that grid, with blends and helium as further presets? Also,
+`alis/plotscript.py` and the Stage 5 notes still refer to `context/plotting/`. My lean:
+a general grid plus presets; and update the path references when work on step (8)
+begins.
+
+**Response:** I agree with your lean. We should have a general grid plus presets for metals and DH, with blends and helium as further presets. We should also update the path references when work on step (8) begins.
+
+**QF.28 — Removing things that others depend on (RJC's new item under step 4).** A
+component's labels may be used elsewhere: tied by another line, or used in a `link`
+expression or a `lim param`. Should removing the component:
+- (a) be refused until those references are gone; or
+- (b) go ahead after showing the affected `.mod` lines, untying or removing the
+  dependents?
+
+Should the same rule apply to ions, snips, systems and datasets? My lean: (b), for every
+kind of entity, and undoable (F2).
+
+**Response:** I agree with your lean. Removing a component should go ahead after showing the affected `.mod` lines, untying or removing the dependents. The same rule should apply to ions, snips, systems, and datasets, and it should be undoable (F2).
+
 ## Prompts
 
 1. Read this doc.  Perform Task 1 under Workflow doc
@@ -457,6 +728,9 @@ My lean: (a) 88, to match the enforced tooling; (b) as proposed; (c) `alis/dashb
 4. Please read this document and consider all relevant context. I have just updated the `ALIS_workflow.md` document, including a new section `0. Prepare fitting regions`. Please read the `ALIS_workflow.md` document for an understanding of the updates I've made, and expand upon Section 0 (Prepare fitting regions).
 5. Read this document and `ALIS_workflow.md`. In a future step, we will be generating design documents (based on the template provided in `dashboard_stageX.md`). Before we generate these documents, please do the following steps: (i) read the `Functionality` section of this document, (ii) ask queries, (iii) propose additional suggestions for the dashboard with a goal to improve user experience. RJC has marked several places in `Functionality` where Claude should provide additional suggestions. RJC will review these suggestions, and merge them into the `Functionality` section of this document.  Once this is done, and all queries are resolved, we will generate the design documents for the dashboard.
 
+6. Read this document, `ALIS_workflow.md`, my responses to your queries, and the additional notes I have left in this file responding to your additions. In a future step, we will be generating design documents (based on the template provided in `dashboard_stageX.md`). Before we generate these documents, please do the following steps: (i) read the `Functionality` section of this document, (ii) ask further queries if anything is unclear, or if new queries emerge, (iii) Based on my responses so far, you are welcome to propose additional suggestions for the dashboard with a goal to improve user experience.
+
+7. Read this document, `ALIS_workflow.md`, my responses to your queries, and the additional notes I have left in this file responding to your additions. In a future step, we will be generating design documents (based on the template provided in `dashboard_stageX.md`). Before we generate these documents, please do the following steps: (i) read the `Functionality` section of this document, (ii) ask further queries if anything is unclear, or if new queries emerge, (iii) Based on my responses so far, you are welcome to propose additional suggestions for the dashboard with a goal to improve user experience.
 
 ## Logging
 

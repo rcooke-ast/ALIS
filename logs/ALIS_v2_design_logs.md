@@ -176,3 +176,40 @@ What I learned:
   fit-quality display can be built on these.
 - `context/plotting/`, which `plotscript.py` cites for the reference figures, is
   no longer in the working tree (QF.14).
+
+### 2026-10-03 (Prompt 6: follow-up dashboard queries and suggestions)
+
+Read RJC's responses to QF.1–QF.16 and the notes on F7, S1, S4, S8 and S22,
+and the two items RJC added (no fitted pixel counted twice; removing
+components). Added 12 queries (QF.17–QF.28) and 7 suggestions (S23–S29) to
+`claude_prompts/ALIS_v2_dashboard_prompts.md`.
+
+What I checked, and what I learned:
+
+- **Pixels fitted twice.** A scratch script parsed each context model's data
+  block and matched fitted pixels across data lines by wavelength and
+  flux/error. This ratio is unchanged when a snip is multiplied by the
+  continuum, and it differs between exposures on a common grid. 14 of the 32
+  models with loadable data fit some pixels twice: 0.2–3.2% of their fitted
+  pixels. Typical causes are O I 1302 + Si II 1304 cut as two snips (about
+  500 km/s apart), neighbouring high-order Lyman lines, and metal snips inside
+  wide Lyα snips. RJC's proposed check would therefore fire on most DH models,
+  so QF.21 asks how it should behave.
+- **Two first attempts at the overlap check gave misleading numbers.**
+  Matching on wavelength alone flagged different exposures on a common grid
+  (DH_orders). Matching on wavelength, flux and error missed snips that had
+  been scaled by the continuum.
+- **Global blind.** In ALIS, `run blind True` prints only the parameter errors
+  (`main.py:455-462`) and disables `.mod.out`, fit files and the covariance
+  output. The dashboard's "global blind" therefore needs a definition (QF.20).
+  RJC's `.model` bundle proposal raises its own design questions (QF.19).
+- **Per-order scale factors.** `continuum=True` on an absorption-block model is
+  already folded into the continuum output (`model_eval.py:528-531`), so RJC's
+  QF.13 proposal needs no change to ALIS. Free per-order scale factors combined
+  with a free shared Legendre would, however, leave the overall normalisation
+  degenerate (QF.26b).
+- **Input columns.** RJC's 3/4-column rule would treat a snip's 0/1 mask as a
+  continuum and zero the flux outside the selected regions (QF.22a).
+- **Plotting examples.** `context/plotting_examples/` adds blends, helium 2×2
+  and mixed-grid layouts that `plotscript.py` does not yet produce. The
+  emitter's docstring still points at `context/plotting/` (QF.27).
