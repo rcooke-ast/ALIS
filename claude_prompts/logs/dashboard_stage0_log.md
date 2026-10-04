@@ -241,3 +241,49 @@ Replies were posted on the 15 new threads. All 17 threads sent to Claude are
 resolved, including the two left open in draft 2, whose questions RJC
 answered in the doc. One thread was never sent to Claude, so it was left as
 it is.
+
+### 2026-10-04 (Prompt 4: draft 4 of the mockups, after RJC's review of draft 3)
+
+Read RJC's responses to Q0.9 (show the change of a blinded parameter in σ)
+and Q0.10 (ship the publication style with ALIS, with a LaTeX fallback), and
+the 11 comment threads on draft 3. All were clear, so draft 4 was built
+straight away. The review outcome is recorded under Task 0.10 in
+`dashboard_stage0.md`; Q0.11 asks whether the σ shown for a blinded change
+should keep its sign.
+
+**Changes in draft 4:**
+- **No design-document references inside the windows.** `window()` now
+  passes every page's content and `.mod` panel through `scrub_refs`, which
+  removes bracketed references such as "(S26)" or "(D19, S26)", and trailing
+  ones such as "; D13)". One reference in running text ("D20 shares z…") was
+  reworded by hand. A scan of every window found no references left.
+- **Mockup-only text moved out of the windows:** "Illustrative curve",
+  "Example history", "The Plot tab is designed now and built after v1", the
+  note on the context folders on the Compare page, and "Generated from
+  ArgFlag" (now "Settings you changed").
+- **Plot:** the "Top of the script" box is gone. The Style row shows
+  "ALIS publication" (shipped with ALIS) with "Other file…", and the Layout
+  box mentions the colour variables and the LaTeX fallback.
+- **Compare:**
+  - The Lyα/O I menu became the Inspect-style View menu (‹ ›, Columns),
+    showing one snip (Lyα · H8) larger.
+  - The blinded log (D/H) row shows 0.4σ. Run 3's D/H is derived as
+    N(D I) − N(H I)₁, with σ = 0.01111 from the covariance matrix (their
+    correlation is −0.004). Run 4's D/H is the linked `variable` dhrand,
+    −4.58847 ± 0.01129 (its D/H ratio line reports error 0 because it is
+    tied to dhrand). |Δ| = 0.0067, so |Δ|/σ = 0.4. Only the size is shown
+    (Q0.11).
+- **Run numbering:** the Inspect page now says run 5 is running, matching
+  the status bar.
+
+**Not preserved locally:** draft 3's pages were overwritten before being
+copied to a `draft3/` folder, so draft 3 now exists only as version 3 of the
+published page. Drafts 1 and 2 are in `draft1/` and `draft2/`.
+
+**Build script:** `ruff check` passes and every line is within 88 characters.
+The changed pages were rendered at 1440×900 with headless Chrome and their
+text checked.
+
+**Published** as version 4 of https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.
+Replies were posted on all 11 threads. Ten are resolved; the Q0.9 thread
+stays open for Q0.11 (the sign).

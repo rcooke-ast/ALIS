@@ -231,6 +231,28 @@ this document and in the log. Stage 0 then ends.
       publication style in `context/misc/matplotlibrc`, which nothing else
       in the dashboard uses.
 
+  *Review of draft 3 (2026-10-04), from RJC's comments and the responses to
+  Q0.9 and Q0.10. Draft 4 applies all of it.*
+  - **No design references in the dashboard:** the shipped dashboard never
+    refers to the design documents (D/F/S/QF/Q numbers). They stay in the
+    design documents and in the notes around the mockups.
+  - **Plot:**
+    - There is no script box; users edit the written script outside the
+      dashboard.
+    - The publication style ships with ALIS and is the default, and another
+      style file can be chosen.
+    - The script uses LaTeX for text when LaTeX is installed, and
+      matplotlib's own text otherwise (Q0.10).
+  - **Fit, Compare:**
+    - The models are viewed with the same View menu, ‹ › and Columns setting
+      as Inspect.
+    - A blinded parameter keeps its values and difference hidden, but shows
+      the size of the change in σ (Q0.9; sign: Q0.11).
+  - **Confirmed as they are:** the key under the transition list; one column
+    setting for the whole Components tab; ±200 km/s; selecting a dataset by
+    clicking its strip; the Results sub-tab; one row per dataset in the Data
+    tab.
+
 ## Skills to use for this stage
 
 - `atomic-data`: transition wavelengths and f-values, for the coverage list (S2), the
@@ -399,6 +421,26 @@ the script falls back to matplotlib's own text rendering.
 
 **Response:** I agree with the lean. The ALIS package should ship with the publication style file, and the user can choose another style file in the Plot tab if they wish. The script should check for a LaTeX installation and fall back to matplotlib's text rendering if none is found.
 
+*Raised by Claude on 2026-10-04, while making draft 4 (Prompt 4). Draft 4
+already follows the lean.*
+
+**Q0.11 — The sign of a blinded change (your Q0.9 response).** Draft 4 shows
+the change of a blinded parameter in σ, as you suggested. In J1358p6522,
+log (D/H) changes by 0.4σ between run 3 (derived from N(D I) − N(H I), with
+their covariance, σ = 0.011) and run 4 (fitted directly, σ = 0.011). Should the
+sign be shown as well (for example "+0.4σ")? The sign says which way the
+blinded value moved, which could steer modelling choices towards a preferred
+answer.
+
+My lean: show the size only, as in the `fit_compare` mockup.
+
+Building this also showed that comparing runs must match the same physical
+quantity across different parametrisations: run 3 has no D/H parameter, so
+the dashboard derives it from the two column densities. The design
+documents for the Fit tab (Stage 6) should cover this.
+
+**Response:** I agree with the lean. The sign of the change should not be shown for blinded parameters, only the size of the change in units of σ. This maintains the blinding while still providing useful information about how much the parameter changed relative to its uncertainty.
+
 ## Prompts
 
 1. Read this doc, check my responses to the queries, and ask more queries if needed. If there are no further queries, please execute the tasks in order, logging each in `ALIS/claude_prompts/logs/dashboard_stage0_log.md`.
@@ -408,3 +450,6 @@ the script falls back to matplotlib's own text rendering.
 3. Thanks for the great adjustments to the dashboard mockups! I have responded to several queries and made comments on the mockups. Please review my comments, ask further queries if anything is unclear. Once everything is clear, please make any changes you think are needed to the dashboard view so that I can inspect the mockups again, as a third draft.
 
 4. Thanks for the great adjustments to the dashboard mockups! I have responded to several queries and made comments on the mockups. Please review my comments, ask further queries if anything is unclear. Once everything is clear, please make any changes you think are needed to the dashboard view so that I can inspect the mockups again, as a fourth draft.
+
+5. Thanks again for the great adjustments to the dashboard mockups! I have responded to several queries and made comments on the mockups. Please review my comments, ask further queries if anything is unclear. Once everything is clear, please make any changes you think are needed to the dashboard view so that I can inspect the mockups again, as a fifth draft.
+
