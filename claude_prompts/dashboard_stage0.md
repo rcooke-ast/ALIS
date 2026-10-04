@@ -253,6 +253,21 @@ this document and in the log. Stage 0 then ends.
     clicking its strip; the Results sub-tab; one row per dataset in the Data
     tab.
 
+  *Review of draft 4 (2026-10-04), from RJC's comments and the response to
+  Q0.11. Draft 5 applies all of it.*
+  - **Data:** both Data pages share one layout. On the left are Systems (with
+    "Identify a feature…") and Blinding, with Coverage in between when there
+    are several files. On the right are the table of files and a spectrum
+    view that can be zoomed and panned. Without source spectra, the view
+    shows the selected dataset's snips, each scaled to its own peak.
+  - **Fit:**
+    - Committing a run asks for the user's own description, which can be
+      edited later.
+    - The χ² progress chart switches between a linear and a log axis.
+    - A blinded change is shown as its size in σ, without a sign (Q0.11).
+  - **Components:** the ion navigator has no explanatory text.
+  - **Regions:** "click a spectrum to select it" (not "strip").
+
 ## Skills to use for this stage
 
 - `atomic-data`: transition wavelengths and f-values, for the coverage list (S2), the
@@ -453,3 +468,4 @@ documents for the Fit tab (Stage 6) should cover this.
 
 5. Thanks again for the great adjustments to the dashboard mockups! I have responded to several queries and made comments on the mockups. Please review my comments, ask further queries if anything is unclear. Once everything is clear, please make any changes you think are needed to the dashboard view so that I can inspect the mockups again, as a fifth draft.
 
+6. Thanks again for the great adjustments to the dashboard mockups! I have responded to several queries and made comments on the mockups. Please review my comments, ask further queries if anything is unclear. Once everything is clear, please make any changes you think are needed to the dashboard. My suggestions are very minor now, so once you have implemented them (and if you do not require further input from me), please update the `ALIS_v2_dashboard_prompts.md` and `ALIS_v2_code_plan.md` documents to reflect the final design decisions that we've made here. Please confirm is you are then happy to close Stage 0 and move on to Stage 1.

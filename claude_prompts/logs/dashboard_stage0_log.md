@@ -287,3 +287,41 @@ text checked.
 **Published** as version 4 of https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.
 Replies were posted on all 11 threads. Ten are resolved; the Q0.9 thread
 stays open for Q0.11 (the sign).
+
+### 2026-10-04 (Prompt 5: draft 5 of the mockups, after RJC's review of draft 4)
+
+Read RJC's response to Q0.11 (show only the size of a blinded change, as in
+draft 4) and the five new comment threads on draft 4. All were clear, so
+draft 5 was built straight away, with no new queries. The review outcome is
+recorded under Task 0.10 in `dashboard_stage0.md`. Draft 4's pages were
+copied to `draft4/` before the rebuild (drafts 1, 2 and 4 are kept locally;
+draft 3 only as version 3 of the published page).
+
+**Changes in draft 5:**
+- **Data, one layout for both pages** (new helpers `datasets_pane`,
+  `systems_pane`, `blinding_pane`, `ZOOM_TOOLS`):
+  - Systems (with "Identify a feature…") and Blinding on the left, with
+    Coverage between them on the three-dataset page.
+  - The table of files (one row per file, the same columns on both pages)
+    and the spectrum on the right.
+  - The spectrum has matplotlib-style zoom and pan tools.
+  - For Q1243p307, with no source spectra, the view shows the 23 HIRES snips
+    on one wavelength axis, each scaled to its own peak. Their raw fluxes
+    differ by up to a factor of 10 between instrument settings (about 1,000
+    in the red, 5,000–10,000 in the blue). Labels are placed on up to three
+    levels and dropped where they do not fit.
+- **Fit Results:** run 3 is shown being committed, with its description being
+  typed into the Change column; the help text says descriptions can be
+  edited later.
+- **Fit Inspect:** a Linear / Log switch on the Progress box.
+- **Components:** the navigator's explanatory text is removed.
+- **Regions:** "click a spectrum to select it".
+
+**Checks:** `ruff check` passes and every line is within 88 characters. A scan
+found no design-document references in any window. The changed pages were
+rendered at 1440×900 with headless Chrome. One fix was made after rendering:
+the snip labels on the three-dataset spectrum overlapped.
+
+**Published** as version 5 of https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.
+Replies were posted on the five new threads, and all six open threads are
+resolved, including the Q0.9 thread, now that Q0.11 is answered.
