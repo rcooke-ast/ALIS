@@ -131,6 +131,16 @@ Here are some specific features that should be included in the dashboard:
     and plot presets. Voigt mode (the display spectrum is the one fitted dataset) and
     Orders mode (the display spectrum is combined from many fitted orders) are the first
     two. The data model holds N datasets from the start (QF.6, QF.13).
+  - **F12 — Tab status markers** *(added in Prompt 7)*. Each tab shows whether its step
+    is complete, needs attention, or is out of date. For example, Components warns when
+    regions have changed since the components were set; Fit warns that the model has
+    changed since the last run; Data warns when a referenced spectrum is missing or has
+    changed. This supports moving back and forth between the tabs proposed in QF.18 and
+    QF.30.
+  - **F13 — Relink moved spectra** *(added in Prompt 7)*. The bundle references spectra by
+    path and checksum (QF.19). On opening, a missing or changed spectrum is reported. The
+    user can then point the dashboard to the spectrum's new location, and the checksum
+    confirms it is the same data.
 
 The operating modes include the following two modes:
 - Voigt mode (this is the default mode): In this mode, the user will load a single input spectrum and the interactive dashboard will allow the user to select the fitting regions for each transition they wish to include in the fit. The dashboard will also allow the user to interactively set starting model parameters for the fit, such as interactively defining a first guess of the continuum parameters, and allow the user to interactively set the Voigt parameters. This starting model (i.e. the .mod file) should be displayed on part of the GUI and the user should be allowed to change the model parameters. The user should be allowed to add multiple emission models, and multiple absorption models, if they wish. The user will then be able to run the fit from the dashboard, and the dashboard will display the results of the fit, including the output data file, and a plot of the model on top of the data. Eventually, the user will also be able to generate a publication ready python plotting script.
@@ -233,6 +243,12 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
   to ions, snips, systems and datasets. Before removing anything, the dashboard lists the
   `.mod` lines that will change, including ties, links and limits that refer to the
   removed labels (QF.28). Every removal can be undone (F2).
+- **S30 — Ion navigator** *(added in Prompt 7)*. This supports RJC's QF.18(c) response
+  (equally sized panels of all transitions of one ion). A list on the Components tab shows
+  each system and its ions, with the number of transitions and components for each.
+  Selecting an ion lays out its transitions as equal panels on a common velocity axis.
+  Keys step to the next or previous ion. Components of other ions are still drawn, but
+  locked, so blends between ions stay visible.
 
 **(5) Synchronise the model**
 - **S16 — Cross-highlighting.** Selecting a component, panel or region highlights its
@@ -719,6 +735,154 @@ Should the same rule apply to ions, snips, systems and datasets? My lean: (b), f
 kind of entity, and undoable (F2).
 
 **Response:** I agree with your lean. Removing a component should go ahead after showing the affected `.mod` lines, untying or removing the dependents. The same rule should apply to ions, snips, systems, and datasets, and it should be undoable (F2).
+
+*Further queries raised by Claude on 2026-10-04, in response to Prompt 7. Each gives
+Claude's lean.*
+
+**QF.29 — Relicensing ALIS to GPL v3 (QF.17's response).** The two options are:
+- **(a)** Relicense ALIS to GPL v3, and use either PyQt6 or PySide6.
+- **(b)** Keep BSD-3, and use PySide6. Written against `qtpy`, a user could still choose
+  to install PyQt6.
+
+Points to weigh for (a):
+- BSD-3 code can be redistributed under GPL v3, so relicensing is possible, but the
+  existing BSD notices must be kept.
+- The git history shows two other contributors (J. X. Prochaska and E. Zavarygin), whom
+  you may want to consult. If you go ahead, it may also be worth checking with your
+  institution.
+- After relicensing, any program that imports ALIS and is distributed would need to be
+  GPL-compatible. That would matter if a permissively licensed package (PypeIt, for
+  example, is BSD-licensed) ever wanted to call ALIS.
+- The licence would change for the whole project in order to accommodate one optional
+  dependency, and that is hard to reverse later.
+
+My lean: (b). It costs nothing, can be reversed, and leaves ALIS's licence unchanged.
+
+**Response:** Option (b) is fine with me.
+
+**QF.30 — One window with tabs (answering QF.18(b) and (c)).** I agree: one window with
+tabs is clearer, and new features can be added as new tabs. Your answer to (c) separates
+regions from components, and those two need different layouts. Because of that, I
+propose five tabs rather than four:
+1. **Data:** load datasets, set the systems and their redshifts, and global blinding.
+2. **Regions:** one large panel per transition, with continuum set in the same panel.
+   The continuum belongs to a snip, not to an ion.
+3. **Components:** equally sized panels of every transition of one ion, on a common
+   velocity axis, chosen with the ion navigator (S30).
+4. **Fit:** run, progress, results, badges, the results table, and the run history.
+5. **Plot:** step (8); designed now, built after v1.
+
+The `.mod` editor is a collapsible side panel that is available on every tab, because
+step (5) needs it next to the interactive views. A status bar shows a running fit
+whichever tab is open (F6).
+- **(a)** Five flat tabs, or your four tasks as the top level with Data, Regions and
+  Components as sub-steps of "Prepare"? Flat tabs make each move between steps one click,
+  and users move between those steps often.
+- **(b)** Should continuum be set in the Regions tab, as proposed, or have a tab of its
+  own?
+- **(c)** Should the Components panels use a velocity axis (relative to the system z),
+  so that a component lines up across all transitions of the ion?
+
+My lean: (a) flat; (b) in Regions; (c) velocity.
+
+**Response:** I agree with your lean for (a), (b), and (c). The five flat tabs make each move between steps one click, and users move between those steps often. Continuum should be set in the Regions tab, as proposed. The Components panels should use a velocity axis (relative to the system z), so that a component lines up across all transitions of the ion.
+
+**QF.31 — The mockups (QF.18(a)'s response).** Before I make them, here is what I plan:
+- **(a) Coverage.** All five tabs, with two or three alternative arrangements of Regions
+  and Components (the core of the dashboard), and one arrangement each for Data, Fit and
+  Plot.
+- **(b) Data.** Real data from `VMP_DLA/J1358p6522`, which has the full spectrum, 12
+  snips, a `.mod` and a reference output, so every tab can show something realistic. For
+  the multiple-dataset view in Data, I would use `DH/Q1243p307` (new HIRES plus two
+  archival HIRES datasets).
+- **(c) Form.** Static pages in a browser, with plots drawn from the data. They are
+  pictures of the layout, not working controls.
+- **(d) Location.** The files go in the repository under `doc/dashboard/mockups/`, so
+  they are versioned with the design documents. I would also publish them as a private
+  page that you can leave comments on, if that is useful.
+
+My lean: as listed, including the commentable page.
+
+**Response:** Yes, that sounds good. I agree with your plan for the mockups.
+
+**QF.32 — Bundle format and running from memory (QF.19(b) and (c)'s responses).**
+- **(a) Format.** I recommend a zip file:
+  - it needs nothing beyond Python's standard library;
+  - each member is an ordinary file (the `.mod`, the snips, JSON for the UI state),
+    so unzipping it yields files a user recognises;
+  - it can hold any other file unchanged, including PypeIt spec1d FITS files for
+    Orders mode.
+
+  HDF5 suits large arrays, but adds a dependency (`h5py`) and makes the text harder to
+  inspect. FITS needs no new dependency (astropy is already required), but text, JSON and
+  run history fit it awkwardly.
+- **(b) The existing onefits format.** ALIS already has a single-file format:
+  `out onefits True` writes a FITS file holding the model text and one extension per
+  spectrum, and `run_alis file.fits` offers a menu to plot, print, re-run or extract it.
+  Its data are read from the file without unpacking, much as your DataContainer would
+  work. However:
+  - it stores the model text as character codes in header cards;
+  - the menu is interactive (`input()`), which does not suit a bundle that the dashboard
+    runs;
+  - it is broken. `save.py:149` builds the `lnklines` card but never writes it, so
+    "plot starting model", "re-run" and "extract" all fail with "The onefits file is
+    corrupt" (`load.py:1815`, `1851`, `1881`). No test covers onefits.
+
+  Should the bundle supersede onefits? That would mean keeping onefits readable (with the
+  one-line fix) and deprecating it later.
+- **(c) DataContainer.** Yes. `run_alis project.model` would read the zip into an
+  in-memory container, restore the hidden values, and run, with nothing unpacked to
+  disk. ALIS can already take the model text from memory (`load_input(textstr=...)`).
+  For data it can do so only for a single data line (`load_data` refuses `data=` when
+  there is more than one), so the loader needs one array per data line, much as onefits
+  already does per extension. The outputs (`.mod.out`, `_fit.dat`, report, PDF,
+  covariance matrix) would go back into the bundle. A `run_alis --extract project.model`
+  command would write them out as plain files on request.
+
+My lean: (a) zip; (b) supersede onefits, fixing the bug now so that it still works until
+it is deprecated; (c) as described.
+
+**Response:** I agree with your lean for (a), (b), and (c). The bundle format should be a zip file, and we should remove the dependency on onefits. There is no need to fix the bug so that it still works until it is deprecated (no one currently uses this functionality, it was experimental, and it sounds like a zip file is a better choice). The DataContainer should work as described, allowing `run_alis project.model` to read the zip into an in-memory container, restore the hidden values, and run, with nothing unpacked to disk. I would also be helpful to run the dashboard on the project.model file, and that would load the dashboard (something like `run_alisgui project.model`).
+
+**QF.33 — Confirming two readings.**
+- **(a) Orders mode (QF.26's response).** I read your answer as follows:
+  - There is one Legendre per (transition, dataset, echelle order).
+  - It is shared by every exposure in which that order covers the transition, with
+    `min=`/`max=` set to the union of those exposures' snip extents.
+  - Per-exposure scale factors are off by default. When switched on, there is one per
+    exposure in each group, and one exposure per group is fixed at 1.
+  - If exposures were taken with different instrument settings, the same order number
+    can cover different wavelengths. Should the group then be (setting, order) rather
+    than order alone?
+- **(b) Temperature (QF.25's response).** Each component has one of three temperature
+  modes:
+  - a fixed preset (0, 100 or 10⁴ K);
+  - free T;
+  - pure thermal (b_turb fixed at 0, T free).
+
+  "Choose which components to turn off" means fixing T at a preset for some components
+  while it is fitted for others. Within a component, T and b_turb are shared by all of
+  its ions, and must be shared by isotopes of the same element.
+
+My lean: both readings as stated; and for (a), group by (setting, order).
+
+**Response:** I agree with your lean for (a) and (b). For (a), we should group by (setting, order) rather than order alone. For (b), each component should have one of the three temperature modes, and users should be able to choose which components to turn off. Within a component, T and b_turb should be shared by all of its ions, and must be shared by isotopes of the same element.
+
+**QF.34 — Status of the unmarked suggestions and the scope of v1.** You have commented on
+F7, S1, S4, S8 and S22. F1–F13 and S2, S3, S5–S30 have no notes. May I treat the
+unmarked items as accepted? I would then propose which items go in v1 and which come
+later, in the first design document, for you to adjust. Candidates for after v1:
+- re-attaching to a fit after closing the dashboard (F6; running in the background
+  during a session stays in v1);
+- command search (F10);
+- attaching a source spectrum to an imported model (S23);
+- the reproduce check (S28);
+- constraint templates (S15).
+
+My lean: treat the unmarked items as accepted, and put the proposed split in the first
+design document.
+
+**Response:** That is correct. The unmarked items can be treated as accepted, and the proposed split can be put in the first design document.
 
 ## Prompts
 

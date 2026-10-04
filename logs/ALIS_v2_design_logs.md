@@ -213,3 +213,32 @@ What I checked, and what I learned:
 - **Plotting examples.** `context/plotting_examples/` adds blends, helium 2×2
   and mixed-grid layouts that `plotscript.py` does not yet produce. The
   emitter's docstring still points at `context/plotting/` (QF.27).
+
+### 2026-10-04 (Prompt 7: follow-up dashboard queries and suggestions)
+
+Read RJC's responses to QF.17–QF.28. All leans were accepted except four
+responses that raised new questions: QF.17 (relicensing to GPL v3), QF.18
+(one window with tabs; separate regions from components), QF.19 (bundle
+format and an in-memory DataContainer) and QF.26 (one Legendre per
+transition, dataset and order). Added six queries (QF.29–QF.34) and three
+suggestions: F12 (tab status markers), F13 (relink moved spectra) and S30
+(ion navigator).
+
+What I checked, and what I learned:
+
+- **Licence.** `LICENSE` is BSD-3 (copyright Ryan Cooke). `git shortlog` shows
+  two other contributors, J. X. Prochaska and E. Zavarygin. I lean towards
+  keeping BSD-3 and using PySide6 (QF.29).
+- **In-memory running.** `load_input(textstr=...)` already accepts model text
+  from memory. `load_data(data=...)` accepts arrays for only one data line, so
+  the DataContainer needs the loader to take one array per data line (QF.32c).
+- **ALIS already has a single-file format: onefits.** `out onefits True` writes
+  the model text as character codes in header cards, plus one image extension
+  per spectrum, and `run_alis file.fits` offers an interactive menu.
+- **Bug found in onefits.** `save.py:149` builds the `lnklines` card but never
+  appends it. `load.py:1815`, `1851` and `1881` read it, so the "plot starting
+  model", "re-run" and "extract" options all fail with "The onefits file is
+  corrupt". No test covers onefits. Not fixed; raised in QF.32(b).
+- **Bundle format.** I recommended zip over HDF5 (new dependency, harder to
+  inspect text) and FITS (awkward for text, JSON and history), and proposed
+  that the bundle supersede onefits.
