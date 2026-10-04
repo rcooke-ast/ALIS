@@ -242,3 +242,32 @@ What I checked, and what I learned:
 - **Bundle format.** I recommended zip over HDF5 (new dependency, harder to
   inspect text) and FITS (awkward for text, JSON and history), and proposed
   that the bundle supersede onefits.
+
+### 2026-10-04 (Prompt 8: consolidated decisions and final dashboard queries)
+
+Read RJC's responses to QF.29–QF.34. All leans were accepted: BSD-3 with
+PySide6 (QF.29), five flat tabs (QF.30), the mockup plan (QF.31), a zip bundle
+(QF.32), both readings in QF.33, and unmarked items accepted (QF.34). Two
+responses went further than the lean. QF.32 drops onefits rather than fixing
+it, and adds a launcher, `run_alisgui project.model`.
+
+Changes to `claude_prompts/ALIS_v2_dashboard_prompts.md`:
+
+- **Decisions D1–D32**, added at the end of the Functionality section. They
+  collect the outcome of every query by topic, so that the design documents
+  can be written from Functionality alone. A status list records which F/S
+  items are accepted, accepted with changes (F3, F7, S8, S22, S29) or not
+  needed (S1, S4). The text RJC wrote before the queries is unchanged; where
+  it differs, the D list holds the later decision.
+- **Two suggestions:** F14 (one launcher, `run_alisgui`, which opens a
+  bundle, a `.mod` or a spectrum) and S31 (results of `run_alis project.model`
+  shown in the Fit tab, so that a long fit can outlive a dashboard session).
+- **Two queries:** QF.35 (remove the onefits code from ALIS v2, or leave it)
+  and QF.36 (a proposed stage list: 0 mockups, 1 changes to ALIS itself, 2 the
+  project model without Qt, 3 Qt skeleton, 4 Data and Regions, 5 Components,
+  6 Fit; whether the mockups are Stage 0; and a multi-dataset Regions
+  mockup).
+
+What I checked: onefits is spread across `config.py:164`, `save.py:135`,
+`load.py:463` (where `load_input` treats a `.fits` model file as onefits),
+`load.py:1783`, and the `_isonefits` checks in `main.py` and `load.py`.

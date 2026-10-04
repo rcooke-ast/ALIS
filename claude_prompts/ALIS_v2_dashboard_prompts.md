@@ -141,6 +141,11 @@ Here are some specific features that should be included in the dashboard:
     path and checksum (QF.19). On opening, a missing or changed spectrum is reported. The
     user can then point the dashboard to the spectrum's new location, and the checksum
     confirms it is the same data.
+  - **F14 — One launcher** *(added in Prompt 8)*. `run_alisgui` (QF.32's response) opens
+    whatever it is given. With no argument it starts a new project on the Data tab and
+    lists recent projects. A `.model` opens that project. A `.mod` imports an existing fit
+    into a new project (F4). A spectrum starts a new project with that spectrum as the
+    first dataset.
 
 The operating modes include the following two modes:
 - Voigt mode (this is the default mode): In this mode, the user will load a single input spectrum and the interactive dashboard will allow the user to select the fitting regions for each transition they wish to include in the fit. The dashboard will also allow the user to interactively set starting model parameters for the fit, such as interactively defining a first guess of the continuum parameters, and allow the user to interactively set the Voigt parameters. This starting model (i.e. the .mod file) should be displayed on part of the GUI and the user should be allowed to change the model parameters. The user should be allowed to add multiple emission models, and multiple absorption models, if they wish. The user will then be able to run the fit from the dashboard, and the dashboard will display the results of the fit, including the output data file, and a plot of the model on top of the data. Eventually, the user will also be able to generate a publication ready python plotting script.
@@ -280,11 +285,168 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
   sigma-clipping a dashboard action)*. After a fit, statistically significant outliers
   are highlighted. The user accepts or rejects them panel by panel, and then the fit is
   rerun.
+- **S31 — Results from command-line runs** *(added in Prompt 8)*. A long fit can be run
+  outside the dashboard with `run_alis project.model`, which writes its outputs into the
+  bundle (QF.32). On opening, the Fit tab shows that run as the latest result, with when
+  and where it ran, ready to inspect or commit to the run history (F7). Until
+  re-attaching to a fit (F6) is built, this is how a fit can outlive a dashboard
+  session. If the bundle changes on disk while it is open, the dashboard offers to
+  reload it rather than overwrite it.
 
 **(8) Publication plotting script**
 - **S22 — The preview is the output.** The layout preview is produced by running the
   script that `alis/plotscript.py` emits, so the preview is exactly what the script will
   draw. Layouts can be saved as presets. **RJC:** Please also see the response to QF.14.
+
+**Decisions from the Queries**
+
+*Consolidated by Claude on 2026-10-04, in response to Prompt 8.* QF.1–QF.34 all have
+responses. This list collects their outcomes, so that the design documents can be written
+from the Functionality section alone. The text above was written before the queries;
+where the two differ, this list holds the later decision. The QF numbers point to the
+full discussion.
+
+*Platform and code*
+- **D1.** The dashboard runs locally, on the machine that holds the data, and so do its
+  fits. To fit elsewhere, copy the `.mod` or the bundle and run `run_alis` there (QF.1).
+- **D2.** Qt 6 through PySide6, written against `qtpy` so that PyQt6 also works.
+  pyqtgraph draws the interactive panels and matplotlib the plot-script preview. ALIS
+  stays BSD-3. The dashboard is an optional extra, `pip install "alis[gui]"` (QF.2,
+  QF.17, QF.29).
+- **D3.** The code goes in `alis/dashboard/`, reusing `alis/prepfit/` where that helps,
+  and is launched with `run_alisgui` (F14). Lines are at most 88 characters. Stage logs
+  go in `claude_prompts/logs/dashboard_stage<n>_log.md` (QF.16, QF.32).
+- **D4.** `prepfit` is kept in v2.0 and deprecated once the dashboard covers its
+  features. The snip format does not change (QF.15).
+
+*Layout*
+- **D5.** One window with five flat tabs: Data, Regions (including the continuum),
+  Components, Fit and Plot. A collapsible `.mod` editor panel is available on every tab,
+  and a status bar shows a running fit. Regions shows one large panel per transition.
+  Components shows equal panels of every transition of one ion, on a velocity axis
+  relative to the system z, and the ion is chosen with the ion navigator (S30) (QF.18,
+  QF.30).
+- **D6.** Static mockups come first, viewed in a browser: all five tabs, with two or
+  three alternatives for Regions and Components, drawn from `VMP_DLA/J1358p6522` and
+  `DH/Q1243p307`. They are kept in `doc/dashboard/mockups/` and also published as a
+  private page for comments. A clickable Qt skeleton of the chosen arrangement then
+  becomes the first code (QF.18(a), QF.31).
+
+*Project file and running*
+- **D7.** The `.mod` text is authoritative. GUI actions make targeted edits to it, so
+  comments and formatting survive, and parse errors are shown on the offending line
+  (QF.3).
+- **D8.** A project is always a single zip bundle, `project.model`. It holds the `.mod`
+  with blinded values replaced by placeholders, the hidden values, the snips, the UI
+  state and the committed runs. Source spectra are referenced by path and checksum, with
+  an option to embed them for archiving (QF.19, QF.32(a)).
+- **D9.** `run_alis project.model` reads the bundle into an in-memory DataContainer,
+  restores the hidden values, runs the fit and writes the outputs back into the bundle.
+  Nothing is unpacked to disk. This needs `load_data` to accept one in-memory array per
+  data line. `run_alis --extract project.model` writes the outputs out as plain files
+  (QF.19(c), QF.32(c)).
+- **D10.** A plain `.mod` with its snips can always be exported, and `run_alis` runs it
+  without the dashboard. If anything is blinded, the export warns that the blinded
+  starting values will be written in plain text (QF.4, QF.19(e)).
+- **D11.** The bundle supersedes onefits, which will not be fixed (QF.32(b); see QF.35).
+- **D12.** An existing fit (a `.mod` with its snips and `.mod.out`) can be opened.
+  Without its source spectrum, regions are limited to each snip's extent and no new
+  transitions can be added (QF.5). S23 would lift this, and is a candidate for after v1.
+
+*Data (step 1)*
+- **D13.** Input spectra have three columns: wave, flux and error. A fourth column of
+  0s and 1s is a mask. Any other fourth column is a continuum: flux and error are
+  multiplied by it, with a warning. Five or more columns are assigned in the column-role
+  dialog (S3), which starts from this rule. FITS input comes with Orders mode (QF.7,
+  QF.22).
+- **D14.** Several datasets are supported from v1, and the user chooses which datasets
+  are fitted for each transition. The first dataset loaded is the reference, with its
+  shift fixed at 0. Each further dataset has one free `vshift` for all its snips. There
+  is one FWHM per dataset, fixed by default, which can be freed or overridden per snip.
+  Zero levels are off by default; when switched on, there is one `constant` per dataset
+  (QF.6, QF.23).
+- **D15.** A project holds one primary system plus any number of further systems and
+  generic absorbers, each with its own line IDs and components. Snips can be cut for a
+  transition of any system (QF.9).
+- **D16.** A system's redshift can be set and refined any number of times (S24). It only
+  sets the reference for the velocity axes and for finding transitions. Changing it
+  re-centres the views, but never moves snips or components (QF.24, RJC's note on S1).
+
+*Regions and continuum (steps 2–3)*
+- **D17.** The default continuum is a Legendre polynomial per snip, set in the Regions
+  tab. It starts from a σ-clipped automatic fit, and its order is changed with +/−
+  buttons or keys. Polynomials and `constant` are placed interactively; other emission
+  functions are added through the editor (QF.7, QF.12, QF.30(b), S8).
+- **D18.** A region drawn on one dataset is copied to the same transition in the other
+  selected datasets as a starting point, then edited per dataset (QF.23(d)).
+- **D19.** The same pixel (of the same exposure) must not be fitted twice. The dashboard
+  warns, and offers either to merge the snips (the default when they overlap
+  substantially) or to keep the pixels in one snip only. Imported models that already
+  overlap may still be fitted. `run_alis` also warns when it loads the data (QF.21,
+  S26).
+
+*Components (step 4)*
+- **D20.** A component (z, b, T) is shared by every ion of its system by default, with
+  an independent log N for each ion. Individual ions can be untied (QF.8).
+- **D21.** A horizontal drag sets b_turb, with T held at its current value. Each
+  component has one of three temperature modes: a fixed preset (0, 100 or 10⁴ K), free
+  T, or pure thermal (b_turb fixed at 0, T free) (QF.8, QF.25, QF.33(b)).
+- **D22.** Isotopes are separate ions, but must share z, b_turb and T with the other
+  isotopes of the same element. Their column densities are independent unless linked
+  by a ratio (QF.8, QF.25(c)).
+- **D23.** A component, ion, snip, system or dataset can be removed. The dashboard first
+  lists the `.mod` lines that will change, then unties or removes the dependents, and
+  the removal can be undone (QF.28, S27).
+
+*Blinding (step 7)*
+- **D24.** Blinding works as follows (QF.10, QF.19(d), QF.20):
+  - Global blind can be switched on at the start or later, and hides best-fit values.
+  - Blinding chosen parameters of a component also hides their starting values.
+  - Blinded profiles may be drawn, but blinded values are hidden everywhere (F8). In the
+    editor they appear masked (e.g. `▒▒▒▒da`), and the user may type over the mask.
+  - Errors, and the change in χ² during a drag, may be shown.
+  - `blindrange` offsets are masked, and best-fit values are stored hidden in the
+    bundle.
+  - Unblinding is an explicit action that the user confirms, and it is logged.
+
+*Fit and analysis (step 6)*
+- **D25.** v1 includes the parameter table with errors and flags, the correlation
+  matrix (S19), fit-quality badges (S18), the initial/final model toggle, the run
+  history with comparisons (F7), and the convergence and random-restart tools (S21)
+  (QF.11).
+- **D26.** A run is added to the run history only when the user commits it with a
+  button (QF.11, F7).
+- **D27.** Sigma-clipping is a dashboard action in both modes. The clipped pixels are
+  shown for review, then the fit is rerun (QF.13, QF.26(c), S29).
+
+*Plotting script (step 8, after v1)*
+- **D28.** A general grid of panels, with presets for metals, DH, blends and helium.
+  References to `context/plotting/` are updated when step (8) begins (QF.14, QF.27,
+  S22).
+
+*Orders mode (after v1)*
+- **D29.** A *dataset* is an instrument or reduction that shares one resolution, shift
+  and zero level. An *exposure* is one spec1d file, and an *order* is one echelle order
+  of one exposure (QF.26(a)).
+- **D30.** There is one Legendre per (transition, dataset, order group), where the group
+  is (instrument setting, order number). It is shared by every exposure in the group
+  that covers the transition, with `min=`/`max=` set to the union of their snip extents
+  (QF.13(b), QF.26(a), QF.33(a)).
+- **D31.** Per-exposure scale factors (`constant` or `linear`, with `continuum=True`) are
+  off by default. When switched on, one exposure per group is fixed at 1 (QF.26(b),
+  QF.33(a)).
+- **D32.** Regions are drawn on the combined spectrum and applied to every order, then
+  edited per order, for example to mask a cosmic ray (QF.13(a)).
+
+*Status of the proposed items*
+- Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
+  (QF.34).
+- Accepted with changes: F3 (the bundle is now the project format, D8, and plain files
+  are an export, D10), F7 (D26), S8 (D17), S22 (D28), and S29 (no longer conditional,
+  D27).
+- Not needed: S1 (replaced by S24) and S4.
+- New in Prompt 8, for RJC to vet: F14 and S31.
+- The v1/later split will be proposed in the first design document (QF.34; see QF.36).
 
 ## Queries
 
@@ -884,6 +1046,68 @@ design document.
 
 **Response:** That is correct. The unmarked items can be treated as accepted, and the proposed split can be put in the first design document.
 
+*Further queries raised by Claude on 2026-10-04, in response to Prompt 8. The decisions
+so far are collected as D1–D32 at the end of the Functionality section. Each query gives
+Claude's lean.*
+
+**QF.35 — Removing onefits (QF.32's response).** Dropping onefits could mean either:
+- **(a)** leaving the code as it is, broken and unused; or
+- **(b)** removing it from ALIS v2. That covers the `out onefits` setting
+  (`alis/config.py:164`), `save_onefits` (`alis/save.py:135`), `load_onefits` and its
+  menu (`alis/load.py:1783`), and the `_isonefits` checks in `main.py` and `load.py`.
+
+For (b), the natural time is the stage that teaches `run_alis` to read a bundle (QF.36),
+because both change the same place: `load_input` (`alis/load.py:463`) is where a `.fits`
+model file is treated as onefits. A `.fits` model file, or `out onefits True`, would
+then stop with an error that points to the bundle. `out fits` (one FITS file per
+spectrum) is separate, and stays.
+
+My lean: (b), in Stage 1 of QF.36.
+
+**Response:** I agree with option (b), in Stage 1.
+
+**QF.36 — The stages, and where the mockups fit.** The design documents follow
+`dashboard_stageX.md`, one per stage, as in the refactor. I propose these stages:
+- **Stage 0 — Mockups** (D6). Nothing under `alis/` changes. The stage ends when you
+  choose the Regions and Components arrangements.
+- **Stage 1 — Changes to ALIS itself**, with no dashboard code, checked by the
+  refactor's regression harness:
+  - the bundle (D8), `run_alis project.model` and `--extract` (D9);
+  - in-memory loading of several data lines (D9);
+  - the shared-pixel warning in `run_alis` (D19);
+  - removing onefits (QF.35).
+- **Stage 2 — The project model**, in `alis/dashboard/` but with no Qt, so that it can
+  all be tested with pytest:
+  - the text-sync layer, which maps each part of a project (dataset, system, snip,
+    component) to its `.mod` lines and makes targeted edits (D7). It is tested by
+    opening every context model and writing it back unchanged (QF.5);
+  - the blinding gate (F8);
+  - undo/redo (F2).
+- **Stage 3 — Qt skeleton** of the chosen layout: the window, the five tabs, the `.mod`
+  panel with validation (F5), the status bar, open/save/autosave (F1), tab markers (F12)
+  and `run_alisgui` (F14).
+- **Stage 4 — Data and Regions tabs** (steps 1–3).
+- **Stage 5 — Components tab** (step 4).
+- **Stage 6 — Fit tab** (step 6): the background runner, badges, results table, run
+  history, convergence tools and the sigma-clip review. This completes v1.
+- **After v1:** the Plot tab (step 8), Orders mode, and the later items of QF.34.
+
+As in the refactor, each stage's document would be written when the previous stage is
+done, so that it can use what was learned. `dashboard_stage0.md` would also hold this
+stage list and the v1/later split (QF.34).
+- **(a)** Are these the right stages, in the right order?
+- **(b)** QF.2's response asks for layouts before any design work. Should the mockups be
+  Stage 0, with their own document, or be made straight away from QF.31, before any
+  stage document?
+- **(c)** QF.31 uses `Q1243p307` only for the Data tab. The Regions tab also has to show
+  several datasets for one transition (D14, D18). Should one of the Regions alternatives
+  show a `Q1243p307` transition with all three of its datasets?
+
+My lean: (a) as listed; (b) Stage 0, so that the mockups are planned, logged and
+reviewed like every other stage; (c) yes.
+
+**Response:** I agree with your lean for (a), (b), and (c). The stages are in the right order, the mockups should be Stage 0 with their own document, and one of the Regions alternatives should show a `Q1243p307` transition with all three of its datasets.
+
 ## Prompts
 
 1. Read this doc.  Perform Task 1 under Workflow doc
@@ -895,6 +1119,10 @@ design document.
 6. Read this document, `ALIS_workflow.md`, my responses to your queries, and the additional notes I have left in this file responding to your additions. In a future step, we will be generating design documents (based on the template provided in `dashboard_stageX.md`). Before we generate these documents, please do the following steps: (i) read the `Functionality` section of this document, (ii) ask further queries if anything is unclear, or if new queries emerge, (iii) Based on my responses so far, you are welcome to propose additional suggestions for the dashboard with a goal to improve user experience.
 
 7. Read this document, `ALIS_workflow.md`, my responses to your queries, and the additional notes I have left in this file responding to your additions. In a future step, we will be generating design documents (based on the template provided in `dashboard_stageX.md`). Before we generate these documents, please do the following steps: (i) read the `Functionality` section of this document, (ii) ask further queries if anything is unclear, or if new queries emerge, (iii) Based on my responses so far, you are welcome to propose additional suggestions for the dashboard with a goal to improve user experience.
+
+8. Repeat prompt 7 until all queries are resolved, and the `Functionality` section is complete. Then, we will generate the design documents for the dashboard.
+
+9. Read this document, `ALIS_workflow.md`, my responses to your queries, and the additional notes I have left in this file responding to your additions. If you have no further queries or outstanding items, please generate the design documents (based on the template provided in `dashboard_stageX.md`). Otherwise, please continue to ask queries and propose additional suggestions for the dashboard with a goal to improve user experience.
 
 ## Logging
 
