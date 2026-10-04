@@ -325,3 +325,44 @@ the snip labels on the three-dataset spectrum overlapped.
 **Published** as version 5 of https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.
 Replies were posted on the five new threads, and all six open threads are
 resolved, including the Q0.9 thread, now that Q0.11 is answered.
+
+### 2026-10-04 (Prompt 6: draft 6, the design documents updated, Stage 0 closed)
+
+Read RJC's three comments on draft 5. All were clear, and no further input was
+needed. Draft 5's pages were copied to `draft5/` first.
+
+**Draft 6 (final):**
+- Velocity axes are signed. `fmt_tick` and `Plot.axes` take `signed=True` for
+  the residual and difference strips that carry the velocity labels
+  (Components, Fit Inspect and Compare, Plot preview), so ticks read
+  "−100, 0, +100". Wavelength axes are unchanged.
+- Every zoom toolbar ends with "+" and "−" (zoom along the wavelength axis
+  only). The toolbar was added to the Compare sub-tab, so every spectrum view
+  in the Data and Fit tabs has it.
+- Run descriptions stay in the run history table, as confirmed.
+- `ruff check` passes and every line is within 88 characters. The Fit Inspect
+  page was rendered at 1440×900 to check the signed ticks and the toolbar.
+- Published as version 6 of https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.
+  The three threads are answered and resolved, so no threads remain open.
+
+**Design documents updated:**
+- `ALIS_v2_dashboard_prompts.md`:
+  - new decisions D34–D44 ("Stage 0 decisions"): the window, each tab and
+    sub-tab, the fit-quality marks, the look, and no design references in the
+    dashboard;
+  - notes on D5, D13 and D14 pointing to them;
+  - D33 records that Stage 0 is closed;
+  - the status list records S2, S18, S24 and S25 as revised.
+- `ALIS_v2_code_plan.md`:
+  - Stage 6.2 (GUI) is marked superseded by the dashboard;
+  - Query 8 records the toolkit decision;
+  - Stage 5.3 notes that the Plot tab builds on it;
+  - a new section, "The dashboard (planned separately)", lists the changes it
+    needs in ALIS itself (Stage 1) and later (the Plot tab);
+  - the dependency summary and policy mention the dashboard and the `gui`
+    extra.
+- `dashboard_stage0.md`: the draft 5 review and the close of Stage 0 are
+  recorded under Task 0.10, with the items carried forward.
+
+**Stage 0 is complete.** Tasks 0.1–0.10 are done. The next step is to write
+`dashboard_stage1.md`.

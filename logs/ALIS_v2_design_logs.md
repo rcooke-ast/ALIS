@@ -304,3 +304,14 @@ share 18–23 pixels each, and Q1243p307's O I 1302.2 and Si II 1304.4 snips
 share 97 pixels in each of its three datasets. J1358p6522 has a full
 three-column spectrum, 57 `1Ly_a` interlopers, O I in six transitions, and
 `run atomic atomic_rjc.xml`. Q1243p307 has no full spectrum, only snips.
+
+### 2026-10-04 (Dashboard Stage 0 closed; design decisions recorded)
+
+Dashboard Stage 0 (the mockups) closed after six drafts reviewed by RJC on the
+published page. Its outcome was folded into the design documents:
+- `ALIS_v2_dashboard_prompts.md`: decisions D34–D44, with notes on the
+  decisions they refine (D5, D13, D14) and on the revised suggestions (S2, S18,
+  S24, S25);
+- `ALIS_v2_code_plan.md`: Stage 6.2 now points to the dashboard, with a new
+  section listing the changes it needs in ALIS itself.
+Details are in `claude_prompts/logs/dashboard_stage0_log.md`.

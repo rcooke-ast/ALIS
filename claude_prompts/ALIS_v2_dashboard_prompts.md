@@ -325,7 +325,7 @@ The QF numbers point to the full discussion.
   and a status bar shows a running fit. Regions shows one large panel per transition.
   Components shows equal panels of every transition of one ion, on a velocity axis
   relative to the system z, and the ion is chosen with the ion navigator (S30) (QF.18,
-  QF.30).
+  QF.30). *Refined in Stage 0: D34–D43.*
 - **D6.** Static mockups come first, viewed in a browser: all five tabs, with two or
   three alternatives for Regions and Components, drawn from `VMP_DLA/J1358p6522` and
   `DH/Q1243p307`. They are kept in `doc/dashboard/mockups/` and also published as a
@@ -359,13 +359,13 @@ The QF numbers point to the full discussion.
   0s and 1s is a mask. Any other fourth column is a continuum: flux and error are
   multiplied by it, with a warning. Five or more columns are assigned in the column-role
   dialog (S3), which starts from this rule. FITS input comes with Orders mode (QF.7,
-  QF.22).
+  QF.22). *Refined in Stage 0: the dialog opens for every file (D35).*
 - **D14.** Several datasets are supported from v1, and the user chooses which datasets
   are fitted for each transition. The first dataset loaded is the reference, with its
   shift fixed at 0. Each further dataset has one free `vshift` for all its snips. There
   is one FWHM per dataset, fixed by default, which can be freed or overridden per snip.
   Zero levels are off by default; when switched on, there is one `constant` per dataset
-  (QF.6, QF.23).
+  (QF.6, QF.23). *Refined in Stage 0: one row per file, and rows can be tied (D35).*
 - **D15.** A project holds one primary system plus any number of further systems and
   generic absorbers, each with its own line IDs and components. Snips can be cut for a
   transition of any system (QF.9).
@@ -443,7 +443,92 @@ The QF numbers point to the full discussion.
 - **D33.** The work is split into Stages 0–6, which make v1, and later work. Stage 0
   is the mockups. The stage list and the v1/later split are kept in
   `claude_prompts/dashboard_stage0.md`. Each stage's document is written when the
-  previous stage is done (QF.34, QF.36).
+  previous stage is done (QF.34, QF.36). Stage 0 closed on 2026-10-04 after six drafts
+  of the mockups; the next document is `dashboard_stage1.md`.
+
+*Stage 0 decisions (the mockups)*
+
+*Added by Claude on 2026-10-04, in response to Prompt 6 of `dashboard_stage0.md`. They
+collect the outcome of the six rounds of review recorded under Task 0.10 of that
+document and its queries Q0.3–Q0.11. The final mockups are built by
+`doc/dashboard/mockups/build_mockups.py` (earlier drafts are kept beside them) and
+published at https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.*
+
+- **D34. The window.** Five tabs: Data, Regions, Components, Fit and Plot. Fit has
+  three sub-tabs: Inspect, Results and Compare. The collapsible `.mod` panel and the
+  status bar are as in D5, and each tab marker has an icon as well as a colour (✓
+  complete, ↻ out of date, ! needs attention, ○ not started).
+- **D35. Data tab.** The same layout whatever the number of files.
+  - **Left:** Systems, then Blinding, with Coverage between them when there are
+    several files. The primary z is typed, or found with "Identify a feature": click a
+    pixel, then choose Element → Ion → Transition from menus that list the z each
+    transition implies. The result sets the primary z or starts a new system. There is
+    no redshift history.
+  - **Right:** the table of files and, below it, the spectrum, which can be zoomed and
+    panned. Without source spectra, the spectrum shows the selected dataset's snips,
+    each scaled to its own peak.
+  - **Files:** each file is one row, with its own reference flag, FWHM, shift, zero
+    level and checksum (relink when moved). The FWHM, shift and zero level of one row
+    can be tied to another's, for example two settings of one instrument (Q0.5, Q0.8).
+  - **Column roles:** the dialog opens for every file, with the roles filled in by
+    D13's rule, so Enter accepts them.
+- **D36. Regions tab.**
+  - **Left:** the transition list, then the key (one item per line). The list has a
+    System menu (the primary by default), an Element menu with ‹ ›, and buttons for
+    the ion stage (I–IV). It shows that ion's transitions ranked by fλ. Isotopes are
+    not listed separately, near-coincident lines share one row, and only transitions
+    that fall on data are listed, plus any that already have a snip (flagged).
+  - **Centre:** one spectrum per dataset, stacked, never overlaid, and scrolling when
+    there are many. Clicking a spectrum selects it, and the Continuum and Snip boxes
+    below show the selected dataset.
+  - **Tools:** Draw region; Mask pixels (leaves single pixels out of the fit); SNIP
+    makes the transition a snip; CLEAR removes its regions and the snip (Q0.6). There
+    is no "set z here": z is set in the Data tab.
+- **D37. Components tab.** The ion navigator lists systems and ions, with isotopes
+  only inside their element (D I with H I), and no explanatory text. The panels have a
+  Columns 1–4 setting (one setting for the whole tab, not stored per ion), scroll
+  vertically, and default to ±200 km/s. Components are edited as cards. An imported
+  model that breaks D20 or D22 gets a notice with a one-click fix, and may still be
+  fitted as imported (Q0.3).
+- **D38. Fit tab, Inspect.**
+  - **Run box:** the settings the user changed (all settings on request), the
+    pre-flight check, and a progress chart with a linear or log χ² axis.
+  - **View menu:** all snips, one ion, or one snip, with ‹ ›. Groups use the
+    Components column setting.
+  - **Zoom toolbar:** home, back, forward, pan, zoom box, and zoom in / out along the
+    wavelength axis only. The same toolbar is used on every spectrum view (Data, Fit).
+  - **Snip list:** a chip per snip with its fit-quality marks (D39).
+- **D39. Fit-quality marks.** χ²ν and the runs test of `alis/report.py` are shown side
+  by side, each with its own mark: ✓ within 2σ, ! 2–3σ, ✕ beyond 3σ (ALIS's
+  `reportsig`). The per-pixel runs test is not changed, although it is strongly
+  negative for resampled spectra (Q0.4).
+- **D40. Fit tab, Results.** The parameter table (errors, tie states, flags such as
+  "at limit" and "unconstrained"), the correlation matrix, the fit statistics, and the
+  run history. Committing a run asks for the user's own description, typed in the
+  table and editable later.
+- **D41. Fit tab, Compare.** Any two runs; quantities matched by ion and velocity,
+  with totals over components; Δ and |Δ|/σ; both models drawn on the same data, with
+  their difference in σ, using the Inspect View menu and toolbar.
+  - **Blinded quantities:** only |Δ|/σ is shown, with no values and no sign (Q0.9,
+    Q0.11).
+  - **Matching quantities:** the same physical quantity must be matched across
+    different parametrisations, for example D/H derived from two column densities in
+    one run and fitted directly in another. This is designed in Stage 6.
+- **D42. Plot tab (after v1).**
+  - **Layout:** preset, grid and figure size. Transitions are dragged onto a picture of
+    the grid; dragging between cells swaps them, and dragging off the grid returns a
+    transition to "Not shown".
+  - **Defaults:** residuals are shown, and colours are colour-blind safe.
+  - **The script:** it sets every colour as a variable at its top, and is edited
+    outside the dashboard (there is no script box). It uses a publication style
+    shipped with ALIS (from `context/misc/matplotlibrc`, used only by the script), or
+    another style file the user chooses. Text is rendered with LaTeX when LaTeX is
+    installed, and with matplotlib's own text otherwise (Q0.7, Q0.10).
+- **D43. Look.** Neutral and light, close to Qt's Fusion style, and judged at 1440×900.
+  All colours come from the Okabe–Ito colour-blind-safe palette, and every coloured
+  state also has an icon. Velocity axes are signed (+100, −100, 0).
+- **D44. No design references.** The shipped dashboard never refers to the design
+  documents: its text has no D, F, S, QF or Q numbers.
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
@@ -453,6 +538,7 @@ The QF numbers point to the full discussion.
   D27).
 - Not needed: S1 (replaced by S24) and S4.
 - Added in Prompt 8 and accepted (no notes, so QF.34's rule applies): F14 and S31.
+- Revised in Stage 0: S2 (D36), S18 (D39), S24 (D35) and S25 (D35).
 - The stage of each item, and the v1/later split, are in `dashboard_stage0.md` (D33).
 
 ## Queries

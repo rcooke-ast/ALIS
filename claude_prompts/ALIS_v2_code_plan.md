@@ -238,7 +238,8 @@ match the reference files within the agreed tolerances.*
     candidate, since `astropy` is already a dependency) that needs no manual
     `nrows` maintenance and makes it obvious which rows are present.
 5.3 **Plotting-script output.** Add an option to emit standalone matplotlib
-    scripts that reproduce publication-quality figures.
+    scripts that reproduce publication-quality figures. *The dashboard's Plot
+    tab builds on this (see "The dashboard" below).*
 
 #### Stage 6 — Usability, GUI, and documentation
 
@@ -246,9 +247,41 @@ match the reference files within the agreed tolerances.*
     (or `typer`) for self-documenting `--help`, tab completion, consistent options.
 6.2 **GUI.** Extend the existing `prepfit` GUI into a single interface that
     prepares, runs, and inspects a fit iteratively (see Query 8).
+    *Superseded (2026-10-04):* the GUI is now the ALIS dashboard, a new package
+    `alis/dashboard/`, planned separately (see "The dashboard" below). `prepfit`
+    is kept in v2.0 and deprecated once the dashboard covers its features.
 6.3 **Documentation.** Move from LaTeX/PDF to Sphinx + ReadTheDocs, using the
     *code* as source of truth; include a full tutorial and the expanded example
     suite. Add `CONTRIBUTING.md`.
+
+#### The dashboard (planned separately)
+
+*Added on 2026-10-04, when the dashboard's design stage (its Stage 0) closed.*
+
+- **Where it is planned.** The design is in `claude_prompts/ALIS_v2_dashboard_prompts.md`
+  (the Functionality section, with decisions D1–D44). The work is done in its own
+  stages, `claude_prompts/dashboard_stage<N>.md`, whose list and v1/later split are in
+  `dashboard_stage0.md`.
+- **The mockups.** The agreed layout is drawn in `doc/dashboard/mockups/`.
+- **Toolkit.** Qt 6 through PySide6, written against `qtpy`, with pyqtgraph for the
+  interactive plots. These go in an optional extra, `alis[gui]`; ALIS stays BSD-3.
+- **Changes to ALIS itself.** The dashboard needs these, made in its Stage 1, with no
+  dashboard code and checked by this plan's regression harness:
+  - **The project bundle:** a zip `project.model`. `run_alis project.model` reads it
+    into memory, restores hidden (blinded) values and runs, and
+    `run_alis --extract` writes the outputs out as plain files. A project can hold
+    several source files per dataset, each with its path and checksum.
+  - **In-memory data:** `load_data` takes one in-memory array per data line, not only
+    for a single one.
+  - **Shared pixels:** `run_alis` warns when a pixel is fitted by more than one snip.
+  - **onefits removed:** the `out onefits` setting, `save_onefits`, `load_onefits` and
+    the `run_alis file.fits` menu are removed; the bundle replaces them.
+- **Later, with the Plot tab:**
+  - ALIS ships the publication style as `alis/data/alis_publication.mplstyle`, from
+    `context/misc/matplotlibrc`.
+  - `alis/plotscript.py` gains a general grid with presets (metals, DH, blends,
+    helium), colour variables at the top of each script, and a fallback to
+    matplotlib's own text when LaTeX is not installed.
 
 ### Dependency summary
 
@@ -257,12 +290,14 @@ match the reference files within the agreed tolerances.*
 - Stage 2 depends on Stage 0.
 - Stage 3 and Stage 4 depend on Stage 2 (they need the clean, testable core).
 - Stage 5 and Stage 6 depend on Stage 2 but are otherwise independent of 3/4.
+- The dashboard builds on the refactored core. Its Stage 1 changes ALIS itself and
+  is gated by the Stage 0 regression harness.
 
 **Dependency policy (per Queries 5 and 12):** no new *runtime* dependencies
 without prior discussion with RJC. Dev/build tooling (`pytest`, `ruff`, `black`,
 `pre-commit`, Sphinx) and optional extras (GPU: `numba`/CuPy; YAML: `PyYAML`;
-TOML writing: a small writer lib) are acceptable, as they are not imposed on
-ordinary CPU users.
+TOML writing: a small writer lib; the dashboard's `gui`: PySide6, `qtpy`, pyqtgraph)
+are acceptable, as they are not imposed on ordinary CPU users.
 
 ## Queries
 
@@ -347,6 +382,10 @@ from the code. The format should also be easy to validate and check for errors.
 
 **Response:** `prepfit` currently uses matplotlib with the `Qt5Agg` backend.
 At a later stage in the process, we will discuss the best toolkit to use for the GUI.
+
+**Update (2026-10-04):** decided while planning the dashboard. It uses Qt 6 through
+PySide6 (written against `qtpy`) with pyqtgraph, as an optional `alis[gui]` extra (QF.2,
+QF.17 and QF.29 in `ALIS_v2_dashboard_prompts.md`).
 
 9. **Priority.** Among the phases, which delivers the most value first for you —
    the architecture cleanup (Phase 2), GPU speed-ups (Phase 4, implied by the

@@ -268,6 +268,39 @@ this document and in the log. Stage 0 then ends.
   - **Components:** the ion navigator has no explanatory text.
   - **Regions:** "click a spectrum to select it" (not "strip").
 
+  *Review of draft 5 (2026-10-04). Draft 6, the final draft, applies it.*
+  - **Velocity axes:** positive ticks are labelled with "+", negative ticks with
+    "−", and 0 without a sign.
+  - **Zoom toolbars:** every zoom toolbar gains "+" and "−" buttons that zoom
+    along the wavelength axis only. The Compare sub-tab now has the toolbar too.
+  - **Run descriptions:** they stay where they are, typed in the run history
+    table (confirmed).
+
+  *Stage 0 closed (2026-10-04).*
+  - **Where the outcome is recorded:**
+    - in `ALIS_v2_dashboard_prompts.md`, as decisions D34–D44, which refine D5,
+      D13, D14, S2, S18, S24 and S25;
+    - in `ALIS_v2_code_plan.md`, where Stage 6.2 and Query 8 now point to the
+      dashboard, and a new section lists the changes the dashboard needs in
+      ALIS itself.
+  - **Where the mockups are:** draft 6 is in `doc/dashboard/mockups/`, drafts
+    1, 2, 4 and 5 are in subfolders there, and draft 3 is kept only as version 3
+    of the published page.
+  - **Carried forward:**
+    - **Stage 1 (changes to ALIS itself):**
+      - the bundle, including several source files per dataset (Q0.5);
+      - `run_alis project.model` and `--extract`;
+      - the plain export;
+      - in-memory loading of several data lines;
+      - the shared-pixel warning;
+      - removing onefits.
+    - **Before Stage 3:** rewrite the `gui-dev` and `gui-component` skills for
+      PySide6 and pyqtgraph.
+    - **Stage 6:** matching the same physical quantity across different
+      parametrisations when runs are compared (D41).
+    - **With the Plot tab, after v1:** ship `alis/data/alis_publication.mplstyle`
+      and extend `alis/plotscript.py` (D42).
+
 ## Skills to use for this stage
 
 - `atomic-data`: transition wavelengths and f-values, for the coverage list (S2), the
