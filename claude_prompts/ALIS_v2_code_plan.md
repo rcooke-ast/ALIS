@@ -266,7 +266,9 @@ match the reference files within the agreed tolerances.*
 - **Toolkit.** Qt 6 through PySide6, written against `qtpy`, with pyqtgraph for the
   interactive plots. These go in an optional extra, `alis[gui]`; ALIS stays BSD-3.
 - **Changes to ALIS itself.** The dashboard needs these, made in its Stage 1, with no
-  dashboard code and checked by this plan's regression harness:
+  dashboard code and checked by this plan's regression harness. The tasks are in
+  `claude_prompts/dashboard_stage1.md`, which proposes a new module, `alis/bundle.py`,
+  and a `run_alis --pack` command; its queries are open.
   - **The project bundle:** a zip `project.model`. `run_alis project.model` reads it
     into memory, restores hidden (blinded) values and runs, and
     `run_alis --extract` writes the outputs out as plain files. A project can hold

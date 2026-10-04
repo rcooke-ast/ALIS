@@ -276,7 +276,9 @@ this document and in the log. Stage 0 then ends.
   - **Run descriptions:** they stay where they are, typed in the run history
     table (confirmed).
 
-  *Stage 0 closed (2026-10-04).*
+  *Stage 0 closed (2026-10-04). RJC confirmed the close in Prompt 7, noting that the
+  design may be adjusted after feedback from users, and `dashboard_stage1.md` was
+  then written.*
   - **Where the outcome is recorded:**
     - in `ALIS_v2_dashboard_prompts.md`, as decisions D34–D44, which refine D5,
       D13, D14, S2, S18, S24 and S25;

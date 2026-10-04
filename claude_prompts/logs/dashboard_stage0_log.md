@@ -366,3 +366,51 @@ needed. Draft 5's pages were copied to `draft5/` first.
 
 **Stage 0 is complete.** Tasks 0.1–0.10 are done. The next step is to write
 `dashboard_stage1.md`.
+
+### 2026-10-04 (Prompt 7: Stage 0 confirmed closed; Stage 1 document written)
+
+RJC confirmed the close of Stage 0, noting that the design may be adjusted after
+feedback from users.
+
+**Design documents:** most of the update was made in Prompt 6. This prompt added:
+- `ALIS_v2_dashboard_prompts.md`: D33 and the note above D34–D44 record RJC's
+  confirmation and the possibility of later adjustment, and D33 names the Stage 1
+  document.
+- `ALIS_v2_code_plan.md`: the dashboard section points to `dashboard_stage1.md`.
+- `dashboard_stage0.md`: Task 0.10 records the confirmation.
+
+**`claude_prompts/dashboard_stage1.md` written**, after reading the code it changes
+(`load.py`, `save.py`, `main.py`, `run_alis.py`, the output writers) and the test
+harness:
+- **Design:**
+  - the bundle's layout, with the model and snips at their on-disk relative paths
+    under `files/`, so that the text never changes;
+  - hidden lines (`<hidden:n>` placeholders, with the real lines in `hidden.bin`);
+  - how `run_alis project.model` runs and writes `runs/latest/`.
+- **Tasks 1.1–1.9:**
+  - remove onefits;
+  - several data lines from memory;
+  - the shared-pixel warning;
+  - one writer for every output;
+  - `alis/bundle.py`;
+  - hidden values;
+  - `run_alis project.model`;
+  - `--extract` and `--pack`;
+  - closing the stage.
+- **Queries Q1.1–Q1.9**, each with a lean: the layout, how values are hidden,
+  extracting a blinded bundle, the commands, auxiliary files, which runs a bundle
+  supports, concurrent edits and failed runs, the shared-pixel test, and
+  `out onefits` in old models.
+
+What I found that shaped it:
+- ALIS writes outputs from about ten places, several of which ask at the terminal
+  before overwriting, so a bundle run needs one writer that can hold files in
+  memory (Task 1.4).
+- A blind run writes no `.mod.out`, `_fit.dat` or covariance matrix today, and
+  `blind=True` lines are written as "BLIND MODEL". A bundle run must keep the real
+  values, hidden (Task 1.6).
+- The only live reference to an auxiliary file is in `examples/lsf_file`, but
+  J1358p6522's `run atomic atomic_rjc.xml` falls back silently to the default table
+  where the file is missing (Q1.5).
+- 13 models use `run datadirc ../data/`, and some read data two directories up, so
+  the bundle keeps the relative layout rather than rewriting paths (Q1.1).

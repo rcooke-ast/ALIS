@@ -444,7 +444,9 @@ The QF numbers point to the full discussion.
   is the mockups. The stage list and the v1/later split are kept in
   `claude_prompts/dashboard_stage0.md`. Each stage's document is written when the
   previous stage is done (QF.34, QF.36). Stage 0 closed on 2026-10-04 after six drafts
-  of the mockups; the next document is `dashboard_stage1.md`.
+  of the mockups, and RJC confirmed the close (Prompt 7 of `dashboard_stage0.md`). The
+  design may still be adjusted after feedback from users. Stage 1's document is
+  `dashboard_stage1.md`.
 
 *Stage 0 decisions (the mockups)*
 
@@ -452,7 +454,8 @@ The QF numbers point to the full discussion.
 collect the outcome of the six rounds of review recorded under Task 0.10 of that
 document and its queries Q0.3–Q0.11. The final mockups are built by
 `doc/dashboard/mockups/build_mockups.py` (earlier drafts are kept beside them) and
-published at https://claude.ai/artifact/J43w9ERNESDo9hez9o918B.*
+published at https://claude.ai/artifact/J43w9ERNESDo9hez9o918B. RJC accepted them in
+Prompt 7, noting that they may be adjusted after feedback from users.*
 
 - **D34. The window.** Five tabs: Data, Regions, Components, Fit and Plot. Fit has
   three sub-tabs: Inspect, Results and Compare. The collapsible `.mod` panel and the

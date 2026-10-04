@@ -315,3 +315,19 @@ published page. Its outcome was folded into the design documents:
 - `ALIS_v2_code_plan.md`: Stage 6.2 now points to the dashboard, with a new
   section listing the changes it needs in ALIS itself.
 Details are in `claude_prompts/logs/dashboard_stage0_log.md`.
+
+### 2026-10-04 (Dashboard Stage 1 document written)
+
+RJC confirmed the close of dashboard Stage 0 (the design may be adjusted after
+feedback from users). The design documents record the confirmation, and
+`claude_prompts/dashboard_stage1.md` was written. It covers the changes the
+dashboard needs in ALIS itself:
+- removing onefits;
+- loading several data lines from memory;
+- the shared-pixel warning;
+- one writer for every output;
+- the project bundle (`alis/bundle.py`) with hidden values;
+- `run_alis project.model`, `--extract` and `--pack`.
+
+It ends with queries Q1.1–Q1.9 for RJC. Details are in
+`claude_prompts/logs/dashboard_stage0_log.md`.
