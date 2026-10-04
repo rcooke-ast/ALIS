@@ -300,11 +300,11 @@ they belong to, and their IDs continue from F1–F11 above. "§" refers to
 
 **Decisions from the Queries**
 
-*Consolidated by Claude on 2026-10-04, in response to Prompt 8.* QF.1–QF.34 all have
-responses. This list collects their outcomes, so that the design documents can be written
-from the Functionality section alone. The text above was written before the queries;
-where the two differ, this list holds the later decision. The QF numbers point to the
-full discussion.
+*Consolidated by Claude on 2026-10-04, in response to Prompt 8; updated for Prompt 9.*
+QF.1–QF.36 all have responses. This list collects their outcomes, so that the design
+documents can be written from the Functionality section alone. The text above was
+written before the queries; where the two differ, this list holds the later decision.
+The QF numbers point to the full discussion.
 
 *Platform and code*
 - **D1.** The dashboard runs locally, on the machine that holds the data, and so do its
@@ -348,7 +348,8 @@ full discussion.
 - **D10.** A plain `.mod` with its snips can always be exported, and `run_alis` runs it
   without the dashboard. If anything is blinded, the export warns that the blinded
   starting values will be written in plain text (QF.4, QF.19(e)).
-- **D11.** The bundle supersedes onefits, which will not be fixed (QF.32(b); see QF.35).
+- **D11.** The bundle supersedes onefits, which is not fixed. Its code is removed from
+  ALIS v2 in Stage 1 (QF.32(b), QF.35).
 - **D12.** An existing fit (a `.mod` with its snips and `.mod.out`) can be opened.
   Without its source spectrum, regions are limited to each snip's extent and no new
   transitions can be added (QF.5). S23 would lift this, and is a candidate for after v1.
@@ -438,6 +439,12 @@ full discussion.
 - **D32.** Regions are drawn on the combined spectrum and applied to every order, then
   edited per order, for example to mask a cosmic ray (QF.13(a)).
 
+*Plan*
+- **D33.** The work is split into Stages 0–6, which make v1, and later work. Stage 0
+  is the mockups. The stage list and the v1/later split are kept in
+  `claude_prompts/dashboard_stage0.md`. Each stage's document is written when the
+  previous stage is done (QF.34, QF.36).
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).
@@ -445,8 +452,8 @@ full discussion.
   are an export, D10), F7 (D26), S8 (D17), S22 (D28), and S29 (no longer conditional,
   D27).
 - Not needed: S1 (replaced by S24) and S4.
-- New in Prompt 8, for RJC to vet: F14 and S31.
-- The v1/later split will be proposed in the first design document (QF.34; see QF.36).
+- Added in Prompt 8 and accepted (no notes, so QF.34's rule applies): F14 and S31.
+- The stage of each item, and the v1/later split, are in `dashboard_stage0.md` (D33).
 
 ## Queries
 

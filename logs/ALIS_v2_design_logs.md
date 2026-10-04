@@ -271,3 +271,36 @@ Changes to `claude_prompts/ALIS_v2_dashboard_prompts.md`:
 What I checked: onefits is spread across `config.py:164`, `save.py:135`,
 `load.py:463` (where `load_input` treats a `.fits` model file as onefits),
 `load.py:1783`, and the `_isonefits` checks in `main.py` and `load.py`.
+
+### 2026-10-04 (Prompt 9: first dashboard design document, Stage 0)
+
+Read RJC's responses to QF.35 (remove onefits in Stage 1) and QF.36 (stages as
+proposed; mockups are Stage 0 with their own document; a multi-dataset Regions
+mockup). F14 and S31 had no notes, so they are accepted under QF.34's rule. No
+dashboard-level queries remain open.
+
+Changes to `claude_prompts/ALIS_v2_dashboard_prompts.md`: updated D11 (onefits
+removed in Stage 1), added D33 (the stage plan, kept in `dashboard_stage0.md`),
+and updated the status list (F14 and S31 accepted).
+
+Created `claude_prompts/dashboard_stage0.md` from `dashboard_stageX.md`:
+
+- **Dashboard plan.** Stages 0–6 make v1 (0 mockups; 1 changes to ALIS itself;
+  2 the project model without Qt; 3 Qt skeleton; 4 Data and Regions; 5
+  Components; 6 Fit), and a table gives the stage of every accepted F/S item,
+  or "Later" (F6 re-attach, F10 command search, S15 templates, S22, S23, S28,
+  the Plot tab, Orders mode and FITS input).
+- **Tasks 0.1–0.10.** Choose the content; a build script under
+  `doc/dashboard/mockups/`; the common frame; Data (two pages); Regions
+  (alternatives A, B and a three-dataset C from Q1243p307); Components (A, B,
+  plus an H I/D I page); Fit; Plot; index and private commentable page; RJC's
+  review.
+- **Queries Q0.1** (inline SVG vs images; commit the pages) **and Q0.2**
+  (1440×900 window, a neutral Qt-like look).
+
+What I checked: both mockup fits contain real shared pixels, so S26 can be
+shown from real data. J1358p6522's H I 923/926, 926/930 and 930/937 snips
+share 18–23 pixels each, and Q1243p307's O I 1302.2 and Si II 1304.4 snips
+share 97 pixels in each of its three datasets. J1358p6522 has a full
+three-column spectrum, 57 `1Ly_a` interlopers, O I in six transitions, and
+`run atomic atomic_rjc.xml`. Q1243p307 has no full spectrum, only snips.
