@@ -67,7 +67,12 @@
       "Bash(sed -n '/data read/,/data end/p' J1358p6522/model/J1358p6522.mod)",
       "Bash(sed -n '/data read/,/data end/p' J0814p5029/model/*.mod)",
       "Bash(S=/private/tmp/claude-501/-Users-rcooke-Software-ALIS/2701060b-d552-46dd-ab7c-4e6c5134ec41/scratchpad/headcopy; rm $S/context; mkdir -p $S/context/fitting_examples/VMP_DLA; cp -R /Users/rcooke/Software/ALIS/context/fitting_examples/VMP_DLA/J1358p6522 $S/context/fitting_examples/VMP_DLA/; cd $S && python -m pytest -q -p no:cacheprovider \"tests/test_regression.py::test_fixed_param[context/fitting_examples/VMP_DLA/J1358p6522/model/J1358p6522]\" 2>&1 | grep -E \"\\\\[ERROR\\\\]|passed|failed\" | head -5)",
-      "Bash(S=/private/tmp/claude-501/-Users-rcooke-Software-ALIS/2701060b-d552-46dd-ab7c-4e6c5134ec41/scratchpad/headcopy; rm -rf $S/context && cp -R /Users/rcooke/Software/ALIS/context $S/context && cd $S && python -m pytest -q -p no:cacheprovider -m \"fast and not unit\" tests/test_regression.py 2>&1 | tail -15)"
+      "Bash(S=/private/tmp/claude-501/-Users-rcooke-Software-ALIS/2701060b-d552-46dd-ab7c-4e6c5134ec41/scratchpad/headcopy; rm -rf $S/context && cp -R /Users/rcooke/Software/ALIS/context $S/context && cd $S && python -m pytest -q -p no:cacheprovider -m \"fast and not unit\" tests/test_regression.py 2>&1 | tail -15)",
+      "Bash(python -m pytest tests/test_dashboard_history.py tests/test_dashboard_text.py -q -p no:cacheprovider)",
+      "Bash(black *)",
+      "Bash(python trial.py)",
+      "Bash(python -m pytest tests/test_dashboard_*.py -q -p no:cacheprovider --cov=alis/dashboard --cov-report=term-missing)",
+      "Bash(python -m pytest -m unit -q -p no:cacheprovider)"
     ]
   }
 }

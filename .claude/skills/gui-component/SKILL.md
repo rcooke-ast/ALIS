@@ -1,45 +1,73 @@
 ---
 name: gui-component
-description: Scaffold a new GUI widget or panel for the ALIS prepfit/fitting GUI, following the design patterns in alis/prepfit/specplot.py.
+description: Scaffold a new panel or widget for the ALIS dashboard (alis/dashboard/qt/, PySide6 through qtpy, pyqtgraph), wired to the project model, the history, the validator and the blinding gate.
 ---
 
-Create a new GUI component for the ALIS prepfit/fitting interface. The existing GUI uses matplotlib with the Qt5Agg backend; all widgets follow the class-based event pattern established in `alis/prepfit/specplot.py`.
+Create a new panel or widget for the ALIS dashboard. The windows live in
+`alis/dashboard/qt/`; the logic they show lives in the plain-Python project model of
+`alis/dashboard/` (Stage 2), which has no Qt and is tested with pytest alone.
 
-## Existing GUI patterns
+## The rules every component follows
 
-From `alis/prepfit/specplot.py`:
-- Widgets are classes (e.g. `SelectRegions`) that receive `canvas`, `ax`, and spectrum data in `__init__`.
-- Key events: `canvas.mpl_connect('key_press_event', self.onkeypress)`
-- Mouse events: `canvas.mpl_connect('button_press_event', self.onclick)`
-- State is stored on `self`; the canvas is redrawn with `self.canvas.draw()`.
-- Key bindings are documented in the class docstring.
+- **Qt only in `qt/`.** Import Qt through `from qtpy import QtCore, QtGui, QtWidgets`
+  and plot with `pyqtgraph`. Nothing outside `alis/dashboard/qt/` may import Qt or
+  pyqtgraph; `tests/test_dashboard_no_qt.py` fails if it does.
+- **The text is authoritative (D7).** A component never edits the `.mod` text, a snip
+  or `ui/project.json` itself. An action calls an `edit.py` function (or a `project`
+  or `remove` method) to get a change or a step, and gives it to the project's
+  `History` (`history.edit(change)`, `history.do(step)`), so it can be undone (F2).
+  A drag is one step: wrap its updates in `with history.group("Drag ..."):`.
+- **Labels.** New parameters take labels from `edit.new_component` and
+  `edit.new_row_labels` (Q2.3). When an edit raises `edit.LabelNeeded`, ask the user
+  for a label; offer `error.suggestion` when it is not None (column densities have
+  none).
+- **Every value goes through the blinding gate (F8).** Show values with
+  `blinding.Gate(project)`: `value`, `word`, `best_fit`, `error`, `velocity`,
+  `keyword`, `message`/`problem` for any text that may quote a value, and
+  `gate.view()` for the `.mod` panel (typing over a mask goes through
+  `MaskedView.to_real`). Never format a parameter's value directly.
+- **Problems on their lines (F5).** Use `validate.quick(project.parsed,
+  project.data_for_run())` after each edit and `validate.check(project)` after a
+  pause; show each problem on its line, through the gate.
+- **While the text does not read** (`project.paused`), panel edits are disabled
+  (`project.require_reading()` raises); the `.mod` panel still works (QF.3).
+- **Cross-highlighting (S16):** `project.lines_of(item)` and `project.items_at(line)`.
+- **Look (D43, D44):** neutral and light, Fusion-like; colours only from the
+  Okabe–Ito palette, and every coloured state also has an icon; no text names a
+  design document. Lines of code are at most 88 characters.
 
 ## Steps
 
-1. Ask the user for:
-   - Name and purpose of the new component
-   - Data it needs (spectrum arrays, fit parameters, atomic data, etc.)
-   - Interactions it should support (key bindings, mouse clicks, text entry)
-   - Where it fits in the GUI flow (standalone window, panel in the main window, overlay)
+1. Ask the user for: the component's name and purpose; the tab it belongs to (Data,
+   Regions, Components, Fit, Plot, or the `.mod` panel, D34); the project concepts it
+   shows (rows, snips, systems, components, regions, notices); and its interactions
+   (clicks, drags, keys).
 
-2. Read `alis/prepfit/specplot.py` fully to understand the existing class structure and style before writing any code.
+2. Read the agreed layout: the mockup of that tab in `doc/dashboard/mockups/` (built
+   by `build_mockups.py`, published as the commentable page) and the decisions
+   D34–D44 in `claude_prompts/ALIS_v2_dashboard_prompts.md`.
 
-3. Create the new component as a class:
-   - If self-contained and small: add it to `alis/prepfit/specplot.py`
-   - If substantial: create `alis/prepfit/<component_name>.py`
+3. Put any logic that does not need Qt into `alis/dashboard/` (a new function in the
+   module it belongs to), with pytest tests. Keep the Qt class thin.
 
-4. Implement:
-   - `__init__`: set up axes, connect events, initialise state
-   - Event handlers: `onkeypress`, `onclick`, or custom handlers as needed
-   - Helper methods for drawing or updating the display
-   - A `show()` or `__call__` method to launch the component
+4. Create the component in `alis/dashboard/qt/<name>.py` as a `QWidget` subclass:
+   - `__init__(self, project, history, parent=None)`: build the widgets, connect the
+     signals;
+   - `refresh()`: redraw from the project (called after every step, undo and redo);
+   - handlers that make steps through the history, as above;
+   - every keyboard action registered with the shortcut sheet (F10), and reachable
+     with the mouse too.
 
-5. Document all key bindings in the class docstring using the same format as `SelectRegions`.
+5. Document the component's actions and keys in its class docstring, with
+   "Generated by RJC and Claude." and inputs/outputs in every method's docstring.
 
-6. Add a minimal usage example to `examples/prepfit/` showing how to invoke the new component.
+6. Test it: the logic with plain pytest (`-m unit`), and the widget with pytest-qt
+   (`qtbot`) under `QT_QPA_PLATFORM=offscreen`, skipped when the `gui` extra is not
+   installed (`pytest.importorskip("qtpy")`). Check that one undo restores the
+   project, and that `blinding.strings(project)` holds no hidden value after the
+   interaction.
 
 ## Notes
 
-- Follow the code style of `specplot.py` exactly (PEP 8, class-based, matplotlib idioms).
-- Do not call `plt.show()` at module level; let the caller control the event loop.
-- Do not modify existing classes or key bindings without explicit instruction.
+- `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).
+- Do not change existing components or key bindings without explicit instruction.

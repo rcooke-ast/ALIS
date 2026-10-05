@@ -44,10 +44,21 @@ dependencies = [
 gpu = [
     "numba",
 ]
-# Development tooling (linting, formatting, testing, hooks).
+# The dashboard (dashboard D2, QF.2/QF.17/QF.29): Qt 6 through PySide6, written
+# against the qtpy shim so that PyQt6 also works, with pyqtgraph for the
+# interactive panels. Only alis/dashboard/qt/ (Stage 3) imports them; the
+# project model in alis/dashboard/ runs without them.
+gui = [
+    "PySide6",
+    "qtpy",
+    "pyqtgraph",
+]
+# Development tooling (linting, formatting, testing, hooks). hypothesis drives
+# the dashboard's property tests (Stage 2).
 dev = [
     "pytest",
     "pytest-cov",
+    "hypothesis",
     "ruff",
     "black",
     "isort",

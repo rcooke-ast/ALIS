@@ -61,7 +61,7 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
 | Reference row (D14) | its shift fixed at 0 (or no shift) | flag in `ui/project.json` |
 | Zero level (D14) | a `constant` in the `zerolevel` block, with the file's specids | |
 | Snip | one data line, with its own `specid` | the snip file in the bundle, whose fit-mask column holds the regions |
-| Region (S6, D36) | — | the snip's mask column (Q2.7) |
+| Region (S6, D36) | `fitrange=[lo,hi]` on the data line, when the line has one region (Q2.10) | the snip's mask column (Q2.7) |
 | Continuum (D17) | a `legendre` line per snip in the `emission` block | |
 | System (D15) | — | name, z, primary flag and line IDs in `ui/project.json` |
 | Component (D20) | the `voigt` lines of one system that share z, b and T labels, one line per ion | |
@@ -80,7 +80,8 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
   keeping its tie label and the line's other spacing (Q2.6). A new line copies the
   layout of the nearest line of the same kind.
 - **Labels are never renamed** unless the user renames them. New parameters get
-  labels from one scheme (Q2.3).
+  labels from one scheme (Q2.3). Column densities get none: when one has to be
+  fixed, tied or limited, the user names its label (RJC, Q2.3).
 - **Comments, commented-out lines and long comments** (`#-->` … `<--#`) are kept.
   They are never parsed as model content, but an edit never breaks them.
 
@@ -96,7 +97,11 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
     - a fitrange with no pixels;
     - a buffer narrower than the convolution needs.
   - **After a pause:** ALIS's own loaders, run on a copy with the data in memory
-    (Stage 1.2), catching their errors as `bundle.run` does (Q2.5).
+    (Stage 1.2). A handler on the `alis` logger collects their warnings and
+    errors and keeps them off the terminal, and the exit of `msgs.error` is
+    caught, as `bundle.run` does (Q2.5). An unexpected exception prints its
+    traceback to the terminal, and the dashboard says that it has met an
+    unexpected error and that the terminal has the details (RJC, Q2.5).
 
   Each problem has a line, a severity (error or warning) and a message. None of the
   messages refers to the design documents (D44).
@@ -108,7 +113,9 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
   - **Masked:** `blindrange` offsets.
   - **Typing over a mask** stores the typed value hidden.
   - **Unblinding** calls `bundle.unblind` after the user confirms (Stage 3), and is
-    logged.
+    logged. It also writes `blind=False` and `run blind False` into the text, so
+    nothing is masked again. It cannot be undone, and it clears the undo history
+    (Q2.11).
 - **History (F2).** One undo/redo history for panels and the `.mod` panel. Each step
   is a command that changes the text, a snip's mask, or `ui/project.json`, and can be
   undone exactly. Typing is grouped into one step per pause, and a drag is one step.
@@ -123,8 +130,14 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
 - **Opening an existing fit (F4, D12).** `bundle.pack` (Stage 1) makes the bundle. The
   project then infers its datasets, systems and components (Q2.4), and lists, with a
   one-click fix, each imported component that breaks D20 or D22. The model may still
-  be fitted as imported (Q0.3). Without source spectra, regions are limited to each
-  snip's extent (D12).
+  be fitted as imported (Q0.3). An imported model also gets a general notice asking
+  the user to check that its components were read correctly (RJC, Q2.4). Without
+  source spectra, regions are limited to each snip's extent (D12).
+- **Regions (Q2.7, Q2.10).** A region edit changes only the mask column of the
+  affected lines of a snip. A change of the snip's edges writes a new snip file over
+  the old one (RJC, Q2.7). A data line with `fitrange=[lo,hi]` keeps that form while
+  it has one region; a second region switches it to `fitrange=columns` and rewrites
+  its snip with a mask column.
 - **Modes (F11).** A mode supplies five things:
   - a data loader;
   - a builder for the display spectrum;
@@ -140,7 +153,7 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
 > After every task, run the `unit` batch and the new dashboard tests; run the `fast`
 > batch before the stage closes.
 
-**2.1 — The package (D3, Q2.1).**
+**2.1 — The package (D3, Q2.1). [DONE 2026-10-05]**
 - Create `alis/dashboard/`, with the modules of Q2.1, each with a docstring saying
   what it holds.
 - Declare the `gui` extra in `pyproject.toml` (PySide6, `qtpy`, pyqtgraph; D2). This
@@ -148,7 +161,7 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
 - **Check:** a test imports every module of `alis/dashboard/` in a subprocess and
   fails if `qtpy`, `PySide6`, `PyQt6` or `pyqtgraph` is in `sys.modules` afterwards.
 
-**2.2 — The model text (`text.py`).**
+**2.2 — The model text (`text.py`). [DONE 2026-10-05]**
 - Split a model into lines and tokens, as `load.load_input` splits it:
   - the settings, data, model and link blocks;
   - comments and long comments;
@@ -160,7 +173,7 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
   `examples/` and `context/fitting_examples/`, which must give the same bytes; and
   property tests showing that a patch changes only its own span.
 
-**2.3 — The parsed model (`model.py`).**
+**2.3 — The parsed model (`model.py`). [DONE 2026-10-05]**
 - From the text, build the following, each knowing its line and token positions:
   - settings, data lines (file, specid, fitrange, resolution, shift, keywords);
   - model lines by block (emission, absorption, zerolevel, variable), with function,
@@ -175,7 +188,7 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
   - the number of free parameters;
   - each parameter's line (`modpass['line']`).
 
-**2.4 — Targeted edits (`edit.py`).** Operations used by the panels:
+**2.4 — Targeted edits (`edit.py`). [DONE 2026-10-05]** Operations used by the panels:
 - set a value;
 - set a parameter free, fixed or tied (S11), by writing the label's case and suffix;
 - set and clear limits (S15);
@@ -188,7 +201,7 @@ Each returns a patch, and new labels follow Q2.3.
   other byte of the text unchanged, and give a model that ALIS's parser reads with
   the intended structure.
 
-**2.5 — The project (`project.py`).**
+**2.5 — The project (`project.py`). [DONE 2026-10-05]**
 - Build the dashboard's concepts from the parsed model, the bundle and
   `ui/project.json` (Q2.2): files and datasets, snips, systems, components (D20),
   isotopes (D22), temperature modes (D21), continua and generic absorbers.
@@ -199,13 +212,13 @@ Each returns a patch, and new labels follow Q2.3.
   give the systems, components, isotopes and the three Q1243p307 datasets that the
   mockups show. Also tests on a model that breaks D20 and one that breaks D22.
 
-**2.6 — The validator (`validate.py`, F5).**
+**2.6 — The validator (`validate.py`, F5). [DONE 2026-10-05]**
 - Fast checks from the parsed model, and the full check with ALIS's loaders (Q2.5),
   as in the Design section.
 - **Check:** a test for each example in F5's list, each placing its problem on the
   right line. Every model in `examples/` gives no errors.
 
-**2.7 — The blinding gate (`blinding.py`, F8, D24, QF.20).**
+**2.7 — The blinding gate (`blinding.py`, F8, D24, QF.20). [DONE 2026-10-05]**
 - Masks, errors and χ² changes shown, typing over a mask, `blindrange` masked, and
   unblinding through `bundle.unblind` with a log entry.
 - **Check:**
@@ -215,13 +228,13 @@ Each returns a patch, and new labels follow Q2.3.
   - a test confirms that a hidden line is hidden again when the model is written
     back.
 
-**2.8 — History (`history.py`, F2).**
+**2.8 — History (`history.py`, F2). [DONE 2026-10-05]**
 - Commands that change the text, the snips' masks and `ui/project.json`, with undo
   and redo, typing grouped by pause, and drags as one step.
 - **Check:** property tests. Any sequence of operations, undone in full, gives back
   the original bytes, and redone gives the same result again.
 
-**2.9 — Removal (`remove.py`, S27, D23).**
+**2.9 — Removal (`remove.py`, S27, D23). [DONE 2026-10-05]**
 - Plans for removing a component, ion, snip, system and dataset, as in the Design
   section. Each plan lists the lines it changes, and is applied as one step.
 - **Check:** tests on `DH/J1358p6522/model/J1358p6522_original.mod`, whose D/H is
@@ -230,19 +243,88 @@ Each returns a patch, and new labels follow Q2.3.
   shift). After each removal ALIS's parser reads
   the model without error, and undo gives back the original.
 
-**2.10 — Modes (`modes.py`, F11).**
+**2.10 — Modes (`modes.py`, F11). [DONE 2026-10-05]**
 - The mode interface, and Voigt mode: one fitted dataset per display spectrum,
   regions mapped straight to the snip's mask, and a model template for a new project.
 - **Check:** a new Voigt-mode project, built from `J1358p6522_fluxcal.dat` with one
   system and one transition, gives a model that ALIS runs.
 
-**2.11 — Close the stage.**
+**2.11 — Close the stage. [DONE 2026-10-05]**
 - Rewrite the `gui-dev` and `gui-component` skills for PySide6 and pyqtgraph, as
   carried forward from Stage 0 for use in Stage 3.
 - Run `test-coverage` on `alis/dashboard/`.
 - Record in this document what Stage 3 receives.
 - Update `CHANGELOG.md`, and the stage table in `dashboard_stage0.md` if anything
   moved.
+
+## Status (2026-10-05)
+
+*Written by Claude at the end of Prompt 1. The details are in
+`claude_prompts/logs/dashboard_stage2_log.md`.*
+
+Tasks 2.1–2.11 are done.
+- **Tests.** Ten new test files, `tests/test_dashboard_*.py`: 563 pass and 35 are
+  skipped here (context models that ALIS does not read on its own). Coverage of
+  `alis/dashboard/` is 94%. All but two of the tests are in the `unit` batch; the two
+  that run a fit are in `fast`.
+- **The batches at the close:** `unit` 1418 passed, 0 failed; `fast` 110 passed,
+  0 failed (13 min 41 s).
+- **ALIS outside `alis/dashboard/` is unchanged.** The other changes are
+  `pyproject.toml` (the `gui` extra, and `hypothesis` in `dev`), `.gitignore`
+  (`.hypothesis/`), the two skills, `CHANGELOG.md`, and the stage table of
+  `dashboard_stage0.md` (S16 and F12 now have their logic in Stage 2; the user's
+  preferences file is in Stage 3).
+- **Found along the way:**
+  - two small faults in ALIS (Q2.12), worked around in the dashboard;
+  - an inferred system could take its redshift from a hidden component, which every
+    other component's velocity would then reveal; it now takes it from a component
+    that is not hidden;
+  - ALIS's fit workers are spawned, so a script that starts a fit must be a file with
+    a main guard (not `python -`).
+
+### What Stage 3 receives
+
+The windows of Stage 3 are built on `alis/dashboard/`, which imports no Qt:
+- **Projects.** `Project.open(path)`; `Project.import_model(fit.mod)` (F4: packs it
+  with `bundle.pack` and infers its structure); `modes.get("voigt").new_project(source,
+  z, [(ion, rest)], ...)` (a new project from a spectrum); `project.save(path)`
+  (atomic, under the lock, keeping the runs: what autosave calls, F1);
+  `project.to_bundle()`.
+- **State and history.** `project.text`, `.files`, `.ui` (`ui/project.json`),
+  `.parsed` and `.paused`. Every change is a `Step`. `History(project)` has `edit`,
+  `do`, `type` (typing grouped by pause), `group` (a drag), `undo`, `redo`, their
+  descriptions for the menus, and `clear`.
+- **What the tabs show.** `project.rows` (the Data tab's rows, with FWHM, shift, zero
+  level, reference and source); `project.snips` (pixels, extent, regions, continuum);
+  `project.systems` and `.components` (ions, isotopes, temperature mode, velocity);
+  `.absorbers` (the Lyα forest) and `.others`; `.notices`, each with a one-click fix
+  (`project.fix_notice`); `project.structure()` and `confirm_structure()` for the
+  user to confirm what was inferred.
+- **Edits.** `edit.py` for values, free/fixed/tied, limits, keywords, new lines and
+  the dataset rows; `project.set_regions` and `set_snip_edges`; `remove.plan_*`, shown
+  with `plan.preview(gate)` and made with `history.do(plan.step(project))`. An edit
+  that raises `edit.LabelNeeded` asks the user for a label.
+- **The `.mod` panel.** `blinding.Gate(project).view()` gives the masked text, and
+  `MaskedView.to_real` turns typing into an edit of the real text;
+  `project.lines_of(item)` and `project.items_at(line)` cross-highlight (S16);
+  `validate.quick(project.parsed, project.data_for_run())` at each keystroke, and
+  `validate.check(project)` after a pause, give problems on their lines; for the
+  mockup fits each takes less than 0.3 s.
+- **Blinding.** Every value shown goes through the `Gate`; `blinding.unblind(project,
+  confirmed=True, note=..., history=...)` follows the confirmation dialog;
+  `blinding.strings(project)` lists what the panels show, for tests.
+- **Tab markers (F12).** `project.model_changed_since_run()`, `project.notices` and
+  `project.paused`.
+- **Errors.** ALIS's messages are collected by `model.alis_quietly()`, never printed;
+  `validate.unexpected(error)` writes a traceback to the terminal and gives the
+  message to show (Q2.5).
+
+Points for Stage 3:
+- Reading the model again costs 0.03 s (J1358p6522) to 0.4 s (DH_orders), so the
+  `.mod` panel should read it after a short pause in typing, not at every key.
+- Fits run in another process (F6); ALIS's own worker processes are spawned.
+- The user's preferences file (Q2.2) and the view state (`ui/view.json`) are Stage 3's.
+- Q2.12 (two small fixes to ALIS) is open.
 
 ## Skills to use for this stage
 
@@ -402,7 +484,87 @@ My lean: yes.
 
 **Response:** I agree with the proposal to build the item-to-line map and the "model changed since the last run" test in Stage 2. These features are essential for the functionality of the dashboard and can be implemented without relying on Qt. By building them in Stage 2, we can ensure that they are well-tested and integrated into the core logic of the dashboard before moving on to the GUI components in Stage 3.
 
+*Raised by Claude on 2026-10-05 (Prompt 1), after reading the responses above. Claude's
+answers to RJC's notes come first, then three new queries, which RJC answered in the
+session. The Design section follows all of them.*
+
+**Notes on the responses.**
+- **Q2.2.** The project data are what you describe: what the user enters in the
+  dashboard that the `.mod` cannot hold. These are the systems (name, z, the primary
+  flag, line IDs), which data lines came from which file row, the reference row, and
+  each source's column roles. The dashboard writes them to `ui/project.json` when the
+  project is created, and that file lives inside the bundle. Your user preferences
+  (shipped defaults, overridden by a user file) are a separate file outside the
+  bundle. RJC chose to build that file in Stage 3, where its first users are; Stage 2's
+  model template takes its defaults as arguments.
+- **Q2.3.** Column densities get no label. When one has to be fixed, tied or limited,
+  the dashboard asks the user to name its label; it never makes one up. The scheme
+  still names z, b and T (`za1`, `ba1`, `ta1`) and the datasets' FWHM and shift.
+- **Q2.4.** An imported model gets a general notice asking the user to check that its
+  components were read correctly, besides the D20/D22 notices.
+- **Q2.5.** Yes. `msgs` is a `logging.Logger` since refactor Stage 2.5, so the
+  validator attaches its own handler to the `alis` logger while ALIS's loaders run. The
+  handler collects every warning and error, with no change to ALIS, and keeps them off
+  the terminal (otherwise each pause would print ALIS's start-up messages). The exit of
+  `msgs.error` is caught, and its message is placed on the line it quotes. Any other
+  exception is a bug: its full traceback is written to the terminal through the same
+  logger, and the dashboard says that it has met an unexpected error and that the
+  terminal has the details.
+- **Q2.7.** Agreed: a region edit changes the mask column alone. When the user moves a
+  snip's edge, the snip file is written again. Moving an edge inwards cuts the snip
+  from its own lines, keeping their text. Moving it outwards needs the source spectrum
+  (Stage 4, or S23 for an imported fit).
+
+**Q2.10 — Regions of data lines with no mask column.** 66 of the 108 `fitrange` settings
+in `examples/` and `context/` use `fitrange=[lo,hi]`, not a mask column: every shipped
+example, and many context lines. How should a region edit on such a line work? Lean:
+one region edits the `fitrange=[lo,hi]` token in place. A second region switches the
+line to `fitrange=columns` and rewrites the snip with a mask column, in `prepfit`'s
+four-column format at full precision, as Q2.7's response allows when the edges change.
+
+**Response (RJC, in the session):** As the lean: keep the form, and convert when needed.
+
+**Q2.11 — What unblinding does.** `bundle.unblind` restores the hidden lines and logs
+the time. But the text still says `blind=True` (and perhaps `run blind True`), so the
+values would be masked again at once. Unblinding should therefore also write
+`blind=False` and `run blind False`. Can it be undone? Lean: no. It is logged in the
+bundle and clears the undo history, because what has been seen cannot be unseen.
+
+**Response (RJC, in the session):** As the lean: it cannot be undone.
+
+*Raised by Claude on 2026-10-05, at the end of Prompt 1. It does not block anything:
+Stage 2 works around both points without changing ALIS.*
+
+**Q2.12 — Two small faults in ALIS, found while building the parsed model and the
+validator.**
+- **(a) Reading a value strips the label's characters.** Every function's
+  `check_tied_param` reads a value as `float(word.rstrip(label))`, and `rstrip`
+  removes *characters*, not the label. When the label holds a digit that the value
+  ends with, the digit goes too: `11.2878481n1a` is read as `11.287848`. Among all
+  the models this happens twice, both in `examples/CNabs/model/fit_spectra.mod.out.reference`,
+  so re-reading that output loses a digit of two column densities (one of them
+  linked). The dashboard keeps ALIS's reading, and its validator warns about such a
+  label.
+- **(b) `Afwhm.getminmax` treats its width as a fraction.** It returns
+  `fitrange × (1 ± Nsig·σ)` with σ in Ångström, so a FWHM of 0.1 Å asks for ±40% of
+  the wavelength. ALIS then only loads more data than it needs (in
+  `examples/lsf_file`), but the same numbers would make the `bufferpix` warning
+  wrong. The validator uses the additive width, `fitrange ± Nsig·σ`, for `Afwhm`.
+
+Both fixes change ALIS outside `alis/dashboard/`: (a) by reading the value as the
+word without its label (`word[:len(word) - len(label)]`), in one helper shared by the
+~25 copies of `check_tied_param`; (b) by making the range additive. The regression
+harness should stay green: (a) changes two values of one reference by 10⁻⁷, and (b)
+changes only how many unfitted pixels are loaded. Should they be made, and when?
+
+My lean: make both, each with a unit test, as a small task of their own before
+Stage 3 (or at its start), run against the `unit`, `fast` and `medium` batches.
+
+**Response:** I agree with both of the proposed fixes to ALIS. Let's carry them out now before beginning the stage 3 development.
+
 ## Prompts
 
 1. Please read the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-1; see their design documents (`dashboard_stage0.md` and `dashboard_stage1.md`) and the logs (`dashboard_stage0_log.md` and `dashboard_stage1_log.md`) to understand the work that has been implemented until now. Then, please review the ALIS code to understand the current state of ALIS. Finally, read this document, including my responses to your queries. If you have any further queries, please ask them in the Queries section of this document, and I will provide responses. Once everything is clear about the implementation of this stage, please execute the tasks in numerical order. If you have questions during development, please pause the development, ask questions and I will respond (please log these questions and answers in the Queries section).
+
+2. Good job with the stage 2 development. I have responded to Q2.12, and I agree with your proposed fixes to ALIS. Please implement these fixes now before proceeding to stage 3 development.
 

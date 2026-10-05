@@ -25,8 +25,8 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 |---|---|---|
 | 0 | Mockups of all five tabs (this document). | `doc/dashboard/` only |
 | 1 | Changes to ALIS itself: the bundle (D8); `run_alis project.model` and `--extract` (D9); plain-file export (D10); in-memory loading of several data lines (D9); detecting shared pixels, with a warning in `run_alis` (D19); removing onefits (D11). Checked by the refactor's regression harness. | `alis/` |
-| 2 | The project model, with no Qt: the text-sync layer that maps datasets, systems, snips and components to their `.mod` lines and makes targeted edits (D7), tested by opening every context model and writing it back unchanged (QF.5); the validator (F5); the blinding gate (F8); undo/redo (F2); removal with dependents (S27); the mode interface, with Voigt mode only (F11). | `alis/dashboard/` |
-| 3 | Qt skeleton of the chosen layout: the window, five tabs and their status markers (F12), the `.mod` panel, the status bar, open/save/autosave (F1), opening an existing fit (F4), relinking moved spectra (F13), the shortcut sheet (F10) and `run_alisgui` (F14). | `alis/dashboard/` |
+| 2 | The project model, with no Qt: the text-sync layer that maps datasets, systems, snips and components to their `.mod` lines and makes targeted edits (D7), tested by opening every context model and writing it back unchanged (QF.5); the validator (F5); the blinding gate (F8); undo/redo (F2); removal with dependents (S27); the mode interface, with Voigt mode only (F11); the logic of cross-highlighting (S16) and of the out-of-date marker (F12). | `alis/dashboard/` |
+| 3 | Qt skeleton of the chosen layout: the window, five tabs and their status markers (F12), the `.mod` panel, the status bar, open/save/autosave (F1), opening an existing fit (F4), relinking moved spectra (F13), the shortcut sheet (F10), the user's preferences file (Q2.2) and `run_alisgui` (F14). | `alis/dashboard/` |
 | 4 | Data and Regions tabs (steps 1–3). | `alis/dashboard/` |
 | 5 | Components tab (step 4). | `alis/dashboard/` |
 | 6 | Fit tab (step 6). This completes v1. | `alis/dashboard/` |
@@ -47,12 +47,12 @@ first builds the logic and the second the interface.
 | F6 Background fit runner | 6 | S14 One-click blends | 5 |
 | F6 Re-attach after closing | Later | S15 Limits and `link` editor | 5 |
 | F7 Run history (D26) | 6 | S15 Constraint templates | Later |
-| F8 Blinding gate | 2 | S16 Cross-highlighting | 4, 5 |
+| F8 Blinding gate | 2 | S16 Cross-highlighting | 2, 4–5 |
 | F9 Settings from `ArgFlag` | 6 | S17 Pre-flight check | 6 |
 | F10 Shortcut sheet | 3 | S18 Fit-quality badges | 6 |
 | F10 Command search | Later | S19 Results table, correlations | 6 |
 | F11 Modes as plug-ins | 2 | S20 Continue from best fit | 6 |
-| F12 Tab status markers | 3 | S21 Convergence tools | 6 |
+| F12 Tab status markers | 2, 3 | S21 Convergence tools | 6 |
 | F13 Relink moved spectra | 1, 3 | S22 Plot preview (D28) | Later |
 | F14 One launcher | 3 | S23 Attach a source spectrum | Later |
 | S2 Transition coverage | 4 | S24 "Set z here" | 4 |

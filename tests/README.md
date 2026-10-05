@@ -85,6 +85,7 @@ Both deferrals are now discharged — GPU in Stage 4, I/O in Stage 5:
 | `test_shared_pixels.py` | dashboard Stage 1.3: `find_shared_pixels` on synthetic snips, and on the real overlaps of J1358p6522 and Q1243p307 |
 | `test_outputs.py` | dashboard Stage 1.4: the output writer, in memory and on disk (one test runs a fit, and is marked `fast` rather than `unit`) |
 | `test_bundle.py` | dashboard Stage 1.5–1.8: packing every model and extracting it byte for byte, the manifest checks, atomic writes and the lock, source spectra, hidden lines (the bundle-run tests are marked `fast`) |
+| `test_dashboard_*.py` | dashboard Stage 2, the project model in `alis/dashboard/`: no Qt imported; every model read back byte for byte and split as `load_input` splits it; the parsed model agreeing with ALIS's own loaders on 92 models; targeted edits; the project's systems, components and datasets; the validator; the blinding gate (no hidden value in any string shown); undo/redo and removal; Voigt mode (the two tests that run a fit are marked `fast`). The property tests use `hypothesis` |
 
 `tests/conftest.py` provides two fixtures these share: `logmsgs`, which collects
 what `msgs` emits (neither `capsys` nor `capfd` sees it — the shared 'alis'

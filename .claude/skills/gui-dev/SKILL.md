@@ -1,39 +1,67 @@
 ---
 name: gui-dev
-description: Launch the ALIS prepfit GUI, exercise a specific interaction, and report any errors or visual regressions.
+description: Launch the ALIS dashboard (PySide6 through qtpy, with pyqtgraph), exercise a specific interaction, headless or on screen, and report errors, blinding leaks or visual regressions.
 ---
 
-Launch and exercise the ALIS prepfit GUI (`alis/prepfit/specplot.py`), which uses matplotlib with the Qt5Agg backend for interactive spectral region selection and fit inspection.
+Launch and drive the ALIS dashboard. Its windows live in `alis/dashboard/qt/` (Stage 3
+onwards); everything they show comes from the plain-Python project model in
+`alis/dashboard/` (Stage 2): `project.Project`, `history.History`, `edit`,
+`validate`, `blinding.Gate`, `remove` and `modes`. The toolkit is Qt 6 through
+PySide6, written against `qtpy`, with pyqtgraph for the interactive panels (D2).
 
 ## Steps
 
-1. Identify what to test: a specific GUI interaction, a newly added widget, or a general smoke test.
+1. Identify what to test: one interaction (drag a component, draw a region, type in
+   the `.mod` panel, undo/redo), a newly added panel, or a smoke test of every tab.
 
-2. Verify that the Qt5 backend is available:
+2. Check the `gui` extra is installed:
    ```
-   python -c "import matplotlib; matplotlib.use('Qt5Agg'); import matplotlib.pyplot as plt; print('Qt5Agg OK')"
+   python -c "import qtpy, pyqtgraph; from qtpy import QtWidgets; print(qtpy.API_NAME, pyqtgraph.__version__)"
    ```
-   If this fails, report the missing dependency (`PyQt5` or `PySide2`) and stop.
+   If it fails, report it and suggest `pip install -e ".[gui]"`. `QT_API=pyside6`
+   (the default binding) or `QT_API=pyqt6` chooses the binding.
 
-3. Launch the GUI. For the region-selection workflow, use the prepfit example:
+3. Choose a project to open, from the two fits the mockups were drawn from
+   (`doc/dashboard/mockups/`):
+   - `context/fitting_examples/VMP_DLA/J1358p6522/model/J1358p6522.mod` (one
+     dataset, isotopes, notices for D20/D22);
+   - `context/fitting_examples/DH/Q1243p307/model/Q1243p307_converge_newstart76.mod`
+     (three datasets, several systems);
+   - `examples/blind/model/fit_spectra.mod` for anything touching blinding;
+   - or a new project from a spectrum (`modes.get("voigt").new_project(...)`).
+   Work on a copy (`run_alis --pack` into the scratchpad), never on the files in
+   `context/` or `examples/`.
+
+4. Launch:
    ```
-   cd /Users/rcooke/Software/ALIS/examples/prepfit
-   python select_fitting_regions.py
+   run_alisgui project.model        # a bundle
+   run_alisgui fit.mod              # imports a plain fit (F4)
    ```
-   For the main `specplot` widget, construct a minimal launch script that loads a spectrum from one of the `examples/` directories.
+   Headless (CI, or no display): set `QT_QPA_PLATFORM=offscreen` and drive the
+   window from a script or with pytest-qt's `qtbot` (`qtbot.mouseClick`,
+   `qtbot.keyClicks`, `qtbot.waitUntil`). Take screenshots with `widget.grab().save(...)`
+   and look at them (at 1440x900, the size the design is judged at, D43).
 
-4. Exercise the specific interaction the user requested (e.g. region selection, zoom, key binding `s` to save regions).
+5. Exercise the interaction, then check:
+   - the `.mod` text changed only where it should (compare `project.text` before and
+     after, or the plan of a removal);
+   - one undo gives back the text, files and `ui/project.json` exactly;
+   - no blinded value appears anywhere on screen: run `blinding.strings(project)` and
+     search it, and look at the screenshots for unmasked values (`▒▒▒▒` expected);
+   - the terminal: an unexpected error prints its traceback there, and the window
+     shows only "The ALIS dashboard has encountered an unexpected error ...";
+   - no text in the window names a design document (D44: no D/F/S/QF/Q numbers).
 
-5. Report:
-   - Whether the GUI launched without errors or Qt warnings
-   - Whether the interaction worked as expected
-   - Any tracebacks or visual anomalies observed
-   - A description of what was displayed
-
-6. If errors occurred, identify the source line in `alis/prepfit/specplot.py` and suggest a fix.
+6. Report: whether the window opened without Qt warnings, what the interaction did,
+   the screenshots, any traceback with its source line, and any leak or regression.
+   If something failed, find the source line in `alis/dashboard/` and suggest a fix.
 
 ## Notes
 
-- The GUI requires a display. If running headlessly, note this and suggest using a virtual framebuffer (`Xvfb`) or skipping GUI tests.
-- Documented key bindings in `SelectRegions`: `s` saves the regions file. Any new bindings added during development must be listed in the class docstring.
+- `prepfit` (`alis/prepfit/specplot.py`, matplotlib with Qt5Agg) is the old region
+  selector, kept in v2.0 and deprecated once the dashboard covers it (D4). Run it only
+  when asked: `cd examples/prepfit && python select_fitting_regions.py`.
+- ALIS's fits run in worker processes that are spawned, so scripts that start a fit
+  must be files with an `if __name__ == "__main__":` guard, never `python -` from
+  standard input (the workers cannot import `<stdin>` and the pool hangs).
 - Do not modify GUI source files without explicit instruction.

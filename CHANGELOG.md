@@ -25,6 +25,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   from each file's path to its bytes).
 - `alis/outputs.py`: every output file is written through one writer, which
   can keep the files in memory.
+- `alis/dashboard/`: the project model of the ALIS dashboard, in plain Python with
+  no Qt (dashboard Stage 2). It reads a model as ALIS reads it, with the position
+  of every word (`text.py`, `model.py`, the meaning of each parameter coming from
+  ALIS's own loaders); makes targeted edits that keep the rest of the text byte for
+  byte (`edit.py`); builds the datasets, snips, regions, systems, components,
+  isotopes and continua of a project, and opens an existing fit with notices for
+  untied components and isotopes (`project.py`); validates the model as it is typed
+  and with ALIS's loaders (`validate.py`); masks blinded values wherever they would
+  be shown, and unblinds only when confirmed (`blinding.py`); keeps one undo/redo
+  history (`history.py`); plans removals with their dependents (`remove.py`); and
+  makes new Voigt-mode projects from a spectrum (`modes.py`).
+- An optional `gui` extra (PySide6, qtpy, pyqtgraph) for the dashboard's windows,
+  which come next; `hypothesis` joins the `dev` extra.
 
 ### Fixed
 - A command-line setting that repeats the default (for example
