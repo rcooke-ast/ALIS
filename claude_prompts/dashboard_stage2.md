@@ -293,6 +293,8 @@ subpackage imports Qt.
 
 My lean: as proposed.
 
+**Response:** I agree with the proposed modules in `alis/dashboard/`. The separation of concerns is clear, and it will facilitate testing and maintenance. The addition of a `qt/` subpackage in Stage 3 for the GUI components is a good approach to keep the core logic independent of the user interface.
+
 **Q2.2 — Where the dashboard's own project data are kept.** Some of the project is
 not in the model text:
 - systems: their names, redshifts, which is primary, and their line IDs;
@@ -305,6 +307,8 @@ would go in `ui/view.json` in Stage 3, so that the project data can be versioned
 tested apart from the view.
 
 My lean: as proposed.
+
+**Response:** It is not clear to me what data this refers to. If anything is related to the user input (e.g. absorber names, redshifts, the primary system, etc.), then it makes sense for this to be stored in a file created by the user. For example, when the user opens the dashboard, it would be a blank space where they can "Create New Project" or "Open Existing Project". If they create a new project, then the dashboard would create a new file to store the project data (this would then be included in the bundle). If they open an existing project, then the dashboard would read a bundle file to load the project data. This way, each user can manage their own projects independently of the dashboard's internal logic. If I have misunderstood the intent, please clarify what data is being referred to and how it is expected to be used by the code. If there are code defaults/settings that can be edited by the user for their preferences (e.g. how many columns to display by default, or the number of CPUs they wish to use for fitting), then those should be stored in a separate configuration file (e.g. `config.json`) that is not part of the project data. In this case, there would be a set of default settings, and then a user-specified settings file that overrides the defaults. This would allow users to customize their experience without affecting the core functionality of the dashboard.
 
 **Q2.3 — Labels for new parameters.** ALIS ties parameters by labels (§2.3), and new
 components, continua and datasets need new labels. I propose short, systematic
@@ -319,6 +323,8 @@ Labels never begin with `e` followed only by digits, and existing labels are nev
 renamed.
 
 My lean: as proposed. You may prefer other names; this is the place to say.
+
+**Response:** I agree with everything proposed, however, there may be some issues with the proposed column density labels. For example, if the user wants to fit Si II and S III, this would both show up as `nsiii1` according to the proposed ion+component labelling. It is uncommon that column densities would be tied, so I would propose that at this stage, we do not assign any labels to the column densities, and allow the user to define their own column density labels.
 
 **Q2.4 — Inferring structure from an imported model.** An existing `.mod` says
 nothing about systems or datasets. I propose:
@@ -337,6 +343,8 @@ is saved in `ui/project.json`.
 
 My lean: as proposed, tested on all context models in Task 2.5.
 
+**Response:** This sounds fine, but perhaps we should also provide a warning to the user that some components may not have been correctly loaded, and that it is best to check the components have been loaded correctly. It's more important that the experience is smooth for users that use the dashboard for their entire workflow. Allowing the dashboard to load a `.mod` file will not be a common use case. 
+
 **Q2.5 — The full check uses ALIS's loaders as they are.** ALIS stops on an error
 with `msgs.error`, which exits. The validator can catch that exit and keep the
 message, as `bundle.run` does in Stage 1, and find the line from the text the
@@ -349,12 +357,16 @@ their line.
 My lean: catch the exit, with no change to ALIS. Messages that quote no line are
 shown against the whole model.
 
+**Response:** ALIS now uses a new logging system (see `logger.py`). Is there a way that we can utilise this new logging system to catch errors and warnings, and print the traceback to the user (either in the terminal they run ALIS from and a message to screen saying that the ALIS dashboard has encountered an unexpected error, please refer to the terminal window for further details about the error)?
+
 **Q2.6 — Spacing when a value changes length.** Many models align their columns.
 When `13.0` becomes `13.04821`, I propose to keep the next token's column if the gap
 allows it, and otherwise to keep one space. New lines copy the layout of their
 neighbour.
 
 My lean: as proposed.
+
+**Response:** I agree with this approach.
 
 **Q2.7 — Editing regions changes the snip file.** Regions live in the snip's
 fit-mask column (D4: the snip format does not change). Rewriting a snip with
@@ -368,11 +380,15 @@ four-column format at full precision.
 
 My lean: as proposed.
 
+**Response:** If I understand correctly, you are concerned about the machine precision of printing the data. The only issue is that the size of the snip could be changed, as well. Your proposal to only adjust the mask column of the snip file is a good approach, provided that either of the snip edges are not changed. If the user wants to change the edges of the snip, then we should allow them to do so, but this would require a new snip file to be created (writing over the old snip file).
+
 **Q2.8 — Saving the undo history.** I propose that the history lives only while the
 project is open, and is not saved in the bundle. Autosave (F1, Stage 3) keeps the
 work, and a saved history would grow without limit.
 
 My lean: not saved.
+
+**Response:** I agree, the undo history should not be saved in the bundle. The autosave feature will ensure that the user's work is preserved, and saving the history would indeed lead to unnecessary growth of the bundle size.
 
 **Q2.9 — What else belongs in Stage 2.** Two small pieces of logic need no Qt:
 - the item-to-line map behind cross-highlighting (S16), which falls out of the token
@@ -384,6 +400,9 @@ I propose to build both here, and their display in Stage 3.
 
 My lean: yes.
 
+**Response:** I agree with the proposal to build the item-to-line map and the "model changed since the last run" test in Stage 2. These features are essential for the functionality of the dashboard and can be implemented without relying on Qt. By building them in Stage 2, we can ensure that they are well-tested and integrated into the core logic of the dashboard before moving on to the GUI components in Stage 3.
+
 ## Prompts
 
-> RJC will be responsible for writing this section.
+1. Please read the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-1; see their design documents (`dashboard_stage0.md` and `dashboard_stage1.md`) and the logs (`dashboard_stage0_log.md` and `dashboard_stage1_log.md`) to understand the work that has been implemented until now. Then, please review the ALIS code to understand the current state of ALIS. Finally, read this document, including my responses to your queries. If you have any further queries, please ask them in the Queries section of this document, and I will provide responses. Once everything is clear about the implementation of this stage, please execute the tasks in numerical order. If you have questions during development, please pause the development, ask questions and I will respond (please log these questions and answers in the Queries section).
+
