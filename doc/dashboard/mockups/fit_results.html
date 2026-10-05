@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Fit · Results sub-tab · ALIS dashboard mockup</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap"><style>
+:root {
+  /* Layout: a review sheet - one column of annotated window mockups */
+  --bg: #eef0ee; --surface: #ffffff; --ink: #1c2024; --muted: #56606a;
+  --line: #cfd4d1; --accent: #2b6a8a;
+  --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181b; --surface: #1d2125; --ink: #e4e7ea; --muted: #9aa4ad;
+    --line: #2f363c; --accent: #84c0dc; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181b; --surface: #1d2125; --ink: #e4e7ea; --muted: #9aa4ad;
+  --line: #2f363c; --accent: #84c0dc; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+.sheet { max-width: 1540px; margin: 0 auto;
+  padding-inline: clamp(16px, 3vw, 36px); padding-block: 28px 72px; }
+.sheet a { color: var(--accent); }
+.sheet h1 { font-size: 30px; line-height: 1.15; margin: 4px 0 8px;
+  text-wrap: balance; letter-spacing: -0.01em; }
+.sheet h2 { font-size: 21px; margin: 2px 0 0; text-wrap: balance; }
+.eyebrow { font: 600 12px/1.2 var(--sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); }
+.lede { max-width: 72ch; color: var(--muted); margin: 0 0 8px; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 16px 0;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); font-size: 13.5px; max-width: 1200px; }
+.keys b { font-weight: 600; }
+.toc { display: grid; gap: 4px 28px; margin: 14px 0 0; padding: 0;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); max-width: 1200px;
+  list-style: none; }
+.toc li { padding: 6px 0; border-top: 1px solid var(--line); }
+.toc .grp { display: block; font: 600 11.5px/1.2 var(--sans);
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.mock { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); }
+.notes { display: grid; gap: 10px 36px; margin: 10px 0 14px; max-width: 1200px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.notes h3 { font: 600 12px/1.3 var(--sans); letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes li { margin: 3px 0; max-width: 70ch; }
+.sizebar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin: 6px 0 10px; font-size: 13px; color: var(--muted); }
+.sizebar button { font: 13px var(--sans); color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 10px; cursor: pointer; }
+.sizebar button[aria-pressed="true"] { border-color: var(--accent);
+  color: var(--accent); }
+.sizebar button:focus-visible { outline: 2px solid var(--accent);
+  outline-offset: 2px; }
+.stage { width: 100%; overflow: auto; position: relative; }
+.stage.scaled { overflow: hidden; }
+.stage > .win { transform: scale(var(--k, 1)); transform-origin: 0 0; }
+.back { font-size: 14px; }
+
+/* The dashboard window: fixed neutral palette (Qt Fusion-like, Q0.2) */
+.win { width: 1440px; height: 900px; display: flex; flex-direction: column;
+  background: #ececec; color: #1e1e1e; border: 1px solid #8f8f8f;
+  border-radius: 7px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.28);
+  font: 12.5px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; text-align: left; }
+.win * { box-sizing: border-box; }
+.win-title { flex: 0 0 28px; display: flex; align-items: center;
+  justify-content: center; position: relative; font-weight: 600; color: #3a3a3a;
+  background: linear-gradient(#e9e9e9, #d6d6d6); border-bottom: 1px solid #b0b0b0; }
+.win-title::before { content: ""; position: absolute; left: 12px; top: 9px;
+  width: 10px; height: 10px; border-radius: 50%; background: #b9b9b9;
+  box-shadow: 16px 0 #b9b9b9, 32px 0 #b9b9b9; }
+.win-menu { flex: 0 0 24px; display: flex; gap: 18px; align-items: center;
+  padding: 0 12px; background: #f6f6f6; border-bottom: 1px solid #d2d2d2; }
+.win-tool { flex: 0 0 38px; display: flex; align-items: center; gap: 6px;
+  padding: 0 8px; background: #f0f0f0; border-bottom: 1px solid #c4c4c4; }
+.win-tabs { flex: 0 0 34px; display: flex; align-items: flex-end; gap: 2px;
+  padding: 0 8px; background: #e2e2e2; border-bottom: 1px solid #a9a9a9; }
+.tab { height: 28px; padding: 0 16px; display: flex; align-items: center; gap: 7px;
+  border: 1px solid #b4b4b4; border-bottom: none; border-radius: 4px 4px 0 0;
+  background: #d9d9d9; color: #333; }
+.tab.active { height: 31px; margin-bottom: -1px; background: #ececec;
+  font-weight: 600; color: #111; }
+.mk { display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%; font: 700 9px/1 sans-serif;
+  font-style: normal; color: #fff; }
+.mk.ok { background: #0072B2; } .mk.stale { background: #E69F00; color: #2b1d00; }
+.mk.warn { background: #D55E00; }
+.mk.none { border: 1.5px solid #8f8f8f; width: 12px; height: 12px; }
+.win-main { flex: 1 1 auto; display: flex; min-height: 0; }
+.content { flex: 1 1 auto; min-width: 0; overflow: hidden; position: relative; }
+.win-status { flex: 0 0 26px; display: flex; align-items: center; gap: 8px;
+  padding: 0 10px; background: #e3e3e3; border-top: 1px solid #b9b9b9;
+  font-size: 12px; }
+.win .sep { width: 1px; height: 18px; background: #c2c2c2; margin: 0 4px; }
+.win .grow { flex: 1 1 auto; }
+.win .muted { color: #6b6b6b; }
+.win .small { font-size: 11.5px; }
+.win .num { font-variant-numeric: tabular-nums; }
+.win .btn { display: inline-flex; align-items: center; gap: 4px; height: 24px;
+  padding: 0 9px; border: 1px solid #b4b4b4; border-radius: 3px; white-space: nowrap;
+  background: linear-gradient(#fdfdfd, #ebebeb); font-size: 12px; color: #1e1e1e; }
+.win .btn.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+.win .btn.xs { height: 17px; padding: 0 5px; font-size: 11px; }
+.win .btn.primary { background: linear-gradient(#4b9fd8, #2f86c4); color: #fff;
+  border-color: #286fa4; }
+.win .btn.on { background: #d6e8f6; border-color: #6aa6d1; }
+.win .btn.dim { opacity: 0.5; }
+.win .pill { border-radius: 10px; padding: 1px 9px; font-size: 11.5px;
+  border: 1px solid #c0c0c0; background: #fafafa; }
+.win .blindpill { background: #2f2f2f; color: #f2f2f2; border-color: #2f2f2f; }
+.win .spin { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid #2f86c4; border-right-color: transparent; }
+.win .cols { display: flex; gap: 8px; padding: 8px; align-items: flex-start; }
+.win .cols.inner { padding: 0; margin-top: 8px; }
+.win .col { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.win .pane { background: #fbfbfb; border: 1px solid #c3c3c3; border-radius: 4px;
+  overflow: hidden; }
+.win .pane > header { display: flex; align-items: center; gap: 6px;
+  min-height: 29px; padding: 3px 8px; font-weight: 600; font-size: 12px;
+  background: linear-gradient(#f7f7f7, #eaeaea); border-bottom: 1px solid #d1d1d1; }
+.win .pane > header > :not(:first-child) { font-weight: 400; }
+.win .pbody { padding: 6px 8px; }
+.win .pbody > svg { display: block; margin: 0 auto; }
+.win table { border-collapse: collapse; }
+.win .grid th, .win .grid td { border: 1px solid #d6d6d6; padding: 3px 6px;
+  text-align: left; white-space: nowrap; }
+.win .grid th { background: #f0f0f0; font-weight: 600; }
+.win .grid.tight th, .win .grid.tight td { padding: 2px 5px; }
+.win .grid tr.on td { background: #dcebf7; }
+.win .kv td { padding: 2px 8px 2px 0; vertical-align: top; }
+.win .kv td:first-child { color: #555; white-space: nowrap; }
+.win .covlist { width: 100%; font-size: 11.5px; }
+.win .covlist th { text-align: left; color: #555; font-weight: 600;
+  border-bottom: 1px solid #d6d6d6; padding: 2px 4px; }
+.win .covlist td { padding: 2px 4px; white-space: nowrap;
+  border-bottom: 1px solid #efefef; }
+.win .covlist tr.snip td:nth-child(2) { font-weight: 600; }
+.win .covlist tr.cur td { background: #d6e8f6; }
+.win .covlist tr.divider td { color: #777; font-size: 10.5px; padding: 5px 4px;
+  background: #f3f3f3; white-space: normal; }
+.win .flag.gap { background: #f4eee3; color: #7a5a1e; border-color: #ddcca9; }
+.win .bar { display: inline-block; height: 7px; background: #7aa7c7;
+  border-radius: 1px; }
+.win .flag { display: inline-block; font-size: 10px; line-height: 14px;
+  padding: 0 4px; border-radius: 3px; margin-right: 2px; background: #eee;
+  color: #555; border: 1px solid #d5d5d5; }
+.win .flag.forest { background: #e8f2f9; color: #005685; border-color: #b4d3e8; }
+.win .flag.edge, .win .flag.gap, .win .flag.nodata { background: #fdf3dc;
+  color: #7a5300; border-color: #ecc979; }
+.win .flag.bad { background: #fbe9e0; color: #9a3a00; border-color: #e7b08f; }
+.win .seg { display: inline-flex; border: 1px solid #b5b5b5; border-radius: 3px;
+  overflow: hidden; font-size: 11.5px; }
+.win .seg > * { padding: 1px 8px; background: #f7f7f7; font-weight: 400; }
+.win .seg > b { background: #d6e8f6; font-weight: 600; }
+.win .seg > * + * { border-left: 1px solid #c7c7c7; }
+.win .chk { font-size: 11.5px; }
+.win .chk::before { content: "☐ "; } .win .chk.on::before { content: "☑ "; }
+.win .sel { display: inline-block; border: 1px solid #b9b9b9; border-radius: 3px;
+  background: #fff; padding: 0 6px; font-size: 11.5px; }
+.win .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  margin-top: 6px; }
+.win .row.right { justify-content: flex-end; }
+.win .col-btns { display: flex; flex-direction: column; gap: 4px;
+  align-items: flex-start; margin: 6px 0; }
+.win .warnbox { background: #fff6e5; border: 1px solid #e8c47c; border-radius: 4px;
+  padding: 6px 8px; margin-top: 6px; }
+.win .warnbox.slim { margin: 0; }
+.win .okbox { background: #eef8f0; border: 1px solid #9fd0aa; border-radius: 4px;
+  padding: 6px 8px; margin-top: 8px; font-size: 11.5px; }
+.win .okbox ul { margin: 3px 0 0 16px; padding: 0; }
+.win .banner { background: #e9f1f8; border: 1px solid #b6cfe4; border-radius: 4px;
+  padding: 6px 10px; margin: 8px 8px 0; }
+.win .banner.slim { margin: 0 0 6px; font-size: 11.5px; }
+.win .note { color: #6a4b00; background: #fff8e8; border-left: 3px solid #e0a100;
+  padding: 4px 6px; }
+.win .dialog { position: absolute; background: #f8f8f8; border: 1px solid #8d8d8d;
+  border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.3); overflow: hidden; }
+.win .dlg-title { background: linear-gradient(#ececec, #dbdbdb); padding: 6px 10px;
+  font-weight: 600; border-bottom: 1px solid #bdbdbd; }
+.win .dlg-body { padding: 8px 10px; }
+.win .dlg-body p { margin: 0 0 6px; }
+.win .colroles { font-size: 11px; margin-bottom: 6px; width: 100%; }
+.win .colroles th, .win .colroles td { border: 1px solid #d6d6d6; padding: 2px 5px;
+  font-variant-numeric: tabular-nums; }
+.win .colroles th { background: #f0f0f0; font-weight: 400; color: #555; }
+.win .colroles .sel { margin-top: 2px; color: #1e1e1e; font-weight: 600; }
+.win .switch { display: flex; align-items: center; gap: 8px; }
+.win .knob { width: 30px; height: 16px; border-radius: 8px; background: #c9c9c9;
+  position: relative; flex: 0 0 auto; }
+.win .knob::after { content: ""; position: absolute; left: 2px; top: 2px;
+  width: 12px; height: 12px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.win .radio { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  border: 1px solid #888; }
+.win .radio.on { background: radial-gradient(#2f86c4 40%, #fff 46%); }
+.win .hist td { padding: 2px 8px 2px 0; font-size: 11.5px;
+  font-variant-numeric: tabular-nums; }
+.win .hist tr.on td { color: #1b5f91; font-weight: 600; }
+.win .sysrow { display: flex; gap: 6px; align-items: center; padding: 3px 0;
+  flex-wrap: wrap; }
+.win .blind { font-family: Menlo, Consolas, monospace; color: #5a5a5a;
+  letter-spacing: -1px; }
+.win .blindline { margin: 6px 0 0; }
+.win .chiprow { display: flex; gap: 4px; padding: 8px 8px 0; flex-wrap: wrap; }
+.win .chip { border: 1px solid #b9b9b9; border-radius: 11px; padding: 1px 9px;
+  background: #f9f9f9; font-size: 11.5px; white-space: nowrap; }
+.win .chip.on { background: #2f86c4; color: #fff; border-color: #2a74ab; }
+.win .chip i { font-style: normal; color: #777; margin-left: 4px; }
+.win .chip.on i { color: #dbeaf6; }
+.win .chip.add { border-style: dashed; color: #555; }
+.win .navbar { display: flex; gap: 6px; align-items: center; padding: 8px 8px 0; }
+.win .nav-sys { font-weight: 600; margin: 8px 0 3px; padding-bottom: 2px;
+  border-bottom: 1px solid #ddd; }
+.win .nav-sys:first-child { margin-top: 0; }
+.win .nav-row { display: flex; flex-direction: column; padding: 3px 6px;
+  border-radius: 3px; }
+.win .nav-row.on { background: #2f86c4; color: #fff; }
+.win .nav-row.on .muted { color: #dbeaf6; }
+.win .nav-row.indent { margin-left: 14px; }
+.win .hint { font-size: 11px; color: #666; margin-top: 12px; }
+.win .matrix { font-size: 12px; width: 100%; }
+.win .matrix th, .win .matrix td { border-bottom: 1px solid #e0e0e0; padding: 4px 6px;
+  text-align: left; vertical-align: top; white-space: nowrap; }
+.win .matrix th { background: #f0f0f0; font-weight: 600; }
+.win .matrix .focus { background: #eef5fb; }
+.win .matrix .none { color: #999; }
+.win .sub { font-size: 10.5px; color: #7a5a00; margin-top: 2px; }
+.win .st { display: inline-block; font-size: 10.5px; line-height: 14px;
+  padding: 0 4px; border-radius: 3px; margin-left: 2px; border: 1px solid; }
+.win .st.free { color: #005685; border-color: #9cc3df; background: #eaf3fa; }
+.win .st.fixed { color: #555; border-color: #c5c5c5; background: #f1f1f1; }
+.win .st.tied { color: #7d3f68; border-color: #ddb3cc; background: #f8eef4; }
+.win .st.warn { color: #7a5300; border-color: #ecc979; background: #fdf3dc; }
+.win .legend { font-size: 11px; color: #555; margin-top: 6px; }
+.win .card { border: 1px solid #cfcfcf; border-radius: 4px; background: #fff;
+  margin-bottom: 8px; }
+.win .card.on { border-color: #2f86c4; box-shadow: 0 0 0 1px #2f86c4; }
+.win .card.dim { background: #f5f5f5; }
+.win .card-h { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+  border-bottom: 1px solid #e3e3e3; }
+.win .card .kv { margin: 4px 8px; }
+.win .card tr.focus td { background: #eef5fb; }
+.win .modpanel { flex: 0 0 450px; width: 450px; display: flex;
+  flex-direction: column; background: #fff; border-left: 1px solid #a9a9a9;
+  min-height: 0; }
+.win .modhead { display: flex; gap: 8px; align-items: center; padding: 5px 8px;
+  background: linear-gradient(#f7f7f7, #ebebeb); border-bottom: 1px solid #cfcfcf; }
+.win .modtext { flex: 1 1 auto; overflow: hidden; padding: 4px 0; white-space: pre;
+  font: 11px/16px Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.win .modtext div { overflow: hidden; }
+.win .modtext .ln { display: inline-block; width: 34px; text-align: right;
+  color: #a0a0a0; padding-right: 7px; margin-right: 6px;
+  border-right: 1px solid #eee; }
+.win .modtext .hl { background: #fff0b0; }
+.win .modnote { border-top: 1px solid #e1c27c; background: #fff6e2; padding: 6px 8px;
+  font-size: 11.5px; white-space: normal; }
+.win .modstrip { flex: 0 0 26px; border-left: 1px solid #a9a9a9; background: #e6e6e6;
+  display: flex; justify-content: center; padding-top: 12px; }
+.win .modstrip span { writing-mode: vertical-rl; font-size: 11.5px; color: #444; }
+.win .pad { padding: 0 8px; } .win .pad-x { padding: 8px 8px 0; }
+.win .w-half { width: 520px; }
+.win .paperbox { background: #d4d4d4; padding: 8px; display: flex;
+  justify-content: center; }
+.win .paper { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.win .scroll { max-height: 252px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 85%, transparent);
+  mask-image: linear-gradient(#000 85%, transparent); }
+.win .results { width: 100%; font-size: 11px; }
+.win .results td { white-space: nowrap; }
+.win .results tr.group td { color: #555; }
+.win .kvline { margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.win .idleg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  font-size: 11.5px; }
+.win .sw { display: inline-block; width: 14px; height: 10px; margin-right: 3px;
+  vertical-align: middle; }
+.win .sw.id-h { background: #D55E00; } .win .sw.id-o { background: #CC79A7; }
+.win .sw.id-x { background: #8c8c8c; }
+.win .sw.fitk { background: rgba(0,158,115,.35); }
+.win .sw.othk { background: rgba(86,180,233,.35); }
+.win .sw.shk { background: repeating-linear-gradient(45deg, #a8457f 0 2px,
+  #f6e6f0 2px 5px); }
+.win .t-h { color: #D55E00; } .win .t-d { color: #0072B2; }
+.win .c { text-align: center; } .win .bad { color: #b3261e; font-weight: 600; }
+.win .cov { font-size: 11.5px; }
+.win .cov td.have { color: #2f86c4; text-align: center; }
+.win .cov td.miss { color: #bbb; text-align: center; }
+.win .hist2 td { font-size: 11.5px; vertical-align: top; }
+.win .hist2 tr.ext td { background: #f3f7fb; }
+.win .pane { position: relative; }
+.win .wrap { white-space: normal; }
+.win .iso { padding-left: 10px; color: #0072B2; }
+.win .dot { color: #009E73; font-size: 11px; }
+.win .field { display: inline-block; border: 1px solid #9fb8cc; border-radius: 3px;
+  background: #fff; padding: 0 6px; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.08); }
+.win .bhead { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.win .seg .off { color: #b5b5b5; }
+.win .subtabs { display: flex; gap: 2px; padding: 6px 8px 0;
+  border-bottom: 1px solid #c4c4c4; background: #e9e9e9; }
+.win .stab { padding: 3px 16px; border: 1px solid #c4c4c4; border-bottom: none;
+  border-radius: 3px 3px 0 0; background: #dedede; font-size: 12px; }
+.win .stab.on { background: #ececec; font-weight: 600; margin-bottom: -1px; }
+.win .tools { display: inline-flex; border: 1px solid #b5b5b5; border-radius: 3px;
+  overflow: hidden; }
+.win .tools i { font-style: normal; width: 24px; text-align: center;
+  background: #f7f7f7; border-right: 1px solid #d0d0d0; }
+.win .tools i:last-child { border-right: none; }
+.win .tools i.on { background: #d6e8f6; }
+.win .sel.open { border-color: #0072B2; box-shadow: 0 0 0 2px rgba(0,114,178,.2); }
+.win .menu { position: absolute; width: 230px; background: #fff;
+  border: 1px solid #8d8d8d; border-radius: 4px; padding: 3px 0;
+  box-shadow: 0 8px 22px rgba(0,0,0,.25); font-size: 12px; z-index: 3; }
+.win .menu .mi { padding: 2px 12px; }
+.win .menu .mi.on { background: #0072B2; color: #fff; }
+.win .menu .mh, .win .tray .mh { padding: 4px 12px 1px; font-size: 10.5px;
+  color: #777; text-transform: uppercase; letter-spacing: .04em; }
+.win .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.win .snipchip { display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid #c9c9c9; border-radius: 4px; padding: 2px 5px;
+  background: #fff; font-size: 11px; }
+.win .snipchip.on { border-color: #0072B2; box-shadow: 0 0 0 1px #0072B2; }
+.win .m { font-size: 10.5px; padding: 0 4px; border-radius: 3px;
+  border: 1px solid; white-space: nowrap; }
+.win .m.ok { color: #004f7c; border-color: #8dbad9; background: #e8f2f9; }
+.win .m.amber { color: #6b4800; border-color: #e6b84d; background: #fdf4dd; }
+.win .m.bad { color: #8f3500; border-color: #e39a6f; background: #fbebe2; }
+.win .gridview { position: relative; overflow: hidden; }
+.win .vscroll { position: absolute; right: 0; top: 0; bottom: 0; width: 10px;
+  background: #ededed; border-left: 1px solid #ddd; }
+.win .vscroll i { display: block; margin: 2px; border-radius: 3px;
+  background: #b0b0b0; }
+.win .popover { position: absolute; width: 270px; background: #fff;
+  border: 1px solid #0072B2; border-radius: 5px; padding: 6px 8px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.22); z-index: 3; }
+.win .pop-title { font-weight: 600; margin-bottom: 4px; }
+.win .pop { width: 100%; font-size: 11.5px; margin-bottom: 4px; }
+.win .pop td { padding: 2px 4px; border-bottom: 1px solid #f0f0f0; }
+.win .pop tr.on td { background: #0072B2; color: #fff; }
+.win .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.win .pcell { display: flex; align-items: center; gap: 6px; height: 54px;
+  padding: 0 8px; border: 1px solid #c9c9c9; border-radius: 4px; background: #fff; }
+.win .pcell i { font-style: normal; color: #999; }
+.win .pcell span { color: #777; font-size: 11px; margin-left: auto; }
+.win .pcell.drop { border: 2px dashed #0072B2; background: #eaf3fa; }
+.win .ghost { position: absolute; left: 178px; top: 238px; padding: 4px 9px;
+  border-radius: 4px; background: #fff; border: 1px solid #0072B2;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25); font-size: 11.5px; z-index: 2; }
+.win .tray { margin-top: 10px; padding: 4px 6px 8px; border: 1px dashed #bdbdbd;
+  border-radius: 4px; background: #f6f6f6; display: flex; flex-wrap: wrap; gap: 5px; }
+.win .tray .mh { flex-basis: 100%; padding-left: 2px; }
+.win .tchip { border: 1px solid #c9c9c9; border-radius: 11px; padding: 1px 8px;
+  background: #fff; font-size: 11px; }
+.win .tchip.dragging { opacity: .4; border-style: dashed; }
+.win .keyrow { display: flex; align-items: center; gap: 6px; padding: 1px 0;
+  font-size: 11.5px; }
+.win .keyrow .sw { width: 16px; height: 11px; flex: 0 0 auto; margin: 0; }
+.win .sw.edgek { background: #E69F00; width: 5px; margin: 0 6px 0 5px; }
+.win .sw.contk { background: repeating-linear-gradient(90deg, #0072B2 0 5px,
+  transparent 5px 8px); height: 2px; }
+.win .sw.datk { background: #000; height: 2px; }
+.win .sw.mdlk { background: #D55E00; height: 2px; }
+.win .sw.runb { background: repeating-linear-gradient(90deg, #0072B2 0 5px,
+  transparent 5px 8px); height: 2px; }
+.win .dsel { font-weight: 400; color: #555; }
+.win .sel.wide { min-width: 170px; }
+.win .seg.dis { opacity: .45; }
+.win .identify { margin: 6px 0; padding: 6px 8px; border: 1px solid #9fc3df;
+  border-radius: 4px; background: #f2f8fc; }
+.win .identify .row { margin-top: 5px; }
+.win .menu.wide { width: 250px; }
+.win .menu .mi { display: flex; gap: 6px; }
+.win .cmpbar { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; }
+.win .cmp td { white-space: nowrap; }
+.win .field.edit { display: inline-block; white-space: normal; border-color: #0072B2;
+  box-shadow: 0 0 0 2px rgba(0,114,178,.2); padding: 1px 4px; width: 100%; }
+.win .caret { display: inline-block; width: 1px; height: 12px; background: #111;
+  margin-left: 1px; vertical-align: -2px; }
+.win .cmp td:last-child { white-space: normal; font-size: 11px; }
+.win pre.code { margin: 0; font: 10.5px/1.45 Menlo, Consolas, monospace;
+  white-space: pre; overflow: hidden; color: #1e1e1e; }
+
+/* Plots */
+svg.plot, svg.paper { display: block; }
+.win svg text { font-family: -apple-system, "Segoe UI", "Noto Sans", Arial,
+  sans-serif; }
+svg .frame { fill: none; stroke: #8a8a8a; }
+svg .tick { stroke: #8a8a8a; }
+svg .tk { font-size: 10px; fill: #4a4a4a; }
+svg .axl { font-size: 11px; fill: #333; }
+svg .plbl { font-size: 10.5px; fill: #222; font-weight: 600; }
+svg .dat { fill: none; stroke: #1b1b1b; stroke-width: 1; }
+svg .dat.thin { stroke-width: 0.6; }
+svg .dat.grey { stroke: #9a9a9a; }
+svg .mdl { fill: none; stroke: #D55E00; stroke-width: 1.3; }
+svg .mdl.faint { stroke-opacity: 0.45; }
+svg .cnt { fill: none; stroke: #0072B2; stroke-width: 1.4; stroke-dasharray: 6 3; }
+svg .cnt-n { stroke: #0072B2; stroke-width: 0.9; stroke-dasharray: 4 3; }
+svg .zero { stroke: #8a8a8a; stroke-width: 0.8; stroke-dasharray: 3 3; }
+svg .fit { fill: rgba(0,158,115,.15); }
+svg .fit-oth { fill: rgba(86,180,233,.18); }
+svg .othersnip { fill: none; stroke: #56B4E9; stroke-dasharray: 2 3; }
+svg .outside { fill: rgba(0,0,0,.06); }
+svg .shared { fill: url(#hatch-shared); }
+svg .edge { stroke: #E69F00; stroke-width: 1.5; }
+svg .handle { fill: #E69F00; stroke: #8a5f00; }
+svg line.id-h { stroke: #D55E00; } svg text.id-h { fill: #b34e00; }
+svg line.id-o { stroke: #CC79A7; } svg text.id-o { fill: #9c4a7c; }
+svg line.id-x { stroke: #8c8c8c; } svg text.id-x { fill: #6f6f6f; }
+svg .idl { font-size: 9.5px; }
+svg .mk-h { stroke: #D55E00; } svg .mk-o { stroke: #CC79A7; }
+svg .mkl { font-size: 10px; fill: #b34e00; }
+svg .mkl-o { font-size: 10px; fill: #9c4a7c; }
+svg .zcur { stroke: #2f86c4; stroke-width: 1.5; }
+svg .zold { stroke: #999; stroke-dasharray: 3 3; }
+svg .zlbl { font-size: 10.5px; fill: #2f86c4; }
+svg .zlbl-old { font-size: 10px; fill: #888; }
+svg .tick-own { stroke-width: 1.6; }
+svg line.t-h { stroke: #D55E00; } svg line.t-d { stroke: #0072B2; }
+svg line.t-o { stroke: #CC79A7; } svg line.t-x { stroke: #777; }
+svg circle.grab { stroke: #fff; stroke-width: 1; }
+svg circle.t-h { fill: #D55E00; } svg circle.t-d { fill: #0072B2; }
+svg circle.t-o { fill: #CC79A7; }
+svg .tick-lock { stroke: #b8b8b8; stroke-width: 1; }
+svg .res { fill: none; stroke: #555; stroke-width: 0.8; }
+svg .rguide { stroke: #d9a0a0; stroke-dasharray: 2 2; }
+svg .rzero { stroke: #c4c4c4; }
+svg .snipband { fill: rgba(0,158,115,.28); }
+svg .snipband.cur { fill: rgba(230,159,0,.6); }
+svg .ovl { font-size: 9px; fill: #4d4d4d; }
+svg .gapl { font-size: 10px; fill: #8a6d3b; font-style: italic; }
+svg .dat.snipdat { stroke: #5b7fa3; stroke-width: 0.6; }
+svg .ovl.cur { fill: #b35f00; font-weight: 700; }
+svg .badge2 rect { stroke-width: 1; }
+svg .badge2 .b-ok { fill: #e6f0f8; stroke: #0072B2; }
+svg .badge2 .b-amber { fill: #fdf1d6; stroke: #E69F00; }
+svg .badge2 .b-bad { fill: #fbe6dc; stroke: #D55E00; }
+svg .badge2 text { font-size: 9.5px; fill: #1e1e1e; }
+svg .badge2 .bm { font-weight: 700; }
+svg .clickmark { stroke: #0072B2; stroke-width: 1.2; stroke-dasharray: 4 2; }
+svg .clickdot { fill: #0072B2; stroke: #fff; stroke-width: 1.5; }
+svg .zoombox { fill: rgba(0,114,178,.06); stroke: #0072B2; stroke-width: 1.2;
+  stroke-dasharray: 5 3; }
+svg .cv { font-size: 8.5px; fill: #1e1e1e; }
+svg .prog { fill: none; stroke: #0072B2; stroke-width: 1.6; }
+svg .prog-old { fill: none; stroke: #bbb; stroke-width: 1.2; }
+svg .prog-dot { fill: #2f86c4; }
+svg .p-dat { fill: none; stroke: #000; stroke-width: 0.8; }
+svg .p-mdl { fill: none; stroke: #D55E00; stroke-width: 1; }
+svg .p-cont { stroke: #0072B2; stroke-dasharray: 4 3; }
+svg .p-zero { stroke: #7F7F7F; stroke-dasharray: 4 3; }
+svg .p-res { fill: none; stroke: #555; stroke-width: 0.6; }
+svg .p-th { stroke: #D55E00; } svg .p-td { stroke: #0072B2; }
+svg .mdl-b { fill: none; stroke: #0072B2; stroke-width: 1.3;
+  stroke-dasharray: 5 3; }
+svg .selframe { fill: none; stroke: #0072B2; stroke-width: 2; }
+svg .plbl.sel { fill: #0072B2; }
+svg .p-lbl, svg .p-axl { fill: #000; font-family: "Times New Roman", Times, serif; }
+svg .p-lbl { font-size: 12px; } svg .p-axl { font-size: 13px; }
+</style></head><body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><pattern id="hatch-shared" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(204,121,167,.14)"/><line x1="0" y1="0" x2="0" y2="6" stroke="#a8457f" stroke-width="2"/></pattern></defs></svg><div class="sheet"><a class="back" href="index.html">← All mockups</a><div class="eyebrow">Fit tab</div><h1>Fit · Results sub-tab</h1><div class="notes"><div><h3>What this page tests</h3><ul><li>Draft 5: committing a run asks for the user&#x27;s own description of it (run 3 is being committed here).</li><li>The results table has its own sub-tab, so it can show every flagged parameter and its tie state.</li><li>The correlation matrix from the real covariance file, larger, with a menu to choose the parameters.</li><li>The fit statistics from the .mod.out header, and the run history (D26, S31). Draft 3: runs are compared in their own Compare sub-tab.</li></ul></div><div><h3>To decide</h3><ul><li>Is editing the description in the table (as shown for run 3) the right place, or should Commit open a small dialog?</li></ul></div></div><div class="sizebar">Window size: <button type="button" data-size="fit" aria-pressed="true">Fit to width</button><button type="button" data-size="actual" aria-pressed="false">Actual size (1440×900)</button></div><div class="stage">
+<div class="win">
+ <div class="win-title">ALIS dashboard — J1358p6522.model</div>
+ <div class="win-menu"><span>File</span><span>Edit</span><span>View</span><span>Model</span><span>Fit</span><span>Help</span></div>
+ <div class="win-tool">
+  <span class="btn">↶ Undo</span><span class="btn">↷ Redo</span>
+  <span class="sep"></span>
+  <span class="btn">Open…</span><span class="btn">Save</span>
+  <span class="muted">autosaved 12:41</span>
+  <span class="sep"></span>
+  <span class="btn">Mode: Voigt ▾</span><span class="pill blindpill">Blinded: N(D I)</span>
+  <span class="grow"></span>
+  <span class="btn">Export .mod + snips…</span><span class="btn">?  Shortcuts</span>
+ </div>
+ <div class="win-tabs"><div class="tab" title="Complete"><i class="mk ok">✓</i>Data</div><div class="tab" title="Complete"><i class="mk ok">✓</i>Regions</div><div class="tab" title="Out of date: H I 926.2 regions changed"><i class="mk stale">↻</i>Components</div><div class="tab active" title="Model changed since run 3"><i class="mk stale">↻</i>Fit</div><div class="tab" title="Not started"><i class="mk none"></i>Plot</div></div>
+ <div class="win-main"><main class="content">
+<div class="subtabs"><span class="stab">Inspect</span><span class="stab on">Results</span><span class="stab">Compare</span></div>
+<div class="cols">
+ <div class="col" style="width:640px">
+  <section class="pane "><header><span>Results · run 3</span><span class="grow"></span><span class="btn sm">Copy as table</span></header><div class="pbody"><table class="grid tight results"><tr><th>Parameter</th><th>Value</th><th>Error</th><th>State</th><th>Flags</th></tr><tr class="group"><td colspan="5">▾ Primary system, z = 3.067258</td></tr><tr><td>H I c1 log N</td><td class="num">20.488</td><td class="num">± 0.005</td><td><span class="st free" title="free">●</span></td><td></td></tr><tr><td>H I c1 z</td><td class="num">3.0672580</td><td class="num">± 0.0000011</td><td><span class="st tied" title="tied">⛓ ra</span></td><td></td></tr><tr><td>H I c1 b</td><td class="num">11.20</td><td class="num">± 0.07</td><td><span class="st free" title="free">●</span></td><td></td></tr><tr><td>H I c2 log N</td><td class="num">17.909</td><td class="num">± 0.040</td><td><span class="st free" title="free">●</span></td><td></td></tr><tr><td>H I c2 z</td><td class="num">3.0671619</td><td class="num">± 0.0000038</td><td><span class="st free" title="free">●</span></td><td></td></tr><tr><td>H I c2 b</td><td class="num">19.61</td><td class="num">± 0.18</td><td><span class="st free" title="free">●</span></td><td></td></tr><tr><td>D I c1 log N</td><td class="num"><span class="blind">▒▒▒▒▒▒</span></td><td class="num">± 0.010</td><td><span class="st free" title="free">●</span></td><td><span class="flag">blinded</span></td></tr><tr><td>D I c1 b</td><td class="num">8.03</td><td class="num">± 0.08</td><td><span class="st free" title="free">●</span></td><td><span class="flag edge">not tied to H I</span></td></tr><tr><td>O I c1 log N</td><td class="num">14.848</td><td class="num">± 0.023</td><td><span class="st tied" title="tied">⛓ noi</span></td><td></td></tr><tr><td>O I c1 b</td><td class="num">3.25</td><td class="num">± 0.08</td><td><span class="st tied" title="tied">⛓ da</span></td><td></td></tr><tr class="group"><td colspan="5">▸ Lyα forest (57 components) · flagged rows shown</td></tr><tr><td>Lyα z=2.1783 b</td><td class="num">1.09</td><td class="num">± 10.78</td><td><span class="st free" title="free">●</span></td><td><span class="flag edge">unconstrained</span></td></tr><tr><td>Lyα z=2.1786 b</td><td class="num">0.29</td><td class="num">± 60.53</td><td><span class="st free" title="free">●</span></td><td><span class="flag bad">at limit (0.2)</span></td></tr><tr><td>Lyα z=2.0867 b</td><td class="num">36.45</td><td class="num">± 38.73</td><td><span class="st free" title="free">●</span></td><td><span class="flag edge">unconstrained</span></td></tr><tr class="group"><td colspan="5">▸ Continua (12 Legendre polynomials) · ▸ Instrument: FWHM 6.931 ± 0.171 km/s</td></tr></table></div></section>
+ </div>
+ <div class="col" style="width:364px">
+  <section class="pane "><header><span>Correlations</span><span class="grow"></span><span class="sel">Primary system ▾</span></header><div class="pbody"><svg class="plot" width="320" height="278" viewBox="0 0 320 278"><text class="tk" x="58" y="22" text-anchor="end">N(H I)₁</text><rect x="62" y="6" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>N(H I)₁ – N(H I)₁: +1.00</title></rect><rect x="87" y="6" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(H I)₁ – z₁: -0.00</title></rect><rect x="112" y="6" width="24" height="24" fill="rgba(0,114,178,0.10)" stroke="#ddd"><title>N(H I)₁ – b(H I)₁: -0.10</title></rect><rect x="137" y="6" width="24" height="24" fill="rgba(213,94,0,0.01)" stroke="#ddd"><title>N(H I)₁ – N(H I)₂: +0.01</title></rect><rect x="162" y="6" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(H I)₁ – z₂: -0.00</title></rect><rect x="187" y="6" width="24" height="24" fill="rgba(0,114,178,0.03)" stroke="#ddd"><title>N(H I)₁ – b(H I)₂: -0.03</title></rect><rect x="212" y="6" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(H I)₁ – N(D I): -0.00</title></rect><rect x="237" y="6" width="24" height="24" fill="rgba(0,114,178,0.07)" stroke="#ddd"><title>N(H I)₁ – b(D I): -0.07</title></rect><rect x="262" y="6" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(H I)₁ – N(O I): -0.00</title></rect><rect x="287" y="6" width="24" height="24" fill="rgba(213,94,0,0.00)" stroke="#ddd"><title>N(H I)₁ – b(O I): +0.00</title></rect><text class="tk" x="58" y="46" text-anchor="end">z₁</text><rect x="62" y="31" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>z₁ – N(H I)₁: -0.00</title></rect><rect x="87" y="31" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>z₁ – z₁: +1.00</title></rect><rect x="112" y="31" width="24" height="24" fill="rgba(0,114,178,0.44)" stroke="#ddd"><title>z₁ – b(H I)₁: -0.44</title></rect><text class="cv" x="124" y="46" text-anchor="middle">-0.4</text><rect x="137" y="31" width="24" height="24" fill="rgba(213,94,0,0.19)" stroke="#ddd"><title>z₁ – N(H I)₂: +0.19</title></rect><rect x="162" y="31" width="24" height="24" fill="rgba(213,94,0,0.07)" stroke="#ddd"><title>z₁ – z₂: +0.07</title></rect><rect x="187" y="31" width="24" height="24" fill="rgba(0,114,178,0.18)" stroke="#ddd"><title>z₁ – b(H I)₂: -0.18</title></rect><rect x="212" y="31" width="24" height="24" fill="rgba(0,114,178,0.04)" stroke="#ddd"><title>z₁ – N(D I): -0.04</title></rect><rect x="237" y="31" width="24" height="24" fill="rgba(213,94,0,0.19)" stroke="#ddd"><title>z₁ – b(D I): +0.19</title></rect><rect x="262" y="31" width="24" height="24" fill="rgba(0,114,178,0.02)" stroke="#ddd"><title>z₁ – N(O I): -0.02</title></rect><rect x="287" y="31" width="24" height="24" fill="rgba(213,94,0,0.01)" stroke="#ddd"><title>z₁ – b(O I): +0.01</title></rect><text class="tk" x="58" y="72" text-anchor="end">b(H I)₁</text><rect x="62" y="56" width="24" height="24" fill="rgba(0,114,178,0.10)" stroke="#ddd"><title>b(H I)₁ – N(H I)₁: -0.10</title></rect><rect x="87" y="56" width="24" height="24" fill="rgba(0,114,178,0.44)" stroke="#ddd"><title>b(H I)₁ – z₁: -0.44</title></rect><text class="cv" x="100" y="72" text-anchor="middle">-0.4</text><rect x="112" y="56" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>b(H I)₁ – b(H I)₁: +1.00</title></rect><rect x="137" y="56" width="24" height="24" fill="rgba(0,114,178,0.43)" stroke="#ddd"><title>b(H I)₁ – N(H I)₂: -0.43</title></rect><text class="cv" x="150" y="72" text-anchor="middle">-0.4</text><rect x="162" y="56" width="24" height="24" fill="rgba(0,114,178,0.67)" stroke="#ddd"><title>b(H I)₁ – z₂: -0.67</title></rect><text class="cv" x="174" y="72" text-anchor="middle">-0.7</text><rect x="187" y="56" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>b(H I)₁ – b(H I)₂: -0.00</title></rect><rect x="212" y="56" width="24" height="24" fill="rgba(213,94,0,0.08)" stroke="#ddd"><title>b(H I)₁ – N(D I): +0.08</title></rect><rect x="237" y="56" width="24" height="24" fill="rgba(0,114,178,0.11)" stroke="#ddd"><title>b(H I)₁ – b(D I): -0.11</title></rect><rect x="262" y="56" width="24" height="24" fill="rgba(213,94,0,0.08)" stroke="#ddd"><title>b(H I)₁ – N(O I): +0.08</title></rect><rect x="287" y="56" width="24" height="24" fill="rgba(0,114,178,0.04)" stroke="#ddd"><title>b(H I)₁ – b(O I): -0.04</title></rect><text class="tk" x="58" y="96" text-anchor="end">N(H I)₂</text><rect x="62" y="81" width="24" height="24" fill="rgba(213,94,0,0.01)" stroke="#ddd"><title>N(H I)₂ – N(H I)₁: +0.01</title></rect><rect x="87" y="81" width="24" height="24" fill="rgba(213,94,0,0.19)" stroke="#ddd"><title>N(H I)₂ – z₁: +0.19</title></rect><rect x="112" y="81" width="24" height="24" fill="rgba(0,114,178,0.43)" stroke="#ddd"><title>N(H I)₂ – b(H I)₁: -0.43</title></rect><text class="cv" x="124" y="96" text-anchor="middle">-0.4</text><rect x="137" y="81" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>N(H I)₂ – N(H I)₂: +1.00</title></rect><rect x="162" y="81" width="24" height="24" fill="rgba(213,94,0,0.61)" stroke="#ddd"><title>N(H I)₂ – z₂: +0.61</title></rect><text class="cv" x="174" y="96" text-anchor="middle">+0.6</text><rect x="187" y="81" width="24" height="24" fill="rgba(0,114,178,0.75)" stroke="#ddd"><title>N(H I)₂ – b(H I)₂: -0.75</title></rect><text class="cv" x="200" y="96" text-anchor="middle">-0.7</text><rect x="212" y="81" width="24" height="24" fill="rgba(213,94,0,0.03)" stroke="#ddd"><title>N(H I)₂ – N(D I): +0.03</title></rect><rect x="237" y="81" width="24" height="24" fill="rgba(213,94,0,0.04)" stroke="#ddd"><title>N(H I)₂ – b(D I): +0.04</title></rect><rect x="262" y="81" width="24" height="24" fill="rgba(213,94,0,0.04)" stroke="#ddd"><title>N(H I)₂ – N(O I): +0.04</title></rect><rect x="287" y="81" width="24" height="24" fill="rgba(0,114,178,0.02)" stroke="#ddd"><title>N(H I)₂ – b(O I): -0.02</title></rect><text class="tk" x="58" y="122" text-anchor="end">z₂</text><rect x="62" y="106" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>z₂ – N(H I)₁: -0.00</title></rect><rect x="87" y="106" width="24" height="24" fill="rgba(213,94,0,0.07)" stroke="#ddd"><title>z₂ – z₁: +0.07</title></rect><rect x="112" y="106" width="24" height="24" fill="rgba(0,114,178,0.67)" stroke="#ddd"><title>z₂ – b(H I)₁: -0.67</title></rect><text class="cv" x="124" y="122" text-anchor="middle">-0.7</text><rect x="137" y="106" width="24" height="24" fill="rgba(213,94,0,0.61)" stroke="#ddd"><title>z₂ – N(H I)₂: +0.61</title></rect><text class="cv" x="150" y="122" text-anchor="middle">+0.6</text><rect x="162" y="106" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>z₂ – z₂: +1.00</title></rect><rect x="187" y="106" width="24" height="24" fill="rgba(213,94,0,0.00)" stroke="#ddd"><title>z₂ – b(H I)₂: +0.00</title></rect><rect x="212" y="106" width="24" height="24" fill="rgba(0,114,178,0.04)" stroke="#ddd"><title>z₂ – N(D I): -0.04</title></rect><rect x="237" y="106" width="24" height="24" fill="rgba(213,94,0,0.04)" stroke="#ddd"><title>z₂ – b(D I): +0.04</title></rect><rect x="262" y="106" width="24" height="24" fill="rgba(0,114,178,0.03)" stroke="#ddd"><title>z₂ – N(O I): -0.03</title></rect><rect x="287" y="106" width="24" height="24" fill="rgba(213,94,0,0.01)" stroke="#ddd"><title>z₂ – b(O I): +0.01</title></rect><text class="tk" x="58" y="146" text-anchor="end">b(H I)₂</text><rect x="62" y="131" width="24" height="24" fill="rgba(0,114,178,0.03)" stroke="#ddd"><title>b(H I)₂ – N(H I)₁: -0.03</title></rect><rect x="87" y="131" width="24" height="24" fill="rgba(0,114,178,0.18)" stroke="#ddd"><title>b(H I)₂ – z₁: -0.18</title></rect><rect x="112" y="131" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>b(H I)₂ – b(H I)₁: -0.00</title></rect><rect x="137" y="131" width="24" height="24" fill="rgba(0,114,178,0.75)" stroke="#ddd"><title>b(H I)₂ – N(H I)₂: -0.75</title></rect><text class="cv" x="150" y="146" text-anchor="middle">-0.7</text><rect x="162" y="131" width="24" height="24" fill="rgba(213,94,0,0.00)" stroke="#ddd"><title>b(H I)₂ – z₂: +0.00</title></rect><rect x="187" y="131" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>b(H I)₂ – b(H I)₂: +1.00</title></rect><rect x="212" y="131" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>b(H I)₂ – N(D I): -0.00</title></rect><rect x="237" y="131" width="24" height="24" fill="rgba(0,114,178,0.03)" stroke="#ddd"><title>b(H I)₂ – b(D I): -0.03</title></rect><rect x="262" y="131" width="24" height="24" fill="rgba(0,114,178,0.05)" stroke="#ddd"><title>b(H I)₂ – N(O I): -0.05</title></rect><rect x="287" y="131" width="24" height="24" fill="rgba(213,94,0,0.03)" stroke="#ddd"><title>b(H I)₂ – b(O I): +0.03</title></rect><text class="tk" x="58" y="172" text-anchor="end">N(D I)</text><rect x="62" y="156" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(D I) – N(H I)₁: -0.00</title></rect><rect x="87" y="156" width="24" height="24" fill="rgba(0,114,178,0.04)" stroke="#ddd"><title>N(D I) – z₁: -0.04</title></rect><rect x="112" y="156" width="24" height="24" fill="rgba(213,94,0,0.08)" stroke="#ddd"><title>N(D I) – b(H I)₁: +0.08</title></rect><rect x="137" y="156" width="24" height="24" fill="rgba(213,94,0,0.03)" stroke="#ddd"><title>N(D I) – N(H I)₂: +0.03</title></rect><rect x="162" y="156" width="24" height="24" fill="rgba(0,114,178,0.04)" stroke="#ddd"><title>N(D I) – z₂: -0.04</title></rect><rect x="187" y="156" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(D I) – b(H I)₂: -0.00</title></rect><rect x="212" y="156" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>N(D I) – N(D I): +1.00</title></rect><rect x="237" y="156" width="24" height="24" fill="rgba(0,114,178,0.37)" stroke="#ddd"><title>N(D I) – b(D I): -0.37</title></rect><text class="cv" x="250" y="172" text-anchor="middle">-0.4</text><rect x="262" y="156" width="24" height="24" fill="rgba(213,94,0,0.14)" stroke="#ddd"><title>N(D I) – N(O I): +0.14</title></rect><rect x="287" y="156" width="24" height="24" fill="rgba(0,114,178,0.08)" stroke="#ddd"><title>N(D I) – b(O I): -0.08</title></rect><text class="tk" x="58" y="196" text-anchor="end">b(D I)</text><rect x="62" y="181" width="24" height="24" fill="rgba(0,114,178,0.07)" stroke="#ddd"><title>b(D I) – N(H I)₁: -0.07</title></rect><rect x="87" y="181" width="24" height="24" fill="rgba(213,94,0,0.19)" stroke="#ddd"><title>b(D I) – z₁: +0.19</title></rect><rect x="112" y="181" width="24" height="24" fill="rgba(0,114,178,0.11)" stroke="#ddd"><title>b(D I) – b(H I)₁: -0.11</title></rect><rect x="137" y="181" width="24" height="24" fill="rgba(213,94,0,0.04)" stroke="#ddd"><title>b(D I) – N(H I)₂: +0.04</title></rect><rect x="162" y="181" width="24" height="24" fill="rgba(213,94,0,0.04)" stroke="#ddd"><title>b(D I) – z₂: +0.04</title></rect><rect x="187" y="181" width="24" height="24" fill="rgba(0,114,178,0.03)" stroke="#ddd"><title>b(D I) – b(H I)₂: -0.03</title></rect><rect x="212" y="181" width="24" height="24" fill="rgba(0,114,178,0.37)" stroke="#ddd"><title>b(D I) – N(D I): -0.37</title></rect><text class="cv" x="224" y="196" text-anchor="middle">-0.4</text><rect x="237" y="181" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>b(D I) – b(D I): +1.00</title></rect><rect x="262" y="181" width="24" height="24" fill="rgba(0,114,178,0.08)" stroke="#ddd"><title>b(D I) – N(O I): -0.08</title></rect><rect x="287" y="181" width="24" height="24" fill="rgba(213,94,0,0.05)" stroke="#ddd"><title>b(D I) – b(O I): +0.05</title></rect><text class="tk" x="58" y="222" text-anchor="end">N(O I)</text><rect x="62" y="206" width="24" height="24" fill="rgba(0,114,178,0.00)" stroke="#ddd"><title>N(O I) – N(H I)₁: -0.00</title></rect><rect x="87" y="206" width="24" height="24" fill="rgba(0,114,178,0.02)" stroke="#ddd"><title>N(O I) – z₁: -0.02</title></rect><rect x="112" y="206" width="24" height="24" fill="rgba(213,94,0,0.08)" stroke="#ddd"><title>N(O I) – b(H I)₁: +0.08</title></rect><rect x="137" y="206" width="24" height="24" fill="rgba(213,94,0,0.04)" stroke="#ddd"><title>N(O I) – N(H I)₂: +0.04</title></rect><rect x="162" y="206" width="24" height="24" fill="rgba(0,114,178,0.03)" stroke="#ddd"><title>N(O I) – z₂: -0.03</title></rect><rect x="187" y="206" width="24" height="24" fill="rgba(0,114,178,0.05)" stroke="#ddd"><title>N(O I) – b(H I)₂: -0.05</title></rect><rect x="212" y="206" width="24" height="24" fill="rgba(213,94,0,0.14)" stroke="#ddd"><title>N(O I) – N(D I): +0.14</title></rect><rect x="237" y="206" width="24" height="24" fill="rgba(0,114,178,0.08)" stroke="#ddd"><title>N(O I) – b(D I): -0.08</title></rect><rect x="262" y="206" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>N(O I) – N(O I): +1.00</title></rect><rect x="287" y="206" width="24" height="24" fill="rgba(0,114,178,0.63)" stroke="#ddd"><title>N(O I) – b(O I): -0.63</title></rect><text class="cv" x="300" y="222" text-anchor="middle">-0.6</text><text class="tk" x="58" y="246" text-anchor="end">b(O I)</text><rect x="62" y="231" width="24" height="24" fill="rgba(213,94,0,0.00)" stroke="#ddd"><title>b(O I) – N(H I)₁: +0.00</title></rect><rect x="87" y="231" width="24" height="24" fill="rgba(213,94,0,0.01)" stroke="#ddd"><title>b(O I) – z₁: +0.01</title></rect><rect x="112" y="231" width="24" height="24" fill="rgba(0,114,178,0.04)" stroke="#ddd"><title>b(O I) – b(H I)₁: -0.04</title></rect><rect x="137" y="231" width="24" height="24" fill="rgba(0,114,178,0.02)" stroke="#ddd"><title>b(O I) – N(H I)₂: -0.02</title></rect><rect x="162" y="231" width="24" height="24" fill="rgba(213,94,0,0.01)" stroke="#ddd"><title>b(O I) – z₂: +0.01</title></rect><rect x="187" y="231" width="24" height="24" fill="rgba(213,94,0,0.03)" stroke="#ddd"><title>b(O I) – b(H I)₂: +0.03</title></rect><rect x="212" y="231" width="24" height="24" fill="rgba(0,114,178,0.08)" stroke="#ddd"><title>b(O I) – N(D I): -0.08</title></rect><rect x="237" y="231" width="24" height="24" fill="rgba(213,94,0,0.05)" stroke="#ddd"><title>b(O I) – b(D I): +0.05</title></rect><rect x="262" y="231" width="24" height="24" fill="rgba(0,114,178,0.63)" stroke="#ddd"><title>b(O I) – N(O I): -0.63</title></rect><text class="cv" x="274" y="246" text-anchor="middle">-0.6</text><rect x="287" y="231" width="24" height="24" fill="rgba(213,94,0,1.00)" stroke="#ddd"><title>b(O I) – b(O I): +1.00</title></rect><text class="tk" x="62" y="272">orange: +1 · blue: −1 · values shown where |r| ≥ 0.3</text></svg></div></section>
+ </div>
+ <div class="col" style="width:370px">
+  <section class="pane "><header><span>Fit statistics · run 3</span><span class="grow"></span></header><div class="pbody">
+<table class="kv">
+<tr><td>χ²</td><td class="num">3790.6
+(initial 4002.7)</td></tr>
+<tr><td>Degrees of freedom</td><td class="num">4146</td></tr>
+<tr><td>χ²<sub>ν</sub></td><td class="num">
+0.914</td></tr>
+<tr><td>Iterations</td><td class="num">14</td></tr>
+<tr><td>Run time</td><td class="num">
+1.3 min</td></tr>
+<tr><td>Stopped because</td><td class="wrap">Both actual and predicted relative reductions in the sum of squares are at most ftol</td></tr>
+</table></div></section><section class="pane "><header><span>Run history</span><span class="grow"></span></header><div class="pbody">
+<table class="grid tight hist2">
+<tr><th>Run</th><th>Change</th><th>χ²<sub>ν</sub></th><th></th></tr>
+<tr><td>1</td><td>first fit</td><td>0.968</td><td>★ kept</td></tr>
+<tr><td>2</td><td>Lyα blends in Lyδ</td><td>0.931</td><td>★ kept</td></tr>
+<tr class="on"><td>3</td><td><span class="field edit">FWHM freed: one per
+dataset, now 6.93 km/s<i class="caret"></i></span></td><td>0.914</td>
+<td><span class="btn xs primary">Commit</span></td></tr>
+<tr><td>4</td><td>full model: metals, Lyα forest, T free</td><td>0.969</td>
+<td>★ kept</td></tr>
+<tr><td>5</td><td>Ly7 regions edited</td><td>…</td><td class="muted">running</td></tr>
+<tr class="ext"><td>cmd</td><td>run_alis project.model<div class="muted small">
+on gpu-box · 2026-10-03 22:14</div></td><td>0.912</td>
+<td><span class="btn xs">Inspect</span></td></tr></table>
+<div class="row"><span class="btn sm">Compare in the Compare sub-tab ›</span>
+</div>
+<div class="muted small">Only committed runs are kept. Committing asks for a
+short description, which can be edited later (double-click it). "cmd" is a
+run made outside the dashboard, with run_alis.</div></div></section>
+ </div>
+</div></main><aside class="modstrip"><span>▸ .mod editor</span></aside></div>
+ <div class="win-status"><span>J1358p6522.model</span>
+  <span class="sep"></span><span class="spin"></span><b>Run 5</b> running in the background · iteration 9 · χ² 3796.2 · 0:41 elapsed <span class="btn sm">Cancel</span></div>
+</div></div></div><script>
+(function () {
+  var actual = false;
+  function fit() {
+    document.querySelectorAll('.stage').forEach(function (s) {
+      var k = actual ? 1 : Math.min(1, s.clientWidth / 1442);
+      s.style.setProperty('--k', k);
+      s.style.height = Math.ceil(902 * k) + 'px';
+      s.classList.toggle('scaled', !actual);
+    });
+  }
+  document.querySelectorAll('[data-size]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      actual = b.getAttribute('data-size') === 'actual';
+      document.querySelectorAll('[data-size]').forEach(function (o) {
+        o.setAttribute('aria-pressed', String(
+          o.getAttribute('data-size') === b.getAttribute('data-size')));
+      });
+      fit();
+    });
+  });
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script></body></html>

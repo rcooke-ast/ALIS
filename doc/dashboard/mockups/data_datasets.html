@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Data · three datasets (Q1243p307) · ALIS dashboard mockup</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap"><style>
+:root {
+  /* Layout: a review sheet - one column of annotated window mockups */
+  --bg: #eef0ee; --surface: #ffffff; --ink: #1c2024; --muted: #56606a;
+  --line: #cfd4d1; --accent: #2b6a8a;
+  --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181b; --surface: #1d2125; --ink: #e4e7ea; --muted: #9aa4ad;
+    --line: #2f363c; --accent: #84c0dc; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181b; --surface: #1d2125; --ink: #e4e7ea; --muted: #9aa4ad;
+  --line: #2f363c; --accent: #84c0dc; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+.sheet { max-width: 1540px; margin: 0 auto;
+  padding-inline: clamp(16px, 3vw, 36px); padding-block: 28px 72px; }
+.sheet a { color: var(--accent); }
+.sheet h1 { font-size: 30px; line-height: 1.15; margin: 4px 0 8px;
+  text-wrap: balance; letter-spacing: -0.01em; }
+.sheet h2 { font-size: 21px; margin: 2px 0 0; text-wrap: balance; }
+.eyebrow { font: 600 12px/1.2 var(--sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); }
+.lede { max-width: 72ch; color: var(--muted); margin: 0 0 8px; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 16px 0;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); font-size: 13.5px; max-width: 1200px; }
+.keys b { font-weight: 600; }
+.toc { display: grid; gap: 4px 28px; margin: 14px 0 0; padding: 0;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); max-width: 1200px;
+  list-style: none; }
+.toc li { padding: 6px 0; border-top: 1px solid var(--line); }
+.toc .grp { display: block; font: 600 11.5px/1.2 var(--sans);
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.mock { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); }
+.notes { display: grid; gap: 10px 36px; margin: 10px 0 14px; max-width: 1200px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.notes h3 { font: 600 12px/1.3 var(--sans); letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes li { margin: 3px 0; max-width: 70ch; }
+.sizebar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin: 6px 0 10px; font-size: 13px; color: var(--muted); }
+.sizebar button { font: 13px var(--sans); color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 10px; cursor: pointer; }
+.sizebar button[aria-pressed="true"] { border-color: var(--accent);
+  color: var(--accent); }
+.sizebar button:focus-visible { outline: 2px solid var(--accent);
+  outline-offset: 2px; }
+.stage { width: 100%; overflow: auto; position: relative; }
+.stage.scaled { overflow: hidden; }
+.stage > .win { transform: scale(var(--k, 1)); transform-origin: 0 0; }
+.back { font-size: 14px; }
+
+/* The dashboard window: fixed neutral palette (Qt Fusion-like, Q0.2) */
+.win { width: 1440px; height: 900px; display: flex; flex-direction: column;
+  background: #ececec; color: #1e1e1e; border: 1px solid #8f8f8f;
+  border-radius: 7px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.28);
+  font: 12.5px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; text-align: left; }
+.win * { box-sizing: border-box; }
+.win-title { flex: 0 0 28px; display: flex; align-items: center;
+  justify-content: center; position: relative; font-weight: 600; color: #3a3a3a;
+  background: linear-gradient(#e9e9e9, #d6d6d6); border-bottom: 1px solid #b0b0b0; }
+.win-title::before { content: ""; position: absolute; left: 12px; top: 9px;
+  width: 10px; height: 10px; border-radius: 50%; background: #b9b9b9;
+  box-shadow: 16px 0 #b9b9b9, 32px 0 #b9b9b9; }
+.win-menu { flex: 0 0 24px; display: flex; gap: 18px; align-items: center;
+  padding: 0 12px; background: #f6f6f6; border-bottom: 1px solid #d2d2d2; }
+.win-tool { flex: 0 0 38px; display: flex; align-items: center; gap: 6px;
+  padding: 0 8px; background: #f0f0f0; border-bottom: 1px solid #c4c4c4; }
+.win-tabs { flex: 0 0 34px; display: flex; align-items: flex-end; gap: 2px;
+  padding: 0 8px; background: #e2e2e2; border-bottom: 1px solid #a9a9a9; }
+.tab { height: 28px; padding: 0 16px; display: flex; align-items: center; gap: 7px;
+  border: 1px solid #b4b4b4; border-bottom: none; border-radius: 4px 4px 0 0;
+  background: #d9d9d9; color: #333; }
+.tab.active { height: 31px; margin-bottom: -1px; background: #ececec;
+  font-weight: 600; color: #111; }
+.mk { display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%; font: 700 9px/1 sans-serif;
+  font-style: normal; color: #fff; }
+.mk.ok { background: #0072B2; } .mk.stale { background: #E69F00; color: #2b1d00; }
+.mk.warn { background: #D55E00; }
+.mk.none { border: 1.5px solid #8f8f8f; width: 12px; height: 12px; }
+.win-main { flex: 1 1 auto; display: flex; min-height: 0; }
+.content { flex: 1 1 auto; min-width: 0; overflow: hidden; position: relative; }
+.win-status { flex: 0 0 26px; display: flex; align-items: center; gap: 8px;
+  padding: 0 10px; background: #e3e3e3; border-top: 1px solid #b9b9b9;
+  font-size: 12px; }
+.win .sep { width: 1px; height: 18px; background: #c2c2c2; margin: 0 4px; }
+.win .grow { flex: 1 1 auto; }
+.win .muted { color: #6b6b6b; }
+.win .small { font-size: 11.5px; }
+.win .num { font-variant-numeric: tabular-nums; }
+.win .btn { display: inline-flex; align-items: center; gap: 4px; height: 24px;
+  padding: 0 9px; border: 1px solid #b4b4b4; border-radius: 3px; white-space: nowrap;
+  background: linear-gradient(#fdfdfd, #ebebeb); font-size: 12px; color: #1e1e1e; }
+.win .btn.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+.win .btn.xs { height: 17px; padding: 0 5px; font-size: 11px; }
+.win .btn.primary { background: linear-gradient(#4b9fd8, #2f86c4); color: #fff;
+  border-color: #286fa4; }
+.win .btn.on { background: #d6e8f6; border-color: #6aa6d1; }
+.win .btn.dim { opacity: 0.5; }
+.win .pill { border-radius: 10px; padding: 1px 9px; font-size: 11.5px;
+  border: 1px solid #c0c0c0; background: #fafafa; }
+.win .blindpill { background: #2f2f2f; color: #f2f2f2; border-color: #2f2f2f; }
+.win .spin { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid #2f86c4; border-right-color: transparent; }
+.win .cols { display: flex; gap: 8px; padding: 8px; align-items: flex-start; }
+.win .cols.inner { padding: 0; margin-top: 8px; }
+.win .col { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.win .pane { background: #fbfbfb; border: 1px solid #c3c3c3; border-radius: 4px;
+  overflow: hidden; }
+.win .pane > header { display: flex; align-items: center; gap: 6px;
+  min-height: 29px; padding: 3px 8px; font-weight: 600; font-size: 12px;
+  background: linear-gradient(#f7f7f7, #eaeaea); border-bottom: 1px solid #d1d1d1; }
+.win .pane > header > :not(:first-child) { font-weight: 400; }
+.win .pbody { padding: 6px 8px; }
+.win .pbody > svg { display: block; margin: 0 auto; }
+.win table { border-collapse: collapse; }
+.win .grid th, .win .grid td { border: 1px solid #d6d6d6; padding: 3px 6px;
+  text-align: left; white-space: nowrap; }
+.win .grid th { background: #f0f0f0; font-weight: 600; }
+.win .grid.tight th, .win .grid.tight td { padding: 2px 5px; }
+.win .grid tr.on td { background: #dcebf7; }
+.win .kv td { padding: 2px 8px 2px 0; vertical-align: top; }
+.win .kv td:first-child { color: #555; white-space: nowrap; }
+.win .covlist { width: 100%; font-size: 11.5px; }
+.win .covlist th { text-align: left; color: #555; font-weight: 600;
+  border-bottom: 1px solid #d6d6d6; padding: 2px 4px; }
+.win .covlist td { padding: 2px 4px; white-space: nowrap;
+  border-bottom: 1px solid #efefef; }
+.win .covlist tr.snip td:nth-child(2) { font-weight: 600; }
+.win .covlist tr.cur td { background: #d6e8f6; }
+.win .covlist tr.divider td { color: #777; font-size: 10.5px; padding: 5px 4px;
+  background: #f3f3f3; white-space: normal; }
+.win .flag.gap { background: #f4eee3; color: #7a5a1e; border-color: #ddcca9; }
+.win .bar { display: inline-block; height: 7px; background: #7aa7c7;
+  border-radius: 1px; }
+.win .flag { display: inline-block; font-size: 10px; line-height: 14px;
+  padding: 0 4px; border-radius: 3px; margin-right: 2px; background: #eee;
+  color: #555; border: 1px solid #d5d5d5; }
+.win .flag.forest { background: #e8f2f9; color: #005685; border-color: #b4d3e8; }
+.win .flag.edge, .win .flag.gap, .win .flag.nodata { background: #fdf3dc;
+  color: #7a5300; border-color: #ecc979; }
+.win .flag.bad { background: #fbe9e0; color: #9a3a00; border-color: #e7b08f; }
+.win .seg { display: inline-flex; border: 1px solid #b5b5b5; border-radius: 3px;
+  overflow: hidden; font-size: 11.5px; }
+.win .seg > * { padding: 1px 8px; background: #f7f7f7; font-weight: 400; }
+.win .seg > b { background: #d6e8f6; font-weight: 600; }
+.win .seg > * + * { border-left: 1px solid #c7c7c7; }
+.win .chk { font-size: 11.5px; }
+.win .chk::before { content: "☐ "; } .win .chk.on::before { content: "☑ "; }
+.win .sel { display: inline-block; border: 1px solid #b9b9b9; border-radius: 3px;
+  background: #fff; padding: 0 6px; font-size: 11.5px; }
+.win .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  margin-top: 6px; }
+.win .row.right { justify-content: flex-end; }
+.win .col-btns { display: flex; flex-direction: column; gap: 4px;
+  align-items: flex-start; margin: 6px 0; }
+.win .warnbox { background: #fff6e5; border: 1px solid #e8c47c; border-radius: 4px;
+  padding: 6px 8px; margin-top: 6px; }
+.win .warnbox.slim { margin: 0; }
+.win .okbox { background: #eef8f0; border: 1px solid #9fd0aa; border-radius: 4px;
+  padding: 6px 8px; margin-top: 8px; font-size: 11.5px; }
+.win .okbox ul { margin: 3px 0 0 16px; padding: 0; }
+.win .banner { background: #e9f1f8; border: 1px solid #b6cfe4; border-radius: 4px;
+  padding: 6px 10px; margin: 8px 8px 0; }
+.win .banner.slim { margin: 0 0 6px; font-size: 11.5px; }
+.win .note { color: #6a4b00; background: #fff8e8; border-left: 3px solid #e0a100;
+  padding: 4px 6px; }
+.win .dialog { position: absolute; background: #f8f8f8; border: 1px solid #8d8d8d;
+  border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.3); overflow: hidden; }
+.win .dlg-title { background: linear-gradient(#ececec, #dbdbdb); padding: 6px 10px;
+  font-weight: 600; border-bottom: 1px solid #bdbdbd; }
+.win .dlg-body { padding: 8px 10px; }
+.win .dlg-body p { margin: 0 0 6px; }
+.win .colroles { font-size: 11px; margin-bottom: 6px; width: 100%; }
+.win .colroles th, .win .colroles td { border: 1px solid #d6d6d6; padding: 2px 5px;
+  font-variant-numeric: tabular-nums; }
+.win .colroles th { background: #f0f0f0; font-weight: 400; color: #555; }
+.win .colroles .sel { margin-top: 2px; color: #1e1e1e; font-weight: 600; }
+.win .switch { display: flex; align-items: center; gap: 8px; }
+.win .knob { width: 30px; height: 16px; border-radius: 8px; background: #c9c9c9;
+  position: relative; flex: 0 0 auto; }
+.win .knob::after { content: ""; position: absolute; left: 2px; top: 2px;
+  width: 12px; height: 12px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.win .radio { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  border: 1px solid #888; }
+.win .radio.on { background: radial-gradient(#2f86c4 40%, #fff 46%); }
+.win .hist td { padding: 2px 8px 2px 0; font-size: 11.5px;
+  font-variant-numeric: tabular-nums; }
+.win .hist tr.on td { color: #1b5f91; font-weight: 600; }
+.win .sysrow { display: flex; gap: 6px; align-items: center; padding: 3px 0;
+  flex-wrap: wrap; }
+.win .blind { font-family: Menlo, Consolas, monospace; color: #5a5a5a;
+  letter-spacing: -1px; }
+.win .blindline { margin: 6px 0 0; }
+.win .chiprow { display: flex; gap: 4px; padding: 8px 8px 0; flex-wrap: wrap; }
+.win .chip { border: 1px solid #b9b9b9; border-radius: 11px; padding: 1px 9px;
+  background: #f9f9f9; font-size: 11.5px; white-space: nowrap; }
+.win .chip.on { background: #2f86c4; color: #fff; border-color: #2a74ab; }
+.win .chip i { font-style: normal; color: #777; margin-left: 4px; }
+.win .chip.on i { color: #dbeaf6; }
+.win .chip.add { border-style: dashed; color: #555; }
+.win .navbar { display: flex; gap: 6px; align-items: center; padding: 8px 8px 0; }
+.win .nav-sys { font-weight: 600; margin: 8px 0 3px; padding-bottom: 2px;
+  border-bottom: 1px solid #ddd; }
+.win .nav-sys:first-child { margin-top: 0; }
+.win .nav-row { display: flex; flex-direction: column; padding: 3px 6px;
+  border-radius: 3px; }
+.win .nav-row.on { background: #2f86c4; color: #fff; }
+.win .nav-row.on .muted { color: #dbeaf6; }
+.win .nav-row.indent { margin-left: 14px; }
+.win .hint { font-size: 11px; color: #666; margin-top: 12px; }
+.win .matrix { font-size: 12px; width: 100%; }
+.win .matrix th, .win .matrix td { border-bottom: 1px solid #e0e0e0; padding: 4px 6px;
+  text-align: left; vertical-align: top; white-space: nowrap; }
+.win .matrix th { background: #f0f0f0; font-weight: 600; }
+.win .matrix .focus { background: #eef5fb; }
+.win .matrix .none { color: #999; }
+.win .sub { font-size: 10.5px; color: #7a5a00; margin-top: 2px; }
+.win .st { display: inline-block; font-size: 10.5px; line-height: 14px;
+  padding: 0 4px; border-radius: 3px; margin-left: 2px; border: 1px solid; }
+.win .st.free { color: #005685; border-color: #9cc3df; background: #eaf3fa; }
+.win .st.fixed { color: #555; border-color: #c5c5c5; background: #f1f1f1; }
+.win .st.tied { color: #7d3f68; border-color: #ddb3cc; background: #f8eef4; }
+.win .st.warn { color: #7a5300; border-color: #ecc979; background: #fdf3dc; }
+.win .legend { font-size: 11px; color: #555; margin-top: 6px; }
+.win .card { border: 1px solid #cfcfcf; border-radius: 4px; background: #fff;
+  margin-bottom: 8px; }
+.win .card.on { border-color: #2f86c4; box-shadow: 0 0 0 1px #2f86c4; }
+.win .card.dim { background: #f5f5f5; }
+.win .card-h { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+  border-bottom: 1px solid #e3e3e3; }
+.win .card .kv { margin: 4px 8px; }
+.win .card tr.focus td { background: #eef5fb; }
+.win .modpanel { flex: 0 0 450px; width: 450px; display: flex;
+  flex-direction: column; background: #fff; border-left: 1px solid #a9a9a9;
+  min-height: 0; }
+.win .modhead { display: flex; gap: 8px; align-items: center; padding: 5px 8px;
+  background: linear-gradient(#f7f7f7, #ebebeb); border-bottom: 1px solid #cfcfcf; }
+.win .modtext { flex: 1 1 auto; overflow: hidden; padding: 4px 0; white-space: pre;
+  font: 11px/16px Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.win .modtext div { overflow: hidden; }
+.win .modtext .ln { display: inline-block; width: 34px; text-align: right;
+  color: #a0a0a0; padding-right: 7px; margin-right: 6px;
+  border-right: 1px solid #eee; }
+.win .modtext .hl { background: #fff0b0; }
+.win .modnote { border-top: 1px solid #e1c27c; background: #fff6e2; padding: 6px 8px;
+  font-size: 11.5px; white-space: normal; }
+.win .modstrip { flex: 0 0 26px; border-left: 1px solid #a9a9a9; background: #e6e6e6;
+  display: flex; justify-content: center; padding-top: 12px; }
+.win .modstrip span { writing-mode: vertical-rl; font-size: 11.5px; color: #444; }
+.win .pad { padding: 0 8px; } .win .pad-x { padding: 8px 8px 0; }
+.win .w-half { width: 520px; }
+.win .paperbox { background: #d4d4d4; padding: 8px; display: flex;
+  justify-content: center; }
+.win .paper { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.win .scroll { max-height: 252px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 85%, transparent);
+  mask-image: linear-gradient(#000 85%, transparent); }
+.win .results { width: 100%; font-size: 11px; }
+.win .results td { white-space: nowrap; }
+.win .results tr.group td { color: #555; }
+.win .kvline { margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.win .idleg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  font-size: 11.5px; }
+.win .sw { display: inline-block; width: 14px; height: 10px; margin-right: 3px;
+  vertical-align: middle; }
+.win .sw.id-h { background: #D55E00; } .win .sw.id-o { background: #CC79A7; }
+.win .sw.id-x { background: #8c8c8c; }
+.win .sw.fitk { background: rgba(0,158,115,.35); }
+.win .sw.othk { background: rgba(86,180,233,.35); }
+.win .sw.shk { background: repeating-linear-gradient(45deg, #a8457f 0 2px,
+  #f6e6f0 2px 5px); }
+.win .t-h { color: #D55E00; } .win .t-d { color: #0072B2; }
+.win .c { text-align: center; } .win .bad { color: #b3261e; font-weight: 600; }
+.win .cov { font-size: 11.5px; }
+.win .cov td.have { color: #2f86c4; text-align: center; }
+.win .cov td.miss { color: #bbb; text-align: center; }
+.win .hist2 td { font-size: 11.5px; vertical-align: top; }
+.win .hist2 tr.ext td { background: #f3f7fb; }
+.win .pane { position: relative; }
+.win .wrap { white-space: normal; }
+.win .iso { padding-left: 10px; color: #0072B2; }
+.win .dot { color: #009E73; font-size: 11px; }
+.win .field { display: inline-block; border: 1px solid #9fb8cc; border-radius: 3px;
+  background: #fff; padding: 0 6px; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.08); }
+.win .bhead { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.win .seg .off { color: #b5b5b5; }
+.win .subtabs { display: flex; gap: 2px; padding: 6px 8px 0;
+  border-bottom: 1px solid #c4c4c4; background: #e9e9e9; }
+.win .stab { padding: 3px 16px; border: 1px solid #c4c4c4; border-bottom: none;
+  border-radius: 3px 3px 0 0; background: #dedede; font-size: 12px; }
+.win .stab.on { background: #ececec; font-weight: 600; margin-bottom: -1px; }
+.win .tools { display: inline-flex; border: 1px solid #b5b5b5; border-radius: 3px;
+  overflow: hidden; }
+.win .tools i { font-style: normal; width: 24px; text-align: center;
+  background: #f7f7f7; border-right: 1px solid #d0d0d0; }
+.win .tools i:last-child { border-right: none; }
+.win .tools i.on { background: #d6e8f6; }
+.win .sel.open { border-color: #0072B2; box-shadow: 0 0 0 2px rgba(0,114,178,.2); }
+.win .menu { position: absolute; width: 230px; background: #fff;
+  border: 1px solid #8d8d8d; border-radius: 4px; padding: 3px 0;
+  box-shadow: 0 8px 22px rgba(0,0,0,.25); font-size: 12px; z-index: 3; }
+.win .menu .mi { padding: 2px 12px; }
+.win .menu .mi.on { background: #0072B2; color: #fff; }
+.win .menu .mh, .win .tray .mh { padding: 4px 12px 1px; font-size: 10.5px;
+  color: #777; text-transform: uppercase; letter-spacing: .04em; }
+.win .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.win .snipchip { display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid #c9c9c9; border-radius: 4px; padding: 2px 5px;
+  background: #fff; font-size: 11px; }
+.win .snipchip.on { border-color: #0072B2; box-shadow: 0 0 0 1px #0072B2; }
+.win .m { font-size: 10.5px; padding: 0 4px; border-radius: 3px;
+  border: 1px solid; white-space: nowrap; }
+.win .m.ok { color: #004f7c; border-color: #8dbad9; background: #e8f2f9; }
+.win .m.amber { color: #6b4800; border-color: #e6b84d; background: #fdf4dd; }
+.win .m.bad { color: #8f3500; border-color: #e39a6f; background: #fbebe2; }
+.win .gridview { position: relative; overflow: hidden; }
+.win .vscroll { position: absolute; right: 0; top: 0; bottom: 0; width: 10px;
+  background: #ededed; border-left: 1px solid #ddd; }
+.win .vscroll i { display: block; margin: 2px; border-radius: 3px;
+  background: #b0b0b0; }
+.win .popover { position: absolute; width: 270px; background: #fff;
+  border: 1px solid #0072B2; border-radius: 5px; padding: 6px 8px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.22); z-index: 3; }
+.win .pop-title { font-weight: 600; margin-bottom: 4px; }
+.win .pop { width: 100%; font-size: 11.5px; margin-bottom: 4px; }
+.win .pop td { padding: 2px 4px; border-bottom: 1px solid #f0f0f0; }
+.win .pop tr.on td { background: #0072B2; color: #fff; }
+.win .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.win .pcell { display: flex; align-items: center; gap: 6px; height: 54px;
+  padding: 0 8px; border: 1px solid #c9c9c9; border-radius: 4px; background: #fff; }
+.win .pcell i { font-style: normal; color: #999; }
+.win .pcell span { color: #777; font-size: 11px; margin-left: auto; }
+.win .pcell.drop { border: 2px dashed #0072B2; background: #eaf3fa; }
+.win .ghost { position: absolute; left: 178px; top: 238px; padding: 4px 9px;
+  border-radius: 4px; background: #fff; border: 1px solid #0072B2;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25); font-size: 11.5px; z-index: 2; }
+.win .tray { margin-top: 10px; padding: 4px 6px 8px; border: 1px dashed #bdbdbd;
+  border-radius: 4px; background: #f6f6f6; display: flex; flex-wrap: wrap; gap: 5px; }
+.win .tray .mh { flex-basis: 100%; padding-left: 2px; }
+.win .tchip { border: 1px solid #c9c9c9; border-radius: 11px; padding: 1px 8px;
+  background: #fff; font-size: 11px; }
+.win .tchip.dragging { opacity: .4; border-style: dashed; }
+.win .keyrow { display: flex; align-items: center; gap: 6px; padding: 1px 0;
+  font-size: 11.5px; }
+.win .keyrow .sw { width: 16px; height: 11px; flex: 0 0 auto; margin: 0; }
+.win .sw.edgek { background: #E69F00; width: 5px; margin: 0 6px 0 5px; }
+.win .sw.contk { background: repeating-linear-gradient(90deg, #0072B2 0 5px,
+  transparent 5px 8px); height: 2px; }
+.win .sw.datk { background: #000; height: 2px; }
+.win .sw.mdlk { background: #D55E00; height: 2px; }
+.win .sw.runb { background: repeating-linear-gradient(90deg, #0072B2 0 5px,
+  transparent 5px 8px); height: 2px; }
+.win .dsel { font-weight: 400; color: #555; }
+.win .sel.wide { min-width: 170px; }
+.win .seg.dis { opacity: .45; }
+.win .identify { margin: 6px 0; padding: 6px 8px; border: 1px solid #9fc3df;
+  border-radius: 4px; background: #f2f8fc; }
+.win .identify .row { margin-top: 5px; }
+.win .menu.wide { width: 250px; }
+.win .menu .mi { display: flex; gap: 6px; }
+.win .cmpbar { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; }
+.win .cmp td { white-space: nowrap; }
+.win .field.edit { display: inline-block; white-space: normal; border-color: #0072B2;
+  box-shadow: 0 0 0 2px rgba(0,114,178,.2); padding: 1px 4px; width: 100%; }
+.win .caret { display: inline-block; width: 1px; height: 12px; background: #111;
+  margin-left: 1px; vertical-align: -2px; }
+.win .cmp td:last-child { white-space: normal; font-size: 11px; }
+.win pre.code { margin: 0; font: 10.5px/1.45 Menlo, Consolas, monospace;
+  white-space: pre; overflow: hidden; color: #1e1e1e; }
+
+/* Plots */
+svg.plot, svg.paper { display: block; }
+.win svg text { font-family: -apple-system, "Segoe UI", "Noto Sans", Arial,
+  sans-serif; }
+svg .frame { fill: none; stroke: #8a8a8a; }
+svg .tick { stroke: #8a8a8a; }
+svg .tk { font-size: 10px; fill: #4a4a4a; }
+svg .axl { font-size: 11px; fill: #333; }
+svg .plbl { font-size: 10.5px; fill: #222; font-weight: 600; }
+svg .dat { fill: none; stroke: #1b1b1b; stroke-width: 1; }
+svg .dat.thin { stroke-width: 0.6; }
+svg .dat.grey { stroke: #9a9a9a; }
+svg .mdl { fill: none; stroke: #D55E00; stroke-width: 1.3; }
+svg .mdl.faint { stroke-opacity: 0.45; }
+svg .cnt { fill: none; stroke: #0072B2; stroke-width: 1.4; stroke-dasharray: 6 3; }
+svg .cnt-n { stroke: #0072B2; stroke-width: 0.9; stroke-dasharray: 4 3; }
+svg .zero { stroke: #8a8a8a; stroke-width: 0.8; stroke-dasharray: 3 3; }
+svg .fit { fill: rgba(0,158,115,.15); }
+svg .fit-oth { fill: rgba(86,180,233,.18); }
+svg .othersnip { fill: none; stroke: #56B4E9; stroke-dasharray: 2 3; }
+svg .outside { fill: rgba(0,0,0,.06); }
+svg .shared { fill: url(#hatch-shared); }
+svg .edge { stroke: #E69F00; stroke-width: 1.5; }
+svg .handle { fill: #E69F00; stroke: #8a5f00; }
+svg line.id-h { stroke: #D55E00; } svg text.id-h { fill: #b34e00; }
+svg line.id-o { stroke: #CC79A7; } svg text.id-o { fill: #9c4a7c; }
+svg line.id-x { stroke: #8c8c8c; } svg text.id-x { fill: #6f6f6f; }
+svg .idl { font-size: 9.5px; }
+svg .mk-h { stroke: #D55E00; } svg .mk-o { stroke: #CC79A7; }
+svg .mkl { font-size: 10px; fill: #b34e00; }
+svg .mkl-o { font-size: 10px; fill: #9c4a7c; }
+svg .zcur { stroke: #2f86c4; stroke-width: 1.5; }
+svg .zold { stroke: #999; stroke-dasharray: 3 3; }
+svg .zlbl { font-size: 10.5px; fill: #2f86c4; }
+svg .zlbl-old { font-size: 10px; fill: #888; }
+svg .tick-own { stroke-width: 1.6; }
+svg line.t-h { stroke: #D55E00; } svg line.t-d { stroke: #0072B2; }
+svg line.t-o { stroke: #CC79A7; } svg line.t-x { stroke: #777; }
+svg circle.grab { stroke: #fff; stroke-width: 1; }
+svg circle.t-h { fill: #D55E00; } svg circle.t-d { fill: #0072B2; }
+svg circle.t-o { fill: #CC79A7; }
+svg .tick-lock { stroke: #b8b8b8; stroke-width: 1; }
+svg .res { fill: none; stroke: #555; stroke-width: 0.8; }
+svg .rguide { stroke: #d9a0a0; stroke-dasharray: 2 2; }
+svg .rzero { stroke: #c4c4c4; }
+svg .snipband { fill: rgba(0,158,115,.28); }
+svg .snipband.cur { fill: rgba(230,159,0,.6); }
+svg .ovl { font-size: 9px; fill: #4d4d4d; }
+svg .gapl { font-size: 10px; fill: #8a6d3b; font-style: italic; }
+svg .dat.snipdat { stroke: #5b7fa3; stroke-width: 0.6; }
+svg .ovl.cur { fill: #b35f00; font-weight: 700; }
+svg .badge2 rect { stroke-width: 1; }
+svg .badge2 .b-ok { fill: #e6f0f8; stroke: #0072B2; }
+svg .badge2 .b-amber { fill: #fdf1d6; stroke: #E69F00; }
+svg .badge2 .b-bad { fill: #fbe6dc; stroke: #D55E00; }
+svg .badge2 text { font-size: 9.5px; fill: #1e1e1e; }
+svg .badge2 .bm { font-weight: 700; }
+svg .clickmark { stroke: #0072B2; stroke-width: 1.2; stroke-dasharray: 4 2; }
+svg .clickdot { fill: #0072B2; stroke: #fff; stroke-width: 1.5; }
+svg .zoombox { fill: rgba(0,114,178,.06); stroke: #0072B2; stroke-width: 1.2;
+  stroke-dasharray: 5 3; }
+svg .cv { font-size: 8.5px; fill: #1e1e1e; }
+svg .prog { fill: none; stroke: #0072B2; stroke-width: 1.6; }
+svg .prog-old { fill: none; stroke: #bbb; stroke-width: 1.2; }
+svg .prog-dot { fill: #2f86c4; }
+svg .p-dat { fill: none; stroke: #000; stroke-width: 0.8; }
+svg .p-mdl { fill: none; stroke: #D55E00; stroke-width: 1; }
+svg .p-cont { stroke: #0072B2; stroke-dasharray: 4 3; }
+svg .p-zero { stroke: #7F7F7F; stroke-dasharray: 4 3; }
+svg .p-res { fill: none; stroke: #555; stroke-width: 0.6; }
+svg .p-th { stroke: #D55E00; } svg .p-td { stroke: #0072B2; }
+svg .mdl-b { fill: none; stroke: #0072B2; stroke-width: 1.3;
+  stroke-dasharray: 5 3; }
+svg .selframe { fill: none; stroke: #0072B2; stroke-width: 2; }
+svg .plbl.sel { fill: #0072B2; }
+svg .p-lbl, svg .p-axl { fill: #000; font-family: "Times New Roman", Times, serif; }
+svg .p-lbl { font-size: 12px; } svg .p-axl { font-size: 13px; }
+</style></head><body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><pattern id="hatch-shared" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(204,121,167,.14)"/><line x1="0" y1="0" x2="0" y2="6" stroke="#a8457f" stroke-width="2"/></pattern></defs></svg><div class="sheet"><a class="back" href="index.html">← All mockups</a><div class="eyebrow">Data tab</div><h1>Data · three datasets (Q1243p307)</h1><div class="notes"><div><h3>What this page tests</h3><ul><li>Draft 5: the same layout as the one-spectrum page: Systems (with &#x27;Identify a feature…&#x27;), Coverage and Blinding on the left; the table of files and a spectrum view on the right.</li><li>Without source spectra, the spectrum view shows the selected dataset&#x27;s snips (HIRES here), each scaled to its own peak, and can be zoomed and panned.</li><li>One row per file, with relink for a moved file (F13).</li></ul></div><div><h3>To decide</h3><ul><li>Anything else to change on the Data tab?</li></ul></div></div><div class="sizebar">Window size: <button type="button" data-size="fit" aria-pressed="true">Fit to width</button><button type="button" data-size="actual" aria-pressed="false">Actual size (1440×900)</button></div><div class="stage">
+<div class="win">
+ <div class="win-title">ALIS dashboard — Q1243p307.model</div>
+ <div class="win-menu"><span>File</span><span>Edit</span><span>View</span><span>Model</span><span>Fit</span><span>Help</span></div>
+ <div class="win-tool">
+  <span class="btn">↶ Undo</span><span class="btn">↷ Redo</span>
+  <span class="sep"></span>
+  <span class="btn">Open…</span><span class="btn">Save</span>
+  <span class="muted">autosaved 12:41</span>
+  <span class="sep"></span>
+  <span class="btn">Mode: Voigt ▾</span><span class="pill">Not blinded</span>
+  <span class="grow"></span>
+  <span class="btn">Export .mod + snips…</span><span class="btn">?  Shortcuts</span>
+ </div>
+ <div class="win-tabs"><div class="tab active" title="KIRKMAN spectrum moved: relink"><i class="mk warn">!</i>Data</div><div class="tab" title="Shared pixels in 3 snips"><i class="mk warn">!</i>Regions</div><div class="tab" title="Complete"><i class="mk ok">✓</i>Components</div><div class="tab" title="Up to date"><i class="mk ok">✓</i>Fit</div><div class="tab" title="Not started"><i class="mk none"></i>Plot</div></div>
+ <div class="win-main"><main class="content">
+<div class="banner">Opened from <b>Q1243p307_converge_newstart76.mod</b>.
+The source spectra are not attached, so regions are limited to the extent of
+each snip.</div>
+<div class="cols">
+ <div class="col" style="width:340px"><section class="pane "><header><span>Systems</span><span class="grow"></span></header><div class="pbody">
+<div class="sysrow"><b>Primary</b> z = <span class="field">2.525640</span>
+<span class="btn sm">⌖ Identify a feature…</span></div>
+<div class="muted small">Other systems (contaminants)</div><div class="sysrow">z ≈ 2.05 <span class="muted">Fe II 1608.5</span></div><div class="sysrow">z ≈ 2.18 <span class="muted">H I 1215.7</span></div><div class="sysrow">z ≈ 2.40 <span class="muted">H I 1215.7, H I 1025.7</span></div><div class="sysrow">z ≈ 2.44 <span class="muted">H I 1215.7, H I 1025.7, H I 972.5</span></div>
+<div class="row"><span class="btn sm">Add system…</span></div></div></section><section class="pane "><header><span>Coverage</span><span class="grow"></span></header><div class="pbody"><table class="grid tight cov"><tr><th>Transition</th><th>HIRES</th><th>PROCHASKA</th><th>KIRKMAN</th></tr><tr><td>H I 923.2</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 926.2</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 930.7</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 937.8</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 949.7</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 972.5</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 1025.7</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>Si II 1190.4</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>H I 1215.7</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>Si II 1260.4</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>O I 1302.2</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>Si II 1304.4</td><td class="have">■</td><td class="have">■</td><td class="have">■</td></tr><tr><td>C II 1334.5</td><td class="have">■</td><td class="have">■</td><td class="miss">·</td></tr><tr><td>Si II 1526.7</td><td class="have">■</td><td class="have">■</td><td class="miss">·</td></tr><tr><td>Fe II 1608.5</td><td class="have">■</td><td class="have">■</td><td class="miss">·</td></tr><tr><td>Al II 1670.8</td><td class="have">■</td><td class="have">■</td><td class="miss">·</td></tr></table></div></section><section class="pane "><header><span>Blinding</span><span class="grow"></span></header><div class="pbody">
+<label class="switch"><span class="knob"></span>Blind the whole fit
+<span class="muted">(run blind True)</span></label>
+<div class="muted small">Hides every best-fit value. Can be switched on at any
+time.</div><div class="muted small">Nothing is blinded in this project.</div></div></section></div>
+ <div class="col" style="width:1050px">
+  <section class="pane "><header><span>Datasets · one row per file</span><span class="grow"></span><span class="btn sm">Add file…</span></header><div class="pbody"><table class="grid"><tr><th>Ref.</th><th>Dataset (file)</th><th>Contents</th><th>FWHM (km/s)</th><th>Shift (km/s)</th><th>Zero level</th><th>Checksum</th></tr><tr class="on"><td class="c">◉</td><td><b>HIRES</b></td><td>23 snips · no source spectrum</td><td>6.280 <span class="st free" title="free">● vh</span></td><td>0 · reference</td><td>off <span class="btn xs">On</span></td><td>✓ unchanged</td></tr><tr><td class="c">○</td><td><b>PROCHASKA</b></td><td>16 snips · no source spectrum</td><td>6.280 <span class="st free" title="free">● vp</span></td><td>0.0 <span class="st fixed" title="fixed">■</span></td><td>off <span class="btn xs">On</span></td><td>✓ unchanged</td></tr><tr><td class="c">○</td><td><b>KIRKMAN</b></td><td>12 snips · no source spectrum</td><td>7.990 <span class="st free" title="free">● vk</span></td><td>+83.5 <span class="st fixed" title="fixed">■</span></td><td>off <span class="btn xs">On</span></td><td><span class="bad">moved</span> <span class="btn sm primary">Relink…</span></td></tr></table><div class="muted small">Click a badge to free, fix, or tie a value to another row (for example two settings of one instrument sharing one FWHM). Click a row to show that dataset below.</div></div></section>
+  <section class="pane "><header><span>Spectrum · <span class="sel">HIRES ▾</span> <span class="dsel">source spectrum not attached: its snips, each scaled to its peak</span></span><span class="grow"></span><span class="chk">Transitions of z = 2.525640</span><span class="tools" title="Home · Back · Forward · Pan · Zoom box · Zoom in · Zoom out (wavelength axis only)"><i>⌂</i><i>←</i><i>→</i><i>✥</i><i>⬚</i><i>+</i><i>−</i></span></header><div class="pbody"><svg class="plot" width="1030" height="290" viewBox="0 0 1030 290" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="clip2"><rect x="56.0" y="40.0" width="960.0" height="210.0"/></clipPath></defs><g clip-path="url(#clip2)"><path class="dat thin" d="M69.9 88.1 L69.9 256.1 70.9 66.3 70.9 249.9 71.9 85.6 71.9 244.4 73.0 121.0 73.0 243.2 73.9 100.9 73.9 243.2 74.9 128.5 74.9 241.8 75.9 116.1 75.9 244.7 76.9 139.3 76.9 241.0 77.9 124.6 77.9 200.4 79.0 112.1 79.0 242.3 80.0 109.8 80.0 242.0 80.9 110.6 80.9 135.6"/></g><text class="ovl" x="75.8" y="35.0" text-anchor="middle">H I 923.2</text><g clip-path="url(#clip2)"><path class="dat thin" d="M80.2 108.4 L80.2 231.2 81.2 106.5 81.2 178.8 82.2 95.1 82.2 221.8 83.2 185.9 83.2 242.3 84.2 111.6 84.2 241.1 85.2 101.9 85.2 131.1 86.2 96.0 86.2 220.5"/></g><text class="ovl" x="83.7" y="24.0" text-anchor="middle">H I 926.2</text><g clip-path="url(#clip2)"><path class="dat thin" d="M87.1 94.4 L87.1 133.2 88.1 103.7 88.1 243.3 89.1 106.4 89.1 241.4 90.1 102.2 90.1 138.4"/></g><text class="ovl" x="89.0" y="13.0" text-anchor="middle">H I 930.7</text><g clip-path="url(#clip2)"><path class="dat thin" d="M95.8 94.1 L95.8 124.3 96.8 102.4 96.8 243.1 97.8 111.3 97.8 240.3 98.8 107.7 98.8 152.4"/></g><g clip-path="url(#clip2)"><path class="dat thin" d="M108.5 100.7 L108.5 241.0 109.5 99.9 109.5 157.2 110.5 97.7 110.5 187.8 111.5 134.5 111.5 243.1"/></g><g clip-path="url(#clip2)"><path class="dat thin" d="M110.7 126.3 L110.7 198.2 111.7 157.1 111.7 242.3 112.7 108.4 112.7 241.2 113.7 93.8 113.7 179.7"/></g><g clip-path="url(#clip2)"><path class="dat thin" d="M136.4 95.5 L136.4 124.0 137.4 104.4 137.4 157.1 138.4 113.9 138.4 195.3 139.4 123.1 139.4 240.9 140.4 201.2 140.4 241.5 141.4 125.5 141.4 193.8 142.4 116.2 142.4 165.1 143.4 112.1 143.4 135.6 144.4 120.4 144.4 126.0"/></g><text class="ovl" x="140.5" y="35.0" text-anchor="middle">H I 972.5</text><g clip-path="url(#clip2)"><path class="dat thin" d="M158.3 100.3 L158.3 157.6 159.3 98.2 159.3 208.6 160.3 110.9 160.3 212.9 161.3 121.7 161.3 160.9 162.3 127.8 162.3 129.6"/></g><text class="ovl" x="160.3" y="24.0" text-anchor="middle">H I 1025.7 (z≈2.40)</text><g clip-path="url(#clip2)"><path class="dat thin" d="M172.1 100.6 L172.1 126.5 173.1 97.5 173.1 212.4 174.1 99.4 174.1 168.2 175.1 110.8 175.1 233.6 176.1 113.4 176.1 126.8"/></g><text class="ovl" x="174.2" y="13.0" text-anchor="middle">H I 1025.7 (z≈2.44)</text><g clip-path="url(#clip2)"><path class="dat thin" d="M201.7 98.2 L201.7 140.1 202.7 101.9 202.7 171.0 203.7 107.2 203.7 179.8 204.7 121.5 204.7 240.7 205.7 237.3 205.7 240.9 206.7 109.3 206.7 240.1 207.7 104.7 207.7 220.4 208.7 100.0 208.7 161.0 209.7 101.0 209.7 195.8 210.7 114.0 210.7 153.2"/></g><text class="ovl" x="206.2" y="35.0" text-anchor="middle">H I 1025.7</text><g clip-path="url(#clip2)"><path class="dat thin" d="M291.6 100.8 L291.6 188.7 292.7 100.5 292.7 131.0 293.6 121.6 293.6 152.1 294.6 121.1 294.6 135.1 295.6 127.6 295.6 179.2"/></g><text class="ovl" x="293.9" y="35.0" text-anchor="middle">H I 1215.7 (z≈2.18)</text><g clip-path="url(#clip2)"><path class="dat thin" d="M383.0 98.9 L383.0 114.5 384.0 108.6 384.0 124.3 385.0 115.6 385.0 239.7 386.0 117.0 386.0 159.3 387.0 113.5 387.0 128.8"/></g><text class="ovl" x="385.4" y="24.0" text-anchor="middle">H I 1215.7 (z≈2.40)</text><g clip-path="url(#clip2)"><path class="dat thin" d="M399.4 103.9 L399.4 194.8 400.4 102.7 400.4 182.5 401.4 111.0 401.4 235.8 402.4 98.8 402.4 238.4 403.4 100.1 403.4 239.7"/></g><text class="ovl" x="401.8" y="35.0" text-anchor="middle">H I 1215.7 (z≈2.44)</text><g clip-path="url(#clip2)"><path class="dat thin" d="M405.8 101.4 L405.8 122.6 406.8 110.7 406.8 239.2 407.8 102.7 407.8 152.3 408.8 99.1 408.8 113.4 409.8 100.6 409.8 108.9"/></g><text class="ovl" x="408.2" y="13.0" text-anchor="middle">Si II 1190.4</text><g clip-path="url(#clip2)"><path class="dat thin" d="M413.3 180.3 L413.3 239.5 414.3 157.6 414.3 238.8 415.3 156.8 415.3 168.5 416.3 156.9 416.3 193.0 417.3 156.6 417.3 162.5 418.3 156.1 418.3 176.7 419.3 156.4 419.3 211.3 420.3 155.4 420.3 196.7 421.3 153.0 421.3 157.9 422.3 150.0 422.3 181.5 423.3 151.8 423.3 167.8 424.3 150.5 424.3 155.4 425.3 151.6 425.3 178.0 426.3 152.2 426.3 219.6 427.3 153.8 427.3 238.0 428.3 149.8 428.3 236.3 429.3 146.1 429.3 200.2 430.3 149.0 430.3 158.7 431.3 150.8 431.3 162.3 432.3 150.7 432.3 155.2 433.3 152.2 433.3 169.7 434.3 163.2 434.3 228.5 435.3 182.7 435.3 238.1 436.3 182.0 436.3 237.9 437.3 233.1 437.3 239.3 438.3 238.5 438.3 239.7 439.3 238.6 439.3 239.4 440.3 207.5 440.3 239.7 441.3 171.9 441.3 209.3 442.3 156.4 442.3 172.4 443.3 145.9 443.3 157.8 444.3 145.5 444.3 232.7 445.3 136.4 445.3 147.0 446.3 128.2 446.3 141.7 447.3 119.7 447.3 144.5 448.3 118.2 448.3 170.2 449.3 114.1 449.3 151.8 450.3 107.1 450.3 137.9 451.3 102.7 451.3 109.5 452.3 100.9 452.3 107.0 453.3 94.6 453.3 105.3 454.3 99.1 454.3 104.9"/></g><g clip-path="url(#clip2)"><path class="dat thin" d="M491.6 97.6 L491.6 107.9 492.6 103.1 492.6 111.1 493.6 102.7 493.6 214.7 494.6 101.0 494.6 123.3 495.6 101.9 495.6 108.4 496.6 101.9 496.6 107.0"/></g><text class="ovl" x="494.2" y="35.0" text-anchor="middle">Si II 1260.4</text><g clip-path="url(#clip2)"><path class="dat thin" d="M542.9 100.7 L542.9 109.0 543.9 100.7 543.9 108.4 544.9 101.8 544.9 153.3 545.9 103.5 545.9 111.1 546.9 102.3 546.9 108.4 547.9 105.0 547.9 114.8"/></g><text class="ovl" x="545.5" y="24.0" text-anchor="middle">O I 1302.2</text><g clip-path="url(#clip2)"><path class="dat thin" d="M545.6 101.4 L545.6 127.0 546.6 100.2 546.6 109.2 547.6 102.6 547.6 123.4 548.6 102.1 548.6 110.3 549.6 105.1 549.6 111.4 550.6 106.7 550.6 111.9"/></g><text class="ovl" x="548.2" y="13.0" text-anchor="middle">Si II 1304.4</text><g clip-path="url(#clip2)"><path class="dat thin" d="M582.6 102.4 L582.6 111.4 583.6 101.2 583.6 108.3 584.6 100.4 584.6 191.1 585.6 101.7 585.6 129.2 586.6 100.6 586.6 108.9 587.6 100.8 587.6 107.5"/></g><text class="ovl" x="585.3" y="35.0" text-anchor="middle">C II 1334.5</text><g clip-path="url(#clip2)"><path class="dat thin" d="M654.1 98.8 L654.1 110.0 655.1 101.8 655.1 107.8 656.1 101.5 656.1 136.8 657.1 103.3 657.1 153.1 658.1 105.3 658.1 148.8 659.1 107.3 659.1 117.8"/></g><text class="ovl" x="657.0" y="24.0" text-anchor="middle">Fe II 1608.5 (z≈2.05)</text><g clip-path="url(#clip2)"><path class="dat thin" d="M818.4 108.8 L818.4 119.2 819.4 107.1 819.4 114.6 820.4 105.5 820.4 116.2 821.4 103.4 821.4 136.3 822.4 101.8 822.4 109.7 823.4 100.3 823.4 109.0 824.4 99.2 824.4 108.4"/></g><text class="ovl" x="821.5" y="35.0" text-anchor="middle">Si II 1526.7</text><g clip-path="url(#clip2)"><path class="dat thin" d="M918.7 105.8 L918.7 139.2 919.7 100.9 919.7 113.2 920.7 102.2 920.7 110.0 921.7 101.4 921.7 113.8 922.7 101.8 922.7 109.4 923.7 98.9 923.7 108.7 924.7 100.0 924.7 107.7"/></g><text class="ovl" x="922.0" y="35.0" text-anchor="middle">Fe II 1608.5</text><g clip-path="url(#clip2)"><path class="dat thin" d="M995.2 110.6 L995.2 121.3 996.2 106.8 996.2 116.6 997.2 105.2 997.2 116.5 998.2 99.8 998.2 136.4 999.2 100.9 999.2 111.5 1000.2 103.1 1000.2 115.8 1001.2 111.0 1001.2 119.8"/></g><text class="ovl" x="998.6" y="35.0" text-anchor="middle">Al II 1670.8</text><rect class="frame" x="56.0" y="40.0" width="960.0" height="210.0"/><line class="tick" x1="165.1" y1="250.0" x2="165.1" y2="246.0"/><text class="tk" x="165.1" y="262.0" text-anchor="middle">3500</text><line class="tick" x1="339.5" y1="250.0" x2="339.5" y2="246.0"/><text class="tk" x="339.5" y="262.0" text-anchor="middle">4000</text><line class="tick" x1="513.8" y1="250.0" x2="513.8" y2="246.0"/><text class="tk" x="513.8" y="262.0" text-anchor="middle">4500</text><line class="tick" x1="688.1" y1="250.0" x2="688.1" y2="246.0"/><text class="tk" x="688.1" y="262.0" text-anchor="middle">5000</text><line class="tick" x1="862.4" y1="250.0" x2="862.4" y2="246.0"/><text class="tk" x="862.4" y="262.0" text-anchor="middle">5500</text><line class="tick" x1="56.0" y1="239.0" x2="60.0" y2="239.0"/><text class="tk" x="52.0" y="242.0" text-anchor="end">0</text><line class="tick" x1="56.0" y1="101.8" x2="60.0" y2="101.8"/><text class="tk" x="52.0" y="104.8" text-anchor="end">1</text><text class="axl" x="536.0" y="276.0" text-anchor="middle">Wavelength (Å)</text><text class="axl" x="22.0" y="145.0" text-anchor="middle" transform="rotate(-90 22.0 145.0)">Flux (scaled)</text></svg></div></section>
+ </div>
+</div></main><aside class="modstrip"><span>▸ .mod editor</span></aside></div>
+ <div class="win-status"><span>Q1243p307.model</span>
+  <span class="sep"></span><span class="muted">No fit running</span></div>
+</div></div></div><script>
+(function () {
+  var actual = false;
+  function fit() {
+    document.querySelectorAll('.stage').forEach(function (s) {
+      var k = actual ? 1 : Math.min(1, s.clientWidth / 1442);
+      s.style.setProperty('--k', k);
+      s.style.height = Math.ceil(902 * k) + 'px';
+      s.classList.toggle('scaled', !actual);
+    });
+  }
+  document.querySelectorAll('[data-size]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      actual = b.getAttribute('data-size') === 'actual';
+      document.querySelectorAll('[data-size]').forEach(function (o) {
+        o.setAttribute('aria-pressed', String(
+          o.getAttribute('data-size') === b.getAttribute('data-size')));
+      });
+      fit();
+    });
+  });
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script></body></html>

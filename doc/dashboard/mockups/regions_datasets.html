@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Regions · one transition in three datasets (Q1243p307) · ALIS dashboard mockup</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap"><style>
+:root {
+  /* Layout: a review sheet - one column of annotated window mockups */
+  --bg: #eef0ee; --surface: #ffffff; --ink: #1c2024; --muted: #56606a;
+  --line: #cfd4d1; --accent: #2b6a8a;
+  --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181b; --surface: #1d2125; --ink: #e4e7ea; --muted: #9aa4ad;
+    --line: #2f363c; --accent: #84c0dc; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181b; --surface: #1d2125; --ink: #e4e7ea; --muted: #9aa4ad;
+  --line: #2f363c; --accent: #84c0dc; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+.sheet { max-width: 1540px; margin: 0 auto;
+  padding-inline: clamp(16px, 3vw, 36px); padding-block: 28px 72px; }
+.sheet a { color: var(--accent); }
+.sheet h1 { font-size: 30px; line-height: 1.15; margin: 4px 0 8px;
+  text-wrap: balance; letter-spacing: -0.01em; }
+.sheet h2 { font-size: 21px; margin: 2px 0 0; text-wrap: balance; }
+.eyebrow { font: 600 12px/1.2 var(--sans); letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--accent); }
+.lede { max-width: 72ch; color: var(--muted); margin: 0 0 8px; }
+.keys { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 16px 0;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); font-size: 13.5px; max-width: 1200px; }
+.keys b { font-weight: 600; }
+.toc { display: grid; gap: 4px 28px; margin: 14px 0 0; padding: 0;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); max-width: 1200px;
+  list-style: none; }
+.toc li { padding: 6px 0; border-top: 1px solid var(--line); }
+.toc .grp { display: block; font: 600 11.5px/1.2 var(--sans);
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); }
+.mock { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); }
+.notes { display: grid; gap: 10px 36px; margin: 10px 0 14px; max-width: 1200px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.notes h3 { font: 600 12px/1.3 var(--sans); letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes li { margin: 3px 0; max-width: 70ch; }
+.sizebar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin: 6px 0 10px; font-size: 13px; color: var(--muted); }
+.sizebar button { font: 13px var(--sans); color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 10px; cursor: pointer; }
+.sizebar button[aria-pressed="true"] { border-color: var(--accent);
+  color: var(--accent); }
+.sizebar button:focus-visible { outline: 2px solid var(--accent);
+  outline-offset: 2px; }
+.stage { width: 100%; overflow: auto; position: relative; }
+.stage.scaled { overflow: hidden; }
+.stage > .win { transform: scale(var(--k, 1)); transform-origin: 0 0; }
+.back { font-size: 14px; }
+
+/* The dashboard window: fixed neutral palette (Qt Fusion-like, Q0.2) */
+.win { width: 1440px; height: 900px; display: flex; flex-direction: column;
+  background: #ececec; color: #1e1e1e; border: 1px solid #8f8f8f;
+  border-radius: 7px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.28);
+  font: 12.5px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans",
+    Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif; text-align: left; }
+.win * { box-sizing: border-box; }
+.win-title { flex: 0 0 28px; display: flex; align-items: center;
+  justify-content: center; position: relative; font-weight: 600; color: #3a3a3a;
+  background: linear-gradient(#e9e9e9, #d6d6d6); border-bottom: 1px solid #b0b0b0; }
+.win-title::before { content: ""; position: absolute; left: 12px; top: 9px;
+  width: 10px; height: 10px; border-radius: 50%; background: #b9b9b9;
+  box-shadow: 16px 0 #b9b9b9, 32px 0 #b9b9b9; }
+.win-menu { flex: 0 0 24px; display: flex; gap: 18px; align-items: center;
+  padding: 0 12px; background: #f6f6f6; border-bottom: 1px solid #d2d2d2; }
+.win-tool { flex: 0 0 38px; display: flex; align-items: center; gap: 6px;
+  padding: 0 8px; background: #f0f0f0; border-bottom: 1px solid #c4c4c4; }
+.win-tabs { flex: 0 0 34px; display: flex; align-items: flex-end; gap: 2px;
+  padding: 0 8px; background: #e2e2e2; border-bottom: 1px solid #a9a9a9; }
+.tab { height: 28px; padding: 0 16px; display: flex; align-items: center; gap: 7px;
+  border: 1px solid #b4b4b4; border-bottom: none; border-radius: 4px 4px 0 0;
+  background: #d9d9d9; color: #333; }
+.tab.active { height: 31px; margin-bottom: -1px; background: #ececec;
+  font-weight: 600; color: #111; }
+.mk { display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%; font: 700 9px/1 sans-serif;
+  font-style: normal; color: #fff; }
+.mk.ok { background: #0072B2; } .mk.stale { background: #E69F00; color: #2b1d00; }
+.mk.warn { background: #D55E00; }
+.mk.none { border: 1.5px solid #8f8f8f; width: 12px; height: 12px; }
+.win-main { flex: 1 1 auto; display: flex; min-height: 0; }
+.content { flex: 1 1 auto; min-width: 0; overflow: hidden; position: relative; }
+.win-status { flex: 0 0 26px; display: flex; align-items: center; gap: 8px;
+  padding: 0 10px; background: #e3e3e3; border-top: 1px solid #b9b9b9;
+  font-size: 12px; }
+.win .sep { width: 1px; height: 18px; background: #c2c2c2; margin: 0 4px; }
+.win .grow { flex: 1 1 auto; }
+.win .muted { color: #6b6b6b; }
+.win .small { font-size: 11.5px; }
+.win .num { font-variant-numeric: tabular-nums; }
+.win .btn { display: inline-flex; align-items: center; gap: 4px; height: 24px;
+  padding: 0 9px; border: 1px solid #b4b4b4; border-radius: 3px; white-space: nowrap;
+  background: linear-gradient(#fdfdfd, #ebebeb); font-size: 12px; color: #1e1e1e; }
+.win .btn.sm { height: 21px; padding: 0 7px; font-size: 11.5px; }
+.win .btn.xs { height: 17px; padding: 0 5px; font-size: 11px; }
+.win .btn.primary { background: linear-gradient(#4b9fd8, #2f86c4); color: #fff;
+  border-color: #286fa4; }
+.win .btn.on { background: #d6e8f6; border-color: #6aa6d1; }
+.win .btn.dim { opacity: 0.5; }
+.win .pill { border-radius: 10px; padding: 1px 9px; font-size: 11.5px;
+  border: 1px solid #c0c0c0; background: #fafafa; }
+.win .blindpill { background: #2f2f2f; color: #f2f2f2; border-color: #2f2f2f; }
+.win .spin { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  border: 2px solid #2f86c4; border-right-color: transparent; }
+.win .cols { display: flex; gap: 8px; padding: 8px; align-items: flex-start; }
+.win .cols.inner { padding: 0; margin-top: 8px; }
+.win .col { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.win .pane { background: #fbfbfb; border: 1px solid #c3c3c3; border-radius: 4px;
+  overflow: hidden; }
+.win .pane > header { display: flex; align-items: center; gap: 6px;
+  min-height: 29px; padding: 3px 8px; font-weight: 600; font-size: 12px;
+  background: linear-gradient(#f7f7f7, #eaeaea); border-bottom: 1px solid #d1d1d1; }
+.win .pane > header > :not(:first-child) { font-weight: 400; }
+.win .pbody { padding: 6px 8px; }
+.win .pbody > svg { display: block; margin: 0 auto; }
+.win table { border-collapse: collapse; }
+.win .grid th, .win .grid td { border: 1px solid #d6d6d6; padding: 3px 6px;
+  text-align: left; white-space: nowrap; }
+.win .grid th { background: #f0f0f0; font-weight: 600; }
+.win .grid.tight th, .win .grid.tight td { padding: 2px 5px; }
+.win .grid tr.on td { background: #dcebf7; }
+.win .kv td { padding: 2px 8px 2px 0; vertical-align: top; }
+.win .kv td:first-child { color: #555; white-space: nowrap; }
+.win .covlist { width: 100%; font-size: 11.5px; }
+.win .covlist th { text-align: left; color: #555; font-weight: 600;
+  border-bottom: 1px solid #d6d6d6; padding: 2px 4px; }
+.win .covlist td { padding: 2px 4px; white-space: nowrap;
+  border-bottom: 1px solid #efefef; }
+.win .covlist tr.snip td:nth-child(2) { font-weight: 600; }
+.win .covlist tr.cur td { background: #d6e8f6; }
+.win .covlist tr.divider td { color: #777; font-size: 10.5px; padding: 5px 4px;
+  background: #f3f3f3; white-space: normal; }
+.win .flag.gap { background: #f4eee3; color: #7a5a1e; border-color: #ddcca9; }
+.win .bar { display: inline-block; height: 7px; background: #7aa7c7;
+  border-radius: 1px; }
+.win .flag { display: inline-block; font-size: 10px; line-height: 14px;
+  padding: 0 4px; border-radius: 3px; margin-right: 2px; background: #eee;
+  color: #555; border: 1px solid #d5d5d5; }
+.win .flag.forest { background: #e8f2f9; color: #005685; border-color: #b4d3e8; }
+.win .flag.edge, .win .flag.gap, .win .flag.nodata { background: #fdf3dc;
+  color: #7a5300; border-color: #ecc979; }
+.win .flag.bad { background: #fbe9e0; color: #9a3a00; border-color: #e7b08f; }
+.win .seg { display: inline-flex; border: 1px solid #b5b5b5; border-radius: 3px;
+  overflow: hidden; font-size: 11.5px; }
+.win .seg > * { padding: 1px 8px; background: #f7f7f7; font-weight: 400; }
+.win .seg > b { background: #d6e8f6; font-weight: 600; }
+.win .seg > * + * { border-left: 1px solid #c7c7c7; }
+.win .chk { font-size: 11.5px; }
+.win .chk::before { content: "☐ "; } .win .chk.on::before { content: "☑ "; }
+.win .sel { display: inline-block; border: 1px solid #b9b9b9; border-radius: 3px;
+  background: #fff; padding: 0 6px; font-size: 11.5px; }
+.win .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  margin-top: 6px; }
+.win .row.right { justify-content: flex-end; }
+.win .col-btns { display: flex; flex-direction: column; gap: 4px;
+  align-items: flex-start; margin: 6px 0; }
+.win .warnbox { background: #fff6e5; border: 1px solid #e8c47c; border-radius: 4px;
+  padding: 6px 8px; margin-top: 6px; }
+.win .warnbox.slim { margin: 0; }
+.win .okbox { background: #eef8f0; border: 1px solid #9fd0aa; border-radius: 4px;
+  padding: 6px 8px; margin-top: 8px; font-size: 11.5px; }
+.win .okbox ul { margin: 3px 0 0 16px; padding: 0; }
+.win .banner { background: #e9f1f8; border: 1px solid #b6cfe4; border-radius: 4px;
+  padding: 6px 10px; margin: 8px 8px 0; }
+.win .banner.slim { margin: 0 0 6px; font-size: 11.5px; }
+.win .note { color: #6a4b00; background: #fff8e8; border-left: 3px solid #e0a100;
+  padding: 4px 6px; }
+.win .dialog { position: absolute; background: #f8f8f8; border: 1px solid #8d8d8d;
+  border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.3); overflow: hidden; }
+.win .dlg-title { background: linear-gradient(#ececec, #dbdbdb); padding: 6px 10px;
+  font-weight: 600; border-bottom: 1px solid #bdbdbd; }
+.win .dlg-body { padding: 8px 10px; }
+.win .dlg-body p { margin: 0 0 6px; }
+.win .colroles { font-size: 11px; margin-bottom: 6px; width: 100%; }
+.win .colroles th, .win .colroles td { border: 1px solid #d6d6d6; padding: 2px 5px;
+  font-variant-numeric: tabular-nums; }
+.win .colroles th { background: #f0f0f0; font-weight: 400; color: #555; }
+.win .colroles .sel { margin-top: 2px; color: #1e1e1e; font-weight: 600; }
+.win .switch { display: flex; align-items: center; gap: 8px; }
+.win .knob { width: 30px; height: 16px; border-radius: 8px; background: #c9c9c9;
+  position: relative; flex: 0 0 auto; }
+.win .knob::after { content: ""; position: absolute; left: 2px; top: 2px;
+  width: 12px; height: 12px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+.win .radio { display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+  border: 1px solid #888; }
+.win .radio.on { background: radial-gradient(#2f86c4 40%, #fff 46%); }
+.win .hist td { padding: 2px 8px 2px 0; font-size: 11.5px;
+  font-variant-numeric: tabular-nums; }
+.win .hist tr.on td { color: #1b5f91; font-weight: 600; }
+.win .sysrow { display: flex; gap: 6px; align-items: center; padding: 3px 0;
+  flex-wrap: wrap; }
+.win .blind { font-family: Menlo, Consolas, monospace; color: #5a5a5a;
+  letter-spacing: -1px; }
+.win .blindline { margin: 6px 0 0; }
+.win .chiprow { display: flex; gap: 4px; padding: 8px 8px 0; flex-wrap: wrap; }
+.win .chip { border: 1px solid #b9b9b9; border-radius: 11px; padding: 1px 9px;
+  background: #f9f9f9; font-size: 11.5px; white-space: nowrap; }
+.win .chip.on { background: #2f86c4; color: #fff; border-color: #2a74ab; }
+.win .chip i { font-style: normal; color: #777; margin-left: 4px; }
+.win .chip.on i { color: #dbeaf6; }
+.win .chip.add { border-style: dashed; color: #555; }
+.win .navbar { display: flex; gap: 6px; align-items: center; padding: 8px 8px 0; }
+.win .nav-sys { font-weight: 600; margin: 8px 0 3px; padding-bottom: 2px;
+  border-bottom: 1px solid #ddd; }
+.win .nav-sys:first-child { margin-top: 0; }
+.win .nav-row { display: flex; flex-direction: column; padding: 3px 6px;
+  border-radius: 3px; }
+.win .nav-row.on { background: #2f86c4; color: #fff; }
+.win .nav-row.on .muted { color: #dbeaf6; }
+.win .nav-row.indent { margin-left: 14px; }
+.win .hint { font-size: 11px; color: #666; margin-top: 12px; }
+.win .matrix { font-size: 12px; width: 100%; }
+.win .matrix th, .win .matrix td { border-bottom: 1px solid #e0e0e0; padding: 4px 6px;
+  text-align: left; vertical-align: top; white-space: nowrap; }
+.win .matrix th { background: #f0f0f0; font-weight: 600; }
+.win .matrix .focus { background: #eef5fb; }
+.win .matrix .none { color: #999; }
+.win .sub { font-size: 10.5px; color: #7a5a00; margin-top: 2px; }
+.win .st { display: inline-block; font-size: 10.5px; line-height: 14px;
+  padding: 0 4px; border-radius: 3px; margin-left: 2px; border: 1px solid; }
+.win .st.free { color: #005685; border-color: #9cc3df; background: #eaf3fa; }
+.win .st.fixed { color: #555; border-color: #c5c5c5; background: #f1f1f1; }
+.win .st.tied { color: #7d3f68; border-color: #ddb3cc; background: #f8eef4; }
+.win .st.warn { color: #7a5300; border-color: #ecc979; background: #fdf3dc; }
+.win .legend { font-size: 11px; color: #555; margin-top: 6px; }
+.win .card { border: 1px solid #cfcfcf; border-radius: 4px; background: #fff;
+  margin-bottom: 8px; }
+.win .card.on { border-color: #2f86c4; box-shadow: 0 0 0 1px #2f86c4; }
+.win .card.dim { background: #f5f5f5; }
+.win .card-h { display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+  border-bottom: 1px solid #e3e3e3; }
+.win .card .kv { margin: 4px 8px; }
+.win .card tr.focus td { background: #eef5fb; }
+.win .modpanel { flex: 0 0 450px; width: 450px; display: flex;
+  flex-direction: column; background: #fff; border-left: 1px solid #a9a9a9;
+  min-height: 0; }
+.win .modhead { display: flex; gap: 8px; align-items: center; padding: 5px 8px;
+  background: linear-gradient(#f7f7f7, #ebebeb); border-bottom: 1px solid #cfcfcf; }
+.win .modtext { flex: 1 1 auto; overflow: hidden; padding: 4px 0; white-space: pre;
+  font: 11px/16px Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+.win .modtext div { overflow: hidden; }
+.win .modtext .ln { display: inline-block; width: 34px; text-align: right;
+  color: #a0a0a0; padding-right: 7px; margin-right: 6px;
+  border-right: 1px solid #eee; }
+.win .modtext .hl { background: #fff0b0; }
+.win .modnote { border-top: 1px solid #e1c27c; background: #fff6e2; padding: 6px 8px;
+  font-size: 11.5px; white-space: normal; }
+.win .modstrip { flex: 0 0 26px; border-left: 1px solid #a9a9a9; background: #e6e6e6;
+  display: flex; justify-content: center; padding-top: 12px; }
+.win .modstrip span { writing-mode: vertical-rl; font-size: 11.5px; color: #444; }
+.win .pad { padding: 0 8px; } .win .pad-x { padding: 8px 8px 0; }
+.win .w-half { width: 520px; }
+.win .paperbox { background: #d4d4d4; padding: 8px; display: flex;
+  justify-content: center; }
+.win .paper { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.win .scroll { max-height: 252px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(#000 85%, transparent);
+  mask-image: linear-gradient(#000 85%, transparent); }
+.win .results { width: 100%; font-size: 11px; }
+.win .results td { white-space: nowrap; }
+.win .results tr.group td { color: #555; }
+.win .kvline { margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.win .idleg { display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  font-size: 11.5px; }
+.win .sw { display: inline-block; width: 14px; height: 10px; margin-right: 3px;
+  vertical-align: middle; }
+.win .sw.id-h { background: #D55E00; } .win .sw.id-o { background: #CC79A7; }
+.win .sw.id-x { background: #8c8c8c; }
+.win .sw.fitk { background: rgba(0,158,115,.35); }
+.win .sw.othk { background: rgba(86,180,233,.35); }
+.win .sw.shk { background: repeating-linear-gradient(45deg, #a8457f 0 2px,
+  #f6e6f0 2px 5px); }
+.win .t-h { color: #D55E00; } .win .t-d { color: #0072B2; }
+.win .c { text-align: center; } .win .bad { color: #b3261e; font-weight: 600; }
+.win .cov { font-size: 11.5px; }
+.win .cov td.have { color: #2f86c4; text-align: center; }
+.win .cov td.miss { color: #bbb; text-align: center; }
+.win .hist2 td { font-size: 11.5px; vertical-align: top; }
+.win .hist2 tr.ext td { background: #f3f7fb; }
+.win .pane { position: relative; }
+.win .wrap { white-space: normal; }
+.win .iso { padding-left: 10px; color: #0072B2; }
+.win .dot { color: #009E73; font-size: 11px; }
+.win .field { display: inline-block; border: 1px solid #9fb8cc; border-radius: 3px;
+  background: #fff; padding: 0 6px; font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.08); }
+.win .bhead { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+.win .seg .off { color: #b5b5b5; }
+.win .subtabs { display: flex; gap: 2px; padding: 6px 8px 0;
+  border-bottom: 1px solid #c4c4c4; background: #e9e9e9; }
+.win .stab { padding: 3px 16px; border: 1px solid #c4c4c4; border-bottom: none;
+  border-radius: 3px 3px 0 0; background: #dedede; font-size: 12px; }
+.win .stab.on { background: #ececec; font-weight: 600; margin-bottom: -1px; }
+.win .tools { display: inline-flex; border: 1px solid #b5b5b5; border-radius: 3px;
+  overflow: hidden; }
+.win .tools i { font-style: normal; width: 24px; text-align: center;
+  background: #f7f7f7; border-right: 1px solid #d0d0d0; }
+.win .tools i:last-child { border-right: none; }
+.win .tools i.on { background: #d6e8f6; }
+.win .sel.open { border-color: #0072B2; box-shadow: 0 0 0 2px rgba(0,114,178,.2); }
+.win .menu { position: absolute; width: 230px; background: #fff;
+  border: 1px solid #8d8d8d; border-radius: 4px; padding: 3px 0;
+  box-shadow: 0 8px 22px rgba(0,0,0,.25); font-size: 12px; z-index: 3; }
+.win .menu .mi { padding: 2px 12px; }
+.win .menu .mi.on { background: #0072B2; color: #fff; }
+.win .menu .mh, .win .tray .mh { padding: 4px 12px 1px; font-size: 10.5px;
+  color: #777; text-transform: uppercase; letter-spacing: .04em; }
+.win .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.win .snipchip { display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid #c9c9c9; border-radius: 4px; padding: 2px 5px;
+  background: #fff; font-size: 11px; }
+.win .snipchip.on { border-color: #0072B2; box-shadow: 0 0 0 1px #0072B2; }
+.win .m { font-size: 10.5px; padding: 0 4px; border-radius: 3px;
+  border: 1px solid; white-space: nowrap; }
+.win .m.ok { color: #004f7c; border-color: #8dbad9; background: #e8f2f9; }
+.win .m.amber { color: #6b4800; border-color: #e6b84d; background: #fdf4dd; }
+.win .m.bad { color: #8f3500; border-color: #e39a6f; background: #fbebe2; }
+.win .gridview { position: relative; overflow: hidden; }
+.win .vscroll { position: absolute; right: 0; top: 0; bottom: 0; width: 10px;
+  background: #ededed; border-left: 1px solid #ddd; }
+.win .vscroll i { display: block; margin: 2px; border-radius: 3px;
+  background: #b0b0b0; }
+.win .popover { position: absolute; width: 270px; background: #fff;
+  border: 1px solid #0072B2; border-radius: 5px; padding: 6px 8px;
+  box-shadow: 0 8px 22px rgba(0,0,0,.22); z-index: 3; }
+.win .pop-title { font-weight: 600; margin-bottom: 4px; }
+.win .pop { width: 100%; font-size: 11.5px; margin-bottom: 4px; }
+.win .pop td { padding: 2px 4px; border-bottom: 1px solid #f0f0f0; }
+.win .pop tr.on td { background: #0072B2; color: #fff; }
+.win .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.win .pcell { display: flex; align-items: center; gap: 6px; height: 54px;
+  padding: 0 8px; border: 1px solid #c9c9c9; border-radius: 4px; background: #fff; }
+.win .pcell i { font-style: normal; color: #999; }
+.win .pcell span { color: #777; font-size: 11px; margin-left: auto; }
+.win .pcell.drop { border: 2px dashed #0072B2; background: #eaf3fa; }
+.win .ghost { position: absolute; left: 178px; top: 238px; padding: 4px 9px;
+  border-radius: 4px; background: #fff; border: 1px solid #0072B2;
+  box-shadow: 0 6px 16px rgba(0,0,0,.25); font-size: 11.5px; z-index: 2; }
+.win .tray { margin-top: 10px; padding: 4px 6px 8px; border: 1px dashed #bdbdbd;
+  border-radius: 4px; background: #f6f6f6; display: flex; flex-wrap: wrap; gap: 5px; }
+.win .tray .mh { flex-basis: 100%; padding-left: 2px; }
+.win .tchip { border: 1px solid #c9c9c9; border-radius: 11px; padding: 1px 8px;
+  background: #fff; font-size: 11px; }
+.win .tchip.dragging { opacity: .4; border-style: dashed; }
+.win .keyrow { display: flex; align-items: center; gap: 6px; padding: 1px 0;
+  font-size: 11.5px; }
+.win .keyrow .sw { width: 16px; height: 11px; flex: 0 0 auto; margin: 0; }
+.win .sw.edgek { background: #E69F00; width: 5px; margin: 0 6px 0 5px; }
+.win .sw.contk { background: repeating-linear-gradient(90deg, #0072B2 0 5px,
+  transparent 5px 8px); height: 2px; }
+.win .sw.datk { background: #000; height: 2px; }
+.win .sw.mdlk { background: #D55E00; height: 2px; }
+.win .sw.runb { background: repeating-linear-gradient(90deg, #0072B2 0 5px,
+  transparent 5px 8px); height: 2px; }
+.win .dsel { font-weight: 400; color: #555; }
+.win .sel.wide { min-width: 170px; }
+.win .seg.dis { opacity: .45; }
+.win .identify { margin: 6px 0; padding: 6px 8px; border: 1px solid #9fc3df;
+  border-radius: 4px; background: #f2f8fc; }
+.win .identify .row { margin-top: 5px; }
+.win .menu.wide { width: 250px; }
+.win .menu .mi { display: flex; gap: 6px; }
+.win .cmpbar { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; }
+.win .cmp td { white-space: nowrap; }
+.win .field.edit { display: inline-block; white-space: normal; border-color: #0072B2;
+  box-shadow: 0 0 0 2px rgba(0,114,178,.2); padding: 1px 4px; width: 100%; }
+.win .caret { display: inline-block; width: 1px; height: 12px; background: #111;
+  margin-left: 1px; vertical-align: -2px; }
+.win .cmp td:last-child { white-space: normal; font-size: 11px; }
+.win pre.code { margin: 0; font: 10.5px/1.45 Menlo, Consolas, monospace;
+  white-space: pre; overflow: hidden; color: #1e1e1e; }
+
+/* Plots */
+svg.plot, svg.paper { display: block; }
+.win svg text { font-family: -apple-system, "Segoe UI", "Noto Sans", Arial,
+  sans-serif; }
+svg .frame { fill: none; stroke: #8a8a8a; }
+svg .tick { stroke: #8a8a8a; }
+svg .tk { font-size: 10px; fill: #4a4a4a; }
+svg .axl { font-size: 11px; fill: #333; }
+svg .plbl { font-size: 10.5px; fill: #222; font-weight: 600; }
+svg .dat { fill: none; stroke: #1b1b1b; stroke-width: 1; }
+svg .dat.thin { stroke-width: 0.6; }
+svg .dat.grey { stroke: #9a9a9a; }
+svg .mdl { fill: none; stroke: #D55E00; stroke-width: 1.3; }
+svg .mdl.faint { stroke-opacity: 0.45; }
+svg .cnt { fill: none; stroke: #0072B2; stroke-width: 1.4; stroke-dasharray: 6 3; }
+svg .cnt-n { stroke: #0072B2; stroke-width: 0.9; stroke-dasharray: 4 3; }
+svg .zero { stroke: #8a8a8a; stroke-width: 0.8; stroke-dasharray: 3 3; }
+svg .fit { fill: rgba(0,158,115,.15); }
+svg .fit-oth { fill: rgba(86,180,233,.18); }
+svg .othersnip { fill: none; stroke: #56B4E9; stroke-dasharray: 2 3; }
+svg .outside { fill: rgba(0,0,0,.06); }
+svg .shared { fill: url(#hatch-shared); }
+svg .edge { stroke: #E69F00; stroke-width: 1.5; }
+svg .handle { fill: #E69F00; stroke: #8a5f00; }
+svg line.id-h { stroke: #D55E00; } svg text.id-h { fill: #b34e00; }
+svg line.id-o { stroke: #CC79A7; } svg text.id-o { fill: #9c4a7c; }
+svg line.id-x { stroke: #8c8c8c; } svg text.id-x { fill: #6f6f6f; }
+svg .idl { font-size: 9.5px; }
+svg .mk-h { stroke: #D55E00; } svg .mk-o { stroke: #CC79A7; }
+svg .mkl { font-size: 10px; fill: #b34e00; }
+svg .mkl-o { font-size: 10px; fill: #9c4a7c; }
+svg .zcur { stroke: #2f86c4; stroke-width: 1.5; }
+svg .zold { stroke: #999; stroke-dasharray: 3 3; }
+svg .zlbl { font-size: 10.5px; fill: #2f86c4; }
+svg .zlbl-old { font-size: 10px; fill: #888; }
+svg .tick-own { stroke-width: 1.6; }
+svg line.t-h { stroke: #D55E00; } svg line.t-d { stroke: #0072B2; }
+svg line.t-o { stroke: #CC79A7; } svg line.t-x { stroke: #777; }
+svg circle.grab { stroke: #fff; stroke-width: 1; }
+svg circle.t-h { fill: #D55E00; } svg circle.t-d { fill: #0072B2; }
+svg circle.t-o { fill: #CC79A7; }
+svg .tick-lock { stroke: #b8b8b8; stroke-width: 1; }
+svg .res { fill: none; stroke: #555; stroke-width: 0.8; }
+svg .rguide { stroke: #d9a0a0; stroke-dasharray: 2 2; }
+svg .rzero { stroke: #c4c4c4; }
+svg .snipband { fill: rgba(0,158,115,.28); }
+svg .snipband.cur { fill: rgba(230,159,0,.6); }
+svg .ovl { font-size: 9px; fill: #4d4d4d; }
+svg .gapl { font-size: 10px; fill: #8a6d3b; font-style: italic; }
+svg .dat.snipdat { stroke: #5b7fa3; stroke-width: 0.6; }
+svg .ovl.cur { fill: #b35f00; font-weight: 700; }
+svg .badge2 rect { stroke-width: 1; }
+svg .badge2 .b-ok { fill: #e6f0f8; stroke: #0072B2; }
+svg .badge2 .b-amber { fill: #fdf1d6; stroke: #E69F00; }
+svg .badge2 .b-bad { fill: #fbe6dc; stroke: #D55E00; }
+svg .badge2 text { font-size: 9.5px; fill: #1e1e1e; }
+svg .badge2 .bm { font-weight: 700; }
+svg .clickmark { stroke: #0072B2; stroke-width: 1.2; stroke-dasharray: 4 2; }
+svg .clickdot { fill: #0072B2; stroke: #fff; stroke-width: 1.5; }
+svg .zoombox { fill: rgba(0,114,178,.06); stroke: #0072B2; stroke-width: 1.2;
+  stroke-dasharray: 5 3; }
+svg .cv { font-size: 8.5px; fill: #1e1e1e; }
+svg .prog { fill: none; stroke: #0072B2; stroke-width: 1.6; }
+svg .prog-old { fill: none; stroke: #bbb; stroke-width: 1.2; }
+svg .prog-dot { fill: #2f86c4; }
+svg .p-dat { fill: none; stroke: #000; stroke-width: 0.8; }
+svg .p-mdl { fill: none; stroke: #D55E00; stroke-width: 1; }
+svg .p-cont { stroke: #0072B2; stroke-dasharray: 4 3; }
+svg .p-zero { stroke: #7F7F7F; stroke-dasharray: 4 3; }
+svg .p-res { fill: none; stroke: #555; stroke-width: 0.6; }
+svg .p-th { stroke: #D55E00; } svg .p-td { stroke: #0072B2; }
+svg .mdl-b { fill: none; stroke: #0072B2; stroke-width: 1.3;
+  stroke-dasharray: 5 3; }
+svg .selframe { fill: none; stroke: #0072B2; stroke-width: 2; }
+svg .plbl.sel { fill: #0072B2; }
+svg .p-lbl, svg .p-axl { fill: #000; font-family: "Times New Roman", Times, serif; }
+svg .p-lbl { font-size: 12px; } svg .p-axl { font-size: 13px; }
+</style></head><body><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><pattern id="hatch-shared" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="rgba(204,121,167,.14)"/><line x1="0" y1="0" x2="0" y2="6" stroke="#a8457f" stroke-width="2"/></pattern></defs></svg><div class="sheet"><a class="back" href="index.html">← All mockups</a><div class="eyebrow">Regions tab</div><h1>Regions · one transition in three datasets (Q1243p307)</h1><div class="notes"><div><h3>What this page tests</h3><ul><li>One layout for one or many datasets. Each dataset is a spectrum; clicking one selects it, and the Continuum and Snip boxes below show that dataset (HIRES here).</li><li>The strips scroll when they do not fit (shown here with three).</li><li>Shared pixels: the fix can be applied to every dataset at once; merging is offered first because the overlap is large (D19).</li></ul></div><div><h3>To decide</h3><ul><li>Anything else to change on the Regions tab?</li></ul></div></div><div class="sizebar">Window size: <button type="button" data-size="fit" aria-pressed="true">Fit to width</button><button type="button" data-size="actual" aria-pressed="false">Actual size (1440×900)</button></div><div class="stage">
+<div class="win">
+ <div class="win-title">ALIS dashboard — Q1243p307.model</div>
+ <div class="win-menu"><span>File</span><span>Edit</span><span>View</span><span>Model</span><span>Fit</span><span>Help</span></div>
+ <div class="win-tool">
+  <span class="btn">↶ Undo</span><span class="btn">↷ Redo</span>
+  <span class="sep"></span>
+  <span class="btn">Open…</span><span class="btn">Save</span>
+  <span class="muted">autosaved 12:41</span>
+  <span class="sep"></span>
+  <span class="btn">Mode: Voigt ▾</span><span class="pill">Not blinded</span>
+  <span class="grow"></span>
+  <span class="btn">Export .mod + snips…</span><span class="btn">?  Shortcuts</span>
+ </div>
+ <div class="win-tabs"><div class="tab" title="KIRKMAN spectrum moved: relink"><i class="mk warn">!</i>Data</div><div class="tab active" title="Shared pixels in 3 snips"><i class="mk warn">!</i>Regions</div><div class="tab" title="Complete"><i class="mk ok">✓</i>Components</div><div class="tab" title="Up to date"><i class="mk ok">✓</i>Fit</div><div class="tab" title="Not started"><i class="mk none"></i>Plot</div></div>
+ <div class="win-main"><main class="content">
+<div class="cols">
+ <div class="col" style="width:290px"><section class="pane "><header><span>Transitions</span><span class="grow"></span></header><div class="pbody"><div class="bhead">System <span class="sel wide">z = 2.525640 · primary ▾</span></div><div class="bhead">Element <span class="sel">O ▾</span><span class="btn xs">‹</span><span class="btn xs">›</span><span class="grow"></span><span class="seg sm"><b>I</b><span>II</span><span>III</span><span>IV</span></span></div><table class="covlist"><tr><th></th><th>Transition</th><th>λ<sub>obs</sub></th><th>fλ</th><th></th></tr><tr class="snip cur"><td><span class="dot">●</span></td><td>O I 1302.2</td><td class="num">4591.0</td><td><i class="bar" style="width:36px"></i></td><td></td></tr><tr class=""><td></td><td>O I 988.8</td><td class="num">3486.1</td><td><i class="bar" style="width:35px"></i></td><td></td></tr><tr class=""><td></td><td>O I 1025.8</td><td class="num">3616.5</td><td><i class="bar" style="width:31px"></i></td><td></td></tr><tr class=""><td></td><td>O I 971.7 ×2</td><td class="num">3426.0</td><td><i class="bar" style="width:30px"></i></td><td></td></tr><tr class=""><td></td><td>O I 988.7</td><td class="num">3485.6</td><td><i class="bar" style="width:28px"></i></td><td></td></tr><tr class=""><td></td><td>O I 948.7</td><td class="num">3344.7</td><td><i class="bar" style="width:27px"></i></td><td></td></tr><tr class=""><td></td><td>O I 936.6</td><td class="num">3302.2</td><td><i class="bar" style="width:25px"></i></td><td></td></tr><tr class=""><td></td><td>O I 929.5</td><td class="num">3277.1</td><td><i class="bar" style="width:23px"></i></td><td></td></tr><tr class=""><td></td><td>O I 950.9</td><td class="num">3352.5</td><td><i class="bar" style="width:21px"></i></td><td></td></tr><tr class=""><td></td><td>O I 925.0</td><td class="num">3261.0</td><td><i class="bar" style="width:21px"></i></td><td></td></tr><tr class=""><td></td><td>O I 921.9</td><td class="num">3250.1</td><td><i class="bar" style="width:20px"></i></td><td></td></tr></table><div class="muted small">Only transitions with data are listed. Click one to show it; <b>SNIP</b> makes it a snip (<span class="dot">●</span>), <b>CLEAR</b> undoes that.</div></div></section>
+ <section class="pane "><header><span>Key</span><span class="grow"></span></header><div class="pbody"><div class="keyrow"><i class="sw fitk"></i>fitted pixels</div><div class="keyrow"><i class="sw othk"></i>fitted by another snip</div><div class="keyrow"><i class="sw shk"></i>fitted twice</div><div class="keyrow"><i class="sw edgek"></i>snip edges: drag the handles</div><div class="keyrow"><i class="sw contk"></i>continuum</div><div class="keyrow"><i class="sw id-h"></i>line IDs: H I and D I</div><div class="keyrow"><i class="sw id-o"></i>line IDs: metals</div><div class="keyrow"><i class="sw id-x"></i>line IDs: other systems</div></div></section></div>
+ <div class="col" style="width:1100px">
+  <section class="pane "><header><span>O I 1302.2 · 3 datasets · <span class="dsel">click a spectrum to select it</span></span><span class="grow"></span><span class="seg"><b>Flux</b><span>Normalised</span></span><span class="btn sm on" title="Drag in the panel to add a fit region">Draw region</span><span class="btn sm" title="Click or drag over pixels to leave them out of the fit without changing the regions, e.g. a cosmic ray">Mask pixels</span><span class="sep"></span><span class="btn sm on" title="This transition is a snip">✓ SNIP</span><span class="btn sm" title="Clear every region and stop this being a snip">CLEAR</span></header><div class="pbody"><div class="gridview" style="height:356px"><svg class="plot" width="1080" height="458" viewBox="0 0 1080 458" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="clip4"><rect x="56.0" y="30.0" width="1010.0" height="112.0"/></clipPath><clipPath id="clip5"><rect x="56.0" y="168.0" width="1010.0" height="112.0"/></clipPath><clipPath id="clip6"><rect x="56.0" y="306.0" width="1010.0" height="112.0"/></clipPath></defs><g clip-path="url(#clip4)"><rect class="othersnip" x="404.2" y="30.0" width="636.9" height="112.0"/></g><g clip-path="url(#clip4)"><rect class="fit-oth" x="483.1" y="30.0" width="478.8" height="112.0"/></g><g clip-path="url(#clip4)"><rect class="fit" x="161.3" y="30.0" width="476.4" height="112.0"/></g><g clip-path="url(#clip4)"><rect class="shared" x="483.1" y="30.0" width="154.7" height="112.0"/></g><g clip-path="url(#clip4)"><path class="dat grey" d="M719.1 63.6H720.7V66.3H722.3V68.2H723.9V67.1H725.5V64.4H727.1V62.2H728.7V62.0H730.3V62.4H731.9V61.2H733.5V58.9H735.1V58.8H736.7V58.8H738.3V60.0H739.9V60.5H741.5V60.2H743.1V59.3H744.7V60.2H746.3V59.6H747.9V58.2H749.5V58.0H751.1V58.0H752.7V56.6H754.3V56.3H755.9V58.0H757.5V58.0H759.1V57.5H760.6V57.3H762.2V57.3H763.8V57.0H765.4V56.6H767.0V57.8H768.6V57.9H770.2V57.1H771.8V56.3H773.4V55.3H775.0V57.4H776.6V57.6H778.2V56.3H779.8V55.8H781.4V57.4H783.0V58.0H784.6V59.0H786.2V58.7H787.8V58.1H789.4V57.8H791.0V56.7H792.6V56.5H794.2V57.8H795.8V58.0H797.4V57.3H799.0V57.1H800.6V56.8H802.2V56.5H803.8V57.7H805.4V58.1H806.9V57.5H808.5V57.0H810.1V57.8H811.7V57.1H813.3V56.8H814.9V57.5H816.5V56.6H818.1V56.3H819.7V56.4H821.3V56.7H822.9V57.4H824.5V57.1H826.1V56.7H827.7V58.0H829.3V58.4H830.9V57.6H832.5V57.4H834.1V58.1H835.7V57.8H837.3V58.1H838.9V58.3H840.5V58.2H842.1V57.9H843.7V58.4H845.3V58.2H846.9V57.6H848.5V58.1H850.1V58.0H851.7V57.7H853.3V57.5H854.9V57.2H856.5V56.5H858.1V57.1H859.7V57.3H861.2V56.8H862.8V58.0H864.4V59.1H866.0V58.4H867.6V58.1H869.2V57.1H870.8V56.7H872.4V56.6H874.0V56.8H875.6V57.4H877.2V58.5H878.8V59.0H880.4V57.9H882.0V56.7H883.6V56.9H885.2V57.5H886.8V58.4H888.4V59.1H890.0V56.4H891.6V56.7H893.2V56.6H894.8V56.7H896.4V57.2H898.0V57.2H899.6V58.0H901.2V58.4H902.8V57.6H904.4V57.0H906.0V56.3H907.6V57.3H909.2V58.8H910.8V58.7H912.4V58.5H914.0V57.9H915.6V57.0H917.2V57.2H918.8V57.7H920.4V57.8H922.0V57.8H923.6V57.1H925.2V56.4H926.7V56.8H928.3V56.9H929.9V56.3H931.5V56.2H933.1V57.8H934.7V55.4H936.3V56.9H937.9V57.7H939.5V56.9H941.1V56.3H942.7V57.4H944.3V56.5H945.9V57.8H947.5V57.5H949.1V58.1H950.7V58.4H952.3V58.1H953.9V57.1H955.5V57.0H957.1V57.3H958.7V57.7H960.3V58.2H961.9V57.4H963.5V57.0H965.1V56.4H966.7V55.8H968.3V56.8H969.9V57.1H971.5V56.6H973.1V56.9H974.7V57.0H976.3V56.8H977.9V55.6H979.5V55.8H981.1V57.2H982.7V58.2H984.3V57.6H985.9V56.1H987.5V56.5H989.1V54.2H990.7V54.5H992.3V55.6H993.9V56.8H995.5V56.7H997.1V56.1H998.7V56.4H1000.3V56.6H1001.9V56.7H1003.5V57.6H1005.1V57.1H1006.7V56.4H1008.3V56.5H1009.9V56.3H1011.5V56.4H1013.1V56.8H1014.6V56.9H1016.2V57.3H1017.8V57.9H1019.4V57.8H1021.0V57.3H1022.6V55.2H1024.2V56.8H1025.8V57.1H1027.4V55.6H1029.0V54.6H1030.6V55.9H1032.2V56.8H1033.8V57.0H1035.4V57.5H1037.0V57.5H1038.6V56.1H1040.2V55.8H1041.8"/></g><g clip-path="url(#clip4)"><path class="dat" d="M80.2 57.7H81.8V59.0H83.4V58.1H84.9V57.2H86.5V57.1H88.1V56.5H89.7V56.9H91.3V57.6H92.9V57.8H94.5V58.5H96.1V58.9H97.7V58.5H99.3V58.0H100.9V57.1H102.4V57.0H104.0V58.4H105.6V59.0H107.2V58.7H108.8V59.4H110.4V58.3H112.0V58.4H113.6V58.4H115.2V57.4H116.8V57.3H118.4V57.2H120.0V57.0H121.5V55.6H123.1V57.0H124.7V57.2H126.3V57.5H127.9V56.5H129.5V55.2H131.1V58.0H132.7V58.9H134.3V58.7H135.9V58.9H137.5V57.5H139.0V59.4H140.6V59.5H142.2V58.7H143.8V58.1H145.4V59.3H147.0V59.3H148.6V59.0H150.2V58.0H151.8V57.4H153.4V59.7H155.0V57.9H156.5V55.6H158.1V57.7H159.7V59.3H161.3V57.7H162.9V57.4H164.5V58.0H166.1V58.3H167.7V58.3H169.3V57.6H170.9V57.4H172.5V58.2H174.1V58.9H175.6V58.9H177.2V58.4H178.8V57.3H180.4V56.4H182.0V56.5H183.6V58.0H185.2V58.7H186.8V57.5H188.4V58.3H190.0V56.8H191.6V58.2H193.2V59.9H194.7V58.6H196.3V57.8H197.9V56.9H199.5V56.9H201.1V57.7H202.7V57.6H204.3V56.4H205.9V55.5H207.5V57.5H209.1V57.1H210.7V57.3H212.3V57.2H213.8V56.9H215.4V56.6H217.0V56.5H218.6V56.9H220.2V57.5H221.8V57.7H223.4V57.9H225.0V58.1H226.6V57.4H228.2V57.6H229.8V58.2H231.4V57.1H233.0V57.1H234.5V58.2H236.1V58.0H237.7V56.5H239.3V57.6H240.9V59.0H242.5V57.9H244.1V56.7H245.7V57.6H247.3V56.7H248.9V57.7H250.5V56.9H252.1V56.1H253.6V55.3H255.2V56.3H256.8V55.1H258.4V56.7H260.0V58.1H261.6V57.1H263.2V58.0H264.8V58.2H266.4V56.6H268.0V58.7H269.6V56.8H271.2V56.2H272.8V57.0H274.3V56.8H275.9V59.3H277.5V57.4H279.1V58.0H280.7V56.9H282.3V56.4H283.9V57.6H285.5V57.3H287.1V56.3H288.7V56.7H290.3V57.4H291.9V58.1H293.5V57.7H295.1V58.4H296.6V58.0H298.2V56.4H299.8V55.5H301.4V55.6H303.0V56.0H304.6V56.6H306.2V56.1H307.8V54.7H309.4V55.0H311.0V56.5H312.6V57.6H314.2V57.1H315.8V57.3H317.3V57.6H318.9V55.7H320.5V56.9H322.1V57.2H323.7V58.8H325.3V58.2H326.9V57.3H328.5V58.3H330.1V57.1H331.7V58.1H333.3V57.4H334.9V57.2H336.5V57.2H338.1V57.2H339.6V55.8H341.2V55.3H342.8V56.2H344.4V57.4H346.0V58.1H347.6V57.4H349.2V57.4H350.8V57.4H352.4V57.2H354.0V56.6H355.6V57.0H357.2V55.2H358.8V56.6H360.4V55.7H362.0V59.4H363.5V58.4H365.1V58.2H366.7V57.6H368.3V57.6H369.9V58.1H371.5V57.0H373.1V58.5H374.7V60.4H376.3V59.5H377.9V58.1H379.5V57.1H381.1V57.0H382.7V57.6H384.3V58.0H385.8V57.9H387.4V57.3H389.0V58.2H390.6V62.7H392.2V67.5H393.8V74.3H395.4V78.5H397.0V83.6H398.6V85.4H400.2V83.0H401.8V77.7H403.4V70.9H405.0V67.8H406.6V66.8H408.2V64.0H409.8V61.9H411.3V60.9H412.9V60.9H414.5V58.8H416.1V59.3H417.7V58.4H419.3V57.4H420.9V58.5H422.5V59.2H424.1V58.2H425.7V57.0H427.3V57.2H428.9V57.4H430.5V57.4H432.1V56.8H433.7V56.3H435.2V56.5H436.8V56.9H438.4V57.8H440.0V58.3H441.6V57.6H443.2V58.5H444.8V58.4H446.4V57.6H448.0V56.6H449.6V57.2H451.2V58.1H452.8V58.1H454.4V56.9H456.0V57.4H457.6V56.7H459.2V56.5H460.8V56.9H462.3V57.2H463.9V57.6H465.5V57.4H467.1V56.9H468.7V56.9H470.3V56.8H471.9V57.7H473.5V59.1H475.1V59.2H476.7V58.0H478.3V57.2H479.9V56.2H481.5V56.0H483.1V56.6H484.7V57.9H486.3V58.3H487.8V57.6H489.4V57.5H491.0V56.2H492.6V57.5H494.2V59.3H495.8V58.5H497.4V56.9H499.0V57.3H500.6V57.8H502.2V57.9H503.8V58.5H505.4V58.5H507.0V57.8H508.6V57.3H510.2V56.9H511.8V57.1H513.4V57.3H515.0V58.7H516.5V58.2H518.1V58.1H519.7V58.0H521.3V57.5H522.9V57.3H524.5V59.4H526.1V57.4H527.7V56.0H529.3V60.5H530.9V58.5H532.5V58.3H534.1V59.6H535.7V58.0H537.3V57.4H538.9V57.2H540.5V57.3H542.1V57.3H543.7V57.4H545.2V57.6H546.8V57.6H548.4V57.7H550.0V57.4H551.6V57.1H553.2V56.1H554.8V56.0H556.4V57.8H558.0V57.2H559.6V57.4H561.2V55.2H562.8V55.9H564.4V57.0H566.0V56.7H567.6V55.9H569.2V56.7H570.8V57.5H572.4V56.8H574.0V57.3H575.5V56.6H577.1V57.0H578.7V56.9H580.3V56.2H581.9V58.1H583.5V57.8H585.1V57.4H586.7V58.1H588.3V57.8H589.9V57.3H591.5V57.6H593.1V57.9H594.7V58.1H596.3V58.7H597.9V57.5H599.5V56.6H601.1V57.7H602.7V58.0H604.3V57.2H605.9V56.3H607.4V56.2H609.0V56.6H610.6V58.1H612.2V57.7H613.8V57.3H615.4V56.7H617.0V58.0H618.6V58.1H620.2V58.4H621.8V58.2H623.4V57.3H625.0V56.8H626.6V57.0H628.2V56.8H629.8V56.2H631.4V56.2H633.0V57.0H634.6V57.6H636.2V57.6H637.8V57.3H639.4V57.8H641.0V58.1H642.5V58.1H644.1V58.3H645.7V57.7H647.3V58.7H648.9V57.1H650.5V56.7H652.1V57.9H653.7V58.3H655.3V57.2H656.9V57.7H658.5V58.0H660.1V58.5H661.7V57.8H663.3V56.5H664.9V58.2H666.5V57.9H668.1V58.0H669.7V58.1H671.3V57.3H672.9V57.5H674.5V57.3H676.1V57.0H677.6V57.3H679.2V57.1H680.8V56.7H682.4V57.7H684.0V57.5H685.6V57.7H687.2V57.1H688.8V56.8H690.4V58.2H692.0V58.6H693.6V58.6H695.2V59.4H696.8V59.9H698.4V59.3H700.0V58.8H701.6V59.4H703.2V58.2H704.8V57.9H706.4V57.8H708.0V57.9H709.6V59.0H711.2V59.9H712.8V59.5H714.4V60.1H716.0V61.4H717.5V62.4H719.1"/></g><line class="cnt-n" x1="56.0" y1="57.4" x2="1066.0" y2="57.4"/><line class="zero" x1="56.0" y1="135.7" x2="1066.0" y2="135.7"/><line class="edge" x1="81.0" y1="30.0" x2="81.0" y2="142.0"/><rect class="handle" x="76.0" y="75.0" width="10" height="22" rx="2"/><line class="edge" x1="718.3" y1="30.0" x2="718.3" y2="142.0"/><rect class="handle" x="713.3" y="75.0" width="10" height="22" rx="2"/><line class="idtick id-o" x1="396.2" y1="30.0" x2="396.2" y2="48.0"/><text class="idl id-o" x="396.2" y="24.0" text-anchor="middle">O I 1302.2</text><line class="idtick id-o" x1="719.3" y1="30.0" x2="719.3" y2="48.0"/><text class="idl id-o" x="719.3" y="24.0" text-anchor="middle">Si II 1304.4</text><text class="plbl sel" x="62.0" y="44.0" text-anchor="start">HIRES · no shift · selected</text><rect class="frame" x="56.0" y="30.0" width="1010.0" height="112.0"/><line class="tick" x1="147.4" y1="142.0" x2="147.4" y2="138.0"/><line class="tick" x1="251.5" y1="142.0" x2="251.5" y2="138.0"/><line class="tick" x1="355.5" y1="142.0" x2="355.5" y2="138.0"/><line class="tick" x1="459.6" y1="142.0" x2="459.6" y2="138.0"/><line class="tick" x1="563.6" y1="142.0" x2="563.6" y2="138.0"/><line class="tick" x1="667.7" y1="142.0" x2="667.7" y2="138.0"/><line class="tick" x1="771.7" y1="142.0" x2="771.7" y2="138.0"/><line class="tick" x1="875.8" y1="142.0" x2="875.8" y2="138.0"/><line class="tick" x1="979.8" y1="142.0" x2="979.8" y2="138.0"/><line class="tick" x1="56.0" y1="135.7" x2="60.0" y2="135.7"/><text class="tk" x="52.0" y="138.7" text-anchor="end">0</text><line class="tick" x1="56.0" y1="57.4" x2="60.0" y2="57.4"/><text class="tk" x="52.0" y="60.4" text-anchor="end">1</text><text class="axl" x="22.0" y="86.0" text-anchor="middle" transform="rotate(-90 22.0 86.0)">Norm. flux</text><rect class="selframe" x="55.0" y="29.0" width="1012.0" height="114.0"/><g clip-path="url(#clip5)"><rect class="othersnip" x="404.7" y="168.0" width="635.3" height="112.0"/></g><g clip-path="url(#clip5)"><rect class="fit-oth" x="483.6" y="168.0" width="478.8" height="112.0"/></g><g clip-path="url(#clip5)"><rect class="fit" x="161.8" y="168.0" width="476.4" height="112.0"/></g><g clip-path="url(#clip5)"><rect class="shared" x="483.6" y="168.0" width="154.7" height="112.0"/></g><g clip-path="url(#clip5)"><path class="dat grey" d="M718.1 197.1H719.7V199.4H721.2V204.5H722.8V207.4H724.4V208.2H726.0V208.8H727.6V202.5H729.2V200.3H730.8V201.1H732.4V198.6H734.0V196.2H735.6V199.4H737.2V196.7H738.8V197.8H740.4V196.0H742.0V200.6H743.6V206.9H745.2V200.4H746.8V199.3H748.4V197.7H750.0V197.3H751.6V198.9H753.2V198.9H754.8V195.1H756.4V195.5H758.0V194.5H759.6V196.6H761.2V194.7H762.8V197.7H764.3V196.1H765.9V194.1H767.5V191.9H769.1V192.0H770.7V195.4H772.3V204.3H773.9V196.3H775.5V197.8H777.1V202.2H778.7V195.0H780.3V193.4H781.9V198.7H783.5V195.2H785.1V196.3H786.7V197.3H788.3V197.9H789.9V193.1H791.5V197.0H793.1V192.6H794.7V189.6H796.3V191.5H797.9V194.0H799.5V189.9H801.1V194.8H802.7V191.8H804.3V196.0H805.9V196.2H807.5V197.6H809.1V197.0H810.7V197.9H812.2V193.5H813.8V196.4H815.4V196.0H817.0V196.3H818.6V199.3H820.2V191.2H821.8V191.6H823.4V191.7H825.0V193.6H826.6V192.8H828.2V188.9H829.8V193.4H831.4V198.5H833.0V202.0H834.6V189.3H836.2V195.3H837.8V194.0H839.4V199.9H841.0V192.7H842.6V202.1H844.2V191.3H845.8V189.4H847.4V196.1H849.0V193.9H850.6V191.4H852.2V196.7H853.8V194.0H855.4V192.4H857.0V190.7H858.6V198.6H860.2V195.9H861.8V195.5H863.4V193.0H865.0V195.6H866.6V195.8H868.1V194.7H869.7V192.7H871.3V192.1H872.9V195.8H874.5V199.7H876.1V192.7H877.7V193.7H879.3V197.4H880.9V192.5H882.5V196.3H884.1V196.5H885.7V192.4H887.3V193.5H888.9V197.8H890.5V193.3H892.1V196.0H893.7V196.4H895.3V198.6H896.9V197.6H898.5V194.8H900.1V194.9H901.7V195.7H903.3V197.6H904.9V192.1H906.5V191.8H908.1V195.9H909.7V197.1H911.3V194.3H912.9V194.4H914.5V192.6H916.1V191.8H917.7V192.7H919.3V193.6H920.9V196.6H922.5V194.3H924.1V199.2H925.7V196.9H927.3V198.2H928.9V197.2H930.5V199.2H932.1V198.1H933.7V194.6H935.2V197.4H936.8V195.5H938.4V192.5H940.0V191.5H941.6V200.1H943.2V194.3H944.8V198.9H946.4V201.3H948.0V194.6H949.6V197.3H951.2V197.8H952.8V195.8H954.4V192.7H956.0V192.6H957.6V195.6H959.2V192.3H960.8V196.0H962.4V194.6H964.0V197.1H965.6V189.2H967.2V193.8H968.8V198.4H970.4V190.2H972.0V190.4H973.6V196.7H975.2V199.2H976.8V194.0H978.4V194.2H980.0V191.4H981.6V192.0H983.2V193.9H984.8V192.8H986.4V194.8H988.0V190.4H989.6V194.2H991.2V194.7H992.8V196.1H994.4V194.5H996.0V190.6H997.6V186.2H999.2V199.5H1000.8V194.7H1002.4V196.7H1004.0V201.0H1005.6V188.4H1007.2V196.0H1008.8V191.1H1010.4V197.4H1012.0V192.4H1013.6V194.9H1015.2V196.3H1016.8V193.7H1018.4V193.5H1020.0V193.4H1021.6V193.1H1023.2V193.8H1024.8V195.8H1026.3V201.4H1027.9V196.9H1029.5V192.8H1031.1V200.0H1032.7V197.0H1034.3V193.9H1035.9V191.1H1037.5V188.2H1039.1V191.9H1040.7"/></g><g clip-path="url(#clip5)"><path class="dat" d="M80.7 198.4H82.3V194.2H83.9V197.1H85.5V201.2H87.0V198.0H88.6V200.1H90.2V201.5H91.8V199.5H93.4V194.3H95.0V200.7H96.6V202.3H98.2V201.6H99.8V198.7H101.4V198.5H103.0V197.2H104.5V194.7H106.1V199.6H107.7V199.2H109.3V197.4H110.9V201.8H112.5V199.2H114.1V200.3H115.7V196.9H117.3V198.7H118.9V190.5H120.5V196.4H122.0V200.6H123.6V196.7H125.2V195.2H126.8V196.0H128.4V193.4H130.0V198.3H131.6V202.0H133.2V196.9H134.8V190.4H136.4V194.3H138.0V193.5H139.6V191.7H141.1V194.5H142.7V194.5H144.3V193.9H145.9V194.6H147.5V201.1H149.1V199.5H150.7V191.7H152.3V206.5H153.9V198.6H155.5V199.8H157.1V183.5H158.6V194.5H160.2V193.8H161.8V194.1H163.4V201.8H165.0V196.3H166.6V194.6H168.2V194.6H169.8V195.2H171.4V196.0H173.0V192.3H174.6V191.5H176.2V200.1H177.7V198.8H179.3V197.3H180.9V195.2H182.5V191.8H184.1V194.5H185.7V199.0H187.3V198.9H188.9V198.2H190.5V194.7H192.1V195.9H193.7V193.5H195.3V196.0H196.8V196.0H198.4V200.2H200.0V193.0H201.6V199.8H203.2V194.7H204.8V194.9H206.4V198.2H208.0V200.3H209.6V194.2H211.2V191.9H212.8V194.8H214.4V195.3H215.9V191.1H217.5V191.9H219.1V193.0H220.7V197.2H222.3V195.3H223.9V196.1H225.5V197.0H227.1V192.1H228.7V193.1H230.3V197.7H231.9V194.7H233.5V191.8H235.1V196.2H236.6V186.2H238.2V196.7H239.8V194.9H241.4V187.6H243.0V189.6H244.6V195.5H246.2V192.2H247.8V191.8H249.4V194.1H251.0V194.1H252.6V194.1H254.2V198.8H255.7V197.9H257.3V191.1H258.9V190.6H260.5V194.8H262.1V197.2H263.7V194.0H265.3V191.2H266.9V191.4H268.5V195.1H270.1V191.1H271.7V193.1H273.3V191.1H274.9V194.7H276.4V190.0H278.0V192.4H279.6V189.2H281.2V195.7H282.8V189.3H284.4V190.0H286.0V190.5H287.6V193.3H289.2V195.4H290.8V195.5H292.4V195.4H294.0V195.6H295.6V194.0H297.2V198.4H298.7V191.0H300.3V194.7H301.9V196.8H303.5V195.3H305.1V197.8H306.7V196.0H308.3V200.4H309.9V200.2H311.5V199.3H313.1V199.2H314.7V206.3H316.3V200.5H317.9V194.8H319.4V195.8H321.0V197.6H322.6V190.4H324.2V196.8H325.8V198.8H327.4V194.9H329.0V195.5H330.6V198.4H332.2V198.2H333.8V200.5H335.4V197.6H337.0V200.4H338.6V199.1H340.2V197.5H341.7V197.0H343.3V196.4H344.9V195.5H346.5V194.7H348.1V196.1H349.7V196.6H351.3V193.7H352.9V198.8H354.5V199.9H356.1V196.7H357.7V196.6H359.3V197.7H360.9V197.4H362.5V196.8H364.1V201.4H365.6V192.3H367.2V196.1H368.8V195.5H370.4V194.1H372.0V197.1H373.6V203.3H375.2V204.1H376.8V199.7H378.4V194.4H380.0V194.9H381.6V195.1H383.2V193.4H384.8V198.3H386.4V198.5H388.0V199.1H389.5V196.5H391.1V202.6H392.7V207.1H394.3V212.5H395.9V221.1H397.5V221.5H399.1V222.6H400.7V218.9H402.3V212.0H403.9V207.4H405.5V203.7H407.1V208.0H408.7V205.0H410.3V201.9H411.9V199.5H413.4V198.1H415.0V198.7H416.6V196.4H418.2V200.4H419.8V194.7H421.4V195.8H423.0V198.8H424.6V201.1H426.2V191.3H427.8V194.9H429.4V201.4H431.0V202.3H432.6V196.7H434.2V195.8H435.8V190.5H437.4V193.0H438.9V197.3H440.5V197.7H442.1V196.1H443.7V195.1H445.3V190.2H446.9V192.4H448.5V193.5H450.1V196.7H451.7V199.7H453.3V197.2H454.9V197.3H456.5V197.1H458.1V190.0H459.7V194.1H461.3V190.7H462.9V188.8H464.4V188.4H466.0V191.7H467.6V188.1H469.2V198.2H470.8V197.7H472.4V197.4H474.0V193.3H475.6V194.3H477.2V193.8H478.8V190.2H480.4V187.1H482.0V187.9H483.6V192.5H485.2V191.5H486.8V197.8H488.4V198.0H490.0V195.2H491.5V193.0H493.1V193.8H494.7V197.4H496.3V195.0H497.9V193.2H499.5V195.0H501.1V196.2H502.7V193.7H504.3V195.9H505.9V195.8H507.5V199.3H509.1V194.3H510.7V195.7H512.3V195.8H513.9V195.5H515.5V196.4H517.1V196.1H518.6V197.1H520.2V193.0H521.8V196.4H523.4V195.8H525.0V195.5H526.6V192.5H528.2V192.6H529.8V193.9H531.4V195.8H533.0V196.5H534.6V193.2H536.2V194.1H537.8V195.8H539.4V193.4H541.0V192.1H542.6V197.2H544.2V191.3H545.8V196.5H547.4V197.4H548.9V197.1H550.5V194.9H552.1V193.6H553.7V189.3H555.3V193.7H556.9V197.7H558.5V197.3H560.1V194.2H561.7V199.3H563.3V197.3H564.9V195.9H566.5V191.4H568.1V194.2H569.7V200.6H571.3V190.4H572.9V194.8H574.5V194.1H576.1V194.2H577.7V196.7H579.2V194.9H580.8V197.3H582.4V194.4H584.0V198.9H585.6V196.9H587.2V196.9H588.8V196.8H590.4V197.9H592.0V191.9H593.6V196.1H595.2V198.7H596.8V196.1H598.4V197.8H600.0V194.5H601.6V192.6H603.2V196.0H604.8V197.6H606.4V197.9H608.0V200.6H609.6V194.1H611.1V194.8H612.7V197.6H614.3V195.5H615.9V195.8H617.5V193.1H619.1V192.7H620.7V195.8H622.3V197.6H623.9V195.7H625.5V197.5H627.1V196.7H628.7V191.5H630.3V192.2H631.9V190.2H633.5V197.9H635.1V196.9H636.7V198.8H638.3V197.5H639.9V193.1H641.5V190.9H643.1V192.8H644.7V193.9H646.2V197.4H647.8V198.4H649.4V196.0H651.0V196.2H652.6V193.4H654.2V196.3H655.8V194.6H657.4V194.1H659.0V196.3H660.6V195.4H662.2V192.8H663.8V194.8H665.4V195.8H667.0V193.2H668.6V201.7H670.2V193.5H671.8V196.9H673.4V197.9H675.0V191.2H676.6V196.2H678.2V189.8H679.8V190.6H681.3V197.1H682.9V196.7H684.5V195.2H686.1V195.7H687.7V197.5H689.3V195.7H690.9V199.3H692.5V195.3H694.1V193.6H695.7V194.7H697.3V195.0H698.9V196.3H700.5V201.5H702.1V197.0H703.7V199.6H705.3V202.7H706.9V197.1H708.5V196.9H710.1V201.0H711.7V195.9H713.3V201.0H714.9V201.4H716.5V191.9H718.1"/></g><line class="cnt-n" x1="56.0" y1="195.4" x2="1066.0" y2="195.4"/><line class="zero" x1="56.0" y1="273.7" x2="1066.0" y2="273.7"/><line class="edge" x1="81.5" y1="168.0" x2="81.5" y2="280.0"/><rect class="handle" x="76.5" y="213.0" width="10" height="22" rx="2"/><line class="edge" x1="717.3" y1="168.0" x2="717.3" y2="280.0"/><rect class="handle" x="712.3" y="213.0" width="10" height="22" rx="2"/><line class="idtick id-o" x1="396.2" y1="168.0" x2="396.2" y2="186.0"/><line class="idtick id-o" x1="719.3" y1="168.0" x2="719.3" y2="186.0"/><text class="plbl" x="62.0" y="182.0" text-anchor="start">PROCHASKA · no shift</text><rect class="frame" x="56.0" y="168.0" width="1010.0" height="112.0"/><line class="tick" x1="147.4" y1="280.0" x2="147.4" y2="276.0"/><line class="tick" x1="251.5" y1="280.0" x2="251.5" y2="276.0"/><line class="tick" x1="355.5" y1="280.0" x2="355.5" y2="276.0"/><line class="tick" x1="459.6" y1="280.0" x2="459.6" y2="276.0"/><line class="tick" x1="563.6" y1="280.0" x2="563.6" y2="276.0"/><line class="tick" x1="667.7" y1="280.0" x2="667.7" y2="276.0"/><line class="tick" x1="771.7" y1="280.0" x2="771.7" y2="276.0"/><line class="tick" x1="875.8" y1="280.0" x2="875.8" y2="276.0"/><line class="tick" x1="979.8" y1="280.0" x2="979.8" y2="276.0"/><line class="tick" x1="56.0" y1="273.7" x2="60.0" y2="273.7"/><text class="tk" x="52.0" y="276.7" text-anchor="end">0</text><line class="tick" x1="56.0" y1="195.4" x2="60.0" y2="195.4"/><text class="tk" x="52.0" y="198.4" text-anchor="end">1</text><text class="axl" x="22.0" y="224.0" text-anchor="middle" transform="rotate(-90 22.0 224.0)">Norm. flux</text><g clip-path="url(#clip6)"><rect class="othersnip" x="404.9" y="306.0" width="635.3" height="112.0"/></g><g clip-path="url(#clip6)"><rect class="fit-oth" x="482.2" y="306.0" width="478.8" height="112.0"/></g><g clip-path="url(#clip6)"><rect class="fit" x="160.4" y="306.0" width="476.4" height="112.0"/></g><g clip-path="url(#clip6)"><rect class="shared" x="482.2" y="306.0" width="154.7" height="112.0"/></g><g clip-path="url(#clip6)"><path class="dat grey" d="M718.3 339.5H719.9V341.7H721.5V343.5H723.1V344.3H724.6V343.7H726.2V339.2H727.8V338.3H729.4V338.9H731.0V339.1H732.6V337.5H734.2V336.2H735.8V336.0H737.4V335.1H739.0V334.9H740.6V335.4H742.2V335.5H743.8V333.6H745.4V335.3H747.0V334.8H748.6V334.8H750.2V333.8H751.8V333.8H753.4V333.7H755.0V334.4H756.6V333.0H758.2V333.6H759.8V332.3H761.4V332.6H763.0V334.5H764.6V333.3H766.2V334.2H767.7V333.6H769.3V333.5H770.9V333.5H772.5V333.9H774.1V333.7H775.7V334.3H777.3V333.4H778.9V332.8H780.5V333.7H782.1V333.4H783.7V333.8H785.3V333.7H786.9V332.5H788.5V332.9H790.1V332.3H791.7V332.9H793.3V334.3H794.9V333.2H796.5V333.3H798.1V332.9H799.7V332.4H801.3V331.9H802.9V332.2H804.5V332.2H806.1V333.8H807.7V333.0H809.3V332.7H810.9V332.3H812.5V333.7H814.1V334.1H815.7V333.4H817.2V332.7H818.8V332.2H820.4V333.3H822.0V332.5H823.6V331.4H825.2V332.1H826.8V333.0H828.4V334.3H830.0V333.6H831.6V332.8H833.2V333.2H834.8V333.6H836.4V331.9H838.0V334.1H839.6V334.5H841.2V334.3H842.8V331.5H844.4V334.2H846.0V335.5H847.6V332.0H849.2V334.4H850.8V333.3H852.4V333.1H854.0V332.8H855.6V333.3H857.2V332.9H858.8V333.1H860.4V332.8H862.0V334.6H863.6V333.3H865.2V333.5H866.8V333.5H868.4V334.2H870.0V336.0H871.6V335.3H873.1V334.9H874.7V334.4H876.3V334.6H877.9V335.1H879.5V335.3H881.1V335.3H882.7V335.1H884.3V332.6H885.9V334.7H887.5V333.9H889.1V334.3H890.7V334.1H892.3V334.3H893.9V332.3H895.5V333.1H897.1V333.2H898.7V333.5H900.3V334.8H901.9V333.9H903.5V334.6H905.1V333.8H906.7V332.7H908.3V334.1H909.9V335.0H911.5V334.6H913.1V333.7H914.7V333.0H916.3V332.6H917.9V333.3H919.5V333.1H921.1V332.7H922.7V334.0H924.3V334.3H925.9V333.3H927.5V332.9H929.1V334.0H930.7V334.1H932.3V333.6H933.9V332.6H935.5V332.5H937.1V331.5H938.7V331.4H940.2V332.8H941.8V333.9H943.4V334.0H945.0V334.1H946.6V333.3H948.2V333.0H949.8V331.9H951.4V332.3H953.0V333.3H954.6V334.3H956.2V333.6H957.8V332.1H959.4V331.3H961.0V332.8H962.6V331.8H964.2V334.1H965.8V331.2H967.4V332.6H969.0V331.9H970.6V332.6H972.2V333.4H973.8V333.7H975.4V331.9H977.0V331.8H978.6V332.5H980.2V331.1H981.8V332.4H983.4V333.0H985.0V333.7H986.6V332.6H988.2V332.3H989.8V332.3H991.4V332.3H993.0V331.1H994.6V331.8H996.2V334.2H997.8V329.9H999.4V330.5H1001.0V329.6H1002.6V330.8H1004.2V333.9H1005.8V331.5H1007.4V331.6H1009.0V331.2H1010.6V330.5H1012.2V329.0H1013.8V329.7H1015.4V328.5H1017.0V330.0H1018.6V330.0H1020.2V329.4H1021.8V329.7H1023.4V330.8H1025.0V329.4H1026.6V330.4H1028.2V330.8H1029.8V331.2H1031.4V331.3H1033.0V331.4H1034.6V328.2H1036.2V328.2H1037.7V329.5H1039.3V329.3H1040.9"/></g><g clip-path="url(#clip6)"><path class="dat" d="M80.9 332.5H82.5V334.0H84.1V332.6H85.7V333.6H87.3V332.7H88.8V332.2H90.4V334.1H92.0V332.6H93.6V331.7H95.2V333.2H96.8V331.5H98.4V333.2H100.0V333.6H101.6V332.4H103.2V331.6H104.8V332.9H106.3V333.1H107.9V331.7H109.5V331.9H111.1V332.7H112.7V333.9H114.3V332.5H115.9V331.4H117.5V332.5H119.1V332.4H120.7V334.7H122.3V333.5H123.8V331.9H125.4V332.7H127.0V333.1H128.6V333.6H130.2V333.8H131.8V333.4H133.4V333.2H135.0V332.8H136.6V333.7H138.2V333.1H139.8V333.0H141.4V331.4H142.9V331.9H144.5V333.0H146.1V333.0H147.7V333.2H149.3V332.6H150.9V332.0H152.5V332.4H154.1V332.7H155.7V334.0H157.3V333.5H158.9V332.5H160.4V331.6H162.0V333.6H163.6V332.5H165.2V333.6H166.8V333.9H168.4V332.6H170.0V332.5H171.6V333.0H173.2V332.5H174.8V334.3H176.4V334.1H178.0V335.0H179.5V332.8H181.1V334.1H182.7V334.0H184.3V333.6H185.9V332.6H187.5V333.6H189.1V334.5H190.7V332.2H192.3V332.9H193.9V334.8H195.5V333.8H197.1V332.1H198.6V333.9H200.2V332.8H201.8V333.6H203.4V334.1H205.0V333.9H206.6V333.5H208.2V334.6H209.8V334.2H211.4V333.1H213.0V334.3H214.6V333.4H216.2V332.5H217.7V333.2H219.3V332.7H220.9V332.3H222.5V331.4H224.1V331.4H225.7V333.8H227.3V333.4H228.9V333.8H230.5V331.1H232.1V333.0H233.7V335.1H235.3V333.8H236.9V334.5H238.4V333.0H240.0V334.4H241.6V335.3H243.2V335.3H244.8V334.8H246.4V333.5H248.0V332.7H249.6V334.1H251.2V335.0H252.8V334.1H254.4V334.0H256.0V334.2H257.5V333.3H259.1V334.1H260.7V333.1H262.3V332.9H263.9V333.2H265.5V334.1H267.1V333.0H268.7V333.2H270.3V333.0H271.9V332.0H273.5V331.5H275.1V333.2H276.7V332.5H278.2V333.6H279.8V331.9H281.4V332.9H283.0V334.7H284.6V334.0H286.2V333.1H287.8V332.8H289.4V333.0H291.0V332.1H292.6V333.3H294.2V332.4H295.8V333.3H297.4V335.2H299.0V333.9H300.5V333.3H302.1V333.6H303.7V333.7H305.3V333.3H306.9V332.2H308.5V333.0H310.1V334.2H311.7V334.3H313.3V333.4H314.9V333.0H316.5V333.5H318.1V333.0H319.7V331.7H321.2V333.4H322.8V332.3H324.4V332.9H326.0V333.9H327.6V334.5H329.2V332.9H330.8V333.2H332.4V333.0H334.0V333.9H335.6V333.9H337.2V335.3H338.8V334.0H340.4V333.0H342.0V333.3H343.6V333.1H345.1V332.8H346.7V333.7H348.3V334.5H349.9V335.0H351.5V334.9H353.1V333.6H354.7V333.5H356.3V334.7H357.9V333.0H359.5V333.0H361.1V332.4H362.7V332.5H364.3V332.4H365.9V334.0H367.4V332.2H369.0V333.5H370.6V333.9H372.2V333.0H373.8V333.8H375.4V334.3H377.0V333.8H378.6V334.6H380.2V334.8H381.8V334.1H383.4V333.6H385.0V334.3H386.6V333.6H388.2V335.5H389.8V337.2H391.3V340.4H392.9V345.2H394.5V351.2H396.1V357.5H397.7V360.9H399.3V360.1H400.9V356.8H402.5V351.0H404.1V344.1H405.7V342.6H407.3V339.9H408.9V339.6H410.5V336.8H412.1V335.0H413.7V335.3H415.2V334.2H416.8V335.0H418.4V334.5H420.0V334.4H421.6V333.1H423.2V332.3H424.8V332.7H426.4V333.0H428.0V333.9H429.6V332.9H431.2V333.8H432.8V333.8H434.4V334.1H436.0V333.5H437.6V331.8H439.2V333.2H440.7V333.0H442.3V332.6H443.9V332.7H445.5V334.6H447.1V332.7H448.7V333.2H450.3V334.2H451.9V334.0H453.5V332.8H455.1V334.2H456.7V333.0H458.3V332.5H459.9V332.6H461.5V333.8H463.1V332.6H464.7V332.6H466.2V333.3H467.8V334.7H469.4V334.1H471.0V333.8H472.6V334.4H474.2V333.1H475.8V333.8H477.4V334.0H479.0V335.2H480.6V333.8H482.2V334.1H483.8V333.2H485.4V334.3H487.0V334.8H488.6V334.0H490.2V331.5H491.8V333.0H493.3V332.8H494.9V332.9H496.5V332.3H498.1V333.3H499.7V333.0H501.3V333.1H502.9V334.3H504.5V334.0H506.1V333.6H507.7V334.3H509.3V333.9H510.9V334.5H512.5V332.5H514.1V333.1H515.7V333.5H517.3V333.9H518.9V333.4H520.5V332.1H522.0V333.3H523.6V333.7H525.2V331.6H526.8V333.2H528.4V332.0H530.0V333.7H531.6V332.3H533.2V331.9H534.8V333.6H536.4V333.3H538.0V334.0H539.6V333.9H541.2V332.8H542.8V333.4H544.4V331.8H546.0V332.3H547.6V332.5H549.2V335.4H550.7V332.6H552.3V334.3H553.9V333.8H555.5V333.6H557.1V334.6H558.7V332.9H560.3V332.5H561.9V332.9H563.5V333.2H565.1V333.8H566.7V332.7H568.3V332.9H569.9V334.2H571.5V332.4H573.1V335.4H574.7V333.7H576.3V332.7H577.9V332.9H579.5V333.7H581.0V334.1H582.6V333.0H584.2V332.3H585.8V332.8H587.4V333.2H589.0V334.6H590.6V332.6H592.2V332.8H593.8V334.5H595.4V334.9H597.0V333.1H598.6V336.1H600.2V334.7H601.8V334.3H603.4V333.9H605.0V333.4H606.6V334.1H608.2V333.7H609.8V334.2H611.4V335.5H613.0V333.1H614.5V332.8H616.1V333.3H617.7V332.2H619.3V332.7H620.9V333.6H622.5V332.1H624.1V333.5H625.7V332.6H627.3V334.8H628.9V333.8H630.5V333.4H632.1V332.4H633.7V332.5H635.3V332.7H636.9V333.1H638.5V332.1H640.1V333.7H641.7V334.0H643.3V334.7H644.9V336.0H646.5V332.1H648.0V333.2H649.6V333.7H651.2V333.0H652.8V333.6H654.4V333.0H656.0V333.2H657.6V333.7H659.2V334.4H660.8V334.4H662.4V333.3H664.0V333.7H665.6V333.7H667.2V332.9H668.8V332.7H670.4V332.4H672.0V332.9H673.6V334.4H675.2V333.8H676.8V333.1H678.4V332.7H680.0V332.4H681.6V333.2H683.2V333.6H684.7V333.9H686.3V334.1H687.9V332.1H689.5V333.5H691.1V333.2H692.7V333.5H694.3V335.3H695.9V335.0H697.5V334.2H699.1V335.7H700.7V334.9H702.3V334.1H703.9V334.0H705.5V332.9H707.1V333.6H708.7V334.3H710.3V332.9H711.9V334.5H713.5V335.4H715.1V336.6H716.7V338.8H718.3"/></g><line class="cnt-n" x1="56.0" y1="333.4" x2="1066.0" y2="333.4"/><line class="zero" x1="56.0" y1="411.7" x2="1066.0" y2="411.7"/><line class="edge" x1="81.7" y1="306.0" x2="81.7" y2="418.0"/><rect class="handle" x="76.7" y="351.0" width="10" height="22" rx="2"/><line class="edge" x1="717.5" y1="306.0" x2="717.5" y2="418.0"/><rect class="handle" x="712.5" y="351.0" width="10" height="22" rx="2"/><line class="idtick id-o" x1="396.2" y1="306.0" x2="396.2" y2="324.0"/><line class="idtick id-o" x1="719.3" y1="306.0" x2="719.3" y2="324.0"/><text class="plbl" x="62.0" y="320.0" text-anchor="start">KIRKMAN · shift +83.5 km/s removed</text><rect class="frame" x="56.0" y="306.0" width="1010.0" height="112.0"/><line class="tick" x1="147.4" y1="418.0" x2="147.4" y2="414.0"/><text class="tk" x="147.4" y="430.0" text-anchor="middle">4585</text><line class="tick" x1="251.5" y1="418.0" x2="251.5" y2="414.0"/><text class="tk" x="251.5" y="430.0" text-anchor="middle">4587.5</text><line class="tick" x1="355.5" y1="418.0" x2="355.5" y2="414.0"/><text class="tk" x="355.5" y="430.0" text-anchor="middle">4590</text><line class="tick" x1="459.6" y1="418.0" x2="459.6" y2="414.0"/><text class="tk" x="459.6" y="430.0" text-anchor="middle">4592.5</text><line class="tick" x1="563.6" y1="418.0" x2="563.6" y2="414.0"/><text class="tk" x="563.6" y="430.0" text-anchor="middle">4595</text><line class="tick" x1="667.7" y1="418.0" x2="667.7" y2="414.0"/><text class="tk" x="667.7" y="430.0" text-anchor="middle">4597.5</text><line class="tick" x1="771.7" y1="418.0" x2="771.7" y2="414.0"/><text class="tk" x="771.7" y="430.0" text-anchor="middle">4600</text><line class="tick" x1="875.8" y1="418.0" x2="875.8" y2="414.0"/><text class="tk" x="875.8" y="430.0" text-anchor="middle">4602.5</text><line class="tick" x1="979.8" y1="418.0" x2="979.8" y2="414.0"/><text class="tk" x="979.8" y="430.0" text-anchor="middle">4605</text><line class="tick" x1="56.0" y1="411.7" x2="60.0" y2="411.7"/><text class="tk" x="52.0" y="414.7" text-anchor="end">0</text><line class="tick" x1="56.0" y1="333.4" x2="60.0" y2="333.4"/><text class="tk" x="52.0" y="336.4" text-anchor="end">1</text><text class="axl" x="561.0" y="444.0" text-anchor="middle">Wavelength in the HIRES frame (Å)</text><text class="axl" x="22.0" y="362.0" text-anchor="middle" transform="rotate(-90 22.0 362.0)">Norm. flux</text></svg><div class="vscroll"><i style="height:277px"></i></div></div></div></section>
+  <div class="cols inner">
+   <div class="col" style="width:420px"><section class="pane "><header><span>Continuum · HIRES</span><span class="grow"></span></header><div class="pbody">
+<div class="row"><span class="sel">Legendre ▾</span> order
+<span class="btn xs">−</span><b class="num">2</b>
+<span class="btn xs">+</span><span class="muted small">or the − / + keys</span>
+<span class="grow"></span><span class="btn sm">Auto first guess</span></div>
+<table class="grid tight"><tr><th>Order</th><th>χ² (continuum px)</th>
+<th>Δχ²</th><th>ΔBIC</th></tr><tr><td>1</td><td>200.8</td><td>+0.4</td><td>-5.2</td></tr><tr class="on"><td>2</td><td>200.4</td><td>+0.0</td><td>+0.0</td></tr><tr><td>3</td><td>191.7</td><td>-8.7</td><td>-3.1</td></tr></table>
+<div class="row"><span class="chk on">Normalised view</span>
+<span class="muted small">drag the curve to fine-tune</span></div></div></section></div>
+   <div class="col" style="width:672px"><section class="pane "><header><span>Snip · O I 1302.2 · HIRES</span><span class="grow"></span></header><div class="pbody">
+<table class="kv">
+<tr><td>Extent</td><td class="num">4583.40–4598.72 Å
+· 401 px</td></tr>
+<tr><td>Fitted</td><td>299 px in 1 regions</td></tr>
+<tr><td>Buffer</td><td>1.95 Å blue, 1.96 Å red
+· needs ≥ 0.29 Å (3 × FWHM) ✓</td></tr></table>
+<div class="warnbox"><b>97 fitted pixels are also fitted by other
+snips</b> (97 with Si II 1304.4, in every dataset; 32% of the O I pixels). Each pixel should enter χ² once.
+<div class="row"><span class="btn sm primary">Merge the snips…</span>
+<span class="btn sm">Keep them in this snip only</span></div></div>
+<label class="chk on">Apply the fix to all three datasets</label>
+<table class="grid tight"><tr><th>Dataset</th><th>Fitted</th><th>Shared</th>
+<th>Regions</th></tr><tr class=on><td><b>HIRES</b></td><td>299</td><td>97</td><td>drawn here</td></tr><tr><td><b>PROCHASKA</b></td><td>299</td><td>97</td><td>copied from HIRES</td></tr><tr><td><b>KIRKMAN</b></td><td>299</td><td>97</td><td>copied from HIRES</td></tr></table>
+<div class="row"><span class="btn sm">Copy HIRES regions to all</span>
+<span class="muted small">then edit per dataset</span></div></div></section></div>
+  </div>
+ </div>
+</div></main><aside class="modstrip"><span>▸ .mod editor</span></aside></div>
+ <div class="win-status"><span>Q1243p307.model</span>
+  <span class="sep"></span><span class="muted">No fit running</span></div>
+</div></div></div><script>
+(function () {
+  var actual = false;
+  function fit() {
+    document.querySelectorAll('.stage').forEach(function (s) {
+      var k = actual ? 1 : Math.min(1, s.clientWidth / 1442);
+      s.style.setProperty('--k', k);
+      s.style.height = Math.ceil(902 * k) + 'px';
+      s.classList.toggle('scaled', !actual);
+    });
+  }
+  document.querySelectorAll('[data-size]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      actual = b.getAttribute('data-size') === 'actual';
+      document.querySelectorAll('[data-size]').forEach(function (o) {
+        o.setAttribute('aria-pressed', String(
+          o.getAttribute('data-size') === b.getAttribute('data-size')));
+      });
+      fit();
+    });
+  });
+  window.addEventListener('resize', fit);
+  fit();
+})();
+</script></body></html>
