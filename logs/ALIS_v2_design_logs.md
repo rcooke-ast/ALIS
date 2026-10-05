@@ -331,3 +331,31 @@ dashboard needs in ALIS itself:
 
 It ends with queries Q1.1–Q1.9 for RJC. Details are in
 `claude_prompts/logs/dashboard_stage0_log.md`.
+
+### 2026-10-05 (Dashboard Stage 1: changes to ALIS itself)
+
+Dashboard Stage 1 is done; the details are in
+`claude_prompts/logs/dashboard_stage1_log.md`.
+- **Removed:** onefits.
+- **New in ALIS:**
+  - `load_data` reads data files from memory;
+  - `run_alis` warns about pixels fitted twice;
+  - every output goes through one writer (`alis/outputs.py`);
+  - project bundles (`alis/bundle.py`), with hidden lines for blinding;
+  - `run_alis project.model`, `--pack` and `--extract`.
+- **Two questions answered in the session** (Q1.10, Q1.11): the atomic table is
+  always packed and used, and snips on commented-out data lines are packed.
+- **Fixed:** a command-line setting equal to the default was undone by the model
+  file, so `--set "run blind True"` did not blind a run.
+- **Tests:** the bundle mode of the harness passes on every `fast` example.
+
+### 2026-10-05 (Dashboard Stage 2 document written)
+
+`claude_prompts/dashboard_stage2.md` plans the project model in `alis/dashboard/`,
+with no Qt:
+- the text-sync layer (D7), tested by a byte-for-byte round trip of every model;
+- opening an existing fit, with the D20/D22 notices;
+- the validator, the blinding gate, undo/redo, removal with dependents, and Voigt
+  mode.
+
+It ends with queries Q2.1–Q2.9 for RJC.

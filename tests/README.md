@@ -34,6 +34,16 @@ Each non-blind fit case has two tests; blind cases run mode (a) only.
   (`|new − ref| < 0.15 × error` — looser than mode (a) because the reference's
   parameters are only printed to 8 digits, which moves saturated cores).
   Skipped for blind cases.
+- **`test_bundle` (mode a, as a project bundle)** — dashboard Stage 1.7. Each
+  shipped example of the `fast` batch is packed into a `.model` bundle, run with
+  `run_alis case.model` from an empty directory (the run must leave nothing on
+  disk but the bundle), extracted, and compared with the references exactly as
+  mode (a) compares a plain run.
+- **`test_bundle_matches_plain`** — two real context fits (`VMP_DLA/J0903p2628`,
+  and a helium34 fit that writes `out wavecorr` files) are run both as plain
+  files and as a bundle, and the two are compared with mode (a)'s tolerances.
+  They are compared with each other, not with the references, so the test checks
+  the bundle alone.
 
 Covariance goldens exist for 17 cases: all 16 under `context/fitting_examples/`
 plus `examples/metal_line_abs/fit_spectra`, which carries one so the CI
@@ -71,6 +81,10 @@ Both deferrals are now discharged — GPU in Stage 4, I/O in Stage 5:
 | `test_save_helpers.py` | the writer: `print_model`, the data line it rebuilds, `save_covar`, and a save-then-reload round trip |
 | `test_writer_round_trip.py` | the other half of the round trip — re-reading all 40 committed `.mod.out.reference` files |
 | `test_atomic_mass.py`, `test_plotscript.py` | Stage 5.2 and 5.3 |
+| `test_load_memory.py` | dashboard Stage 1.2: real models' data loaded from memory are identical, bit for bit, to the data loaded from disk |
+| `test_shared_pixels.py` | dashboard Stage 1.3: `find_shared_pixels` on synthetic snips, and on the real overlaps of J1358p6522 and Q1243p307 |
+| `test_outputs.py` | dashboard Stage 1.4: the output writer, in memory and on disk (one test runs a fit, and is marked `fast` rather than `unit`) |
+| `test_bundle.py` | dashboard Stage 1.5–1.8: packing every model and extracting it byte for byte, the manifest checks, atomic writes and the lock, source spectra, hidden lines (the bundle-run tests are marked `fast`) |
 
 `tests/conftest.py` provides two fixtures these share: `logmsgs`, which collects
 what `msgs` emits (neither `capsys` nor `capfd` sees it — the shared 'alis'

@@ -24,6 +24,7 @@ from alis import save
 from alis import utils
 from alis.functions import base
 from alis import logger
+from alis import outputs
 msgs = logger.msgs()
 
 
@@ -67,7 +68,7 @@ def build_funcarray(argflag, atomic):
 
 class ClassMain:
 
-    def __init__(self, argflag, getinst=False, modelfile=None, parlines=[], datlines=[], modlines=[], lnklines=[], data=None, fitonly=False, verbose=None, cli_overrides=None):
+    def __init__(self, argflag, getinst=False, modelfile=None, parlines=[], datlines=[], modlines=[], lnklines=[], data=None, fitonly=False, verbose=None, cli_overrides=None, writer=None, atomic=None):
         if getinst: return # Just get an instance
 
         # Set parameters
@@ -81,7 +82,9 @@ class ClassMain:
         logger.set_verbosity(self._argflag['out']['verbose'])
         self._retself = False
         self._fitonly = fitonly
-        self._isonefits = False
+        # Where the output files go: to disk, or into memory when a project
+        # bundle is run (dashboard Stage 1.4)
+        self._outputs = writer if writer is not None else outputs.DiskOutputs()
 
         # First send all signals to messages to be dealt
         # with (i.e. someone hits ctrl+c)
@@ -102,7 +105,7 @@ class ClassMain:
         elif parlines != [] or modlines != [] or datlines != [] or lnklines != []:
             self._parlines, self._datlines, self._modlines, self._lnklines = parlines, datlines, modlines, lnklines
             self._argflag = load.set_params(self._parlines, copy.deepcopy(self._argflag), setstr="Model ")
-            load.check_argflag(self._argflag)
+            load.check_argflag(self._argflag, keep_blind_outputs=self._outputs.in_memory)
             self._retself = True
         else:
             self._parlines, self._datlines, self._modlines, self._lnklines = load.load_input(self)
@@ -112,8 +115,12 @@ class ClassMain:
         # with the file's 'plot dims', not with 0.
         load.reapply_cli_overrides(self._argflag, self._cli_overrides,
                                    verbose=self._argflag['out']['verbose'])
-        # Load the atomic data
-        self._atomic = load.load_atomic(self)
+        # A blind run asked for on the command line follows the same rules as
+        # one asked for in the model file (dashboard Stage 1.6)
+        if any(o[:2] == ('run', 'blind') for o in self._cli_overrides):
+            load.apply_blind_rules(self._argflag, keep_blind_outputs=self._outputs.in_memory)
+        # Load the atomic data (a bundle passes the table it holds)
+        self._atomic = load.load_atomic(self, table=atomic)
 
         # Build the model-function registry once (Stage 2.2)
         self._funcarray = build_funcarray(self._argflag, self._atomic)
@@ -312,7 +319,6 @@ class ClassMain:
             self._tend=time.time()
         elif self._argflag['generate']['data']:
             # Save the generated data
-            #if self._argflag['out']['fits'] or self._argflag['out']['onefits']:
             # Go to modelfits to generate the fake data. It won't be written out unless self._argflag['out']['fits'] is True
             self, fnames = save.save_modelfits(self)
             self._fitparams = self._modpass['p0']
@@ -401,7 +407,7 @@ class ClassMain:
                         if np.size(whrconv) == 0 and mpars.niter > 1 and mpars.status != 5:
                             msgs.info("Solution has converged",verbose=self._argflag['out']['verbose'])
                             if outputconvfile:
-                                fwrite = open(self._argflag['run']['modname'].rstrip("mod")+"convY", "w")
+                                fwrite = outputs.of(self).open(self._argflag['run']['modname'].rstrip("mod")+"convY", "w")
                                 fwrite.close()
                             # Use the best-fit results from the convergence test
                             m = mpars
@@ -409,7 +415,7 @@ class ClassMain:
                             break
                         elif mc.niter == 1:
                             if outputconvfile:
-                                fwrite = open(self._argflag['run']['modname'].rstrip("mod")+"convN", "w")
+                                fwrite = outputs.of(self).open(self._argflag['run']['modname'].rstrip("mod")+"convN", "w")
                                 fwrite.close()
                             msgs.warn("Solution has probably not converged yet (after 1 iteration)",verbose=self._argflag['out']['verbose'])
                             if self._argflag['run']['convnostop']:
@@ -418,7 +424,7 @@ class ClassMain:
                             else: break
                         elif mc.status == 5:
                             if outputconvfile:
-                                fwrite = open(self._argflag['run']['modname'].rstrip("mod")+"convN", "w")
+                                fwrite = outputs.of(self).open(self._argflag['run']['modname'].rstrip("mod")+"convN", "w")
                                 fwrite.close()
                             msgs.warn("Solution has probably not converged yet."+msgs.newline()+"Maximum number of iterations reached",verbose=self._argflag['out']['verbose'])
                             if self._argflag['run']['convnostop']:
@@ -427,7 +433,7 @@ class ClassMain:
                             else: break
                         else:
                             if outputconvfile:
-                                fwrite = open(self._argflag['run']['modname'].rstrip("mod")+"convN", "w")
+                                fwrite = outputs.of(self).open(self._argflag['run']['modname'].rstrip("mod")+"convN", "w")
                                 fwrite.close()
                             msgs.warn("Solution has not converged for {0:d}/{1:d} free parameters".format(np.size(whrconv), numfreepars),verbose=self._argflag['out']['verbose'])
                             msgs.info("Maximum parameter difference was {0:f} sigma".format( np.max((np.abs(mpars.params-mt.params)/mt.perror)[whrconv]) ),verbose=self._argflag['out']['verbose'])
@@ -449,7 +455,7 @@ class ClassMain:
             self._fitresults = m
             self._fitparams = m.params
             # Write out the data and model fits
-            if self._argflag['out']['fits'] or self._argflag['out']['onefits']:
+            if self._argflag['out']['fits']:
                 fnames = save.save_modelfits(self)
             # Write an output of the parameters for the best-fitting model
             if self._argflag['run']['blind'] and m.status != -20:
@@ -536,7 +542,6 @@ def initialise(alispath, verbose=-1):
     slf._argflag = argflag
     slf._argflag['out']['verbose'] = verbose
     slf._atomic = load.load_atomic(slf)
-    slf._isonefits = False
     slf._funcarray = build_funcarray(slf._argflag, slf._atomic)
     return slf
 

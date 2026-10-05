@@ -28,7 +28,7 @@ import os
 
 import numpy as np
 
-from alis import logger
+from alis import logger, outputs
 
 msgs = logger.msgs()
 
@@ -470,7 +470,8 @@ def write_plotscript(slf, params):
         )
         return None
     fname = script_name(slf)
-    if os.path.exists(fname) and not (
+    out = outputs.of(slf)
+    if out.exists(fname) and not (
         cfg["overwrite"] or slf._argflag["out"]["overwrite"]
     ):
         msgs.warn(
@@ -480,8 +481,13 @@ def write_plotscript(slf, params):
         return None
     try:
         text = build_script(slf, params, panels)
-        with open(fname, "w") as fil:
+        with out.open(fname, "w") as fil:
             fil.write(text)
+        # The script places each component, so a project bundle stores it
+        # hidden when anything is blinded (dashboard Stage 1.6)
+        if slf._argflag["run"]["blind"] or any(
+                mkey.get("blind", False) for mkey in slf._modpass["mkey"]):
+            out.hide(fname)
     except Exception as err:
         msgs.warn(
             "Could not write the plotting script:" + msgs.newline() + str(err),

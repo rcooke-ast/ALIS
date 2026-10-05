@@ -1,7 +1,7 @@
 # ALIS Workflow Guide
 
-**Version:** 0.4  
-**Date:** 2026-10-03  
+**Version:** 0.5  
+**Date:** 2026-10-05  
 **Authors:** RJC and Claude
 
 ---
@@ -795,6 +795,42 @@ illustrates a fundamental degeneracy in Voigt profile fitting: a very narrow, hi
 saturated line can produce an indistinguishable profile from a broader, less saturated
 line at a given spectral resolution. Correcting the starting b-value to 1.0 km/s was
 sufficient to escape the local minimum and find the correct global solution.
+
+### 4.2 Project bundles (`.model`)
+
+*Added 2026-10-05 (dashboard Stage 1).* A project bundle holds a whole fit in one
+zip file: the model, its snips (at the same relative paths as on disk), the atomic
+table the model uses, and the outputs of its latest run. It is the project file of
+the ALIS dashboard, but `run_alis` handles it on its own:
+
+```bash
+run_alis --pack myfit.mod            # writes myfit.model
+run_alis myfit.model                 # fits it; the outputs go back into the bundle
+run_alis --extract myfit.model       # writes everything out as plain files
+```
+
+- **Running a bundle** reads it into memory, so nothing is unpacked to disk. The
+  outputs replace the bundle's previous latest run, with a record of when and where
+  the run took place (`runs/latest/run.json`). A run that stops with an error keeps
+  the previous result and records the error instead.
+- **The atomic table** packed in the bundle is always the one used, so the result
+  does not depend on the machine or on the version of ALIS.
+- **Blinding.** Lines with `blind=True` are stored hidden in the bundle, and so are
+  the outputs that reveal blinded values. They are never printed. `--extract`
+  writes the hidden starting values in plain text, after a warning, so that the
+  extracted model runs, but writes best-fit values only as a plain blind run would.
+- **Not supported in a bundle:** simulations (`sim random`, `sim perturb`),
+  `sim beginfrom`, `iterate model`, `generate data`, and data lines that read other
+  files (`lsffile`, `systematics=`, `systmodule=`). Extract the bundle first.
+
+### 4.3 Pixels fitted twice
+
+When the data are loaded, ALIS warns if the same pixel of the same data is fitted
+by more than one snip. This happens when two snips overlap, for example O I 1302
+and Si II 1304 cut separately, or neighbouring high-order Lyman lines. Two pixels
+are the same when their wavelengths and flux/error ratios agree, so independent
+exposures on a common wavelength grid are not flagged. The fit still runs. To fix
+it, merge the two snips, or keep the shared pixels in only one of them.
 
 ---
 

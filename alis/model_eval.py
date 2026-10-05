@@ -19,6 +19,7 @@ import numpy as np
 from alis import gpu_dispatch
 from alis import logger
 from alis import load
+from alis import outputs
 
 msgs = logger.msgs()
 
@@ -61,6 +62,10 @@ class FitState:
     # the same reason as _mplan.
     _nfitpix: Any = None
     _nexbins: Any = None
+    # Dashboard Stage 1.4: where 'out wavecorr' writes. A worker process gets a
+    # copy, so in a bundle run its writes are discarded; the best-fit file is
+    # written by the final evaluation, in the main process.
+    _outputs: Any = None
     _pinfl: Any = None
     _posnfit: Any = None
     _posnfull: Any = None
@@ -581,7 +586,8 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
                 cntout = mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn])
                 flxout = (state._fluxfull[sp][ll:lu]-mzero[sp][llx])/(cntout-mzero[sp][llx])
                 fleout = state._fluefull[sp][ll:lu]/(cntout-mzero[sp][llx])
-                np.savetxt(outname, np.transpose((wavout, x[sp][ll:lu], flxout, fleout)))
+                with outputs.of(state).open(outname, "w") as fil:
+                    np.savetxt(fil, np.transpose((wavout, x[sp][ll:lu], flxout, fleout)))
                 # fit_info = [0.0, 0.0, 0, 0, "WZCORR"]
                 # state._chisq_init = 0.0
                 # save.save_model(state, p, p, fit_info, printout=False, filename=state._argflag['out']['modelname']+".wzcorr", overwrite=True)

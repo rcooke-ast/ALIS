@@ -53,7 +53,7 @@ first builds the logic and the second the interface.
 | F10 Command search | Later | S19 Results table, correlations | 6 |
 | F11 Modes as plug-ins | 2 | S20 Continue from best fit | 6 |
 | F12 Tab status markers | 3 | S21 Convergence tools | 6 |
-| F13 Relink moved spectra | 3 | S22 Plot preview (D28) | Later |
+| F13 Relink moved spectra | 1, 3 | S22 Plot preview (D28) | Later |
 | F14 One launcher | 3 | S23 Attach a source spectrum | Later |
 | S2 Transition coverage | 4 | S24 "Set z here" | 4 |
 | S3 Column roles (D13) | 4 | S25 Dataset panel (D14) | 4 |

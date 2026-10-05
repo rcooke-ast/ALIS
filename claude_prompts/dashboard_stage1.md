@@ -22,8 +22,8 @@
 
 ## Design
 
-*Written by Claude on 2026-10-04. The choices still open are the Queries below; each
-gives Claude's lean, and this section follows the leans.*
+*Written by Claude on 2026-10-04, and updated in Prompt 1 to follow RJC's responses to
+Q1.1–Q1.11.*
 
 ### The bundle
 
@@ -37,6 +37,7 @@ J1358p6522.model                     a zip file
 ├── files/                           the fit as plain files, laid out as on disk
 │   ├── model/J1358p6522.mod         the model, with hidden lines as placeholders
 │   └── data/J1358p6522_H1.dat …     its snips
+├── atomic/atomic.ecsv               the atomic table the model uses (Q1.10)
 ├── hidden.bin                       the hidden lines, compressed (not readable)
 ├── sources.json                     source spectra: path, SHA-256, size, dataset
 ├── sources/…                        source spectra embedded for archiving (optional)
@@ -53,7 +54,12 @@ J1358p6522.model                     a zip file
   as on disk. The root of the tree is the lowest directory that holds the model and
   all of its data, so `run datadirc ../data/` and data lines such as
   `../../data/J013301m400628_B/…` (both used by the context models) need no change to
-  the text. The model text is stored exactly as written (D7).
+  the text. The model text is stored exactly as written (D7). Snips named on
+  commented-out data lines are packed too, when the files exist, so that a line can
+  be switched back on later (Q1.11).
+- **The atomic table.** The table the model uses (`run atomic`, or the default) is
+  always packed, and a bundle run always uses the packed copy, so the result does not
+  depend on the machine or on the version of ALIS (Q1.10).
 - **Reading a data line.** ALIS resolves the file name as it does now (`datadirc` plus
   the name on the line, relative to the model) and takes that file's bytes from the
   bundle instead of the disk.
@@ -115,7 +121,8 @@ Nothing is unpacked to disk (D9).
 > After every task, run the `unit` and `fast` batches of the test suite; run the
 > `medium` batch before the stage closes.
 
-**1.1 — Remove onefits (D11, QF.35).** Remove it first, because it sits in the code
+**1.1 — Remove onefits (D11, QF.35). [DONE 2026-10-05]**
+Remove it first, because it sits in the code
 that the next tasks change.
 - Remove:
   - the `out onefits` setting (`alis/config.py:164`);
@@ -126,14 +133,13 @@ that the next tasks change.
   - `_isonefits` in `main.py`, `load.py` and the two test fixtures that set it;
   - the `onefits` lines in `check_argflag` and `ClassMain.main`.
 - Keep `out fits`, which writes one FITS file per snip.
-- A `.fits` model file stops with a message that onefits was removed and points to the
-  bundle. `out onefits True` in a model does the same; `out onefits False` gives a
-  warning and is ignored (Q1.9).
+- Nothing replaces onefits (Q1.9). `out onefits` in a model, with either value, stops
+  with ALIS's usual error for an unrecognised setting.
 - Correct the onefits paragraph of `doc/tex_files/description.tex`.
-- **Check:** `grep -ri onefits alis tests` finds only the new message; the test suite
-  passes.
+- **Check:** `grep -ri onefits alis tests` finds nothing; the test suite passes.
 
-**1.2 — Load several data lines from memory (D9).** Today `load_data` takes one
+**1.2 — Load several data lines from memory (D9). [DONE 2026-10-05]**
+Today `load_data` takes one
 in-memory array, and only when the model has a single data line (`load.py:734`).
 - `data=` also accepts a mapping from each data file's path, as `load_data` resolves
   it (`datadirc` plus the name on the line), to that file's bytes.
@@ -146,13 +152,17 @@ in-memory array, and only when the model has a single data line (`load.py:734`).
   Q1243p307 models, from disk and from memory, and compares every loaded array with
   `np.array_equal`.
 
-**1.3 — Warn about pixels fitted twice (D19, QF.21, S26).**
+**1.3 — Warn about pixels fitted twice (D19, QF.21, S26). [DONE 2026-10-05]**
 - A pure function, `find_shared_pixels`, takes the fitted pixels of every snip and
   returns each pair of snips that share pixels, with the shared indices. Two pixels
   are the same when their wavelengths and their flux/error ratios agree (Q1.8). The
   ratio does not change when a snip has been multiplied by its continuum, but it
   differs between exposures on a common wavelength grid, so those are not flagged
-  (QF.21(a)).
+  (QF.21(a)). Only pixels cut from the same parent data are shared (RJC, Q1.8).
+  Two guards stop independent files from matching by chance:
+  - pixels with zero flux, or an error of zero or less, are ignored;
+  - matches count only in runs of at least three consecutive pixels, because a snip
+    that overlaps another always shares a contiguous block.
 - `load_data` calls it once the data are loaded. It warns, once per pair, with the
   number of pixels, their wavelength range and the two file names, and suggests
   merging the snips or keeping the pixels in one of them. The fit still runs
@@ -170,7 +180,8 @@ in-memory array, and only when the model has a single data line (`load.py:734`).
 
   Fit results do not change.
 
-**1.4 — Send every output through one writer (D9).** ALIS writes its outputs from
+**1.4 — Send every output through one writer (D9). [DONE 2026-10-05]**
+ALIS writes its outputs from
 many places, each with its own `open`, `savetxt`, `writeto` or `savefig`, and several
 ask "Overwrite? (y/n)" at the terminal. A bundle run must collect them in memory.
 - Add a small writer object, held by the fit as `slf._outputs`, with two forms:
@@ -188,16 +199,23 @@ ask "Overwrite? (y/n)" at the terminal. A bundle run must collect them in memory
 - The writer also records which outputs are hidden (Design, "Hidden values"). It does
   not write them out in plain form.
 - `simulate.py` is not routed, because bundles do not support simulations (Q1.6).
+- *As built:* the `out wavecorr` file is written during model evaluation, also in
+  worker processes. The evaluation state (`FitState`) carries the writer, so a
+  worker writes to its own copy, which is discarded, and the best-fit file is
+  written by the final evaluation in the main process. All nine helium34 models
+  use `out wavecorr`, so it is supported rather than refused.
 - **Check:** the regression harness is unchanged. A unit test runs
   `examples/metal_line_abs` with each form of writer and finds the same files, with
   the same bytes apart from dates and run times.
 
-**1.5 — The bundle format: `alis/bundle.py` (D8, QF.19, QF.32, Q0.5).** One module,
+**1.5 — The bundle format: `alis/bundle.py` (D8, QF.19, QF.32, Q0.5). [DONE 2026-10-05]**
+One module,
 with no dashboard code, which both `run_alis` and the dashboard use.
 - **Pack:** make a bundle from a plain `.mod` (Q1.4):
-  - find its data files as `load_data` does;
+  - find its data files as `load_data` does, including those on commented-out data
+    lines that exist (Q1.11);
   - choose the root of the `files/` tree;
-  - copy the model and snips in;
+  - copy the model and snips in, and the atomic table the model uses (Q1.10);
   - hide the `blind=True` lines (Task 1.6);
   - optionally add source spectra, by path or embedded;
   - write the manifest.
@@ -222,7 +240,7 @@ with no dashboard code, which both `run_alis` and the dashboard use.
   - an interrupted write leaves the old bundle intact;
   - a moved source can be relinked, and a changed one is reported.
 
-**1.6 — Hidden values (D24, QF.19, QF.20).**
+**1.6 — Hidden values (D24, QF.19, QF.20). [DONE 2026-10-05]**
 - Hide and restore lines (Design, "Hidden values"). `hidden.bin` is compressed JSON
   mapping each placeholder to its line.
 - The plain loader (`load_input`) stops at a `<hidden:n>` placeholder with a message
@@ -248,7 +266,7 @@ with no dashboard code, which both `run_alis` and the dashboard use.
     and the covariance matrix are stored in plain form;
   - `unblind()` gives back the original text and is logged.
 
-**1.7 — `run_alis project.model` (D9, S31).**
+**1.7 — `run_alis project.model` (D9, S31). [DONE 2026-10-05]**
 - `run_alis` recognises a bundle by its `.model` extension and confirms it is a zip
   file. It then runs it as in the Design ("Running a bundle"). Command-line settings
   (`-p 0`, `--set …`) apply as they do to a `.mod`.
@@ -256,7 +274,7 @@ with no dashboard code, which both `run_alis` and the dashboard use.
   and plotting without fitting (`-j`). A simulation, `iterate model` or
   `generate data` stops with a message suggesting that the bundle be extracted first
   (Q1.6). So does a model that reads an auxiliary file the bundle does not hold
-  (Q1.5).
+  (Q1.5). The atomic table is always the packed copy (Q1.10).
 - **When the run ends** (Q1.7):
   - it re-opens the bundle as it is then on disk and replaces only `runs/latest/` and
     the manifest, so edits saved by the dashboard during the run are kept;
@@ -277,8 +295,13 @@ with no dashboard code, which both `run_alis` and the dashboard use.
 
   The bundle must give the same results as the plain run. Blind cases are compared as
   mode (a) compares them now.
+- *As built:* `VMP_DLA/J1358p6522` fails on this machine as a plain run too: the
+  untracked `alis/data/atomic_rjc.xml` has no `Ly` entries, and the model uses
+  `1Ly_a`. `test_bundle_matches_plain` instead runs two real fits both ways and
+  compares the bundle with the plain run: `VMP_DLA/J0903p2628` and
+  `helium34/Her36` (which writes `out wavecorr` files).
 
-**1.8 — Extract and pack from the command line (D9, D10, Q1.4).**
+**1.8 — Extract and pack from the command line (D9, D10, Q1.4). [DONE 2026-10-05]**
 - `run_alis --extract project.model [DIR]`:
   - writes the `files/` tree and the latest run's outputs to `DIR`, by default a new
     directory named after the bundle, beside it;
@@ -296,7 +319,7 @@ with no dashboard code, which both `run_alis` and the dashboard use.
 - **Check:** `tests/test_cli.py` covers both commands. `--pack` then `--extract` of
   `examples/metal_line_abs`, run as a plain model, matches the reference.
 
-**1.9 — Close the stage.**
+**1.9 — Close the stage. [DONE 2026-10-05]**
 - `CHANGELOG.md`: bundles, `--extract`, `--pack`, the shared-pixel warning, and the
   removal of onefits.
 - `doc/ALIS_workflow.md`: a short section on project bundles and the shared-pixel
@@ -308,6 +331,62 @@ with no dashboard code, which both `run_alis` and the dashboard use.
 - Record in this document what Stage 2 receives from `alis/bundle.py`, so that the
   project model can be built on it.
 - Update the stage table in `dashboard_stage0.md` if anything moved between stages.
+
+## Status (2026-10-05)
+
+*Written by Claude at the end of Prompt 1. The details are in
+`claude_prompts/logs/dashboard_stage1_log.md`.*
+
+Tasks 1.1–1.9 are done.
+- **Tests.** The new tests pass:
+  - the unit tests;
+  - the bundle mode of the harness on all 25 `fast` examples;
+  - two real fits run both ways.
+- **Failures that predate the stage.** The suite's failures are those of a clean
+  export of HEAD, all in `context/`:
+  - 3 unit round trips of the helium34 final models;
+  - 11 `fast` regression cases;
+  - every model that uses `run atomic atomic_rjc.xml` with `1Ly_a` (the local
+    table has no `Ly` entries).
+- **Found and fixed along the way:**
+  - a command-line setting that repeated the default was undone by the model file,
+    so `--set "run blind True"` did not blind a model that says `run blind False`;
+  - the blind rules are now applied after the command line as well;
+  - two small bugs in `load_input`'s end checks;
+  - `save_covar` could not overwrite a FITS covariance file.
+
+### What Stage 2 receives
+
+The project model of Stage 2 is built on `alis/bundle.py`. Its interface:
+- **`Bundle`:**
+  - `members` (zip member to bytes), `manifest`, `hidden` and `sources`;
+  - `model_text(restore=...)` and `hidden_model_lines()`;
+  - `data_for_run()` and `atomic_table()`;
+  - `is_blinded()` and `source(id)`.
+- **Making and storing:** `pack`, `pack_to`, `read`, `write` and `update` (re-read,
+  change and write under the lock).
+- **Running:** `run` (`run_alis project.model`), and `unsupported`, which says what
+  a model needs that a bundle cannot give.
+- **Plain files:** `extract`.
+- **Blinding:** `hide_lines`, `restore_lines` and `blind_line_numbers`, and
+  `unblind` (the dashboard confirms first, D24).
+- **Sources:** `add_source`, `check_sources`, `relink_source`, `embed_source` and
+  `unembed_source` (F13; the dialogs come in Stage 3).
+- **Members ALIS does not use** (`ui/`, `runs/0001/`, …) are kept unchanged. The
+  dashboard owns `ui/` and the committed runs.
+
+Also available:
+- `load.find_shared_pixels` (S26's hatching and fixes in Stage 4);
+- `load.data_file_paths`;
+- `outputs.MemoryOutputs`;
+- `ClassMain(writer=..., atomic=...)`.
+
+Two points for Stage 2:
+- **Hidden lines are whole lines.** The Stage 2 text-sync layer edits the restored
+  text in memory, and must hide a line again (with `hide_lines`) whenever it
+  writes the model back. That includes best-fit values copied in under global
+  blind (S20, QF.20(a)).
+- **The command line beats the model file**, even when it repeats a default.
 
 ## Skills to use for this stage
 
@@ -487,6 +566,35 @@ My lean: as above.
 
 **Response:** onefits will be entirely removed, since it was just an experimental feature. We will not support this in any way, and all instances of it in the code should be removed. Any model that has `out onefits True` should stop with an error saying that it is an unrecognised keyword.
 
+*Raised by Claude on 2026-10-04 (Prompt 1), after reading the responses above. RJC
+answered them in the session; the answers are recorded here.*
+
+**Q1.10 — The atomic table (Q1.5's response).** RJC asked for the atomic data file
+to be included in the bundle. Should it be:
+- the table the model uses, always, including the default `atomic.ecsv`; or
+- only a table that is not the default?
+
+And should a bundle run use the packed copy, or ALIS's installed table? 11 context
+models use `atomic_rjc.xml`, which is not part of the repository, so on a clean
+install they fall back to the default table with only a warning. A table compresses
+to about 10 KB.
+
+My lean: always pack the table the model uses, and always run with the packed copy.
+
+**Response:** Always pack the table the model uses, and a bundle run always uses the
+packed copy.
+
+**Q1.11 — Snips on commented-out data lines.** Some models switch data lines on and
+off by commenting them out (QF.3). Should packing include the files named on
+commented-out data lines when they exist?
+
+My lean: yes, so that a line can be switched back on later. Files that no longer
+exist are skipped, with a note.
+
+**Response:** Yes, pack them if they exist.
+
 ## Prompts
 
 1. Read this doc, check my responses to the queries, and ask more queries if needed. If there are no further queries, please execute the tasks in order, logging each in `ALIS/claude_prompts/logs/dashboard_stage1_log.md`.
+
+2. Based on the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-1, please generate the design document for Stage 2.

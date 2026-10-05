@@ -42,7 +42,6 @@ class _State:
     def __init__(self, atomic, verbose=-1):
         self._argflag = ArgFlag()
         self._argflag["out"]["verbose"] = verbose
-        self._isonefits = False
         self._atomic = atomic
         self._funcarray = build_funcarray(self._argflag, atomic)
 
