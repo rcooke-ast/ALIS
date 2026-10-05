@@ -105,6 +105,13 @@ def test_regions_excludes_zero_error_pixels():
 def test_report_chi2_self_consistent(tmp_path):
     ex = tmp_path / "metal_line_abs"
     shutil.copytree(REPO_ROOT / "examples" / "metal_line_abs", ex)
+    # Remove the outputs of any earlier run left in the example (regenerating
+    # the references writes reports beside the models), so that the report
+    # read below can only have been written by this run.
+    for pattern in ("model/*.report", "model/*.mod.out", "model/*.pdf",
+                    "model/*.png", "data/*_fit.dat"):
+        for stale in ex.glob(pattern):
+            stale.unlink()
     mod = "fit_spectra.mod"
     env = dict(os.environ)
     env["MPLBACKEND"] = "Agg"
@@ -118,9 +125,9 @@ def test_report_chi2_self_consistent(tmp_path):
     )
     assert proc.returncode == 0, (proc.stdout + proc.stderr)[-2000:]
 
-    reports = list((ex / "model").glob("*.report"))
-    assert len(reports) == 1, "no .report file was written"
-    text = reports[0].read_text()
+    report = ex / "model" / (mod + ".report")
+    assert report.exists(), "no .report file was written"
+    text = report.read_text()
 
     total = float(re.search(r"chi-squared = ([0-9.eE+-]+)", text).group(1))
     # Region rows begin with two spaces then the specid (not a '#' comment).

@@ -257,3 +257,19 @@ from now on, `atomic.ecsv` the default).
 **What would make the gate pass:** restore the regenerated `context/` references
 from wherever the 2026-08-03 set is kept, or run `regen_harness.sh` again. That
 script is not in this repository, and regeneration has always been RJC's to do.
+
+### 2026-10-05 (The gate after RJC regenerated the references)
+
+RJC regenerated the harness references (commit `27a42e6`, "regen harness").
+- **Unit batch:** 857 passed, 0 failed.
+- **`fast or medium` batch,** with the machine-dependent fits included: 114 passed,
+  1 failed.
+- **The failure:** `test_fit_report.py::test_report_chi2_self_consistent`. It copies
+  the whole `examples/metal_line_abs` folder and expected one `.report`. The
+  regeneration had left three reports there, plus a PDF and a PNG, all untracked.
+- **Fixed in two ways:**
+  - the 36 untracked run outputs left across `examples/` (25 `.report`, 8 `.pdf`,
+    1 `.png`, 1 `.mod.out`, 1 `_fit.dat`) were moved to the session scratchpad;
+  - the test now removes earlier outputs from its copy and reads
+    `fit_spectra.mod.report` by name. It passes both on the clean folder and with
+    an old report put back.
