@@ -215,3 +215,45 @@ all plain-mode `context/` cases:
   J1558m0031, Q0913p072) fail the same way on a clean export of HEAD, so they
   predate Stage 1.
 - No bundle test failed.
+
+### 2026-10-05 (`atomic_rjc.xml` retired; the gate rerun)
+
+**`run atomic atomic_rjc.xml` removed** (RJC: the file is out of date; `.ecsv` only
+from now on, `atomic.ecsv` the default).
+- Deleted the active setting line from 23 files: 11 `.mod`, 8 `.mod.out.reference`
+  (which the fixed-parameter tests run as models) and 4 stale `.mod.out`.
+- Kept:
+  - commented copies in the outputs' "copy of the input model" sections;
+  - five archived `*.mod.out.orig` files, which no test reads;
+  - the mentions in the `context.md` notes.
+- The originals were backed up to the session scratchpad, because `context/` is
+  not tracked by git.
+
+**The gate (`fast or medium`):** 93 passed, 20 failed (24 failed before).
+- The four VMP_DLA/J0814p5029 and VMP_DLA/J1358p6522 cases (minimisation and
+  fixed-param) now pass.
+- 7 of the failing minimisations are tagged `machine_dependent`, which the gate
+  skips off the reference machine (`--skip-machine-dependent`): HS0105p1619,
+  J1358p0349, J1558m0031, Q0913p072, Q1243p307, J0035m0918, J0903p2628.
+- The unit batch: 854 passed, 3 failed (the helium34 round trips).
+
+**Why the rest fail: the `context/` references on disk are stale.**
+- The refactor's Stage 5 log records that RJC regenerated all 42 references on
+  2026-08-03, after the Stage 5.6 atomic-mass fix and the Stage 5.4 writer fixes,
+  and that the full harness then passed (613 passed, 0 failed).
+- The `context/` references in this working copy are dated 14–21 July 2026, so
+  they predate that regeneration. The `examples/` ones, which are tracked, are
+  dated August and pass.
+- The two atomic tables agree for the lines these fits use: H I, D I, O I, C II
+  and N II have the same f-values and damping constants apart from one or two
+  lines each. So the atomic data do not explain the differences.
+- The helium34 round trips fail on old references that carry `damping=0.0000000`
+  on every line. That writer bug was fixed in Stage 5.4
+  (`load.call_function_load`); the current writer is correct. (In the session I
+  first took this for a live bug, then corrected it.)
+- The remaining fixed-parameter and minimisation differences are consistent with
+  the atomic-mass fix, which changed thermal broadening.
+
+**What would make the gate pass:** restore the regenerated `context/` references
+from wherever the 2026-08-03 set is kept, or run `regen_harness.sh` again. That
+script is not in this repository, and regeneration has always been RJC's to do.
