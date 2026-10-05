@@ -656,7 +656,7 @@ class SplineAbs(base.Base) :
                 del outstring[delind+1]
                 del errstring[delind+1]
                 insind += 1
-        if mp['mkey'][istart]['blind'] and conv is None:
+        if base.hides_blind_line(mp['mkey'][istart], conv):
             retout = "       ------ BLIND MODEL ------\n"
             #reterr = "       ------ BLIND MODEL ------\n"
             reterr = '  '.join(errstring) + '\n'

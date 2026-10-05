@@ -161,7 +161,6 @@ class OutConfig(_DictLike):
     modelname: str = ""
     plots: str = ""
     fits: bool = False
-    onefits: bool = False
     overwrite: bool = False
     verbose: int = 2
     reletter: bool = False

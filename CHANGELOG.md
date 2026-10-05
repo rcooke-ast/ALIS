@@ -8,6 +8,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Project bundles (`alis/bundle.py`): a whole fit in one zip file,
+  `project.model`, holding the model, its snips, the atomic table it uses, the
+  outputs of its latest run and, for the ALIS dashboard, its own state. Lines
+  with `blind=True` are stored hidden, and so are the outputs that reveal
+  blinded values.
+- `run_alis project.model` runs a bundle in memory, with nothing unpacked to
+  disk, and stores the outputs back in it with a record of the run
+  (`runs/latest/run.json`).
+- `run_alis --pack fit.mod [project.model]` makes a bundle from a plain fit;
+  `run_alis --extract project.model [DIR]` writes one out as plain files.
+- A warning when the same pixel of the same data is fitted by more than one
+  snip (`load.find_shared_pixels`). The fit still runs.
+- `load_data` reads several data files from memory (`data=` takes a mapping
+  from each file's path to its bytes).
+- `alis/outputs.py`: every output file is written through one writer, which
+  can keep the files in memory.
+
+### Fixed
+- A command-line setting that repeats the default (for example
+  `--set "run blind True"`) is no longer overridden by the model file, and a
+  blind run asked for on the command line follows the same rules as one asked
+  for in the model file.
+- `save_covar` overwrites an existing FITS covariance file when told to,
+  rather than failing.
+
+### Removed
+- onefits (`out onefits`, `run_alis file.fits`): an experimental single-file
+  format that no longer worked. `out onefits` is now an unrecognised setting.
+
 ## [2.0.0.dev0] - 2026-07-22
 
 Start of the ALIS v2 development line. Stage 1 is behaviour-preserving

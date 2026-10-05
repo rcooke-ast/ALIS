@@ -687,10 +687,14 @@ def plot_pdf(slf):
     ans, fn = save.file_exists(slf, tfn)
     if ans == 'n':
         msgs.info("PDF file was not saved", verbose=slf._argflag['out']['verbose'])
-    else:
-        pp = PdfPages(fn)
+    elif plt.get_fignums():
+        # PdfPages writes nothing when there are no figures, so nor do we
+        from alis import outputs
+        fil = outputs.of(slf).open(fn, "wb")
+        pp = PdfPages(fil)
         for i in plt.get_fignums():
             plt.figure(i)
             pp.savefig()
         pp.close()
+        fil.close()
         msgs.info("Saved a pdf with filename:"+msgs.newline()+fn, verbose=slf._argflag['out']['verbose'])

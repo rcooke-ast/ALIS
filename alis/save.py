@@ -2,7 +2,7 @@ import os
 import copy
 import numpy as np
 import datetime
-from alis import load, logger
+from alis import load, logger, outputs
 from alis.functions import base
 import astropy.io.fits as pyfits
 from matplotlib import pyplot as plt
@@ -14,16 +14,17 @@ def file_exists(slf, filename):
     """
     Check to see if a file exists before overwriting it
     """
+    out = outputs.of(slf)
     if slf._argflag['out']['overwrite']: ans='y'
     else: ans=''
-    if os.path.exists(filename):
+    if out.exists(filename):
         while ans != 'y' and ans != 'n' and ans !='r':
             msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
             ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
             if ans == 'r':
                 fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend
-                if os.path.exists(filename): ans = ''
+                if out.exists(filename): ans = ''
     return ans, filename
 
 
@@ -66,12 +67,14 @@ def save_asciifits(fname, slf, arr, model):
             msgs.bug("I didn't expect the keyword '{0:s}' when saving fits file -".format(i)+msgs.newline()+fname+".dat")
     data[:, -1] = model
     # Save the file
+    out = outputs.of(slf)
     dirname = os.path.dirname(fname + ".dat")
-    if dirname != '':
+    if dirname != '' and not out.in_memory:
         # Check the directory exists
         if not os.path.exists(dirname):
             os.makedirs(dirname)
-    np.savetxt(fname + ".dat", data)
+    with out.open(fname + ".dat", "w") as fil:
+        np.savetxt(fil, data)
     return
 
 
@@ -118,131 +121,20 @@ def save_fitsfits(fname, slf, arr, model):
     hdulist = pyfits.HDUList([hdu])
     hdulist[0].header['label'] = slf._datopt['label'][sp][sn]
     hdulist[0].header['alisfits'] = "fits"
+    out = outputs.of(slf)
     ans = 'y'
-    if os.path.exists(fname+".fits"):
+    if out.exists(fname+".fits"):
         if slf._argflag['out']['overwrite']:
-            os.remove(fname+".fits")
+            out.remove(fname+".fits")
         else:
             ans = ''
             while ans != 'y' and ans != 'n':
                 msgs.warn("File %s exists!" % (fname+".fits"), verbose=slf._argflag['out']['verbose'])
                 ans = input(msgs.input()+"Overwrite? (y/n) - ")
-            if ans == 'y': os.remove(fname+".fits")
-    if ans == 'y': hdulist.writeto(fname+".fits")
-    return
-
-
-def save_onefits(fname, slf):
-    """
-    Save the best-fitting model into a single fits file with multiple extensions.
-    """
-    # Setup the HDU
-    hdu = pyfits.PrimaryHDU()
-    # Get input model and place it in the fits header
-    plines = ''.join(slf._parlines).replace("\t","  ")
-    dlines = ''.join(slf._datlines).replace("\t","  ")
-    mlines = ''.join(slf._modlines).replace("\t","  ")
-    llines = ''.join(slf._lnklines).replace("\t","  ")
-    pcard=pyfits.Card('parlines',','.join([str(ord(c)) for c in plines]))
-    dcard=pyfits.Card('datlines',','.join([str(ord(c)) for c in dlines]))
-    mcard=pyfits.Card('modlines',','.join([str(ord(c)) for c in mlines]))
-    lcard=pyfits.Card('lnklines',','.join([str(ord(c)) for c in llines]))
-    hdu.header.append(pcard)
-    hdu.header.append(dcard)
-    hdu.header.append(mcard)
-    # Get output model and place it in the fits header
-    fit_info=[(slf._tend - slf._tstart)/3600.0, slf._fitresults.fnorm, slf._fitresults.dof, slf._fitresults.niter, slf._fitresults.status]
-    outstr = save_model(slf,slf._fitresults.params,slf._fitresults.perror,fit_info,printout=False,filename=None,getlines=True,save=False)
-    ocard=pyfits.Card('output',','.join([str(ord(c)) for c in outstr]))
-    hdu.header.append(ocard)
-    hdulist = pyfits.HDUList([hdu]) # Insert the primary HDU (input model)
-    # Now loop through all the data and put it into an HDU
-    datnum = 1
-    for sp in range(len(slf._posnfull)):
-        for sn in range(len(slf._posnfull[sp])-1):
-            ll = slf._posnfull[sp][sn]
-            lu = slf._posnfull[sp][sn+1]
-            # Prepare the model array:
-            modelout = -9.999999999E9*np.ones(slf._wavefull[sp][ll:lu].size)
-            w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-            modelout[w] = slf._modfinal[sp][ll:lu][w]
-            # Get the columns information for this index
-            wfek = list(slf._datopt['columns'][sp][sn].keys())
-            maxn=0
-            for i in wfek:
-                if slf._datopt['columns'][sp][sn][i] > maxn: maxn = slf._datopt['columns'][sp][sn][i]
-            data = np.zeros((lu-ll,maxn+2))
-            ncol = 0
-            colarr=[]
-            for i in wfek:
-                if slf._datopt['columns'][sp][sn][i] == -1: continue
-                num = slf._datopt['columns'][sp][sn][i]
-                if   i == 'wave':
-                    data[:,num] = slf._wavefull[sp][ll:lu]
-                elif i == 'flux':
-                    data[:,num] = slf._fluxfull[sp][ll:lu]
-                elif i == 'error':
-                    data[:,num] = slf._fluefull[sp][ll:lu]
-                elif i == 'continuum':
-                    data[:,num] = slf._contfinal[sp][ll:lu]
-                elif i == 'zerolevel':
-                    data[:,num] = slf._zerofinal[sp][ll:lu]
-                elif i == 'fitrange':
-                    out = np.zeros(lu-ll).astype(float)
-                    w = np.where((slf._wavefull[sp][ll:lu] >= slf._posnfit[sp][2*sn+0]) & (slf._wavefull[sp][ll:lu] <= slf._posnfit[sp][2*sn+1]))
-                    out[w] = np.isin(slf._wavefull[sp][ll:lu][w], slf._wavefit[sp]).astype(float)
-                    data[:,num] = out
-                elif i == 'loadrange':
-                    data[:,num] = np.ones(lu-ll)
-                elif i == 'systematics':
-                    data[:,num] = slf._systfull[sp][ll:lu]
-                elif i == 'resolution':
-                    msgs.bug("I haven't completed writing out 'resolution' to file yet... sorry")
-                    data[:,num] = np.zeros(lu-ll)
-                else:
-                    msgs.bug("I didn't expect the keyword '{0:s}' when saving fits file -".format(i)+msgs.newline()+fname+".dat")
-                coltxt = "{0:2d}".format(ncol)
-                colarr.append([coltxt,"{0:s}:{1!s}".format(i,num)])
-                ncol += 1
-            data[:,-1] = modelout
-            # Save the data into a new HDU
-            hdulist.append(pyfits.ImageHDU(data.transpose())) # Add a new Image HDU
-            # Insert the data options
-            hdulist[datnum].header['bintype']  = slf._datopt['bintype'][sp][sn]
-            for i in colarr:
-                hdulist[datnum].header[i[0]]   = i[1]
-            hdulist[datnum].header['filename'] = slf._snipnames[sp][sn]
-            hdulist[datnum].header['fitrange'] = slf._datopt['fitrange'][sp][sn]
-            hdulist[datnum].header['loadrange'] = slf._datopt['loadrange'][sp][sn]
-            hdulist[datnum].header['label']    = slf._datopt['label'][sp][sn]
-            hdulist[datnum].header['nsubpix']  = slf._datopt['nsubpix'][sp][sn]
-            hdulist[datnum].header['plotone']  = slf._datopt['plotone'][sp][sn]
-            hdulist[datnum].header['specid']   = slf._datopt['specid'][sp][sn]
-            resspl = slf._resn[sp][sn].split("(")
-            hdulist[datnum].header['resfunc']  = resspl[0]
-            respar = resspl[1].rstrip(")").split(",")
-            for i in range(len(respar)):
-                restxt = "respar{0:02d}".format(i)
-                hdulist[datnum].header[restxt] = respar[i]
-            datnum += 1
-    # Finally, append a keyword to the primary HDU to tell ALIS it's a onefits file, and save it.
-    hdulist[0].header['alisfits'] = "onefits"
-    hdulist[0].header['modname']  = slf._argflag['run']['modname']
-    hdulist[0].header['numext']   = datnum
-    ans = 'y'
-    if os.path.exists(fname+".fits"):
-        if slf._argflag['out']['overwrite']:
-            os.remove(fname+".fits")
-        else:
-            ans = ''
-            while ans != 'y' and ans != 'n' and ans != 'r':
-                msgs.warn("File %s exists!" % (fname+".fits"), verbose=slf._argflag['out']['verbose'])
-                ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
-                if ans == 'r':
-                    fname=input(msgs.input()+"Enter new filename (without the extension) - ")
-                    if os.path.exists(fname+".fits"): ans = ''
-            if ans == 'y': os.remove(fname+".fits")
-    if ans == 'y': hdulist.writeto(fname+".fits")
+            if ans == 'y': out.remove(fname+".fits")
+    if ans == 'y':
+        with out.open(fname+".fits", "wb") as fil:
+            hdulist.writeto(fil)
     return
 
 
@@ -253,7 +145,6 @@ def save_modelfits(slf):
     fnames = np.array([]).astype(str)
 #	stf, enf = [0 for all in slf._posnfull], [0 for all in slf._posnfull]
     usdtwice, usdtwind, usdtwext = np.array([]).astype(str), np.array([]).astype(int), np.array([]).astype(str)
-    if slf._argflag['out']['onefits']: wvarr, fxarr, erarr, mdarr = [], [], [], []
     # If we are generating fakedata, find the peak value of the model
     if slf._argflag['generate']['data'] and slf._argflag['generate']['peaksnr'] > 0.0:
         modmax = [0.0 for all in slf._specid]
@@ -317,14 +208,7 @@ def save_modelfits(slf):
                         slf._fluxfull[sp][ll:lu] += np.random.normal(0.0, slf._fluefull[sp][ll:lu])
             # Now that we have the output name, send the data away to be written to file
             if slf._argflag['out']['fits']:
-                if slf._argflag['out']['onefits']:
-                    # Store the fits files in an array and write them out at the end of the for loop
-                    ext = '.fits'
-                    #wvarr.append(slf._wavefull[sp][ll:lu])
-                    #fxarr.append(slf._fluxfull[sp][ll:lu])
-                    #erarr.append(slf._fluefull[sp][ll:lu])
-                    #mdarr.append(modelout)
-                elif fspl[-1] in ["fits", "fit"]:
+                if fspl[-1] in ["fits", "fit"]:
                     # Write out this snip to a fits file
                     ext = '.fits'
                     save_fitsfits(fnoext, slf, [sp,sn,ll,lu], modelout)
@@ -335,13 +219,9 @@ def save_modelfits(slf):
                 fit_fnames = np.append(fit_fnames, fnoext)
                 fnames = np.append(fnames, fnoext+ext)
     if slf._argflag['out']['fits']:
-        if slf._argflag['out']['onefits']: # The user has requested that all model fits be written into a single fits file:
-            outspl = slf._argflag['run']['modname'].split('.')
-            outname = '.'.join(outspl[:-1])+'_fit'
-            save_onefits(outname, slf)
-        else: # For snips that were used twice, rename the first instance to have suffix "01"
-            for i in range(len(usdtwice)):
-                os.rename(usdtwice[i]+"."+usdtwext[i],usdtwice[i]+"01."+usdtwext[i])
+        # For snips that were used twice, rename the first instance to have suffix "01"
+        for i in range(len(usdtwice)):
+            outputs.of(slf).rename(usdtwice[i]+"."+usdtwext[i],usdtwice[i]+"01."+usdtwext[i])
         msgs.info("Saved absorption line fits", verbose=slf._argflag['out']['verbose'])
     # If data has been generated, return the data within slf
     if slf._argflag['generate']['data']:
@@ -564,7 +444,15 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     outstring, errstring, arrstring = print_model(params,slf._modpass,errs=errors,verbose=slf._argflag['out']['verbose'],funcarray=slf._funcarray)
     cvstring, cvestring, cvastring = arrstring[0], arrstring[1], arrstring[2]
     shstring, shestring, shastring = arrstring[3], arrstring[4], arrstring[5]
-    if printout and slf._argflag['out']['verbose'] != -1:
+    # A project bundle keeps the real values of blinded components, stored
+    # hidden, where a plain run writes "BLIND MODEL" (dashboard Stage 1.6). The
+    # console still shows only what a plain run shows.
+    out = outputs.of(slf)
+    realstring = outstring
+    if out.in_memory:
+        with base.revealing_blind_lines():
+            realstring = print_model(params,slf._modpass,errs=errors,verbose=slf._argflag['out']['verbose'],funcarray=slf._funcarray)[0]
+    if printout and slf._argflag['out']['verbose'] != -1 and not slf._argflag['run']['blind']:
         print("\n####################################################")
         print(outstring)
         print(errstring)
@@ -575,8 +463,13 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
         print("####################################################\n")
     # Reinsert the comments at the original locations
     outstrspl = (toutstring+outstring).split('\n')
-    for i in range(len(modcomlin)): outstrspl.insert(modcomind[i],modcomlin[i])
-    outstring = '\n'.join(outstrspl)
+    realstrspl = (toutstring+realstring).split('\n')
+    for i in range(len(modcomlin)):
+        outstrspl.insert(modcomind[i],modcomlin[i])
+        realstrspl.insert(modcomind[i],modcomlin[i])
+    # The lines a plain run blinds, counted from the start of the model block
+    blindlines = [k for k, line in enumerate(outstrspl) if "BLIND MODEL" in line]
+    outstring = '\n'.join(realstrspl)
     # Include an end tag for the model
     outstring += "model end\n"
     inputmodl += "#   model end\n#\n\n"
@@ -596,7 +489,7 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
         # like cnum/snum above.
         sn = 0
         for i in range(len(slf._datlines)):
-            if slf._datlines[i].lstrip() == "": continue # This line is needed for OneFits.
+            if slf._datlines[i].lstrip() == "": continue # Skip blank lines
             if slf._datlines[i].lstrip()[0] == "#": dstrarr[i] += slf._datlines[i]
             datspl = slf._datlines[i].split()
             spmatch = False
@@ -670,18 +563,19 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
     datstring = "".join(dstrarr)
     # Save the output
     if save:
+        out = outputs.of(slf)
         if slf._argflag['out']['overwrite'] or overwrite: ans='y'
         else: ans=''
-        if os.path.exists(filename):
+        if out.exists(filename):
             while ans != 'y' and ans != 'n' and ans !='r':
                 msgs.warn("File %s exists!" % (filename), verbose=verbose)
                 ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
                 if ans == 'r':
                     fileend=input(msgs.input()+"Enter new filename - ")
                     filename = fileend
-                    if os.path.exists(filename): ans = ''
+                    if out.exists(filename): ans = ''
         if ans != 'n':
-            infile = open(filename,"w")
+            infile = out.open(filename,"w")
             infile.write(prestringA)
             infile.write(datstring)
             infile.write(prestringB)
@@ -698,6 +592,13 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
             infile.write("\n###################################################\n")
             infile.write(inputmodl)
             infile.close()
+            # In a project bundle, hide what a plain blind run would not write:
+            # the blinded components' lines, or every value under 'run blind'
+            offset = (prestringA + datstring + prestringB).count("\n")
+            if blindlines:
+                out.hide(filename, lines=[offset + k for k in blindlines])
+            if slf._argflag['run']['blind']:
+                out.hide(filename)
             msgs.info("Saved output file successfully:"+msgs.newline()+filename, verbose=verbose)
     if getlines:
         sendstr  = prestringA + datstring + prestringB + outstring + "\n"+errstring+"\n"
@@ -717,10 +618,11 @@ def save_covar(slf, covar):
         msgs.warn("Covariance matrix is 'None', did you interupt the fit?", verbose=slf._argflag['out']['verbose'])
         msgs.info("Not writing out covariance matrix", verbose=slf._argflag['out']['verbose'])
         return
+    out = outputs.of(slf)
     if slf._argflag['out']['overwrite']: ans='y'
     else: ans=''
     filename=slf._argflag['out']['covar']
-    if os.path.exists(filename) or filename == "":
+    if out.exists(filename) or filename == "":
         while ans != 'y' and ans != 'n' and ans !='r':
             if filename == "":
                 msgs.warn("You must provide a filename to save the covariance matrix!", verbose=slf._argflag['out']['verbose'])
@@ -731,16 +633,18 @@ def save_covar(slf, covar):
             if ans == 'r':
                 fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend
-                if os.path.exists(filename): ans = ''
+                if out.exists(filename): ans = ''
     if ans != 'n':
         fnspl = filename.split('.')
         if fnspl[-1] in ['fit','fits']:
             hdu = pyfits.PrimaryHDU(covar)
             hdulist = pyfits.HDUList([hdu])
             hdulist[0].header['alisfits'] = "covar"
-            hdulist.writeto(filename)
+            with out.open(filename, "wb") as fil:
+                hdulist.writeto(fil)
         else:
-            np.savetxt(filename, covar)
+            with out.open(filename, "w") as fil:
+                np.savetxt(fil, covar)
         msgs.info("Saved covariance matrix successfully:"+msgs.newline()+filename, verbose=slf._argflag['out']['verbose'])
         # Generate the correlation matrix from the covariance matrix
         outsize = int(np.sqrt(np.shape(np.where(covar!=0.0))[1]))
@@ -774,7 +678,8 @@ def save_covar(slf, covar):
         # ('out covar mycovar') had every character stripped and the image was
         # written to a file called 'png' (Stage 5.4).
         imgname = os.path.splitext(filename)[0] + '.png'
-        plt.savefig(imgname)
+        with out.open(imgname, "wb") as fil:
+            plt.savefig(fil, format="png")
         msgs.info("Saved image of covariance matrix to:"+msgs.newline()+imgname, verbose=slf._argflag['out']['verbose'])
     return
 

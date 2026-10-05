@@ -1,7 +1,6 @@
-import os
 import datetime
 import numpy as np
-from alis import logger
+from alis import logger, outputs
 from alis.utils import getreason
 msgs = logger.msgs()
 
@@ -90,7 +89,7 @@ def assess_restarts(slf, restarts, refparams, perror):
         print(text)
         fname = slf._argflag['out']['modelname'] + ".converge"
         try:
-            with open(fname, "w") as fh:
+            with outputs.of(slf).open(fname, "w") as fh:
                 fh.write(text + "\n")
             msgs.info("Saved convergence assessment: {0:s}".format(fname),
                       verbose=verbose)
@@ -180,18 +179,19 @@ def save_convtest(slf,diff,thresh,info,printout=True,extratxt=["",""]):
     # Include an end tag for the model
     convstring += "model end\n"
     inputmodl += "#   model end\n#\n\n"
+    out = outputs.of(slf)
     if slf._argflag['out']['overwrite']: ans='y'
     else: ans=''
-    if os.path.exists(filename):
+    if out.exists(filename):
         while ans != 'y' and ans != 'n' and ans !='r':
             msgs.warn("File %s exists!" % (filename), verbose=slf._argflag['out']['verbose'])
             ans = input(msgs.input()+"Overwrite? (y/n) or rename? (r) - ")
             if ans == 'r':
                 fileend=input(msgs.input()+"Enter new filename - ")
                 filename = fileend
-                if os.path.exists(filename): ans = ''
+                if out.exists(filename): ans = ''
     if ans != 'n':
-        infile = open(filename,"w")
+        infile = out.open(filename,"w")
         infile.write(prestring)
         infile.write(convstring+"\n")
         infile.write("\n###################################################")
