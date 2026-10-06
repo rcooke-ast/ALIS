@@ -140,7 +140,7 @@ class LSFFile(base.Base) :
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
             base.check_tie_label(ival, tieval, self._idstr)
-            inval=float(ival.rstrip(tieval))
+            inval=float(base.tie_value(ival, tieval))
             if len(tieval) == 0: # Parameter is not tied
                 mps['mtie'][cntr].append(-1)
                 if forcefix:

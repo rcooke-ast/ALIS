@@ -321,6 +321,77 @@ def test_every_model_function_rejects_an_unsigned_exponent(atomic_data, logmsgs)
     assert len(registry[0]) > 25, "the registry looks unexpectedly small"
 
 
+# -- reading a value next to its label (dashboard Stage 2, Q2.12) --------------
+
+
+@pytest.mark.parametrize(
+    "word, label, value",
+    [
+        ("11.2878481n1a", "n1a", "11.2878481"),
+        ("5.0da", "da", "5.0"),
+        ("1.0E+04ta", "ta", "1.0E+04"),
+        ("14.0", "", "14.0"),
+        ("0.1va", "va", "0.1"),
+    ],
+)
+def test_tie_value_removes_the_label_and_nothing_else(word, label, value):
+    from alis.functions import base
+
+    assert base.tie_value(word, label) == value
+
+
+def test_a_label_holding_the_value_s_last_digit_keeps_that_digit(state):
+    """`11.2878481n1a` was read as 11.287848: `rstrip('n1a')` also took the 1.
+
+    The ALIS writer can produce such a word itself (examples/CNabs's saved
+    model), so re-reading a `.mod.out` lost a digit.
+    """
+    mp, _ = parse(
+        state,
+        [
+            "absorption\n",
+            "  voigt ion=16O_I 11.2878481n1a 0.0 5.0da 8000.0TA" " specid=0\n",
+        ],
+    )
+    assert mp["mpar"][0][0] == 11.2878481
+
+
+def test_every_model_function_reads_a_value_next_to_its_label(atomic_data):
+    """Drive every function in the registry with a word whose label holds the
+    value's last digit. Functions that need more than one bare parameter to
+    load at all are skipped, and must be few."""
+    registry = build_funcarray(ArgFlag(), atomic_data)
+    specid = np.array(["0"])
+    wrong, read = [], 0
+    for name in registry[0]:
+        mp = ModelPass()
+        try:
+            load.call_function_load(
+                registry[1][name], registry[2][name], "2.5801n1a", 0, mp, specid
+            )
+        except (SystemExit, Exception):
+            continue
+        read += 1
+        if mp["mpar"][0][0] != 2.5801:
+            wrong.append(name)
+    assert wrong == [], wrong
+    assert read > 15, "too few functions loaded a bare parameter"
+
+
+def test_no_function_strips_a_label_by_its_characters():
+    """The source guard: no `rstrip(<label>)` is left in the model functions."""
+    import re
+    from pathlib import Path
+
+    folder = Path(load.__file__).parent / "functions"
+    found = []
+    for path in sorted(folder.glob("*.py")):
+        for num, line in enumerate(path.read_text().splitlines(), 1):
+            if re.search(r"\.rstrip\((tieval|tval)\)", line) and "``" not in line:
+                found.append("{0}:{1}".format(path.name, num))
+    assert found == [], found
+
+
 # -- fix ----------------------------------------------------------------------
 
 

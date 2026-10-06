@@ -46,6 +46,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   for in the model file.
 - `save_covar` overwrites an existing FITS covariance file when told to,
   rather than failing.
+- A parameter's value is read as the word without its tie label
+  (`functions.base.tie_value`). It used to be read with `rstrip(label)`, which
+  strips the label's characters, so a label holding the value's last digit took
+  that digit too: `11.2878481n1a` was read as `11.287848`.
+- `Afwhm` adds its width, in Ångströms, to the fitted range when it decides how
+  much data to load, instead of scaling the range by it as if it were a fraction
+  (which asked for ±21% of the wavelength at 0.1 Å). Fewer unfitted pixels are
+  loaded; a Legendre continuum of a model with `Afwhm` is then expressed over that
+  narrower range, so its coefficients differ while the fit does not.
 
 ### Removed
 - onefits (`out onefits`, `run_alis file.fits`): an experimental single-file

@@ -243,7 +243,7 @@ class MultiVFWHM(base.Base) :
             if tval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tval=tval[2:].lstrip('.0123456789')
             base.check_tie_label(par[i], tval, self._idstr)
-            parsnd=float(par[i].rstrip(tval))
+            parsnd=float(base.tie_value(par[i], tval))
             pin[i] = self.parin(i, parsnd)
         # Use the parameters to now calculate the sigma width
         sigd = pin[0] / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
@@ -273,7 +273,7 @@ class MultiVFWHM(base.Base) :
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
             base.check_tie_label(ival, tieval, self._idstr)
-            inval=float(ival.rstrip(tieval))
+            inval=float(base.tie_value(ival, tieval))
             if len(tieval) == 0: # Parameter is not tied
                 mps['mtie'][cntr].append(-1)
                 if forcefix:

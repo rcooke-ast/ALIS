@@ -269,13 +269,18 @@ Tasks 2.1–2.11 are done.
   that run a fit are in `fast`.
 - **The batches at the close:** `unit` 1418 passed, 0 failed; `fast` 110 passed,
   0 failed (13 min 41 s).
-- **ALIS outside `alis/dashboard/` is unchanged.** The other changes are
+- **After Prompt 2 (the fixes of Q2.12):** `unit` 1427 passed, 0 failed; `fast` and
+  `medium` 115 passed, with the 2 `lsf_file` failures of Q2.13, which pass once its
+  references were regenerated.
+- **ALIS outside `alis/dashboard/` was unchanged at the close of Prompt 1; Prompt 2
+  then made the two fixes of Q2.12** (`functions/base.py` and the 16 modules that
+  read values, and `functions/afwhm.py`). The other changes are
   `pyproject.toml` (the `gui` extra, and `hypothesis` in `dev`), `.gitignore`
   (`.hypothesis/`), the two skills, `CHANGELOG.md`, and the stage table of
   `dashboard_stage0.md` (S16 and F12 now have their logic in Stage 2; the user's
   preferences file is in Stage 3).
 - **Found along the way:**
-  - two small faults in ALIS (Q2.12), worked around in the dashboard;
+  - two small faults in ALIS (Q2.12), fixed in Prompt 2;
   - an inferred system could take its redshift from a hidden component, which every
     other component's velocity would then reveal; it now takes it from a component
     that is not hidden;
@@ -324,7 +329,7 @@ Points for Stage 3:
   `.mod` panel should read it after a short pause in typing, not at every key.
 - Fits run in another process (F6); ALIS's own worker processes are spawned.
 - The user's preferences file (Q2.2) and the view state (`ui/view.json`) are Stage 3's.
-- Q2.12 (two small fixes to ALIS) is open.
+- Q2.12 and Q2.13 are done.
 
 ## Skills to use for this stage
 
@@ -562,9 +567,52 @@ Stage 3 (or at its start), run against the `unit`, `fast` and `medium` batches.
 
 **Response:** I agree with both of the proposed fixes to ALIS. Let's carry them out now before beginning the stage 3 development.
 
+*Done by Claude on 2026-10-05 (Prompt 2); the details are in the log.*
+- **(a)** `functions/base.py` has `tie_value(word, label)`, which returns the word
+  without its label, and all 30 places in 17 modules that read a value with
+  `rstrip(label)` use it.
+- **(b)** `Afwhm.getminmax` returns `fitrange ∓ Nsig·σ`.
+- **Tests:** `tests/test_load_model.py` (the helper; the CNabs word; every function of
+  the registry reading `2.5801n1a`; a guard that no `rstrip(label)` is left) and
+  `tests/test_load_files.py` (the pixels `Afwhm(0.1)` loads). Each new test fails on
+  the old code.
+- **The dashboard's workarounds are removed:** the validator's warning about misread
+  values and its own width for `Afwhm`.
+- **One thing I did not foresee:** (b) changes the outputs of `examples/lsf_file`,
+  whose references must be regenerated. See Q2.13.
+
+*Raised by Claude on 2026-10-05, during Prompt 2; RJC answered in the session.*
+
+**Q2.13 — The references of `examples/lsf_file`.** Fix (b) changes the outputs of
+`examples/lsf_file`, the only model that uses `Afwhm`. My note under Q2.12 said that
+the harness would stay green; that was wrong for this example. ALIS now loads 407
+pixels instead of the whole 554-pixel file, so its `_fit.dat` has 407 rows.
+Its Legendre continuum is normalised over that narrower range, so the coefficients
+and their errors differ. The fit itself is unchanged: best-fit χ² 375.510148 and 361
+degrees of freedom in both runs, and the voigt values agree to 7 digits. Its
+fixed-parameter test still passes, because a saved `.mod.out` carries `bufferpix=`
+and reloads its original pixels. Until the references change, `test_minimisation`
+and `test_bundle` fail for this example, and so would CI's `examples` job. The
+options: RJC regenerates the references; or `loadrange=all` is added to the
+example's data line, so that it loads the whole file as before; or (b) is reverted.
+Lean: regenerate.
+
+**Response (RJC, in the session):** Regenerate them. RJC then asked Claude to do it.
+
+*Done by Claude on 2026-10-05 (Prompt 2).* `fit_spectra.mod.out.reference` and
+`data/reference_fits/OI_SiII_fit.dat` of `examples/lsf_file` were regenerated with
+the command the other references record (`run_alis fit_spectra.mod -p 0 -f -w`), on a
+copy in the scratchpad, and copied in. The new `_fit.dat` has 407 rows. On the 368
+fitted pixels its model agrees with the old one to 8×10⁻⁶ of the error, and the flux
+and error columns are byte-identical. The `.mod.out` differs from the old one only in
+the starting χ², the buffer (`bufferpix=[20,19]`, was `[93,93]`), the Legendre
+coefficients and their errors, and the 7th digit of the voigt values. The three
+regression cases of `lsf_file` (minimisation, fixed parameters, bundle) pass.
+
 ## Prompts
 
 1. Please read the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-1; see their design documents (`dashboard_stage0.md` and `dashboard_stage1.md`) and the logs (`dashboard_stage0_log.md` and `dashboard_stage1_log.md`) to understand the work that has been implemented until now. Then, please review the ALIS code to understand the current state of ALIS. Finally, read this document, including my responses to your queries. If you have any further queries, please ask them in the Queries section of this document, and I will provide responses. Once everything is clear about the implementation of this stage, please execute the tasks in numerical order. If you have questions during development, please pause the development, ask questions and I will respond (please log these questions and answers in the Queries section).
 
 2. Good job with the stage 2 development. I have responded to Q2.12, and I agree with your proposed fixes to ALIS. Please implement these fixes now before proceeding to stage 3 development.
 
+3. Based on the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-2, please generate the design document for Stage 3.

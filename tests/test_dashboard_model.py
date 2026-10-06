@@ -141,10 +141,8 @@ def test_the_parsed_model_agrees_with_alis(path, registry, atomic_data):
         assert par.label == ("" if par.label_token is None else par.label_token.text)
         line = pm.text[par.line].text
         assert line[par.token.start : par.token.end] == par.token.text
-        # ALIS strips the label's characters from the end of the word
-        word = par.value_token.text + par.label
-        assert par.value == float(word.rstrip(par.label) if par.label else word)
-        assert par.written == float(par.value_token.text)
+        # ALIS reads the value exactly as written (base.tie_value, Q2.12)
+        assert par.value == par.written == float(par.value_token.text)
 
 
 # -- Small models ------------------------------------------------------------------

@@ -146,9 +146,12 @@ def test_a_buffer_narrower_than_the_convolution(registry):
     assert not found(probs, 3, "warning", "side")
 
 
-def test_a_value_alis_reads_differently(registry):
-    probs = problems(registry, MODEL.replace("14.0  0.00100za", "14.01n1a  0.00100za"))
-    assert found(probs, 10, "warning", "ALIS reads '14.01n1a' as 14.0"), probs
+def test_a_label_holding_the_value_s_last_digit_is_read_as_written(registry):
+    # ALIS used to read 14.01n1a as 14.0 (Q2.12); now there is nothing to warn about
+    text = MODEL.replace("14.0  0.00100za", "14.01n1a  0.00100za")
+    assert problems(registry, text) == []
+    pm = M.ParsedModel(text, registry)
+    assert pm.labels["n1a"].params[0].value == 14.01
 
 
 # -- The full check ----------------------------------------------------------------

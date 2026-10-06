@@ -156,9 +156,9 @@ class Voigt(base.Base) :
                 tieval=tieval[2:].lstrip('.0123456789')
             base.check_tie_label(ival, tieval, self._idstr)
             try:
-                inval=float(ival.rstrip(tieval))
+                inval=float(base.tie_value(ival, tieval))
             except:
-                msgs.error("This is not allowed for model input: "+ival.rstrip(tieval))
+                msgs.error("This is not allowed for model input: "+base.tie_value(ival, tieval))
             if len(tieval) == 0: # Parameter is not tied
                 mps['mtie'][cntr].append(-1)
                 mps['mfix'][cntr].append(0)

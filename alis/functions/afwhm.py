@@ -131,13 +131,16 @@ class AFWHM(base.Base) :
             if tval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tval=tval[2:].lstrip('.0123456789')
             base.check_tie_label(par[i], tval, self._idstr)
-            parsnd=float(par[i].rstrip(tval))
+            parsnd=float(base.tie_value(par[i], tval))
             pin[i] = self.parin(i, parsnd)
-        # Use the parameters to now calculate the sigma width
+        # Use the parameters to now calculate the sigma width, in Angstroms
         sigd = pin[0] / ( 2.0*np.sqrt(2.0*np.log(2.0)) )
-        # Calculate the min and max extraction wavelengths
-        wmin = fitrng[0]*(1.0 - Nsig*sigd)
-        wmax = fitrng[1]*(1.0 + Nsig*sigd)
+        # Calculate the min and max extraction wavelengths. The width is in
+        # Angstroms, so it is added to the range, not used as a fraction of it as
+        # the velocity widths of vfwhm and vsigma are (dashboard Stage 2, Q2.12):
+        # fitrng*(1 -/+ Nsig*sigd) asked for +/-21% of the wavelength at 0.1 A.
+        wmin = fitrng[0] - Nsig*sigd
+        wmax = fitrng[1] + Nsig*sigd
         return wmin, wmax
 
     def load(self, instr, cntr, mp, specid, forcefix=False):
@@ -161,7 +164,7 @@ class AFWHM(base.Base) :
             if tieval[0:2] in ['E+', 'e+', 'E-', 'e-']: # Scientific Notation is used.
                 tieval=tieval[2:].lstrip('.0123456789')
             base.check_tie_label(ival, tieval, self._idstr)
-            inval=float(ival.rstrip(tieval))
+            inval=float(base.tie_value(ival, tieval))
             if len(tieval) == 0: # Parameter is not tied
                 mps['mtie'][cntr].append(-1)
                 if forcefix:

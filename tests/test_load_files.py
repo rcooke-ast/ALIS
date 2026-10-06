@@ -342,6 +342,26 @@ def test_load_data_keeps_the_fitrange_and_a_resolution_sized_buffer(state, spect
     assert state._wavefull[0][0] < 1300.0 and state._wavefull[0][-1] > 1305.0
 
 
+def test_an_angstrom_fwhm_adds_its_width_to_the_loaded_range(state, spectrum):
+    """`Afwhm` gives its FWHM in Angstroms, so its buffer is added to the range.
+
+    It used to be used as a fraction, like the velocity widths: `fitrange *
+    (1 -/+ Nsig*sigma)` with sigma in Angstroms, which for 0.1 A asked for +/-21%
+    of the wavelength and loaded this whole file (dashboard Stage 2, Q2.12).
+    """
+    path, wave = spectrum
+    load_one(state, path, resolution="Afwhm(0.1)")
+    sigma = 0.1 / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    lo, hi = 1300.0 - 5.0 * sigma, 1305.0 + 5.0 * sigma
+    want = wave[(wave >= lo) & (wave <= hi)]
+    assert np.array_equal(state._wavefull[0], want)
+    assert state._wavefit[0].size == NFIT
+    from alis.functions import afwhm
+
+    inst = afwhm.AFWHM(getinst=True)
+    assert inst.getminmax(["0.1va"], [1300.0, 1305.0]) == pytest.approx((lo, hi))
+
+
 def test_load_data_with_no_resolution_loads_exactly_the_fitrange(state, spectrum):
     path, _wave = spectrum
     load_one(state, path)

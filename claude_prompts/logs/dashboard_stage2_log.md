@@ -422,3 +422,61 @@ unexpected exception prints its traceback to the terminal.
 - **ALIS outside `alis/dashboard/` is unchanged.**
 
 **Stage 2 is complete.** Q2.12 is open for RJC.
+
+### 2026-10-05 (Prompt 2: the two fixes of Q2.12, and Q2.13)
+
+RJC agreed to both fixes of Q2.12 and asked for them before Stage 3.
+
+**(a) Reading a value next to its label.**
+- `alis/functions/base.py` has `tie_value(word, label)`: the word without its label
+  (`word[:len(word) - len(label)]`). All 30 places in 17 modules that read a value with
+  `rstrip(tieval)` or `rstrip(tval)` (the `check_tied_param` copies and the
+  `getminmax` parameter readers) now call it. Nothing else in ALIS split values from
+  labels (`plotscript.py`'s `lstrip` of digits reads ion names).
+- Tests in `tests/test_load_model.py`: the helper on five words; the CNabs word
+  `11.2878481n1a` read as 11.2878481 by `load_model`; every function of the registry
+  that loads a bare parameter (more than 15) reads `2.5801n1a` as 2.5801; a source
+  guard that no `rstrip(<label>)` is left in `alis/functions/`.
+
+**(b) `Afwhm`'s range.**
+- `Afwhm.getminmax` now returns `fitrange ∓ Nsig·σ` (σ in Ångström, `Nsig` 5), as the
+  velocity widths of `vfwhm` and `vsigma` are fractions. The other `getminmax`
+  methods were checked: only `Afwhm` had the fault.
+- Test in `tests/test_load_files.py`: `Afwhm(0.1)` loads exactly the pixels of
+  `[1300, 1305] ∓ 5σ`, and `getminmax` returns that range.
+- Each of the new tests was run against the old code (the old `rstrip` and the old
+  `Afwhm` formula patched in), and fails there.
+
+**The dashboard.** The validator's warning about misread values and its own width for
+`Afwhm` are removed: it now asks ALIS's `getminmax` for every resolution function. The
+`Param` docstring and two dashboard tests follow (the parsed values now equal the
+written ones on every model).
+
+**Q2.13: the references of `examples/lsf_file`.** My note under Q2.12 said the harness
+would stay green; it did not, for the one model that uses `Afwhm`:
+- the `_fit.dat` has one row per loaded pixel: 407 now, 554 before (the old range
+  covered the whole file);
+- a Legendre continuum is normalised over the loaded range, so its coefficients and
+  errors change, while the continuum and the fit do not (best-fit χ² 375.510148 and
+  361 degrees of freedom in both; voigt values equal to 7 digits);
+- the fixed-parameter test still passed: a saved `.mod.out` carries `bufferpix=` and
+  reloads its original pixels.
+
+Asked in the session (Q2.13); RJC chose to regenerate the references, then asked Claude
+to do it. They were regenerated with the command the other references record,
+`run_alis fit_spectra.mod -p 0 -f -w` (the `[cli]` lines of every example reference),
+on a copy in the scratchpad, and copied in, after checking them against the old ones:
+the model column of the 368 fitted pixels agrees to 8×10⁻⁶ of the error, and the flux
+and error columns are byte-identical. The old references were kept in the session
+scratchpad.
+
+**Batches.**
+- `unit`: 1427 passed, 0 failed.
+- `fast` and `medium` (with the fixes, before the regeneration): 115 passed, 2 failed;
+  the 2 were `lsf_file`'s minimisation and bundle cases against the old references.
+  After the regeneration the three `lsf_file` cases pass.
+
+**Other changes:** `CHANGELOG.md` (Fixed: both faults); the stage document (Q2.12 done,
+Q2.13 with its answer, the status).
+- After the regeneration, the CI `examples` batch (`pytest -m examples`): 89 passed,
+  40 skipped, 0 failed (7 min 48 s).
