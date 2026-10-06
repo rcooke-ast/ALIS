@@ -88,9 +88,11 @@ def column_roles(table):
     """
     The columns' roles by D13's rule, where the column-role dialog starts (S3, D35).
 
-    Three columns are wave, flux and error. A fourth column of 0s and 1s is a mask
-    (a bad-pixel mask); any other fourth column is a continuum. Further columns are
-    ignored until the user gives them a role.
+    Three columns are wave, flux and error. A fourth column of 0s and 1s is ignored:
+    it is most likely a snip's fit range, which a source spectrum does not carry, and
+    a bad-pixel mask is chosen in the dialog (RJC's review, Q3.19). Any other fourth
+    column is a continuum. Further columns are ignored until the user gives them a
+    role.
 
     Parameters
     ----------
@@ -110,8 +112,8 @@ def column_roles(table):
         )
     roles = {"wave": 0, "flux": 1, "error": 2}
     if ncols >= 4:
-        fourth = table[:, 3]
-        roles["mask" if np.all(np.isin(fourth, (0.0, 1.0))) else "continuum"] = 3
+        if not np.all(np.isin(table[:, 3], (0.0, 1.0))):
+            roles["continuum"] = 3
     return roles
 
 

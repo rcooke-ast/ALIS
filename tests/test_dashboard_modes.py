@@ -64,10 +64,13 @@ def test_column_roles_follow_d13():
         "flux": 1,
         "error": 2,
     }
-    assert MO.column_roles(np.column_stack([wave, ones, half, mask]))["mask"] == 3
+    # A fourth column of 0s and 1s is ignored: a snip's fit range, not a mask
+    # (RJC's review, Q3.19); a mask is chosen in the dialog
+    three = {"wave": 0, "flux": 1, "error": 2}
+    assert MO.column_roles(np.column_stack([wave, ones, half, mask])) == three
     assert MO.column_roles(np.column_stack([wave, ones, half, half]))["continuum"] == 3
     five = MO.column_roles(np.column_stack([wave, ones, half, mask, half]))
-    assert five == {"wave": 0, "flux": 1, "error": 2, "mask": 3}
+    assert five == three
     with pytest.raises(MO.ModeError):
         MO.column_roles(np.column_stack([wave, ones]))
 
