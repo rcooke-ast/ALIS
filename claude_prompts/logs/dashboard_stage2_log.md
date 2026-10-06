@@ -480,3 +480,47 @@ scratchpad.
 Q2.13 with its answer, the status).
 - After the regeneration, the CI `examples` batch (`pytest -m examples`): 89 passed,
   40 skipped, 0 failed (7 min 48 s).
+
+### 2026-10-06 (Prompt 3: the Stage 3 design document)
+
+**Found while writing it, and fixed.** A new project has no snips until its first one
+is cut, so its model has empty data and model blocks. The parsed model reads such a
+model, but the validator's full check crashed inside ALIS's `load_par_influence`
+(which indexes the first shift, and there is none) and reported it as an unexpected
+error, with a traceback on the terminal. `validate.full` now skips ALIS's data and
+model loaders when there are no data lines, and gives the warning "The model has no data
+lines yet: add a snip before fitting." Test:
+`test_dashboard_validate.py::test_a_model_with_no_data_lines_yet` (67 pass).
+
+**`claude_prompts/dashboard_stage3.md` written:** the Qt skeleton of the chosen layout.
+- **Design:**
+  - two layers: the windows in `alis/dashboard/qt/` (Qt through `qtpy`), kept thin,
+    and three new modules with no Qt (`preferences.py`, `session.py`, `markers.py`);
+  - the window (menus, toolbar, tabs with markers, status bar, look);
+  - the tabs as frames of the agreed layout, to be filled in Stages 4–6;
+  - the `.mod` panel (masked view, typing through the history, reading after a
+    pause, the quick and full checks, cross-highlighting);
+  - sessions (save, autosave to a recovery copy, the view state, a bundle changed on
+    disk);
+  - the launcher, including an empty project for a spectrum;
+  - preferences;
+  - the rules of the tab markers;
+  - relinking spectra;
+  - blinding and export dialogs.
+- **Tasks 3.1–3.11:** the Qt foundation and test set-up; preferences; sessions; the
+  launcher; the window; the `.mod` panel; actions, undo/redo and the shortcut sheet;
+  tab markers; relinking; blinding and export; closing, with screenshots published
+  beside the mockups for review.
+- **Queries Q3.1–Q3.11**, each with a lean:
+  - installing PySide6 and pyqtgraph here, and testing with pytest-qt (this
+    environment has PyQt6, qtpy and pytest-qt, but neither PySide6 nor pyqtgraph);
+  - autosave to a recovery copy rather than the bundle;
+  - one folder, `~/.alis/`, for preferences, recent projects and recovery copies;
+  - placeholder frames in the tabs;
+  - the `.mod` panel's timings;
+  - the rules of the markers;
+  - opening a spectrum;
+  - a bundle changed on disk;
+  - switching blinding on (undo stops at that step) and off;
+  - a light theme only;
+  - reviewing the skeleton by screenshots.

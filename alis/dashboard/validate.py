@@ -73,6 +73,7 @@ BUFFER = (
     " be wrong near the edge of the fit: widen the snip."
 )
 UNSUPPORTED = "The dashboard cannot run this model as it is: {0}."
+NO_DATA_LINES = "The model has no data lines yet: add a snip before fitting."
 
 
 def _problem(line, severity, message):
@@ -405,7 +406,12 @@ def full(text, data, registry, pm=None):
             )
             for reason in B.unsupported(state._argflag, datlines):
                 problems.append(_problem(None, WARNING, UNSUPPORTED.format(reason)))
-            if not state._argflag["generate"]["data"]:
+            # A new project has no data lines until its first snip; ALIS cannot
+            # load such a model (load_par_influence needs a shift), so say so
+            live = [d for d in datlines if d.split("#")[0].strip()]
+            if not live:
+                problems.append(_problem(None, WARNING, NO_DATA_LINES))
+            elif not state._argflag["generate"]["data"]:
                 state._atomic = registry.atomic
                 state._funcarray = registry.instances()
                 load.load_data(state, datlines, data=data)

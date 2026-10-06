@@ -172,6 +172,18 @@ def test_the_full_check_finds_what_only_a_fit_would(registry):
     assert found(out, 11, "error", "26Al"), out
 
 
+def test_a_model_with_no_data_lines_yet(registry, logmsgs):
+    """A new project has no snips yet: a warning, not an unexpected error."""
+    text = "run ncpus 1\ndata read\ndata end\nmodel read\n emission\nmodel end\n"
+    pm = M.ParsedModel(text, registry)
+    assert pm.ok
+    out = V.full(text, {}, registry, pm)
+    assert [(p.line, p.severity, p.message) for p in out] == [
+        (None, "warning", V.NO_DATA_LINES)
+    ]
+    assert not logmsgs
+
+
 def test_alis_messages_stay_off_the_terminal(registry, logmsgs):
     problems(
         registry,
