@@ -56,7 +56,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   recorded in the project. Preferences are kept in `~/.alis/dashboard.json`, over
   the shipped defaults. New project lists its spectra in a table, each added in its
   own dialog with its FWHM and the role of each column of a text spectrum
-  (wavelength, flux, error, continuum, a bad-pixel mask, or ignored; guessed first);
+  (wavelength, flux, error, continuum, a bad-pixel mask, or ignored; guessed first,
+  a fourth column of 0s and 1s as ignored);
   the project's mode, "QSO Abs Line", is chosen there. The `.mod` panel's width is set
   by dragging its edge, it can be moved to a window of its own and back, and its
   "Align columns" lines the model's values up in columns (spaces only).

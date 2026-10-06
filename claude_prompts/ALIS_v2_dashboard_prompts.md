@@ -362,7 +362,10 @@ The QF numbers point to the full discussion.
   0s and 1s is a mask. Any other fourth column is a continuum: flux and error are
   multiplied by it, with a warning. Five or more columns are assigned in the column-role
   dialog (S3), which starts from this rule. FITS input comes with Orders mode (QF.7,
-  QF.22). *Refined in Stage 0: the dialog opens for every file (D35).*
+  QF.22). *Refined in Stage 0: the dialog opens for every file (D35).* *Refined in
+  Stage 3 (RJC's review, Q3.19): a fourth column of 0s and 1s is guessed as Ignore,
+  since it is most likely a snip's fit range, which a source spectrum does not carry;
+  a column chosen as Mask is a bad-pixel mask (1 leaves the pixel out of the fit).*
 - **D14.** Several datasets are supported from v1, and the user chooses which datasets
   are fitted for each transition. The first dataset loaded is the reference, with its
   shift fixed at 0. Each further dataset has one free `vshift` for all its snips. There

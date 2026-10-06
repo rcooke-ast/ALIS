@@ -658,3 +658,64 @@ dashboard's `fast` tests, 3 passed. black, isort and ruff are clean.
 
 **Q3.19** asks whether draft 3 does what was asked, how to guess a 0/1 fourth column
 (lean: keep guessing Mask), and whether Stage 3 may close.
+
+### 2026-10-06 (Prompt 4: the last fixes, the stage closed, and Stage 4's document)
+
+**The comments.** RJC left two on the page of draft 3 (recorded under Q3.19), and
+Prompt 4 closes the stage once they are applied:
+- "Guess Ignore. There should not be a fitrange loaded for these spectra. Snips have
+  a fitrange, not the full spectrum." (Q3.19(b));
+- "There appears to be two hide buttons here." (the Data tab of Q1243p307).
+
+**Changes.**
+- **The guess** (`modes.column_roles`): a fourth column of 0s and 1s is no longer
+  given a role, so it is ignored; any other fourth column is still a continuum. A
+  bad-pixel mask is chosen in the spectrum's dialog. D13 in
+  `ALIS_v2_dashboard_prompts.md` records the refinement, and `CHANGELOG.md` the
+  guess.
+- **The second Hide** was a bug of `widgets.Banner.show_message`: the old buttons
+  were taken out of the layout and only marked with `deleteLater`, so until the
+  event loop ran, the previous project's Hide stayed drawn where it had been, over
+  the text. The screenshots are taken one after another, without the event loop in
+  between, and caught it; a user could have seen it for a moment. The old buttons are
+  now hidden and detached at once. (Holding the widget before `setParent(None)`
+  matters: the layout item no longer returns it afterwards.)
+- The review page: "Draft 3, final", with "After draft 3: the last fixes" in place of
+  "To decide", the screenshots retaken (one Hide on the banner), and the spectrum
+  dialog's caption. Published as version 5; both threads got a reply and were
+  resolved.
+- The stage document: Q3.19's responses, the status (Stage 3 closed), and the points
+  for Stage 4.
+
+**Tests.** `test_dashboard_modes.py`: a fourth column of 0s and 1s gets no role.
+`test_dashboard_qt_review.py`: the bad-pixel mask is now chosen in the dialog (the
+guess is Ignore), and a new test, `test_the_banner_shows_only_its_own_buttons`, shows
+two messages with no event loop between them and finds only the second's button.
+
+**Batches.** `unit` 1730 passed, 0 failed (67 s); `gui` 65 passed (23 s); the
+dashboard's `fast` tests, 3 passed. black, isort and ruff are clean.
+
+**Stage 4's document** (`claude_prompts/dashboard_stage4.md`), written from
+`ALIS_v2_code_plan.md`, `ALIS_v2_dashboard_prompts.md`, the stage table of
+`dashboard_stage0.md`, the mockups of the Data and Regions tabs, and Stages 1–3. It
+covers steps 1–3 of the workflow (S2, S3, S5–S10, S16, S24–S27, D12–D19, D35, D36):
+- the design: one spectrum view on pyqtgraph for every tab; three modules without Qt
+  (`lines.py`, `snips.py`, `continuum.py`); curves and buffers computed by ALIS's
+  own functions, so the dashboard draws what ALIS fits; the Data tab (systems and
+  Identify a feature, the datasets table with its badges and ties, coverage,
+  blinding, confirming an imported fit's structure); the Regions tab (the ranked
+  transition list with its flags, SNIP and CLEAR, regions, masks, the snip's edges,
+  the continuum with its first guess, order, handles and sharing, and the pixels
+  fitted twice with their two fixes);
+- 13 tasks, among them a review of the Data tab halfway through (4.7) and an end to
+  end test (4.12): a project built from `metal_line_abs`'s spectrum through the two
+  tabs, fitted by `run_alis`, against the example's reference;
+- 12 queries (Q4.1–Q4.12), each with a lean.
+
+Facts checked while writing it: ALIS's Legendre takes its range from the loaded
+pixels unless `min=`/`max=` are given, and stops at order 10; the buffer ALIS wants
+comes from the resolution function's `getminmax` (already used by
+`validate._buffer`); `load.find_shared_pixels` finds the mockup's 36 shared pixels of
+J1358p6522's Ly7 (18 with Ly8, 18 with Ly6); only the Orders-mode models of
+`DH_orders/Q1243p307` share a continuum between snips; pyqtgraph 0.14 is installed
+with the `gui` extra.

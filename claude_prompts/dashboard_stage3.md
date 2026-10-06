@@ -408,13 +408,14 @@ tab (Stage 4) shows the same states in its rows.
 
 ## Status (2026-10-06)
 
-*Written by Claude at the end of Prompt 1. The details are in
-`claude_prompts/logs/dashboard_stage3_log.md`.*
+*Written by Claude at the end of Prompt 1, and brought up to date with each prompt
+since. The details are in `claude_prompts/logs/dashboard_stage3_log.md`.*
 
-Tasks 3.1–3.11 are done. The screenshots are published beside the mockups for RJC's
-review (https://claude.ai/artifact/A6ohUEnAe91TEDsKBLwuBt); Q3.16 asked for it, and
-draft 2 (Prompt 2) applies RJC's comments on it, draft 3 (Prompt 3) the second round
-(Q3.18); Q3.19 asks for the third.
+**Stage 3 is closed** (Prompt 4). Tasks 3.1–3.11 are done. The screenshots are
+published beside the mockups for RJC's review
+(https://claude.ai/artifact/A6ohUEnAe91TEDsKBLwuBt); Q3.16 asked for it, draft 2
+(Prompt 2) applies RJC's comments on it, draft 3 (Prompt 3) the second round (Q3.18),
+and Prompt 4 the last two (Q3.19). Stage 4's document is `dashboard_stage4.md`.
 - **Tests.** 18 new test files and a helper module: 10 without Qt (`unit`, one
   `fast`), and 8 of the windows (`gui`, 54 tests, about 25 s, off-screen with
   pytest-qt). Coverage of `alis/dashboard/` over the dashboard tests: 94%.
@@ -485,7 +486,10 @@ skill describes:
 
 Points for Stage 4:
 - pyqtgraph is not yet used: the first plot (the Data tab's spectrum) is Stage 4's.
-- RJC's review of the skeleton (Q3.16) may change the frames first.
+- RJC's review of the skeleton (Q3.16–Q3.19) changed New project, the column roles
+  (Ignore; a bad-pixel mask; a column of 0s and 1s guessed as Ignore), the mode's
+  name and place, and the `.mod` panel (a dock, its own window, Align columns). The
+  frames of the Data and Regions tabs are as built.
 - The `.mod` panel opens on every tab by default (Q3.16).
 
 ## Skills to use for this stage
@@ -882,6 +886,19 @@ reading to confirm is Q3.19.
 
 My lean: (a) yes; (b) keep guessing Mask, since the source spectra are rarely snips,
 and the dialog shows the guess; (c) yes.
+
+**Response (RJC, on the page and in Prompt 4, 2026-10-06):**
+- **(a)** Yes, with "some very minor feedback" left as comments on the page: "There
+  appears to be two hide buttons here." (the Data tab of Q1243p307).
+- **(b)** "Guess Ignore. There should not be a fitrange loaded for these spectra.
+  Snips have a fitrange, not the full spectrum."
+- **(c)** Yes: Prompt 4 asks for the minor changes, then Stage 4's design document.
+
+*Done by Claude on 2026-10-06 (Prompt 4); the details are in the log.* A fourth
+column of 0s and 1s is guessed as Ignore (`modes.column_roles`), and D13 says so. The
+second Hide was the previous project's: the banner's old buttons were only marked for
+deletion, and drawn where they were until the event loop ran; they are now removed at
+once. The page shows both ("Draft 3, final"). Stage 3 is closed.
 
 ## Prompts
 
