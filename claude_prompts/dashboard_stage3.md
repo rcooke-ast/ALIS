@@ -487,4 +487,6 @@ My lean: yes, at the end of the stage.
 
 ## Prompts
 
-> RJC will be responsible for writing this section.
+1. Please read the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-2; see their design documents (`dashboard_stage0.md` and `dashboard_stage1.md`) and the logs (`dashboard_stage0_log.md` and `dashboard_stage1_log.md`) to understand the work that has been implemented until now. Then, please review the ALIS code to understand the current state of ALIS. Finally, read this document, including my responses to your queries. If you have any further queries, please ask them in the Queries section of this document, and I will provide responses. Once everything is clear about the implementation of this stage, please execute the tasks in numerical order. If you have questions during development, please pause the development, ask questions and I will respond (please log these questions and answers in the Queries section).
+
+2. Based on the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-3, please generate the design document for Stage 4.
