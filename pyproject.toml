@@ -53,6 +53,13 @@ gui = [
     "qtpy",
     "pyqtgraph",
 ]
+# Testing the dashboard's windows (Stage 3): pytest-qt, used with the gui extra
+# (`pip install -e ".[gui,gui-test,dev]"`). It is kept out of `dev` because
+# pytest-qt stops pytest from starting at all when no Qt binding is installed,
+# which would break a plain `.[dev]` install and the CI jobs that have no Qt.
+gui-test = [
+    "pytest-qt",
+]
 # Development tooling (linting, formatting, testing, hooks). hypothesis drives
 # the dashboard's property tests (Stage 2).
 dev = [
@@ -77,6 +84,9 @@ Repository = "https://github.com/rcooke-ast/ALIS"
 # Console entry point (Q1.5): replaces the old bin/run_alis script.
 [project.scripts]
 run_alis = "alis.scripts.run_alis:console_entry"
+# The dashboard (dashboard Stage 3, F14; named in Q3.15): `alis project.model`
+# opens a project, while `run_alis project.model` fits it.
+alis = "alis.scripts.dashboard:console_entry"
 
 # Single source of truth for the version: alis/__init__.py.__version__
 [tool.setuptools.dynamic]

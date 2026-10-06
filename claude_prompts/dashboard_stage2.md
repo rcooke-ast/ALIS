@@ -8,7 +8,7 @@
 > - opening an existing fit (F4, D12), including the notices for imported models that
 >   break D20 or D22 (Q0.3);
 > - the validator (F5), the blinding gate (F8), undo/redo (F2), removal with
->   dependents (S27, D23), and the mode interface with Voigt mode only (F11).
+>   dependents (S27, D23), and the mode interface with QSO Abs Line mode only (F11).
 >
 > The code goes in a new package, `alis/dashboard/`, built on `alis/bundle.py` (Stage
 > 1). Nothing in it imports Qt or pyqtgraph, and a test checks that. ALIS outside
@@ -145,7 +145,7 @@ Bundle             alis/bundle.py (Stage 1): the model text, the snips, hidden
   - a model template;
   - plot presets.
 
-  Voigt mode is the only one built now; Orders mode comes after v1.
+  QSO Abs Line mode is the only one built now; Orders mode comes after v1.
 
 ## Tasks
 
@@ -244,9 +244,9 @@ Each returns a patch, and new labels follow Q2.3.
   the model without error, and undo gives back the original.
 
 **2.10 — Modes (`modes.py`, F11). [DONE 2026-10-05]**
-- The mode interface, and Voigt mode: one fitted dataset per display spectrum,
+- The mode interface, and QSO Abs Line mode: one fitted dataset per display spectrum,
   regions mapped straight to the snip's mask, and a model template for a new project.
-- **Check:** a new Voigt-mode project, built from `J1358p6522_fluxcal.dat` with one
+- **Check:** a new QSO Abs Line mode project, built from `J1358p6522_fluxcal.dat` with one
   system and one transition, gives a model that ALIS runs.
 
 **2.11 — Close the stage. [DONE 2026-10-05]**
@@ -291,7 +291,7 @@ Tasks 2.1–2.11 are done.
 
 The windows of Stage 3 are built on `alis/dashboard/`, which imports no Qt:
 - **Projects.** `Project.open(path)`; `Project.import_model(fit.mod)` (F4: packs it
-  with `bundle.pack` and infers its structure); `modes.get("voigt").new_project(source,
+  with `bundle.pack` and infers its structure); `modes.get("qso_abs_line").new_project(source,
   z, [(ion, rest)], ...)` (a new project from a spectrum); `project.save(path)`
   (atomic, under the lock, keeping the runs: what autosave calls, F1);
   `project.to_bundle()`.

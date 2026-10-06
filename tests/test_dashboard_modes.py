@@ -1,6 +1,7 @@
-"""Modes, and Voigt mode (dashboard Stage 2.10, F11).
+"""Modes, and QSO Abs Line mode (dashboard Stage 2.10, F11; named Voigt mode until
+Stage 3, Q3.17).
 
-A new Voigt-mode project, built from ``J1358p6522_fluxcal.dat`` with one system and
+A new QSO Abs Line mode project, built from ``J1358p6522_fluxcal.dat`` with one system and
 one transition, gives a model that ALIS runs, as ``run_alis project.model`` runs it. The
 same is checked on a spectrum made from a shipped example, so that it also runs where
 ``context/`` is absent.
@@ -75,17 +76,17 @@ def test_column_roles_follow_d13():
 def test_a_continuum_column_is_multiplied_in():
     wave = np.linspace(1000.0, 1001.0, 5)
     data = table_bytes(wave, np.full(5, 0.5), np.full(5, 0.1), np.full(5, 4.0))
-    spec = MO.get("voigt").load(data)
+    spec = MO.get("qso_abs_line").load(data)
     assert np.allclose(spec.flux, 2.0) and np.allclose(spec.error, 0.4)
     assert spec.mask is None and "multiplied" in spec.notes[0]
     roles = {"wave": 0, "flux": 1, "error": 2}
-    plain = MO.get("voigt").load(data, columns=roles)
+    plain = MO.get("qso_abs_line").load(data, columns=roles)
     assert np.allclose(plain.flux, 0.5) and not plain.notes
 
 
 @pytest.mark.unit
 def test_voigt_mode_maps_regions_straight_to_the_mask():
-    mode = MO.get("voigt")
+    mode = MO.get("qso_abs_line")
     spectra = ["one", "two"]
     assert mode.display(spectra) == spectra
     wave = np.arange(10.0)
@@ -111,7 +112,7 @@ def test_voigt_mode_maps_regions_straight_to_the_mask():
 
 @pytest.mark.unit
 def test_a_new_project_reads_as_intended(registry, example_spectrum):
-    mode = MO.get("voigt")
+    mode = MO.get("qso_abs_line")
     project = mode.new_project(
         str(example_spectrum), 0.0, [O_I_1302], fwhm=7.0, registry=registry
     )
@@ -141,13 +142,15 @@ def test_a_new_project_reads_as_intended(registry, example_spectrum):
     assert [(r.name, r.reference) for r in project.rows] == [("OI_spectrum", True)]
     source = project.bundle.sources[0]
     assert source["sha256"] == B.sha256(example_spectrum.read_bytes())
-    assert json.loads(project.bundle.members["ui/project.json"])["mode"] == "voigt"
+    assert (
+        json.loads(project.bundle.members["ui/project.json"])["mode"] == "qso_abs_line"
+    )
     assert V.check(project) == []
 
 
 @pytest.mark.unit
 def test_a_transition_off_the_spectrum_is_refused(registry, example_spectrum):
-    mode = MO.get("voigt")
+    mode = MO.get("qso_abs_line")
     with pytest.raises(MO.ModeError):
         mode.new_project(str(example_spectrum), 1.0, [O_I_1302], registry=registry)
     with pytest.raises(MO.ModeError):
@@ -178,7 +181,7 @@ def run_bundle(path):
 def test_alis_runs_a_new_project_from_j1358p6522(registry, tmp_path):
     if not FLUXCAL.exists():
         pytest.skip("spectrum not present")
-    project = MO.get("voigt").new_project(
+    project = MO.get("qso_abs_line").new_project(
         str(FLUXCAL), 3.0672596, [O_I_1039], fwhm=6.974, registry=registry
     )
     assert V.check(project) == []
@@ -196,7 +199,7 @@ def test_alis_runs_a_new_project_from_j1358p6522(registry, tmp_path):
 def test_alis_runs_a_new_project_from_an_example_spectrum(
     registry, example_spectrum, tmp_path
 ):
-    project = MO.get("voigt").new_project(
+    project = MO.get("qso_abs_line").new_project(
         str(example_spectrum), 0.0, [O_I_1302], fwhm=7.0, registry=registry
     )
     path = tmp_path / "example.model"
@@ -204,3 +207,12 @@ def test_alis_runs_a_new_project_from_an_example_spectrum(
     info = run_bundle(path)
     assert info["status"] == "completed"
     assert info["chi2_final"] < info["chi2_initial"]
+
+
+def test_the_mode_s_name_and_its_old_name():
+    """The mode is "QSO Abs Line" (RJC, Q3.17); "voigt" still finds it."""
+    mode = MO.get()
+    assert (mode.name, mode.title) == ("qso_abs_line", "QSO Abs Line")
+    assert MO.get("voigt") is mode and MO.get("qso_abs_line") is mode
+    with pytest.raises(MO.ModeError):
+        MO.get("orders")

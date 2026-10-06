@@ -257,3 +257,74 @@ def test_unblinding_is_confirmed_logged_and_final(blind_project):
     assert "13.4729" in gate.view().text
     data, store = project.model_bytes()
     assert store == {} and b"13.4729" in data
+
+
+# -- Found in Stage 3: masking that does not depend on the text reading ------------
+
+
+def break_text(project):
+    """Make the text stop reading (as typing in the .mod panel can)."""
+    at = project.text.index("model end")
+    change = T.Change((T.Patch(at, "model end", "model ennd"),), "Typing")
+    project.apply(project.step(change))
+    assert project.paused and not project.parsed.ok
+
+
+def hidden_strings(project, gate=None):
+    gate = gate or BL.Gate(project)
+    return [gate.view().text] + [gate.message("ColDens is 13.4729 at 0.000173")]
+
+
+def test_a_commented_out_hidden_line_is_masked(blind_project, registry):
+    """A bundle hides a commented-out line with blind=True; so must the view."""
+    pm = blind_project.parsed
+    line = pm.text[voigt(pm, "28Si_II").line]
+    copy = "#" + line.text.replace("13.4729", "13.9551") + "\n"
+    at = blind_project.parsed.text.offset(line.num)
+    blind_project.edit(T.Change((T.Patch(at, "", copy),), "Add a commented copy"))
+    assert line.num in blind_project.hidden_lines()
+    view = BL.Gate(blind_project).view().text
+    assert "13.9551" not in view and "13.4729" not in view
+    commented = [ln for ln in view.splitlines() if ln.startswith("#") and "28Si" in ln]
+    assert commented and BL.MASK in commented[0]
+
+
+def test_hidden_values_stay_masked_while_the_text_does_not_read(blind_project):
+    break_text(blind_project)
+    gate = BL.Gate(blind_project)
+    assert not gate.complete
+    for text in hidden_strings(blind_project, gate):
+        assert not leaks([text], {"13.4729", "0.000173", "1.73e-04"}), text
+    view = gate.view().text
+    assert "blindrange=" + BL.MASK in view and "blindseed=" + BL.MASK in view
+    # The visible O I line is still shown
+    assert "ion=16O_I   14.0" in view
+
+
+def test_a_hidden_label_stays_masked_on_other_lines_while_the_text_does_not_read(
+    registry, tmp_path
+):
+    """A label set on a hidden line hides its value wherever it is used."""
+    model = BLIND.read_text().replace(
+        "voigt   ion=28Si_II 13.0    0.0",
+        "voigt   ion=28Si_II 13.6118sic    0.0",
+    )
+    model = model.replace(
+        "model end",
+        "    voigt   ion=28Si_I  13.6118sic   0.0    1.0da   8000TA   specid=0\n"
+        "  lim param sic [13.2117,14.1113]\nmodel end",
+    )
+    folder = tmp_path / "blind"
+    (folder / "model").mkdir(parents=True)
+    (folder / "data").mkdir()
+    data = ROOT / "examples/blind/data/OI_SiII.dat"
+    (folder / "data/OI_SiII.dat").write_bytes(data.read_bytes())
+    (folder / "model/fit_spectra.mod").write_text(model)
+    project = P.Project.import_model(str(folder / "model/fit_spectra.mod"), registry)
+    assert project.parsed.ok, project.parsed.problems
+    bad = {"13.6118", "13.2117", "14.1113"}
+    assert not leaks([BL.Gate(project).view().text], bad)
+    break_text(project)
+    gate = BL.Gate(project)
+    assert "sic" in gate.hidden_labels
+    assert not leaks([gate.view().text], bad)

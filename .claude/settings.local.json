@@ -74,7 +74,8 @@
       "Bash(python -m pytest tests/test_dashboard_*.py -q -p no:cacheprovider --cov=alis/dashboard --cov-report=term-missing)",
       "Bash(python -m pytest -m unit -q -p no:cacheprovider)",
       "Bash(S=/private/tmp/claude-501/-Users-rcooke-Software-ALIS/4eb92d38-2c18-47eb-95a3-8ca763d860f6/scratchpad; R=/Users/rcooke/Software/ALIS/examples/lsf_file; rm -rf $S/regen_lsf $S/old_lsf_refs && mkdir -p $S/regen_lsf $S/old_lsf_refs && cp $R/model/fit_spectra.mod.out.reference $R/data/reference_fits/OI_SiII_fit.dat $S/old_lsf_refs/ && cp -r $R/model $R/data $S/regen_lsf/ && rm -rf $S/regen_lsf/data/reference_fits $S/regen_lsf/model/fit_spectra.mod.out.reference && cd $S/regen_lsf/model && run_alis fit_spectra.mod -p 0 > run.log 2>&1; echo \"exit $?\"; ls $S/regen_lsf/model $S/regen_lsf/data; head -12 fit_spectra.mod.out)",
-      "Bash(python -m pytest -m examples -q -p no:cacheprovider)"
+      "Bash(python -m pytest -m examples -q -p no:cacheprovider)",
+      "Bash(cd *)"
     ]
   }
 }

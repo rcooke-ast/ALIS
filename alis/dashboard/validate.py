@@ -52,8 +52,15 @@ UNEXPECTED = (
     " the model. The terminal window shows the details."
 )
 # ALIS's warnings that do not apply in the dashboard: a blind project still keeps its
-# best-fit outputs, hidden in the bundle (Stage 1.6)
-IGNORED = ("For a blind analysis",)
+# best-fit outputs, hidden in the bundle (Stage 1.6); and the optional columns a snip
+# does not have, which ALIS notes for every file (Stage 3: 24 of J1358p6522's 29)
+IGNORED = (
+    "For a blind analysis",
+    "continuum information was not provided",
+    "zerolevel information was not provided",
+    "systematics information was not provided",
+    "Systematics information was not provided",
+)
 _PIXELS = {}
 # The messages of the checks (no design-document references, D44)
 EXPONENT = (

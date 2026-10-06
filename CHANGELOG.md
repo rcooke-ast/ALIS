@@ -35,11 +35,41 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and with ALIS's loaders (`validate.py`); masks blinded values wherever they would
   be shown, and unblinds only when confirmed (`blinding.py`); keeps one undo/redo
   history (`history.py`); plans removals with their dependents (`remove.py`); and
-  makes new Voigt-mode projects from a spectrum (`modes.py`).
-- An optional `gui` extra (PySide6, qtpy, pyqtgraph) for the dashboard's windows,
-  which come next; `hypothesis` joins the `dev` extra.
+  makes new QSO Abs Line mode projects from a spectrum (`modes.py`).
+- An optional `gui` extra (PySide6, qtpy, pyqtgraph) for the dashboard's windows;
+  `hypothesis` joins the `dev` extra, and a `gui-test` extra holds `pytest-qt`.
+- The ALIS dashboard's window (dashboard Stage 3), opened with the new `alis`
+  command: `alis` shows a start page (New project, Open, Import a fit, recent
+  projects), `alis project.model` opens a project, `alis fit.mod` imports an existing
+  fit. Without the `gui` extra it says how to install it. The window has the five
+  tabs of the agreed layout, each with a marker (complete, out of date, needs
+  attention, not started), menus, a toolbar and a shortcut sheet built from one list
+  of actions, and the `.mod` panel: the model with blinded values masked, typed in
+  with undo and redo, read again after a pause and checked, with problems marked on
+  their lines. Projects are saved only by Save; autosave keeps a recovery copy every
+  minute (`~/.alis/recovery/`, or `$ALIS_HOME`), offered when the project is next
+  opened. Runs made by `run_alis project.model` while a project is open are kept,
+  and a project changed on disk by another program is noticed. Moved spectra can be
+  relinked (accepted only when their checksum matches). Blinding: the whole analysis
+  or chosen lines can be blinded, which undo does not pass; an edit that would show
+  a blinded value is refused; unblinding asks for a note and a confirmation, and is
+  recorded in the project. Preferences are kept in `~/.alis/dashboard.json`, over
+  the shipped defaults. New project lists its spectra in a table, each added in its
+  own dialog with its FWHM and the role of each column of a text spectrum
+  (wavelength, flux, error, continuum, a bad-pixel mask, or ignored; guessed first);
+  the project's mode, "QSO Abs Line", is chosen there. The `.mod` panel's width is set
+  by dragging its edge, it can be moved to a window of its own and back, and its
+  "Align columns" lines the model's values up in columns (spaces only).
+- The dashboard's project model (`alis/dashboard/`) gains `preferences.py`,
+  `session.py`, `markers.py`, `sources.py`, `actions.py`, `livetext.py` and
+  `align.py`, all without Qt; the windows are in `alis/dashboard/qt/`, the only part of ALIS that
+  imports Qt (through `qtpy`).
+- A `gui` marker for the window tests (`pytest -m gui`, off-screen), and a CI job
+  that runs them.
 
 ### Fixed
+- `run_alis --extract`'s note about hidden starting values no longer ends with a
+  reference to a design document.
 - A command-line setting that repeats the default (for example
   `--set "run blind True"`) is no longer overridden by the model file, and a
   blind run asked for on the command line follows the same rules as one asked

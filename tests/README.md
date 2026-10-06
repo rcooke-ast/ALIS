@@ -85,7 +85,9 @@ Both deferrals are now discharged — GPU in Stage 4, I/O in Stage 5:
 | `test_shared_pixels.py` | dashboard Stage 1.3: `find_shared_pixels` on synthetic snips, and on the real overlaps of J1358p6522 and Q1243p307 |
 | `test_outputs.py` | dashboard Stage 1.4: the output writer, in memory and on disk (one test runs a fit, and is marked `fast` rather than `unit`) |
 | `test_bundle.py` | dashboard Stage 1.5–1.8: packing every model and extracting it byte for byte, the manifest checks, atomic writes and the lock, source spectra, hidden lines (the bundle-run tests are marked `fast`) |
-| `test_dashboard_*.py` | dashboard Stage 2, the project model in `alis/dashboard/`: no Qt imported; every model read back byte for byte and split as `load_input` splits it; the parsed model agreeing with ALIS's own loaders on 92 models; targeted edits; the project's systems, components and datasets; the validator; the blinding gate (no hidden value in any string shown); undo/redo and removal; Voigt mode (the two tests that run a fit are marked `fast`). The property tests use `hypothesis` |
+| `test_dashboard_*.py` | dashboard Stage 2, the project model in `alis/dashboard/`: no Qt imported; every model read back byte for byte and split as `load_input` splits it; the parsed model agreeing with ALIS's own loaders on 92 models; targeted edits; the project's systems, components and datasets; the validator; the blinding gate (no hidden value in any string shown); undo/redo and removal; QSO Abs Line mode (the two tests that run a fit are marked `fast`). The property tests use `hypothesis` |
+| `test_dashboard_{preferences,session,launch,livetext,actions,markers,sources,guard,align}.py` | dashboard Stage 3, without Qt: preferences over shipped defaults; sessions (save byte for byte, autosave and recovery, runs written meanwhile kept, conflicts on disk, Save as); the `alis` launcher and new projects; typing in the `.mod` panel kept in step with the masks; the registry of actions; the tab markers; relinking spectra; the blinding guard of the history; aligning a model's columns (every model, word for word, and as ALIS reads it). `test_dashboard_session_run.py` runs `run_alis project.model` while a project is open, and is marked `fast` |
+| `test_dashboard_qt_*.py` | dashboard Stage 3, the windows, marked `gui` and run off-screen with pytest-qt (`pip install -e ".[gui,gui-test,dev]"`, then `pytest -m gui`); skipped where the gui extra or pytest-qt is missing. `test_dashboard_qt_foundation.py` (marked `unit`) needs no Qt: only `alis/dashboard/qt/` imports Qt, through `qtpy`; `alis --help`; the install message without Qt. `test_dashboard_qt_review.py` covers the changes of RJC's review (the mode in the status bar, Fit · Results, Align columns on the `.mod` panel, the panel's own window and width, New project's table of spectra and the dialog for each spectrum, its column roles with Ignore, and the bad-pixel mask). `dashboard_qt_helpers.py` makes a window whose questions and file choices the test answers |
 
 `tests/conftest.py` provides two fixtures these share: `logmsgs`, which collects
 what `msgs` emits (neither `capsys` nor `capfd` sees it — the shared 'alis'
@@ -117,6 +119,22 @@ own, or with `-m slow` for only the slow tests) to include it. Batch
 membership is by each case's reference runtime, so a regenerated reference can
 move a case between batches (e.g. J1419p0829 / J1358p6522_original became slow
 after regeneration).
+
+### The window batch
+
+Tests marked `gui` drive the dashboard's windows (dashboard Stage 3) with pytest-qt,
+off-screen (`QT_QPA_PLATFORM=offscreen`, set by `conftest.py`, which also gives
+pytest-qt the binding the dashboard uses, PySide6 by default). They need the `gui`
+extra and pytest-qt, which is kept in its own extra because it stops pytest from
+starting at all when no Qt binding is installed:
+
+```bash
+pip install -e ".[gui,gui-test,dev]"
+pytest -m gui                       # every window test (~20 s)
+```
+
+Where the gui extra or pytest-qt is missing they are skipped, so the `unit` batch
+and CI's `unit` and `examples` jobs stay free of Qt; CI's `gui` job runs them.
 
 ### The GPU batch
 

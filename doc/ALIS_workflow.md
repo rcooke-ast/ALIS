@@ -1,7 +1,7 @@
 # ALIS Workflow Guide
 
-**Version:** 0.5  
-**Date:** 2026-10-05  
+**Version:** 0.6  
+**Date:** 2026-10-06  
 **Authors:** RJC and Claude
 
 ---
@@ -823,7 +823,40 @@ run_alis --extract myfit.model       # writes everything out as plain files
   `sim beginfrom`, `iterate model`, `generate data`, and data lines that read other
   files (`lsffile`, `systematics=`, `systmodule=`). Extract the bundle first.
 
-### 4.3 Pixels fitted twice
+### 4.3 The dashboard (`alis`)
+
+*Added 2026-10-06 (dashboard Stage 3).* The ALIS dashboard is a window for preparing,
+running and inspecting a fit. It needs the optional `gui` extra
+(`pip install "alis[gui]"`: PySide6, qtpy and pyqtgraph), and is opened with `alis`:
+
+```bash
+alis                     # the start page: New project, Open, Import a fit, recent projects
+alis myfit.model         # opens a project bundle
+alis myfit.mod           # imports a plain fit into a new project (saved with Save as)
+run_alis myfit.model     # fits the project from the command line, as before
+```
+
+- **A new project** is made in the dashboard (File → New project…), not from a
+  spectrum on the command line: one dialog takes the project's name and folder, its
+  spectra, the primary redshift and whether to blind the whole fit, and writes the
+  project at once.
+- **Saving.** Save writes the bundle; nothing else does. Autosave keeps unsaved
+  changes in a recovery copy every minute, in `~/.alis/recovery/` (or
+  `$ALIS_HOME/recovery/`), and the dashboard offers it when the project is next
+  opened. A `run_alis myfit.model` run while the project is open is kept when it is
+  saved, and the dashboard notices when another program changes the file.
+- **The `.mod` panel** shows the model as the text it is, with blinded values masked
+  (`▒▒▒▒`), and can be typed in: the model is read again after a short pause, and
+  problems are marked on their lines. Undo and redo cover typing and every other
+  change. An edit that would show a blinded value is refused; only Model → Unblind…
+  shows them, after a note and a confirmation, and it is recorded in the project.
+- **Your preferences** are kept in `~/.alis/dashboard.json` (File → Preferences…),
+  which holds only what differs from the defaults: the autosave interval, the delays
+  of the `.mod` panel, the settings and FWHM of a new project, and the like.
+- **The tabs** (Data, Regions, Components, Fit, Plot) each show a marker: ✓ complete,
+  ↻ out of date, ! needs attention, ○ not started.
+
+### 4.4 Pixels fitted twice
 
 When the data are loaded, ALIS warns if the same pixel of the same data is fitted
 by more than one snip. This happens when two snips overlap, for example O I 1302

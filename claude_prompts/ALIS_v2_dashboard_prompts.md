@@ -88,9 +88,9 @@ prepare, run, and analyse an ALIS fit.  The dashboard should be designed with th
 Here are some specific features that should be included in the dashboard:
 
 - Users should be able to carry out four main tasks: (i) Prepare an ALIS fit, (ii) Run an ALIS fit, (iii) Analyse the results of an ALIS fit, and (iv) Generate a publication ready python plotting script. Step (iv) is not to be implemented in the first version of the dashboard, but this should be included as part of the design of the dashboard.
-- Several modes will be possible for the dashboard, including a "default" mode (this is the mode we will develop first, and it is called "Voigt mode"). The modes are described in more detail below. The dashboard should be designed to allow for additional modes to be added in the future.
+- Several modes will be possible for the dashboard, including a "default" mode (this is the mode we will develop first, and it is called "QSO Abs Line mode"). The modes are described in more detail below. The dashboard should be designed to allow for additional modes to be added in the future.
 - *Proposed by Claude (2026-10-03), to be vetted by RJC.* These features apply to the
-  whole dashboard; suggestions for individual steps follow the Voigt-mode steps below. Each
+  whole dashboard; suggestions for individual steps follow the QSO Abs Line mode steps below. Each
   has an ID so it can be accepted, changed or rejected on its own. "QF.n" refers to the
   Queries section.
   - **F1 — Never lose work.** A project file plus autosave restores the session exactly
@@ -128,7 +128,7 @@ Here are some specific features that should be included in the dashboard:
     reached with the mouse, and vice versa.
   - **F11 — Modes as plug-ins.** A mode supplies five things: a data loader, a builder
     for the "display spectrum", a mapper from regions to fitted data, a model template,
-    and plot presets. Voigt mode (the display spectrum is the one fitted dataset) and
+    and plot presets. QSO Abs Line mode (the display spectrum is the one fitted dataset) and
     Orders mode (the display spectrum is combined from many fitted orders) are the first
     two. The data model holds N datasets from the start (QF.6, QF.13).
   - **F12 — Tab status markers** *(added in Prompt 7)*. Each tab shows whether its step
@@ -141,18 +141,20 @@ Here are some specific features that should be included in the dashboard:
     path and checksum (QF.19). On opening, a missing or changed spectrum is reported. The
     user can then point the dashboard to the spectrum's new location, and the checksum
     confirms it is the same data.
-  - **F14 — One launcher** *(added in Prompt 8)*. `run_alisgui` (QF.32's response) opens
+  - **F14 — One launcher** *(added in Prompt 8; the command is `alis` since Q3.15 of
+    `dashboard_stage3.md`, and a spectrum is not opened from the command line, Q3.7)*.
+    `run_alisgui` (QF.32's response) opens
     whatever it is given. With no argument it starts a new project on the Data tab and
     lists recent projects. A `.model` opens that project. A `.mod` imports an existing fit
     into a new project (F4). A spectrum starts a new project with that spectrum as the
     first dataset.
 
 The operating modes include the following two modes:
-- Voigt mode (this is the default mode): In this mode, the user will load a single input spectrum and the interactive dashboard will allow the user to select the fitting regions for each transition they wish to include in the fit. The dashboard will also allow the user to interactively set starting model parameters for the fit, such as interactively defining a first guess of the continuum parameters, and allow the user to interactively set the Voigt parameters. This starting model (i.e. the .mod file) should be displayed on part of the GUI and the user should be allowed to change the model parameters. The user should be allowed to add multiple emission models, and multiple absorption models, if they wish. The user will then be able to run the fit from the dashboard, and the dashboard will display the results of the fit, including the output data file, and a plot of the model on top of the data. Eventually, the user will also be able to generate a publication ready python plotting script.
+- QSO Abs Line mode (this is the default mode): In this mode, the user will load a single input spectrum and the interactive dashboard will allow the user to select the fitting regions for each transition they wish to include in the fit. The dashboard will also allow the user to interactively set starting model parameters for the fit, such as interactively defining a first guess of the continuum parameters, and allow the user to interactively set the Voigt parameters. This starting model (i.e. the .mod file) should be displayed on part of the GUI and the user should be allowed to change the model parameters. The user should be allowed to add multiple emission models, and multiple absorption models, if they wish. The user will then be able to run the fit from the dashboard, and the dashboard will display the results of the fit, including the output data file, and a plot of the model on top of the data. Eventually, the user will also be able to generate a publication ready python plotting script.
 - Orders mode: This mode have all the same features as the default mode, but the user will be able to load multiple input spectra containing multiple orders. The dashboard will optimally combine all data into a single spectrum for display purposes only. The dashboard will then allow the user to select the fitting regions for each transition they wish to include in the fit (based on the combined spectra) and then the dashboard will apply these fitting regions to the individual orders of the multiple spectra. ALIS will perform the fits on the uncombined data. The dashboard will choose the FWHM values using information from the input files. Note that the input spectra will be the spec1d output products of PypeIt. Further information about this mode, the input data, and how to optimally combine and store the data will be provided in a future step of the refactoring process. For now, it is important to understand what will be required, so the dashboard is flexible enough to account for this feature in the future. If Claude requires further details at this stage, queries can be asked and RJC will provide responses.
 - There should be the option to include additional fitting modes in the future.
 
-The sequential process to prepare, run, and analyse an ALIS fit (for the "Voigt mode") is as follows:
+The sequential process to prepare, run, and analyse an ALIS fit (for the "QSO Abs Line mode") is as follows:
 
 (1) Load a spectrum: The user will load a single input spectrum and set a guess of the absorber redshift.
 
@@ -314,7 +316,8 @@ The QF numbers point to the full discussion.
   stays BSD-3. The dashboard is an optional extra, `pip install "alis[gui]"` (QF.2,
   QF.17, QF.29).
 - **D3.** The code goes in `alis/dashboard/`, reusing `alis/prepfit/` where that helps,
-  and is launched with `run_alisgui` (F14). Lines are at most 88 characters. Stage logs
+  and is launched with `alis` (F14; named `run_alisgui` until Q3.15 of
+  `dashboard_stage3.md`). Lines are at most 88 characters. Stage logs
   go in `claude_prompts/logs/dashboard_stage<n>_log.md` (QF.16, QF.32).
 - **D4.** `prepfit` is kept in v2.0 and deprecated once the dashboard covers its
   features. The snip format does not change (QF.15).
@@ -533,6 +536,47 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
 - **D44. No design references.** The shipped dashboard never refers to the design
   documents: its text has no D, F, S, QF or Q numbers.
 
+*Stage 3 decisions (the Qt skeleton)*
+
+*Added by Claude on 2026-10-06, from RJC's responses to Q3.1–Q3.17 of
+`dashboard_stage3.md` and his comments on the published screenshots of the skeleton.*
+
+- **D45. The launcher** is `alis` (F14): `alis` opens the start page, `alis
+  project.model` a project, `alis fit.mod` an imported fit; `run_alis` fits. A spectrum
+  is not opened from the command line (Q3.7, Q3.15).
+- **D46. New project** is one dialog: name and folder (the project is written at
+  once), the mode, the spectra, the primary redshift (optional) and global blind
+  (Q3.12). The mode is chosen there and not changed afterwards, so it is shown in the
+  status bar, not offered on the toolbar or in the menus. The spectra are a table
+  (file, wavelength range, pixels, FWHM, contents), each added in a dialog of its own:
+  "Add spectra (ascii)" asks for the file, its FWHM, and the role of each column
+  (Wavelength, Flux, Error, Continuum, Mask or Ignore), guessed by D13's rule and
+  changed by the user. Every role but Ignore goes to one column only, and Wavelength,
+  Flux and Error are needed. Mask is a bad-pixel mask: 1 leaves the pixel out of the
+  fit, even inside a fit region. "Add spectra (spec1d)" is for PypeIt spec1d (FITS)
+  files, read by a later mode whose context will be provided then. No zero-level or
+  systematics column is offered (RJC's review).
+- **D47. The default mode is "QSO Abs Line"** (it was called "Voigt mode"); in the code
+  `QSOAbsLineMode`, stored as `"qso_abs_line"`. The model function `voigt` (its module,
+  its class `Voigt` and its `_idstr`) keeps its name (Q3.17(b)).
+- **D48. Saving.** Only Save writes the bundle; autosave keeps a recovery copy every
+  minute, offered when the project is next opened (Q3.2). The dashboard's own files are
+  in `~/.alis/` (or `$ALIS_HOME`): `dashboard.json` (the preferences, over shipped
+  defaults), `recent.json`, `recovery/` (Q2.2, Q3.3).
+- **D49. Blinding in the dashboard.** The whole analysis or chosen lines can be
+  blinded, and undo does not pass the step that blinded them; an edit that would show
+  a hidden value is refused; only Unblind… (a note and a confirmation, logged) shows
+  them (Q3.9, Q3.13, Q3.14).
+- **D50. The `.mod` panel** is open by default, its width set by dragging its edge, and
+  it can be moved to a window of its own and back (RJC's review). "Align columns", on
+  the `.mod` panel only (beside its window button, and in its right-click menu), lines
+  the model's values up in columns, as one undoable step that changes only spaces; a
+  new project's model is written aligned, and an imported fit is left as written
+  until the user aligns it (Q3.17(a)).
+- **D51. Fit · Results** shows the run history beside the results table, and the
+  correlation matrix under the fit statistics (RJC's review swapped them, from the
+  mockup of D40).
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).
@@ -614,18 +658,18 @@ also be a strong test of QF.3.
 
 **Response:** Yes, this is possible. We will need to be careful though, because this will not allow the user to add any new transitions to the fit (because the .mod file does not contain any information about the full spectrum).
 
-**QF.6 — More than one spectrum in Voigt mode.** Step (1) loads a single spectrum, but
+**QF.6 — More than one spectrum in QSO Abs Line mode.** Step (1) loads a single spectrum, but
 several context fits combine datasets:
 - HIRES + UVES + ESPRESSO (`J0035m0918`);
 - new and archival HIRES (`Q1243p307`);
 - CRIRES + optical (`helium34`).
 
 Each dataset has its own resolution, shift (`vshift`/`vshiftscale`) and zero level. Is
-this in scope for Voigt mode? My lean: the data model handles N datasets from v1, since
+this in scope for QSO Abs Line mode? My lean: the data model handles N datasets from v1, since
 Orders mode needs this anyway. The v1 interface could support a small N, shown
 side-by-side for each transition.
 
-**Response:** Yes, this is a good suggestion. The dashboard should be able to handle multiple datasets in Voigt mode, and the user should be able to select which dataset they wish to use for each transition (multiple datasets should be an allowed option). The dashboard should also be able to handle different resolutions, shifts, and zero levels for each dataset.
+**Response:** Yes, this is a good suggestion. The dashboard should be able to handle multiple datasets in QSO Abs Line mode, and the user should be able to select which dataset they wish to use for each transition (multiple datasets should be an allowed option). The dashboard should also be able to handle different resolutions, shifts, and zero levels for each dataset.
 
 **QF.7 — Continuum convention.** When the input spectrum is normalised and comes with a
 continuum, how should the snips be written?
@@ -702,7 +746,7 @@ My lean: all except the last two.
 
 **Response:** All of these are good to include in v1. For the run history, perhaps it can be up to the user if they wish to store the output model parameters of a given fit in the run history. By default, the dashboard won't write all fits to the run history. There should be a button that commits a fit to the run history.
 
-**QF.12 — Emission models in Voigt mode.** Step (3) covers continuum polynomials. Should
+**QF.12 — Emission models in QSO Abs Line mode.** Step (3) covers continuum polynomials. Should
 other emission functions (`gaussian`, `line_emission`, `powerlaw`) be placeable
 interactively in v1, or added only through the `.mod` editor? My lean: the polynomials
 (and `constant`) are interactive in v1. Everything else goes through the editor, where
@@ -711,7 +755,7 @@ the validator (F5) and the plot preview still apply.
 **Response:** Agreed. The polynomials (and `constant`) should be interactive in v1. Everything else should go through the editor, where the validator (F5) and the plot preview still apply.
 
 **QF.13 — Orders mode (design-shaping questions only).** Two questions now, so that the
-Voigt-mode design does not get in the way of Orders mode later.
+QSO Abs Line mode design does not get in the way of Orders mode later.
 - **(a)** Must the user be able to override a region on an individual order, e.g. to
   mask a cosmic ray in one exposure? Or are regions defined only on the combined
   spectrum?
@@ -886,14 +930,14 @@ when the data are loaded.
 - **(b)** What about files with five or more columns, such as `J0814p5029_HIRES.dat`
   (which has its continuum in the fifth)? Should they be rejected, or should the user
   assign the column roles (S3, which you did not mark)?
-- **(c)** Is FITS input in Voigt mode (e.g. a PypeIt coadd1d spectrum) needed for v1, or
+- **(c)** Is FITS input in QSO Abs Line mode (e.g. a PypeIt coadd1d spectrum) needed for v1, or
   later?
 
 My lean: (a) yes, a fourth column of 0s and 1s is a mask; (b) use S3's column-role
 dialog for anything other than three columns, defaulting to your 3/4-column rule;
 (c) later, with Orders mode, which needs a FITS reader anyway.
 
-**Response:** I agree with your lean for (a), (b), and (c). A fourth column of 0s and 1s should be read as a mask. For files with five or more columns, the user should be able to assign the column roles using S3's column-role dialog, defaulting to the 3/4-column rule. FITS input in Voigt mode is not needed for v1, but will be needed later with Orders mode.
+**Response:** I agree with your lean for (a), (b), and (c). A fourth column of 0s and 1s should be read as a mask. For files with five or more columns, the user should be able to assign the column roles using S3's column-role dialog, defaulting to the 3/4-column rule. FITS input in QSO Abs Line mode is not needed for v1, but will be needed later with Orders mode.
 
 **QF.23 — Defaults for several datasets (QF.6's response).**
 - **(a) Reference frame.** The first dataset loaded is the reference, with its shift
@@ -956,7 +1000,7 @@ densities unless linked.
   dataset) be fixed at 1? And should scale factors be on or off by default?
 - **(c) `sigma_clip`** (option (ii) in QF.13). Is this a dashboard action that changes
   the snip masks (visible, reviewable and undoable), or an ALIS setting, so that
-  command-line fits use it too? Should it be available in Voigt mode as well? Clipping
+  command-line fits use it too? Should it be available in QSO Abs Line mode as well? Clipping
   can also remove real absorption that the model is missing, such as an unmodelled
   component, so a review step seems important.
 

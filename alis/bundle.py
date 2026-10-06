@@ -918,8 +918,7 @@ def extract(bundle, outdir, overwrite=False):
         else:
             planned[member[len(TREE):]] = bundle.members[member]
     if bundle.hidden_model_lines():
-        notes.append("The model's hidden starting values are written in plain text"
-                     " (D10).")
+        notes.append("The model's hidden starting values are written in plain text.")
     name, table = bundle.atomic_table()
     if table != _installed_atomic(name):
         target = posixpath.join(bundle.model_dir, name)

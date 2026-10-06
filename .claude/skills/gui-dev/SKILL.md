@@ -18,8 +18,9 @@ PySide6, written against `qtpy`, with pyqtgraph for the interactive panels (D2).
    ```
    python -c "import qtpy, pyqtgraph; from qtpy import QtWidgets; print(qtpy.API_NAME, pyqtgraph.__version__)"
    ```
-   If it fails, report it and suggest `pip install -e ".[gui]"`. `QT_API=pyside6`
-   (the default binding) or `QT_API=pyqt6` chooses the binding.
+   If it fails, report it and suggest `pip install -e ".[gui,gui-test,dev]"`
+   (`gui-test` holds pytest-qt). `QT_API=pyside6` (the default binding) or
+   `QT_API=pyqt6` chooses the binding.
 
 3. Choose a project to open, from the two fits the mockups were drawn from
    (`doc/dashboard/mockups/`):
@@ -28,29 +29,43 @@ PySide6, written against `qtpy`, with pyqtgraph for the interactive panels (D2).
    - `context/fitting_examples/DH/Q1243p307/model/Q1243p307_converge_newstart76.mod`
      (three datasets, several systems);
    - `examples/blind/model/fit_spectra.mod` for anything touching blinding;
-   - or a new project from a spectrum (`modes.get("voigt").new_project(...)`).
+   - or a new project from a spectrum (`modes.get("qso_abs_line").new_project(...)`).
    Work on a copy (`run_alis --pack` into the scratchpad), never on the files in
    `context/` or `examples/`.
 
-4. Launch:
+4. Launch (the command is `alis`; `run_alis` fits):
    ```
-   run_alisgui project.model        # a bundle
-   run_alisgui fit.mod              # imports a plain fit (F4)
+   alis                             # the start page
+   alis project.model               # a bundle
+   alis fit.mod                     # imports a plain fit (F4)
    ```
+   A spectrum is not opened from the command line: use New project in the window.
+   Work in a temporary `ALIS_HOME` so that `~/.alis` (preferences, recent projects,
+   recovery copies) is left alone.
+
    Headless (CI, or no display): set `QT_QPA_PLATFORM=offscreen` and drive the
-   window from a script or with pytest-qt's `qtbot` (`qtbot.mouseClick`,
-   `qtbot.keyClicks`, `qtbot.waitUntil`). Take screenshots with `widget.grab().save(...)`
-   and look at them (at 1440x900, the size the design is judged at, D43).
+   window from a script or with pytest-qt's `qtbot` (`qtbot.keyClicks`,
+   `qtbot.waitUntil`). In tests, `tests/dashboard_qt_helpers.make_window` makes a
+   window whose questions (`window.ask`), file choices (`window.choose`) and
+   dialogs (`window.run_dialog`, answered by `window.on_dialog`) the test answers,
+   and `wait_idle` waits for the `.mod` panel to read what was typed and for the
+   full check. Take screenshots with `widget.grab().save(...)` and look at them (at
+   1440x900, the size the design is judged at, D43);
+   `doc/dashboard/skeleton/take_screenshots.py OUTDIR` takes every tab of the
+   mockups' fits, and `build_review.py SHOTS OUT.html` puts them beside the mockups.
 
 5. Exercise the interaction, then check:
    - the `.mod` text changed only where it should (compare `project.text` before and
      after, or the plan of a removal);
    - one undo gives back the text, files and `ui/project.json` exactly;
    - no blinded value appears anywhere on screen: run `blinding.strings(project)` and
-     search it, and look at the screenshots for unmasked values (`▒▒▒▒` expected);
+     search it, search the `.mod` panel's document
+     (`window.panel.editor.toPlainText()`), and look at the screenshots for unmasked
+     values (`▒▒▒▒` expected);
    - the terminal: an unexpected error prints its traceback there, and the window
      shows only "The ALIS dashboard has encountered an unexpected error ...";
-   - no text in the window names a design document (D44: no D/F/S/QF/Q numbers).
+   - no text in the window names a design document (D44: no D/F/S/QF/Q numbers;
+     `dashboard_qt_helpers.ui_strings` and `design_references` check it).
 
 6. Report: whether the window opened without Qt warnings, what the interaction did,
    the screenshots, any traceback with its source line, and any leak or regression.

@@ -8,7 +8,7 @@
 > - open, save and autosave a project (F1);
 > - import an existing fit (F4) and relink moved spectra (F13);
 > - list its shortcuts (F10);
-> - be launched with `run_alisgui` (F14).
+> - be launched with `alis` (F14; the command was named `run_alisgui` until Q3.15).
 >
 > The user's preferences file (Q2.2) comes in this stage too. The tabs are frames of
 > the agreed layout, which Stages 4–6 fill in. The `.mod` panel is the first panel
@@ -30,15 +30,24 @@
 
 *Written by Claude on 2026-10-06, from the design documents, the mockups and what
 Stages 0–2 taught. The open choices are the Queries below; each gives Claude's lean, and
-this section follows the leans.*
+this section follows the leans. Updated in Prompt 1 to follow RJC's responses to
+Q3.1–Q3.15: the launcher is `alis` (Q3.15), a new project is made in one dialog, not
+from a spectrum on the command line (Q3.7, Q3.12), chosen lines can be blinded
+(Q3.9, Q3.13), no edit shows a hidden value (Q3.14), and autosave runs every minute
+(Q3.2). Updated in Prompt 2 (draft 2) to follow RJC's review of the skeleton (Q3.16,
+Q3.17): the mode is "QSO Abs Line", chosen in New project and not on the toolbar;
+New project asks for the role of each column of a text spectrum; the `.mod` panel can
+be a window of its own; Model → Align columns; and the run history and the
+correlations swap places in Fit · Results.*
 
 ### Two layers
 
 ```
 alis/dashboard/qt/   the windows: Qt through qtpy, and pyqtgraph from Stage 4
   │                  thin: they draw the project, and turn the user's actions into steps
-alis/dashboard/      the project model of Stage 2, and three modules of this stage that
-                     need no Qt: preferences.py, session.py, markers.py
+alis/dashboard/      the project model of Stage 2, and the modules of this stage that
+                     need no Qt: preferences.py, session.py, markers.py (and, as
+                     built, sources.py, actions.py and livetext.py)
 ```
 
 - **No logic in the widgets.** What can be decided without Qt is decided in
@@ -57,15 +66,15 @@ alis/dashboard/      the project model of Stage 2, and three modules of this sta
 ```
 ┌ ALIS dashboard — J1358p6522.model ──────────────────────────────────────────────┐
 │ File   Edit   View   Model   Fit   Help                                         │
-│ ↶ Undo ↷ Redo │ Open… Save  autosaved 12:41 │ Mode: Voigt ▾  Blinded: N(D I) │ … ? │
+│ ↶ Undo ↷ Redo │ Open  Save  autosaved 12:41 │ Blinded: D I │    Export plain files…  ? │
 │ ✓ Data │ ✓ Regions │ ↻ Components │ ! Fit │ ○ Plot                               │
 │ ┌──────────────── the tab ────────────────────────┐ ┌──── .mod panel ───────────┐ │
-│ │                                                 │ │ J1358p6522.mod      ◂ Hide│ │
+│ │                                                 │ │ J1358p6522.mod ⧉ ◂ Hide   │ │
 │ │                                                 │ │  1 run  ncpus  -1         │ │
 │ │                                                 │ │ 57   voigt ion=2H_I ▒▒▒▒ …│ │
 │ │                                                 │ │ ! 3 problems              │ │
 │ └─────────────────────────────────────────────────┘ └───────────────────────────┘ │
-│ J1358p6522.model │ No fit running │ The model reads                             │
+│ J1358p6522.model │ No fit running │ The model reads    Mode: QSO Abs Line │ 12:41 │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,18 +83,22 @@ alis/dashboard/      the project model of Stage 2, and three modules of this sta
     Export plain files…, Relink spectra…, Preferences…, Quit.
   - **Edit:** Undo and Redo (with what they undo), and Cut, Copy and Paste in the
     `.mod` panel.
-  - **View:** the five tabs (Ctrl+1 to Ctrl+5), and Show the `.mod` panel.
-  - **Model:** Check the model now, Blind the analysis, Unblind…, and Mode.
+  - **View:** the five tabs (Ctrl+1 to Ctrl+5), Show the `.mod` panel, and the
+    `.mod` panel in its own window.
+  - **Model:** Check the model now, Blind the analysis, Blind lines…, Unblind…. The
+    mode is not here: it is chosen in New project, and not changed afterwards (RJC's
+    review). Align columns is on the `.mod` panel.
   - **Fit:** Run and Commit run, shown but disabled until Stage 6.
   - **Help:** Keyboard shortcuts, About ALIS.
-- **Toolbar:** as in the mockups. It holds Undo and Redo, Open and Save with the time
-  of the last autosave, the mode, the blinding pill, Export, and the shortcut sheet.
+- **Toolbar:** as in the mockups, without the mode (RJC's review). It holds Undo and
+  Redo, Open and Save with the time of the last autosave, the blinding pill, Export,
+  and the shortcut sheet.
 - **Tabs:** Data, Regions, Components, Fit (with its sub-tabs Inspect, Results and
   Compare), and Plot. Each tab has a marker with an icon and a colour: ✓ complete,
   ↻ out of date, ! needs attention, ○ not started.
 - **Status bar:** the project's file, the fit ("No fit running" until Stage 6), the
   state of the model ("The model reads", "3 problems", or "The model does not read:
-  the panels are paused"), and the last autosave.
+  the panels are paused"), the mode ("Mode: QSO Abs Line"), and the last autosave.
 - **Look (D43, Q3.10):** Qt's Fusion style with a light palette. The colours come from
   the Okabe–Ito palette, all in one module (`qt/style.py`), and every coloured state
   also has an icon. The window is judged at 1440×900. No text in it names a design
@@ -95,9 +108,10 @@ alis/dashboard/      the project model of Stage 2, and three modules of this sta
 
 Each tab is a widget with the panes of its agreed layout (D35–D42), each pane titled,
 holding a short line saying it is not built yet. Stages 4–6 replace the placeholders,
-following the `gui-component` skill. The Fit tab has its three sub-tabs. The Plot tab
-is shown, but disabled, with the tooltip "Not yet available": it is built after v1
-(D42).
+following the `gui-component` skill. The Fit tab has its three sub-tabs; in Results,
+the run history is beside the results and the correlations are under the fit
+statistics (RJC's review swapped them, from the mockup). The Plot tab is shown, but
+disabled, with the tooltip "Not yet available": it is built after v1 (D42).
 
 ### The `.mod` panel (D5, D7, F5, F8, S16; Q3.5)
 
@@ -119,6 +133,23 @@ is shown, but disabled, with the tooltip "Not yet available": it is built after 
   describes (`project.items_at`); Stages 4–6 select it.
 - **Collapsing.** "◂ Hide" collapses the panel to a strip at the right ("▸ .mod
   editor"). Whether it is open, and its width, are kept in `ui/view.json`.
+- **Its width and its own window** (RJC's review). The panel is a dock at the right of
+  the window: its width is set by dragging its edge. "⧉ Own window" (or View → The
+  `.mod` panel in its own window) moves it to a window of its own, which still works
+  with the dashboard (the same panel, the same project, the window's shortcuts);
+  "↩ Back to the dashboard", or dragging it back, re-attaches it. Its own window, and
+  where it is, are kept in `ui/view.json`.
+- **Aligned columns** (RJC's review, Q3.17(a)). "Align columns", a button of the panel
+  beside its window button, in its right-click menu and on Ctrl+L, and only there
+  (draft 3), lines the model's values up in columns (`align.py`): in each group of
+  lines (the settings, the data lines, consecutive lines of one function in one
+  section, the `fix`/`lim` commands) the k-th value starts in one column, and the
+  keywords after the values start together, each in its own column. Only spaces
+  change, so ALIS reads the same model; it is one undoable step. A new project's model
+  is written aligned, lines the dashboard adds take their neighbours' columns, and an
+  imported fit is left as written until the user aligns it. On a hidden line the
+  columns after a mask do not line up in the panel: a mask has one length whatever it
+  hides, since its length would hint at the value (its sign, for example).
 
 ### Sessions: open, save, autosave (F1; Q3.2, Q3.8)
 
@@ -135,9 +166,10 @@ What it does:
   writes `ui/view.json`. If the model, the files or the project data changed on disk
   since the session read them, Save asks first: overwrite, reload, or save as another
   file.
-- **Autosave** writes a recovery copy, not the bundle, a short time after each change.
-  The interval is a preference. A clean close removes the copy. Opening a project
-  whose recovery copy is newer than the bundle offers it. A command-line run
+- **Autosave** writes a recovery copy, not the bundle, every 60 seconds while there
+  are changes it has not yet kept (RJC, Q3.2). The interval is a preference. A clean
+  close removes the copy. Opening a project whose recovery copy is newer than the
+  bundle offers it. A command-line run
   (`run_alis project.model`) therefore only ever sees what the user saved.
 - **The view state** (`ui/view.json`): the tab, the `.mod` panel and the sizes of the
   panes, and what later stages add (the selected system, snip or ion, the zoom). It is
@@ -146,21 +178,43 @@ What it does:
   unsaved changes, it offers to reload; otherwise it warns, and Save asks as above.
 - The undo history is not saved (Q2.8).
 
-### The launcher (F14, F4; Q3.7)
+### The launcher (F14, F4; Q3.7, Q3.12, Q3.15)
 
-`run_alisgui [path]` opens:
-- **nothing given:** a start page on the Data tab, with New project, Open…, Import a
-  fit… and the recent projects;
+`alis [path]` opens the dashboard (`run_alis` still runs fits):
+- **nothing given:** a start page, with New project…, Open…, Import a fit… and the
+  recent projects;
 - **a `.model`:** that project;
 - **a `.mod`:** the fit imported (F4) by `bundle.pack`. It is unsaved until Save, which
   offers `<name>.model` beside it. The notice that the structure was inferred (Q2.4)
   is shown in a banner;
-- **anything else:** a spectrum, which becomes a new project with that spectrum as its
-  first file row. The project's model is empty (settings, and empty data and model
-  blocks), and its column roles follow D13; the column-role dialog comes in Stage 4.
+- **anything else** stops with a message: "To start a project from a spectrum, run
+  alis and choose New project." (exit status 2, as for a wrong argument; RJC, Q3.7).
 
-If the `gui` extra is not installed, `run_alisgui` says
-`pip install "alis[gui]"` and stops with status 1.
+**New project…** (Q3.12) collects in one dialog:
+- the project's name, and the folder where its `.model` is saved. The bundle is
+  written at once, so a project is never untitled;
+- the mode (QSO Abs Line; Orders is listed as coming later). It is chosen here and
+  not changed afterwards (RJC's review);
+- the spectra (RJC's review, draft 3): a table, one row per spectrum, with its file,
+  wavelength range, number of pixels, FWHM and what it contains. "Add spectra
+  (ascii)…" opens a dialog of its own for a text spectrum: where the file is, its FWHM
+  (km/s, the preferences' by default), and the role of each column, shown above its
+  first rows: Wavelength, Flux, Error, Continuum, Mask or Ignore, guessed by D13's
+  rule and changed by the user (S3). Every role but Ignore goes to one column only;
+  Wavelength, Flux and Error are needed, and until they are given the spectrum is not
+  added. A column set to Ignore is not loaded. The mask is a bad-pixel mask: a pixel
+  whose mask is 1 is left out of the fit, even inside a fit region. "Add spectra
+  (spec1d)…" is for PypeIt spec1d files, read by a mode that comes later (disabled
+  until then). "Remove" is enabled when a spectrum is selected; double-clicking a
+  spectrum changes it. Zero-level and systematics columns are not offered (RJC);
+- the primary system's redshift, optional;
+- whether to blind the whole fit.
+
+The project's model is empty (settings, and empty data and model blocks), made by
+`modes.QSOAbsLineMode.empty_project`.
+
+If the `gui` extra is not installed, `alis` says `pip install "alis[gui]"` and stops
+with status 1.
 
 An empty model reads, and the validator says "The model has no data lines yet". Its
 full check used to crash inside ALIS's loaders on such a model and report an
@@ -213,6 +267,14 @@ tab (Stage 4) shows the same states in its rows.
 - **Model → Blind the analysis** (global blind, which may be switched on part-way,
   QF.20(e)) writes `run blind True`. Undo stops at that step: undoing it after a
   blinded fit would show that fit's values. Only unblinding switches it off.
+- **Model → Blind lines…** (Q3.13) lists the model's lines by system, component and
+  ion, with no values, and writes `blind=True` on the lines ticked. The `.mod` panel's
+  context menu has "Blind this line"; Stage 5 adds a switch to each component card.
+  Undo stops at that step too.
+- **No edit shows a hidden value** (Q3.14). An edit, typed or from a panel, that would
+  make a hidden value visible (`blind=False` over `blind=True`, `run blind False`) is
+  refused, with a message pointing to Model → Unblind…. Deleting a hidden line whole is
+  allowed. Undo stops at any step that blinds something, however it was made.
 - **Model → Unblind…** opens a dialog. It says that unblinding cannot be undone and
   how many values it will show, and asks for a note and an explicit confirmation.
   Only then does it call `blinding.unblind(confirmed=True, note=..., history=...)`.
@@ -226,11 +288,11 @@ tab (Stage 4) shows the same states in its rows.
 > After every task, run the `unit` batch, the dashboard tests and the new `gui` tests;
 > run the `fast` batch before the stage closes.
 
-**3.1 — The Qt foundation (D2, Q3.1).**
+**3.1 — The Qt foundation (D2, Q3.1, Q3.15).** [DONE 2026-10-06]
 - Create `alis/dashboard/qt/`, with a docstring saying that it is the only part of ALIS
   that imports Qt. All Qt goes through `qtpy`. `QT_API` is set to `pyside6` before
   `qtpy` is imported, unless the user has set it.
-- Add `run_alisgui` to `pyproject.toml`, in `alis/scripts/run_alisgui.py`, with
+- Add the `alis` command to `pyproject.toml`, in `alis/scripts/dashboard.py`, with
   `--help`. Without the `gui` extra it prints how to install it and stops with
   status 1.
 - Add the test set-up: pytest-qt in the `dev` extra, a `gui` marker in `pytest.ini`,
@@ -240,11 +302,11 @@ tab (Stage 4) shows the same states in its rows.
   - `tests/test_dashboard_no_qt.py` still passes;
   - a test finds no direct import of PySide6, PyQt6 or pyqtgraph outside `qtpy`
     calls in `alis/dashboard/qt/`;
-  - `run_alisgui --help` works;
-  - with Qt hidden from the interpreter, `run_alisgui` prints the install message and
-    exits with 1.
+  - `alis --help` works;
+  - with Qt hidden from the interpreter, `alis` prints the install message and exits
+    with 1.
 
-**3.2 — Preferences (`preferences.py`, Q2.2, Q3.3).**
+**3.2 — Preferences (`preferences.py`, Q2.2, Q3.3).** [DONE 2026-10-06]
 - The shipped defaults, and the user file that overrides them, in the folder of
   Q3.3. A bad value falls back with a message, and an unknown key is ignored with a
   message.
@@ -252,7 +314,7 @@ tab (Stage 4) shows the same states in its rows.
 - **Check:** unit tests of the defaults, the overrides, the fallbacks and the recent
   list, run in a temporary folder.
 
-**3.3 — Sessions (`session.py`, F1, Q3.2, Q3.8).**
+**3.3 — Sessions (`session.py`, F1, Q3.2, Q3.8).** [DONE 2026-10-06]
 - `Session`: open, save, save as, autosave to a recovery copy, recovery on opening,
   the view state, and the detection of a bundle changed on disk.
 - **Check** (unit tests, no Qt):
@@ -264,15 +326,18 @@ tab (Stage 4) shows the same states in its rows.
   - a conflicting change on disk is detected;
   - an unsaved import is saved with Save as.
 
-**3.4 — The launcher and new projects (F14, F4, Q3.7).**
-- The dispatch of `run_alisgui [path]`. `modes.VoigtMode.empty_project(sources)` makes
-  the empty project.
+**3.4 — The launcher and new projects (F14, F4, Q3.7, Q3.12).** [DONE 2026-10-06]
+- The dispatch of `alis [path]`, and the New project dialog.
+  `modes.QSOAbsLineMode.empty_project(sources)` (named `VoigtMode` until Q3.17)
+  makes the empty project.
 - **Check:**
-  - unit tests of the dispatch for nothing, a `.model`, a `.mod` and a spectrum;
+  - unit tests of the dispatch for nothing, a `.model`, a `.mod`, and a spectrum
+    (refused);
+  - unit tests of an empty project from one and from two spectra, written at once;
   - a `gui` test opens the window for each, with J1358p6522 and Q1243p307 as the
     imported fits.
 
-**3.5 — The window (D34, D43, D44, Q3.4, Q3.10).**
+**3.5 — The window (D34, D43, D44, Q3.4, Q3.10).** [DONE 2026-10-06]
 - The main window: the menus, the toolbar, the five tabs with their frames and the
   Fit sub-tabs, the status bar, and `qt/style.py`.
 - **Check:**
@@ -283,7 +348,7 @@ tab (Stage 4) shows the same states in its rows.
   - a test walks every widget's text, tooltip and menu entry, and finds no design
     reference (D44).
 
-**3.6 — The `.mod` panel (D7, F5, F8, S16, Q3.5).**
+**3.6 — The `.mod` panel (D7, F5, F8, S16, Q3.5).** [DONE 2026-10-06]
 - As in the Design section: the masked view, typing through `History.type`, reading
   after a pause, the quick and full checks, marks and the list of problems,
   cross-highlighting, collapsing, and the banner while the text does not read.
@@ -296,7 +361,7 @@ tab (Stage 4) shows the same states in its rows.
   - a full check made stale by more typing is dropped;
   - the cursor keeps its place when the panel is redrawn.
 
-**3.7 — Actions, undo and redo, and the shortcut sheet (F2, F10).**
+**3.7 — Actions, undo and redo, and the shortcut sheet (F2, F10).** [DONE 2026-10-06]
 - One registry of actions (name, shortcut, menu, handler). The menus, the toolbar and
   the shortcut sheet are built from it, and a later command search can use it.
 - **Check:**
@@ -304,7 +369,7 @@ tab (Stage 4) shows the same states in its rows.
   - no two actions share a shortcut;
   - undo and redo work across typing in the panel and a step made by a panel.
 
-**3.8 — Tab markers (`markers.py`, F12, Q3.6).**
+**3.8 — Tab markers (`markers.py`, F12, Q3.6).** [DONE 2026-10-06]
 - The rules of the Design section, and their display (icon, colour, tooltip).
 - **Check:**
   - unit tests of each rule on J1358p6522, Q1243p307 and small models. For example:
@@ -312,31 +377,116 @@ tab (Stage 4) shows the same states in its rows.
     when a source is missing;
   - a `gui` test that the tabs show them.
 
-**3.9 — Relinking moved spectra (F13).**
+**3.9 — Relinking moved spectra (F13).** [DONE 2026-10-06]
 - The check on opening, and the Relink dialog.
 - **Check:**
   - a moved source is relinked when its checksum matches;
   - a changed file is refused;
   - an embedded source is never reported missing.
 
-**3.10 — Blinding and export (D24, D10, Q3.9).**
-- The pill, Blind the analysis, the Unblind dialog, and Export plain files with its
-  warning.
+**3.10 — Blinding and export (D24, D10, Q3.9, Q3.13, Q3.14).** [DONE 2026-10-06]
+- The pill, Blind the analysis, Blind lines…, the Unblind dialog, the refusal of edits
+  that would show a hidden value, and Export plain files with its warning.
 - **Check:**
   - unblinding needs the confirmation, is logged in the bundle and clears the history;
   - export warns when anything is blinded;
-  - switching global blind on is one step, which undo does not pass;
+  - switching global blind on, and blinding a line, are each one step, which undo does
+    not pass, however they were made;
+  - typing `blind=False` over `blind=True`, or `run blind False`, is refused, and
+    deleting a hidden line is not;
   - the pill says what is blinded.
 
-**3.11 — Close the stage.**
+**3.11 — Close the stage.** [DONE 2026-10-06]
 - Publish screenshots of the window beside the mockups, as a private page that RJC can
   comment on (Q3.11).
-- `doc/ALIS_workflow.md`: a short section on launching the dashboard. Also update
-  `CHANGELOG.md` and `tests/README.md`.
+- `doc/ALIS_workflow.md`: a short section on launching the dashboard (`alis`). Also
+  update `CHANGELOG.md` and `tests/README.md`.
 - Run `test-coverage` on the new modules of `alis/dashboard/`, the `unit`, `gui` and
   `fast` batches.
 - Record in this document what Stage 4 receives, and update the stage table in
   `dashboard_stage0.md` if anything moved.
+
+## Status (2026-10-06)
+
+*Written by Claude at the end of Prompt 1. The details are in
+`claude_prompts/logs/dashboard_stage3_log.md`.*
+
+Tasks 3.1–3.11 are done. The screenshots are published beside the mockups for RJC's
+review (https://claude.ai/artifact/A6ohUEnAe91TEDsKBLwuBt); Q3.16 asked for it, and
+draft 2 (Prompt 2) applies RJC's comments on it, draft 3 (Prompt 3) the second round
+(Q3.18); Q3.19 asks for the third.
+- **Tests.** 18 new test files and a helper module: 10 without Qt (`unit`, one
+  `fast`), and 8 of the windows (`gui`, 54 tests, about 25 s, off-screen with
+  pytest-qt). Coverage of `alis/dashboard/` over the dashboard tests: 94%.
+- **The batches at the close:** `unit` 1526 passed, 0 failed; `gui` 54 passed; `fast`
+  111 passed, 0 failed (13 min 36 s). After draft 2: `unit` 1729 passed, 0 failed;
+  `gui` 62 passed; the dashboard's `fast` tests passed. After draft 3: `unit` 1730
+  passed, 0 failed; `gui` 64 passed; the dashboard's `fast` tests passed.
+- **ALIS outside `alis/dashboard/`:** the `alis` command (`alis/scripts/dashboard.py`,
+  `pyproject.toml`), a `gui-test` extra, the `gui` marker, `tests/conftest.py` (Qt
+  off-screen, and the `gui` tests skipped without the extra), the CI `gui` job, and
+  the "(D10)" removed from `bundle.extract`'s note (Q3.15). ALIS's fitting code is
+  unchanged.
+- **Found and fixed along the way (in Stage 2's modules):**
+  - two leaks of the blinding gate: a hidden line's values were shown while the text
+    did not read, and on a commented-out hidden line; the gate now masks every value
+    of a hidden line from its words, and the labels hidden when the text last read;
+  - unblinding a model with no `run blind` line left it blind (ALIS's default is
+    `run blind True`); it now writes `run blind False`;
+  - a file row of a new project, with no snips yet, was dropped; and `inferred` now
+    means that `ui/project.json` does not list the systems or rows;
+  - ALIS's per-file notes about optional columns (continuum, zero level,
+    systematics) are no longer listed as problems.
+
+### What Stage 4 receives
+
+The Data and Regions tabs of Stage 4 are built in the frames of `qt/tabs.py`
+(`DataTab`, `RegionsTab`), replacing their placeholder panes, as the `gui-component`
+skill describes:
+- **The window** (`qt/window.py`, `MainWindow`): `session` (the open
+  `session.Session`), `refresh()` after every step (it redraws the tabs through each
+  tab's `refresh(session)`, the markers, the pill, the banners, the status bar, and the
+  `.mod` panel when the text changed), `_run(name, handler)` for every action (reads
+  typing first, reports a refused edit or an unexpected error), `ask`, `choose` and
+  `run_dialog` for every question, file and dialog, and the `.mod` panel's
+  `itemsAtCursor` signal, passed to the current tab's `show_items(items)` (S16).
+  `panel.select_items(items)` highlights the lines of what a tab selects.
+- **Sessions** (`session.py`): `Session.open`, `import_model`, `new` (an empty project
+  from spectra), `save` (`Conflict`), `autosave`, `check_disk`, `take_runs`, `reload`,
+  `unblind`, `view` and `set_view` (keep the selected file row, transition or zoom
+  in `ui/view.json`), and `history`, which carries the blinding guard and the markers'
+  tracker: a step that would show a hidden value raises `blinding.RevealError`, and
+  a step that hides something cannot be undone past.
+- **A new project** has file rows with sources but no snips: `project.rows` (each with
+  `source`, its `columns` as chosen in New project (guessed by D13's rule, changed by
+  the user), and its starting FWHM in `ui/project.json`), and the primary system when
+  a redshift was given. Its model is written aligned. Stage 4 cuts the first snips
+  (`edit.add_data_line`, `modes.QSOAbsLineMode`), and gives the Data tab's "Add
+  file…" the same column roles (`qt/dialogs.ColumnRoles`, `modes.preview`,
+  `modes.check_roles`, `modes.file_kind`).
+- **Alignment** (`align.py`): `align(pm)` gives the change that lines the model up;
+  lines the panels add take their neighbours' columns (`text.layout_like`).
+- **The `.mod` panel** is in a dock (`window.dock`): `set_panel_open`,
+  `set_panel_window` (its own window), and its state in `ui/view.json`.
+- **The markers** (`markers.py`) already judge the Data and Regions tabs: sources,
+  the inferred structure (`project.confirm_structure()` clears it), snips with no
+  fitted pixels and pixels fitted twice.
+- **Sources** (`sources.py`): `states`, `problems`, `relink`, `describe`, for the
+  Data tab's rows (present, missing, changed, embedded).
+- **Preferences** (`preferences.py`): add a `Spec` for any new preference (the
+  Preferences dialog is built from `SPECS`).
+- **Actions** (`actions.py`): add an entry for any new keyboard action; the menus,
+  toolbar and shortcut sheet follow.
+- **The look** (`qt/style.py`): the Okabe–Ito colours, the marker and problem icons,
+  the fonts; pyqtgraph's plots should take their colours from it.
+- **Tests:** `tests/dashboard_qt_helpers.py` (`make_window`, `wait_idle`,
+  `ui_strings`, `design_references`); `doc/dashboard/skeleton/take_screenshots.py`
+  and `build_review.py` for the next review.
+
+Points for Stage 4:
+- pyqtgraph is not yet used: the first plot (the Data tab's spectrum) is Stage 4's.
+- RJC's review of the skeleton (Q3.16) may change the frames first.
+- The `.mod` panel opens on every tab by default (Q3.16).
 
 ## Skills to use for this stage
 
@@ -507,8 +657,238 @@ My lean: yes, at the end of the stage.
 
 **Response:** Yes, this makes sense. Please prepare screenshots and request approval. If the screenshots closely match the mockups, there will be relatively few iterations at this point.
 
+*Raised by Claude on 2026-10-06 (Prompt 1), after reading the responses above. Claude's
+note on Q3.2 comes first, then four new queries, asked in the session.*
+
+**Note on Q3.2.** Save writes the bundle, and only Save does. Autosave writes the
+recovery copy every 60 seconds while there are changes it has not yet kept (the
+interval is a preference), and the toolbar shows the time of the last one. A clean
+close removes the copy; opening a project whose copy is newer offers it.
+
+**Q3.12 — The New project dialog (your Q3.7 response).** `run_alisgui` with no
+argument opens the start page, with New project…, Open…, Import a fit… and the recent
+projects. New project… opens one dialog that collects, in one place:
+- the project's name, and the folder where its `.model` is saved. The bundle is
+  written at once, so a project is never untitled and its recovery copy always has
+  a home;
+- the mode (QSO Abs Line; Orders is listed as coming later);
+- the spectra: one or more files, each becoming one row of the Data tab, with its
+  columns read by D13's rule and summarised (columns, pixels, wavelength range).
+  The column-role dialog (S3) joins this step in Stage 4;
+- the primary system's redshift, optional (it can be typed or found later in the
+  Data tab);
+- whether to blind the whole fit (`run blind True`).
+
+`run_alisgui spectrum.dat` then stops with a message: "To start a project from a
+spectrum, run run_alisgui and choose New project." (exit status 2, as for a wrong
+argument).
+
+My lean: as described.
+
+**Response (RJC, in the session):** As proposed.
+
+**Q3.13 — Blinding chosen lines (your Q3.9 response).** ALIS blinds whole lines
+(`blind=True`). I propose:
+- Model → "Blind lines…" opens a dialog listing the model's lines by system,
+  component and ion (no values), with a tick box for each; the ticked lines get
+  `blind=True`, which hides their starting values and their best-fit values;
+- the `.mod` panel's context menu has "Blind this line";
+- in Stage 5, each component card gets the same switch;
+- as for global blind, undo stops at the step that blinds a line.
+
+My lean: as described.
+
+**Response (RJC, in the session):** As proposed.
+
+**Q3.14 — Edits that would reveal hidden values.** Typing `blind=False` over
+`blind=True`, or `run blind False`, would show hidden values without the Unblind
+dialog. I propose:
+- an edit, typed or from a panel, that would show a hidden value is refused, with a
+  message pointing to Model → Unblind…. Deleting a hidden line whole is allowed,
+  since nothing is shown;
+- undo stops at any step that blinds something, however it was made (typed, or from
+  the Model menu).
+
+My lean: as described.
+
+**Response (RJC, in the session):** As proposed.
+
+**Q3.15 — Two small things outside `alis/dashboard/`.**
+- **(a)** The `run_alisgui` command exists only once the package is installed again
+  (`pip install -e ".[gui,dev]"`; nothing new is downloaded, since PySide6, pyqtgraph
+  and pytest-qt are already here). Until then, the tests call
+  `python -m alis.scripts.run_alisgui`.
+- **(b)** `bundle.extract` gives a note that ends "(D10)", which `run_alis --extract`
+  prints, and which the dashboard's Export would show. D44 keeps design references
+  out of what users see. I would remove the "(D10)".
+
+My lean: (a) Claude runs the install; (b) remove it.
+
+**Response (RJC, in the session):** "Perhaps we should avoid `run_alisgui`. Let's just
+have a new `alis` command on the command line that opens the gui. Then,
+`run_alis project.model` runs a fit on the command line, while `alis project.model`
+opens project.model in the dashboard." Asked again in the session: Claude runs the
+install, and removes the "(D10)".
+
+*Claude's note.* The launcher is therefore `alis [path]` (F14 renamed), in
+`alis/scripts/dashboard.py`. The shell here has an old alias, `alis` →
+`python /Users/rcooke/Software/ALIS/src/alis.py` (a file that no longer exists), which
+hides the new command in an interactive shell until RJC removes it.
+
+*Raised by Claude on 2026-10-06, at the end of Prompt 1.*
+
+**Q3.16 — Reviewing the skeleton (your Q3.11 response).** The screenshots are
+published beside the mockups, as a private page you can comment on:
+https://claude.ai/artifact/A6ohUEnAe91TEDsKBLwuBt. To decide:
+- **(a)** Does the window match the mockups closely enough to start filling the panes
+  in Stages 4–6?
+- **(b)** The `.mod` panel opens on every tab by default, and each project remembers
+  whether it is open and its width. The mockups show it closed on most pages. Keep it
+  open by default?
+- **(c)** The banner about an imported fit's inferred structure stays until it is
+  hidden; in Stage 4 it would also offer to confirm the structure. Is that the right
+  place?
+- **(d)** Anything in the menus, toolbar, status bar or start page to change?
+
+My lean: (a) yes; (b) open by default; (c) yes; (d) your comments on the page.
+
+**Response (RJC, as comments on the page, 2026-10-06):**
+- **(a)** "This is overall looking excellent, but I have made several comments that
+  indicate what minor tweaks are needed before we can proceed to stages 4-6."
+- **(b)** "Yes, keep it open by default. It's useful for users to know that it exists,
+  and is editable."
+- **(c)** "I think the dashboard should guess the structure (and use this to set the
+  default options) but then the user should be able to edit the structure themselves,
+  if they wish. Note that an ascii file is just one filetype that will be supported,
+  so we will need different options depending on what the filetype is. The two
+  options currently foreseen are: (1) ascii files, like the examples already provided
+  as context; and (2) PypeIt spec1d fits files. No context is currently provided on
+  these files, but this will be provided at a later stage."
+- **(d)** and the comments on the screenshots:
+  - **Mode** (the toolbar): "I don't think Mode should necessarily be an option here.
+    It is something that would be set at the New Project stage, and not changed
+    thereafter. Also, can we please change "Mode=Voigt" to "Mode = QSO Abs Line"
+    everywhere in the dashboard, and in the design documents?"
+  - **The `.mod` text** (Regions): "It would be visually better if all parameters line
+    up. For example, all column densities start from the same character value
+    relative to the left (i.e. 0th character on each line). Similarly, all of the
+    redshift variables start from the same character value from the left, and so
+    forth. It would also be better if other parameters follow a similar convention of
+    lining up in the .mod file, to make it a little easier to read."
+  - **The `.mod` panel**: "Is it possible for the User to decide the width of the .mod
+    text editor? Is it possible to make an option for it to be separated from the main
+    dashboard window (i.e. a second window that the user can interact with, that still
+    talks to the dashboard). If it's possible to separate the .mod editor window from
+    the main dashboard window, it should also be possible to reattach a separate
+    window to the main dashboard window."
+  - **New project**: "Note that the filetype of "Spectra" could be an ascii file (as in
+    the example shown) or a PypeIt spec1d file (no context example has been provided
+    about this yet, it will come in a future stage, and is essential for a different
+    "Mode"). If the file to be opened is an ascii file, I think this window pane should
+    also request which column the wave, flux, and error are located. It would also be
+    good to allow for other optional columns, such as the continuum."
+  - **Fit · Results**: "Please swap the two subpanels labelled "Correlations" and "Run
+    history"."
+
+*Raised by Claude on 2026-10-06 (Prompt 2), before draft 2; RJC answered in the
+session.*
+
+**Q3.17 — Two choices for draft 2.**
+- **(a) Lining up the `.mod` columns.** The dashboard keeps the text as written (D7),
+  so aligning changes its spacing (spaces only; ALIS reads it the same). Options: an
+  action, Model → Align columns, as one undoable step, with a new project's model and
+  the lines the dashboard adds written aligned, and an imported fit left as written
+  until the user aligns it; or always automatic; or aligned on screen only. Lean: the
+  action.
+- **(b) Renaming the mode.** Only what users and the documents read, or the code's
+  names too (`VoigtMode` → `QSOAbsLineMode`, stored as `"qso_abs_line"`, with
+  `"voigt"` still read)? Lean: everywhere.
+
+**Response (RJC, in the session):** (a) the action, as the lean. (b) As the lean, "but
+please note that there is a function called voigt.py with a class called Voigt, and a
+parameter called self._idstr='voigt'. None of these should be changed. The function
+and everything associated with this function should remain as voigt. It is only the
+Mode name that should change."
+
+*Raised by Claude on 2026-10-06, with draft 2 of the screenshots (Prompt 2), on the
+same page: https://claude.ai/artifact/A6ohUEnAe91TEDsKBLwuBt.*
+
+**Q3.18 — Draft 2 of the skeleton.** Draft 2 applies every comment on draft 1: the
+mode "QSO Abs Line", chosen in New project and shown in the status bar; New project
+asks for the role of each column of a text spectrum; Model → Align columns; the
+`.mod` panel's width, and its own window; and the run history and the correlations
+swapped in Fit · Results. To decide:
+- **(a)** Do the changes do what you asked?
+- **(b)** New project offers these roles for a column of a text spectrum: wavelength,
+  flux, error, continuum, mask (0 or 1), or not used. ALIS can also read a zero level
+  and systematics from a data file. Should New project offer them too?
+- **(c)** If nothing else needs changing, may Stage 3 close, and Stage 4's document be
+  written (Prompt 3)?
+
+My lean: (a) yes; (b) not now: they belong to the snips rather than to the source
+spectrum, and can be added with the Data tab in Stage 4 if wanted; (c) yes.
+
+**Response (RJC, as comments on the page, 2026-10-06):**
+- **(a)** "They do, thanks! However, I still have some further feedback to implement
+  before we can move to stage 4."
+- **(b)** "At this point, no, it should not offer to load a zero level or
+  systematics."
+- **(c)** "Not ready yet. I have requested another draft first."
+- **Column roles:** "...we should add another option called "Ignore", this means that
+  the column of data will be ignored and not loaded. This is useful when there are
+  many columns in the input file (some of which are irrelevant, or duplicates). We
+  should also check that each of the options are only specified once (e.g. Wavelength
+  is only specified once, Flux is only specified once, etc.). The only one that can be
+  specified more than once is "Ignore". We should also make sure that at least
+  Wavelength, Flux, and Error are all specified, otherwise, ask the user to check the
+  column designation and refuse to load the file until this requirement is satisfied.
+  Note that the Mask column is not a Fit Range. It represents a Bad Pixel Mask, so
+  that if it is a value of 1 or True, then this indicates the corresponding pixel
+  should be excluded from the fitting procedure even if the fitrange encompasses the
+  pixel."
+- **New project:** "This screen still needs a lot of work. ... Please remove the Columns
+  section from this screen. Please change "Name" to "Project Name". Please change
+  "Folder" to "Project Folder". Instead of "Add Spectra..." and "Remove" buttons,
+  please use the following buttons instead: "Add spectra (ascii)", "Add spectra
+  (spec1d)", "Remove" (this option should only be enabled when a spectrum is selected
+  in the information box to its left). When someone clicks the "Add spectra (blah)"
+  button, a new screen opens up requesting the information about this spectrum: The
+  location of the file on disk, the FWHM, the column information (for ascii). I think
+  the box containing the `Spectra` information should be columns of information. The
+  information should contain: Filename, Wavelength range, Number of pixels, FWHM, what
+  data it contains (wavelength, flux, error, mask, etc.)"
+- **Align columns:** "Should there be a button next to "Back to the dashboard" that
+  says "Align columns". This would be a better place to put the column alignment
+  feature." and "I think the Align columns button should only be on the .mod editor.
+  Let's remove it from here [the banner]."
+
+*Done by Claude on 2026-10-06 (Prompt 3), as draft 3, published on the same page;
+the details are in the log.* Every comment is applied: the roles Wavelength, Flux,
+Error, Continuum, Mask and Ignore, each but Ignore on one column only, the first three
+required, and Mask a bad-pixel mask; New project as RJC laid it out, with a dialog of
+its own for each spectrum (file, FWHM, columns); and Align columns only on the `.mod`
+panel, beside its window button (and in its right-click menu), with its Ctrl+L. One
+reading to confirm is Q3.19.
+
+**Q3.19 — Draft 3 of the skeleton.** To decide:
+- **(a)** Does draft 3 do what you asked?
+- **(b)** A fourth column of 0s and 1s is guessed to be the mask, now a bad-pixel mask
+  (1 leaves the pixel out). A `prepfit` snip has a fourth column of 0s and 1s too, but
+  there 1 means "fit this pixel". A snip opened as a spectrum would then have its
+  fitted pixels guessed as bad. The guess can be changed (to Ignore) in the spectrum's
+  dialog. Is that acceptable, or should a 0/1 fourth column be guessed as Ignore?
+- **(c)** If nothing else needs changing, may Stage 3 close, and Stage 4's document be
+  written (Prompt 4)?
+
+My lean: (a) yes; (b) keep guessing Mask, since the source spectra are rarely snips,
+and the dialog shows the guess; (c) yes.
+
 ## Prompts
 
 1. Please read the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-2; see their design documents (`dashboard_stage0.md`, `dashboard_stage1.md`, `dashboard_stage2.md`) and the logs (`dashboard_stage0_log.md`, `dashboard_stage1_log.md`,  `dashboard_stage2_log.md`) to understand the work that has been implemented until now. Then, please review the ALIS code to understand the current state of ALIS. Finally, read this document, including my responses to your queries. If you have any further queries, please ask them in the Queries section of this document, and I will provide responses. Once everything is clear about the implementation of this stage, please execute the tasks in numerical order. If you have questions during development, please pause the development, ask questions and I will respond (please log these questions and answers in the Queries section).
 
-2. Based on the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-3, please generate the design document for Stage 4.
+2. Please see the comments I have provided on the html of the dashboard that is currently designed. Please make the appropriate changes based on these comments and share a draft 2 of the updated dashboard design. I will then provide another round of comments and we will iterate until the design is finalized. If you have any further queries before starting draft 2 of the design, please let me know. Otherwise, proceed to generate draft 2 of the updated dashboard design based on my feedback.
+
+3. Please see the comments I have provided on the html of the dashboard that is currently designed. Please make the appropriate changes based on these comments and share a draft 3 of the updated dashboard design. I will then provide another round of comments and we will iterate until the design is finalized. If you have any further queries before starting draft 3 of the design, please let me know. Otherwise, proceed to generate draft 3 of the updated dashboard design based on my feedback.
+
+4. There are some very minor feedback to take care of. I have left comments on the html of the dashboard. Please implement these minor changes first. Then, based on the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-3, please generate the design document for Stage 4.
