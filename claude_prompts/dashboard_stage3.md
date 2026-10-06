@@ -392,6 +392,8 @@ you run `pip install -e ".[gui,dev]"`, or I do.
 
 My lean: as proposed, with Claude installing the extra.
 
+**Response:** Yes, I agree with this proposal. I have just installed pyside6 and pyqtgraph in my environment. The windows should be tested with pytest-qt off-screen, under a `gui` marker, and skipped where Qt is missing.
+
 **Q3.2 — Autosave.** F1 says nothing is lost. There are two ways to autosave:
 - **(a)** write the bundle itself, a short time after each change, as many modern
   applications do; Save is then rarely needed;
@@ -406,6 +408,8 @@ from an edit in progress.
 My lean: (b), with a recovery copy 30 seconds after the last change, and the "autosaved"
 time in the toolbar.
 
+**Response:** I agree with your lean on this. Perhaps we can have a save option, and an autosave option that saves the state every minute or so. This will be particularly important during the beginning stages, so that the user does not lose any work while any bugs are ironed out.
+
 **Q3.3 — Where the dashboard keeps its own files.** Your Q2.2 response asks for a
 user file of preferences over shipped defaults. The dashboard also needs a list of
 recent projects and somewhere for recovery copies. I propose one folder, `~/.alis/`
@@ -416,12 +420,16 @@ tests.
 
 My lean: as proposed.
 
+**Response:** I agree with your lean. Let's use `~/.alis/` for the dashboard files, including `dashboard.json`, `recent.json`, and `recovery/`. This will make it easy to manage and locate these files across different platforms.
+
 **Q3.4 — What the tabs hold in this stage.** The tabs are frames of the agreed layout,
 each pane titled and saying that it is not built yet. Stages 4–6 fill them, so the
 window can be reviewed now (Q3.11) without waiting for them. The Fit tab has its
 sub-tabs. The Plot tab is shown but disabled, with the tooltip "Not yet available".
 
 My lean: as described.
+
+**Response:**  I agree with your lean.
 
 **Q3.5 — The `.mod` panel's timings.** Reading the model again takes 0.03 s for
 J1358p6522 and up to 0.4 s for DH_orders, so it cannot happen at every key. I propose:
@@ -432,6 +440,8 @@ J1358p6522 and up to 0.4 s for DH_orders, so it cannot happen at every key. I pr
 All three are preferences.
 
 My lean: as proposed.
+
+**Response:** I agree with this.
 
 **Q3.6 — The rules of the tab markers.** The table in the Design section is my reading
 of F12 and D34. Two choices in it:
@@ -444,6 +454,8 @@ Would you like other rules, for example "!" on the Fit tab when the pre-flight c
 
 My lean: the table as it is; Stage 6 adds the pre-flight rule.
 
+**Response:** The table described in the Design section is acceptable.
+
 **Q3.7 — Opening a spectrum.** F14 says that `run_alisgui spectrum.dat` starts a new
 project with that spectrum as its first dataset. Until Stage 4, nothing can cut snips
 from it, so the project has the spectrum as its first file row and an empty model
@@ -451,6 +463,8 @@ from it, so the project has the spectrum as its first file row and an empty mode
 (S3) opens in Stage 4.
 
 My lean: as described.
+
+**Response:** Perhaps we should not allow opening a spectrum from the command line. A better approach is to open the GUI, and then decide to "Open existing project" or "Start a new project". This will allow the user to specify more information about the project in one place, rather than having to open a spectrum and then set up the project afterwards.
 
 **Q3.8 — A bundle changed on disk while open.** S31 says the dashboard offers to reload
 rather than overwrite. Two cases:
@@ -463,6 +477,8 @@ rather than overwrite. Two cases:
 
 My lean: as described.
 
+**Response:** I agree with your lean.
+
 **Q3.9 — Switching blinding on and off.** QF.20(e) allows global blind to be switched
 on part-way, and Q2.11 makes unblinding final. I propose:
 - "Blind the analysis" writes `run blind True`, and undo stops at that step: undoing
@@ -473,17 +489,23 @@ on part-way, and Q2.11 makes unblinding final. I propose:
 
 My lean: as proposed.
 
+**Response:** I agree with your lean. The "Blind the analysis" option should write `run blind True`, and undo should stop at that step. The Unblind dialog should ask for a note and an explicit confirmation, and indicate how many hidden values will be revealed. There should also be an option to partially blind the analysis (using the blind=True option on models).
+
 **Q3.10 — A dark theme.** Q0.2 left a dark theme to this stage. D43 chose a neutral,
 light look, and every colour is in one module. I propose a light theme only in v1; a
 dark one can be added later, by a second palette.
 
 My lean: light only.
 
+**Response:** I agree with your lean. A light theme only for v1 is acceptable, and a dark theme can be added later if needed.
+
 **Q3.11 — Reviewing the skeleton.** As in Stage 0, I would publish screenshots of each
 tab at 1440×900 beside the matching mockups, as a private page you can comment on.
 Your comments would then shape Stages 4–6 before the panels are built.
 
 My lean: yes, at the end of the stage.
+
+**Response:** Yes, this makes sense. Please prepare screenshots and request approval. If the screenshots closely match the mockups, there will be relatively few iterations at this point.
 
 ## Prompts
 
