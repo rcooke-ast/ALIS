@@ -60,6 +60,10 @@ def save_asciifits(fname, slf, arr, model):
             data[:,num] = np.ones(lu-ll)
         elif i == 'systematics':
             data[:,num] = slf._systfull[sp][ll:lu]
+        elif i == 'badpix':
+            # The bad-pixel mask, as it was read (dashboard Q4.17)
+            bad = slf._datopt['badpix'][sp][sn]
+            data[:,num] = np.zeros(lu-ll) if bad is None else bad.astype(float)
         elif i == 'resolution':
             msgs.bug("I haven't completed writing out 'resolution' to file yet... sorry")
             data[:,num] = np.zeros(lu-ll)
@@ -110,6 +114,10 @@ def save_fitsfits(fname, slf, arr, model):
             data[:,num] = np.ones(lu-ll)
         elif i == 'systematics':
             data[:,num] = slf._systfull[sp][ll:lu]
+        elif i == 'badpix':
+            # The bad-pixel mask, as it was read (dashboard Q4.17)
+            bad = slf._datopt['badpix'][sp][sn]
+            data[:,num] = np.zeros(lu-ll) if bad is None else bad.astype(float)
         elif i == 'resolution':
             msgs.bug("I haven't completed writing out 'resolution' to file yet... sorry")
             data[:,num] = np.zeros(lu-ll)

@@ -227,3 +227,61 @@ and `pyproject.toml`), Python version, and the CI status badge — which is the
 useful one, since it is live and goes red when the `unit` / `examples` / `lint`
 jobs fail. The **black** badge is deliberately *not* there yet; it goes up when
 §4.1 is done.
+
+---
+
+## 7. The dashboard: items deferred from its stages
+
+Added 2026-10-07 (dashboard Stage 4). Here `Q4.n` is a query in
+`claude_prompts/dashboard_stage4.md`.
+
+### 7.1 Telluric flags in the transition list
+- **What:** flag a transition whose observed wavelength falls in a telluric band,
+  from a small built-in list of the strongest bands in the observed frame: the O₂
+  A, B and γ bands, and the H₂O bands near 7200, 8200 and 9300 Å. S2 asked for the
+  flag; ALIS has no such list.
+- **Why deferred:** RJC, Q4.5(b): not needed in Stage 4, to be revisited later.
+- **Where:** S2 in `ALIS_v2_dashboard_prompts.md`; Q4.5 in `dashboard_stage4.md`.
+- **To finish:** the band list (with its source) as data in `alis/data/`; the flag
+  computed in `alis/dashboard/lines.py` beside "gap" and "edge"; shown in the
+  Regions tab's transition list.
+
+### 7.2 The best-fit model on the Regions tab
+- **What:** a switch that draws a best-fit model (when one exists) over the data on
+  the Regions tab, while the regions are being drawn.
+- **Why deferred:** RJC, Q4.12: the Regions tab draws no model in Stage 4; the model
+  is drawn on the Components tab (Stage 5) and the Fit tab (Stage 6).
+- **Where:** Q4.12 in `dashboard_stage4.md`.
+- **To finish:** the model of the latest run, per snip, through the blinding gate
+  (D24 allows profiles to be drawn), as an overlay of the shared spectrum view
+  (`qt/plots.py`), off by default.
+
+### 7.3 Solar abundances in the atomic table
+- **What:** fill the `SolarAbundance` column of `alis/data/atomic.ecsv`, which holds
+  0.0 (or NaN) for every line, with each element's solar abundance as log ε (H = 12),
+  and read it from there: the dashboard's line IDs (`alis/dashboard/lines.py`, the
+  `SOLAR` table) and `prepfit` (`alis/prepfit/specplot.py`, `solar()`) each keep
+  their own copy of Asplund et al. (2009) today.
+- **Why deferred:** RJC, on the review page of the Data tab (Q4.18(b)): an item for
+  future work. Read as log ε, the column would not change which lines are labelled.
+- **Where:** Q4.18 in `dashboard_stage4.md`; the "Line IDs" design of Stage 4.
+- **To finish:** the values in the ECSV (with their source), `check_atomic_table`
+  checking them, and `lines.SOLAR` and `specplot.solar()` replaced by the column.
+
+### 7.4 A stacked spectrum of a transition
+- **What:** combine the data of one transition from every dataset (resampled onto one
+  grid, weighted by their errors) into one spectrum on the Regions tab, on which the
+  regions and the continuum are drawn and then applied to every snip of it.
+- **Why deferred:** RJC asked (Q4.19(d)) whether it belongs in Stage 4 or later;
+  Claude proposed later (Q4.20): the datasets differ in resolution and flux scale
+  (Q1243p307's HIRES ≈1100 counts, PROCHASKA ≈175), so a continuum drawn on the stack
+  has to be carried back to each dataset's own scale, and the stack is not what ALIS
+  fits. Stage 4 already keeps one set of regions per transition (`snips.linked_step`)
+  and can share one continuum between datasets (S10).
+- **Where:** Q4.19 and Q4.20 in `dashboard_stage4.md`.
+- **When:** with Orders mode and PypeIt spec1d loading, after v1 (RJC, Q4.20); the
+  overall plan says so (D32 in `ALIS_v2_dashboard_prompts.md`, and the stage table of
+  `dashboard_stage0.md`).
+- **To finish:** the stack (`snips.py`, no Qt: resampling, weights, the mapping of
+  regions and continuum back to each snip), its strip on the Regions tab, and tests on
+  Q1243p307's three datasets.

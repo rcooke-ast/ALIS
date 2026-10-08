@@ -443,7 +443,11 @@ The QF numbers point to the full discussion.
   off by default. When switched on, one exposure per group is fixed at 1 (QF.26(b),
   QF.33(a)).
 - **D32.** Regions are drawn on the combined spectrum and applied to every order, then
-  edited per order, for example to mask a cosmic ray (QF.13(a)).
+  edited per order, for example to mask a cosmic ray (QF.13(a)). The same stacked
+  spectrum of one transition, combined from every dataset, is offered in QSO Abs Line
+  mode too, with the regions and continuum drawn on it and applied to every snip; it
+  is built with Orders mode and PypeIt spec1d loading (RJC, Q4.20 of
+  `dashboard_stage4.md`; `deferred_work.md` §7.4).
 
 *Plan*
 - **D33.** The work is split into Stages 0–6, which make v1, and later work. Stage 0
@@ -579,6 +583,44 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
 - **D51. Fit · Results** shows the run history beside the results table, and the
   correlation matrix under the fit statistics (RJC's review swapped them, from the
   mockup of D40).
+
+*Stage 4 decisions (the Data and Regions tabs)*
+
+*Added by Claude on 2026-10-08, from RJC's responses to Q4.1–Q4.21 of
+`dashboard_stage4.md` and his comments on the published screenshots of the two tabs.*
+
+- **D52. The `badpix` column.** A data line's `columns=` may name a `badpix` column (1
+  for a bad pixel); ALIS never fits a bad pixel, whatever its fit range says. A snip
+  cut from a source with a bad-pixel mask carries it as a fifth column; other snips
+  keep `prepfit`'s four columns (Q4.11, Q4.15, Q4.17).
+- **D53. SNIP and CLEAR.** SNIP cuts a transition from every dataset whose source
+  covers it, ±300 km/s (a preference), with no fit region until one is drawn, its
+  continuum the first guess, and its specid added to the absorption lines with a
+  transition inside it. CLEAR removes the snip after a preview (Q4.2, Q4.3).
+- **D54. The Regions tab's controls** (refining D36). Transitions: System, Element
+  and Ion menus, each with ‹ ›. Above the spectra: SNIP, CLEAR and the fit regions'
+  two tools, as in `prepfit` (a drag adds a region, a right-drag leaves pixels out):
+  *Add regions to all* (every dataset of the transition at once) and *Tweak dataset
+  regions* (the selected dataset alone). The continuum's tools (Auto first guess, Add
+  knot, Clear knots, Normalised) are in its own box. Single keys act only while the
+  tab has the focus (Q4.19, Q4.21).
+- **D55. One set of fit regions per transition** (refining D18): a region added,
+  moved or removed on one dataset is added, moved or removed on every dataset, moved
+  by their shifts; pixels left out of one dataset stay out there only (Q4.19, Q4.21).
+- **D56. The continuum's first guess** (refining D17): three clipping passes of rising
+  order from a straight line (rejecting 2.5σ below and 3σ above each curve, every
+  pixel judged again at each pass), then every order fitted to the pixels left and
+  the order chosen by BIC, up to 5. Knots set the starting continuum through equality
+  constraints; ALIS then fits it freely. A continuum is shared only by one transition
+  in several datasets, as a Legendre (Q4.6–Q4.8, Q4.13, Q4.16, Q4.19).
+- **D57. Pixels fitted twice:** merging two snips is always previewed and confirmed;
+  either fix can be applied to every dataset with the same overlap (Q4.9).
+- **D58. An imported fit's structure** is written at its first edit, so that a tie
+  never merges two rows, but stays marked as guessed, with the Data tab's "!", until
+  Confirm, which checks the whole model again (Q4.10, Q4.14, Q4.18).
+- **D59. Line IDs** label a system's own ions and its strong lines (log10(fλ) + log ε −
+  12 ≥ −2, with Asplund et al. 2009 abundances; a preference), with a count of the
+  others and a switch for all lines (Q4.4).
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
@@ -1233,7 +1275,8 @@ My lean: (b), in Stage 1 of QF.36.
 - **Stage 5 — Components tab** (step 4).
 - **Stage 6 — Fit tab** (step 6): the background runner, badges, results table, run
   history, convergence tools and the sigma-clip review. This completes v1.
-- **After v1:** the Plot tab (step 8), Orders mode, and the later items of QF.34.
+- **After v1:** the Plot tab (step 8), Orders mode (with PypeIt spec1d input and the
+  stacked spectrum of a transition, Q4.20), and the later items of QF.34.
 
 As in the refactor, each stage's document would be written when the previous stage is
 done, so that it can use what was learned. `dashboard_stage0.md` would also hold this

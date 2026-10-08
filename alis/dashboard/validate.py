@@ -74,6 +74,10 @@ TIED_VALUES = (
     " '{0}' at {2}, so the {3} written here is not used."
 )
 NO_PIXELS = "The fitted range holds no pixels of this data line's file."
+NO_REGION = (
+    "This snip has no fit region yet: draw one on the Regions tab (ALIS cannot fit"
+    " a snip with no fitted pixels)."
+)
 BUFFER = (
     "On its {0} side, this snip has {1:.1f} km/s of data beyond the fitted"
     " pixels, but the instrumental resolution needs {2:.1f} km/s. The model may"
@@ -266,7 +270,8 @@ def _data_checks(pm, data):
         if fitted is None:
             continue
         if not fitted.any():
-            out.append(_problem(item.line, ERROR, NO_PIXELS))
+            empty = item.fitrange == ("columns",) and pixels.mask is not None
+            out.append(_problem(item.line, ERROR, NO_REGION if empty else NO_PIXELS))
             continue
         for side, have, need in _buffer(pm, item, pixels, fitted) or []:
             out.append(_problem(item.line, WARNING, BUFFER.format(side, have, need)))

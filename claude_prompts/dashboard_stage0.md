@@ -30,7 +30,7 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 4 | Data and Regions tabs (steps 1–3). | `alis/dashboard/` |
 | 5 | Components tab (step 4). | `alis/dashboard/` |
 | 6 | Fit tab (step 6). This completes v1. | `alis/dashboard/` |
-| Later | The Plot tab (step 8), Orders mode, and the later items below. | |
+| Later | The Plot tab (step 8), Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
 
 ### v1 and later
 
@@ -63,7 +63,9 @@ first builds the logic and the second the interface.
 | S8 Automatic continuum | 4 | S29 Review clipped pixels | 6 |
 | S30 Ion navigator | 5 | S31 Results from `run_alis` | 6 |
 
-Also later: Orders mode (D29–D32) and FITS input (D13). S1 and S4 are not needed.
+Also later: Orders mode (D29–D32), with PypeIt spec1d (FITS) input (D13) and the
+stacked spectrum of a transition (Q4.20 of `dashboard_stage4.md`). S1 and S4 are not
+needed.
 
 ## Tasks
 

@@ -70,6 +70,7 @@ DATA_COLUMNS = (
     "loadrange",
     "systematics",
     "resolution",
+    "badpix",
 )
 # What ALIS uses when a data line names no resolution or shift
 NO_RESOLUTION = "vfwhm(0.0)"

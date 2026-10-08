@@ -127,7 +127,8 @@ def test_each_error_is_on_its_line(registry, old, new, line, words):
 def test_a_mask_with_no_pixels(registry):
     data = dict(DATA, **{"b.dat": snip(WAVE, np.zeros(WAVE.size, dtype=bool), 1.1)})
     probs = problems(registry, data=data)
-    assert found(probs, 3, "error", "holds no pixels"), probs
+    # A mask column with no fitted pixel is a snip with no region yet (Stage 4)
+    assert found(probs, 3, "error", "has no fit region yet"), probs
 
 
 def test_tied_labels_with_different_values(registry):

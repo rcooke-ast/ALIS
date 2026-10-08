@@ -67,6 +67,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   imports Qt (through `qtpy`).
 - A `gui` marker for the window tests (`pytest -m gui`, off-screen), and a CI job
   that runs them.
+- A `badpix` column in a data file (`columns=[...,badpix:4]`): a pixel whose
+  `badpix` is 1 is never fitted, by `load_data` or in the `_fit.dat` files.
+- The dashboard's Data and Regions tabs (dashboard Stage 4). Data: the systems,
+  with Identify a feature (click a line, choose its transition); the datasets table
+  (the reference, FWHM and shift free, fixed or tied, the zero level, the source's
+  checksum), Add file…, renaming and removing with a preview; the coverage of each
+  transition; an imported fit's structure and Confirm. Regions: the transitions of
+  an ion strongest first, with keys (↑ ↓, [ ], − +) that act only on the tab; one
+  spectrum per dataset with a velocity axis; SNIP and CLEAR; Add regions to all (one
+  set of regions for a transition, the same in every dataset) and Tweak dataset
+  regions (one dataset), each adding with a drag and leaving pixels out with a
+  right-drag, as in prepfit; the snip's edges (moved outwards, re-cut from the
+  source); Flux |
+  Normalised; line IDs (strong lines, with the count of the others); the continuum's
+  function and order, Auto first guess (three clipping passes of rising order, then
+  the order by BIC), its table of orders, knots, and sharing between datasets; and the
+  pixels fitted twice with their two fixes (keep, or merge after a preview), for
+  every dataset at once. New modules `lines.py`, `snips.py`, `continuum.py` and
+  `datasets.py` (no Qt), and `qt/plots.py`, `qt/data.py` and `qt/regions.py`.
 
 ### Fixed
 - `run_alis --extract`'s note about hidden starting values no longer ends with a

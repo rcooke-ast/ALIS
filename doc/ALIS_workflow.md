@@ -464,6 +464,7 @@ properties. All properties must be specified on a single line (no line continuat
 | `shift=Ashift(x)` | Wavelength shift in Å |
 | `shift=vshiftscale(v,s)` | Simultaneous velocity shift and wavelength scale factor |
 | `columns=[...]` | Map column names to zero-indexed column positions |
+| `columns=[...,badpix:4]` | A bad-pixel mask: a pixel whose `badpix` is 1 is never fitted, whatever its `fitrange` |
 | `loadall=True` | Load all pixels (deprecated synonym for `loadrange=all`) |
 | `loadrange=all` | Load all pixels in the file |
 | `bintype=km/s` | Pixels have constant velocity width (default) |
@@ -855,6 +856,48 @@ run_alis myfit.model     # fits the project from the command line, as before
   of the `.mod` panel, the settings and FWHM of a new project, and the like.
 - **The tabs** (Data, Regions, Components, Fit, Plot) each show a marker: ✓ complete,
   ↻ out of date, ! needs attention, ○ not started.
+
+#### Preparing a fit: the Data and Regions tabs
+
+*Added 2026-10-07 (dashboard Stage 4).* These two tabs replace `prepfit` (§0) for a
+new project.
+
+- **Data.** The primary redshift: type it, or press *Identify a feature*, click an
+  absorption line, and choose its transition (the first choice is the transition
+  nearest a system already known). Other systems are added the same way. The
+  datasets table has one row per spectrum: ◉ the reference (its shift is fixed at 0),
+  its FWHM and shift (free, fixed, or tied to another row's), its zero level, and
+  whether its source file is unchanged. Coverage lists the transitions on each
+  dataset; a double-click opens one on the Regions tab. A fit imported from a `.mod`
+  file has its datasets and systems worked out from its labels and redshifts: check
+  them, then press *Confirm*.
+- **Regions.** Choose the system, the element (‹ › or the [ ] keys) and the ion
+  (‹ ›); the ion's transitions on the data are listed strongest first (↑ ↓), ● for
+  those with a snip. **SNIP** cuts the transition from every spectrum that covers it,
+  ±300 km/s (a preference), with the source's pixels at full precision and a
+  first-guess continuum; drag the orange handles to move its edges (outwards, more
+  pixels are cut from the source). As in `prepfit`, a drag adds a fit region and a
+  right-drag leaves pixels out: with **Add regions to all**, in every spectrum of the
+  transition (moving or removing a region does the same); with **Tweak dataset
+  regions**, in the selected spectrum alone (a cosmic ray, a bad pixel). Delete or a
+  right-click removes a region. **CLEAR** removes the snip,
+  after listing what changes. A spectrum's bad pixels (a NaN, an error of 0 or less,
+  or a bad-pixel mask) are kept in the snip, in a `badpix` column, and never fitted.
+- **The continuum** is a Legendre polynomial by default. − and + change its order,
+  refitted each time. *Auto first guess* fits it again: a straight line, then one
+  order higher, then one more, each rejecting the pixels far below it (2.5σ: the
+  absorption) or above it (3σ), and ±15 km/s around known lines; every order is
+  then fitted to the pixels left and the BIC chooses. The table shows χ², Δχ² and
+  ΔBIC of the orders on either side. *Add knot* sets points the starting continuum
+  passes through; *Normalised* shows the data divided by it. One transition in
+  several datasets can share one continuum (*Share with …*).
+- **Pixels fitted twice** (§4.4) are hatched, and the Snip box offers the two fixes,
+  for every dataset at once when the same overlap is in each: keep them in one
+  snip, or merge the snips (after listing what changes).
+
+Every action is one step that Undo takes back, and every change is written to the
+`.mod` text, which stays the authority: the snips are written as `prepfit` writes
+them, and `run_alis project.model` fits the project as it stands.
 
 ### 4.4 Pixels fitted twice
 

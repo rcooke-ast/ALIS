@@ -642,3 +642,118 @@ def test_an_array_valued_resolution_is_refused(atomic_data):
     # -- is refused rather than crashing with NameError.
     with pytest.raises(SystemExit):
         cls.call_CPU(inst, x, y, [np.full(x.size, 7.0)])
+
+
+# -- a bad-pixel column is never fitted (dashboard Stage 4, Q4.17) ------------
+
+
+def _with_bad(tmp_path, wave, bad, fitmask=None, name="bad.dat"):
+    """A spectrum with a fit-mask column (all 1 by default) and a badpix column."""
+    fit = np.ones_like(wave) if fitmask is None else fitmask.astype(float)
+    return _write_spectrum(tmp_path / name, wave, extra=[fit, bad.astype(float)])
+
+
+def test_a_bad_pixel_is_not_fitted_whatever_the_fit_mask_says(state, tmp_path):
+    wave = np.linspace(1290.0, 1315.0, 501)
+    bad = (wave > 1301.0) & (wave < 1301.5)
+    path = _with_bad(tmp_path, wave, bad)
+    load_one(
+        state,
+        path,
+        fitrange="columns",
+        columns="[wave:0,flux:1,error:2,fitrange:3,badpix:4]",
+    )
+    assert state._wavefit[0].size == wave.size - np.count_nonzero(bad)
+    assert not np.any(np.isin(state._wavefit[0], wave[bad]))
+    # Every loaded pixel is kept for the convolution; the mask is recorded
+    assert state._wavefull[0].size == wave.size
+    assert np.array_equal(state._datopt["badpix"][0][0], bad)
+
+
+def test_a_bad_pixel_is_not_fitted_inside_a_fit_range(state, tmp_path):
+    wave = np.linspace(1290.0, 1315.0, 501)
+    bad = (wave > 1302.0) & (wave < 1302.3)
+    path = _with_bad(tmp_path, wave, bad)
+    load_one(state, path, columns="[wave:0,flux:1,error:2,badpix:4]")
+    assert state._wavefit[0].size == NFIT - np.count_nonzero(bad)
+
+
+def test_without_a_badpix_column_every_pixel_is_good(state, spectrum):
+    path, _wave = spectrum
+    load_one(state, path)
+    assert state._wavefit[0].size == NFIT
+    assert state._datopt["badpix"][0] == [None]
+
+
+def test_badpix_is_read_from_memory_and_from_an_array(state, tmp_path):
+    wave = np.linspace(1290.0, 1315.0, 501)
+    bad = np.zeros(wave.size, dtype=bool)
+    bad[10:14] = True
+    path = _with_bad(tmp_path, wave, bad)
+    line = _line(
+        path,
+        specid="0",
+        fitrange="columns",
+        columns="[wave:0,flux:1,error:2,fitrange:3,badpix:4]",
+    )
+    load.load_data(state, [line], data={str(path): path.read_bytes()})
+    assert state._wavefit[0].size == wave.size - 4
+    arr = np.vstack([wave, np.ones_like(wave), 0.1 * np.ones_like(wave),
+                     np.ones_like(wave), bad.astype(float)])
+    other = _State(state._atomic)
+    keywords = "  specid=0  fitrange=columns"
+    keywords += "  columns=[wave:0,flux:1,error:2,fitrange:3,badpix:4]\n"
+    load.load_data(other, [keywords], data=arr)
+    assert other._wavefit[0].size == wave.size - 4
+
+
+def test_badpix_is_read_from_a_fits_file(tmp_path):
+    wave = np.linspace(1290.0, 1315.0, 51)
+    bad = np.zeros(wave.size)
+    bad[3] = 1.0
+    data = np.vstack([wave, np.ones_like(wave), 0.1 * np.ones_like(wave), bad])
+    path = tmp_path / "snip.fits"
+    pyfits.PrimaryHDU(data).writeto(str(path))
+    wfe = ColumnMap()
+    wfe["badpix"] = 3
+    got = load.load_badpix(str(path), wfe)
+    assert got.dtype == bool and np.flatnonzero(got).tolist() == [3]
+    wfe["badpix"] = -1
+    assert load.load_badpix(str(path), wfe) is None
+
+
+def test_every_fitted_pixel_bad_stops_with_a_message(state, tmp_path):
+    wave = np.linspace(1290.0, 1315.0, 501)
+    path = _with_bad(tmp_path, wave, np.ones(wave.size, dtype=bool))
+    with pytest.raises(SystemExit):
+        load_one(
+            state,
+            path,
+            fitrange="columns",
+            columns="[wave:0,flux:1,error:2,fitrange:3,badpix:4]",
+        )
+
+
+def test_the_fit_output_carries_the_badpix_column(tmp_path):
+    """`save_asciifits` writes the mask back at its own column."""
+    from types import SimpleNamespace
+
+    from alis import outputs, save
+
+    wave = np.linspace(1300.0, 1301.0, 6)
+    bad = np.array([0, 1, 0, 0, 1, 0], dtype=bool)
+    cols = ColumnMap()
+    cols["fitrange"], cols["badpix"] = 3, 4
+    slf = SimpleNamespace(
+        _datopt={"columns": [[cols]], "badpix": [[bad]]},
+        _wavefull=[wave],
+        _fluxfull=[np.ones(6)],
+        _fluefull=[np.ones(6)],
+        _posnfit=[[1300.0, 1301.0]],
+        _wavefit=[wave[~bad]],
+        _outputs=outputs.DiskOutputs(),
+    )
+    save.save_asciifits(str(tmp_path / "out"), slf, (0, 0, 0, 6), np.zeros(6))
+    table = np.loadtxt(str(tmp_path / "out.dat"))
+    assert np.array_equal(table[:, 4], bad.astype(float))
+    assert np.array_equal(table[:, 3], (~bad).astype(float))

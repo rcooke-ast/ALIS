@@ -257,6 +257,8 @@ class DataOpt(_DictLike):
     systmodule: list = field(default_factory=list)
     label: list = field(default_factory=list)
     yrange: list = field(default_factory=list)
+    # The bad-pixel mask of each data line's loaded pixels, or None (Q4.17)
+    badpix: list = field(default_factory=list)
 
 
 @dataclass
@@ -304,6 +306,8 @@ class ColumnMap(_DictLike):
     fitrange: int = -1
     loadrange: int = -1
     resolution: int = -1
+    # A bad-pixel mask: 1 marks a pixel that is never fitted (dashboard Q4.17)
+    badpix: int = -1
 
 
 @dataclass
@@ -328,6 +332,7 @@ class ColumnPosition(_DictLike):
     fitrange: int = -1
     loadrange: int = -1
     resolution: int = -1
+    badpix: int = -1
 
 
 @dataclass

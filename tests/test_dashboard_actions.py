@@ -18,7 +18,15 @@ def test_every_action_has_a_menu_a_text_and_a_tip():
     assert len(names) == len(set(names))
     for action in A.ACTIONS:
         assert action.menu in A.GROUPS, action.name
-        group = "panel" if action.menu == A.PANEL else action.menu.lower()
+        if action.menu == A.PANEL:
+            group = "panel"
+        elif action.menu in A.TAB_GROUPS:
+            # A tab's own actions belong to it alone (Stage 4)
+            group = A.TAB_GROUPS[action.menu].lower()
+            assert action.scope == A.TAB_GROUPS[action.menu], action.name
+        else:
+            group = action.menu.lower()
+            assert not action.scope, action.name
         assert action.name.split(".")[0] == group, action.name
         assert action.text and action.tip, action.name
 
@@ -78,3 +86,25 @@ def test_align_columns_belongs_to_the_mod_panel():
     assert [a.name for a in A.in_menu(A.PANEL)] == ["panel.align"]
     assert all(a.text != "Align columns" for m in A.MENUS for a in A.in_menu(m))
     assert A.get("panel.align").shortcut == "Ctrl+L"
+
+
+def test_the_tabs_own_actions():
+    """Stage 4: single keys act only on their tab, and each tab lists its own."""
+    assert [a.name for a in A.scoped("Data")] == ["data.identify"]
+    regions = {a.name: a for a in A.scoped("Regions")}
+    keys = {name: a.shortcut for name, a in regions.items() if a.shortcut}
+    assert keys == {
+        "regions.previous": "Up",
+        "regions.next": "Down",
+        "regions.previous_element": "[",
+        "regions.next_element": "]",
+        "regions.order_down": "-",
+        "regions.order_up": "+",
+        "regions.remove_region": "Delete",
+    }
+    for name in ("regions.draw", "regions.tweak", "regions.knot", "regions.normalised"):
+        assert regions[name].checkable
+    # A single key is never a window-wide shortcut
+    for action in A.ACTIONS:
+        if action.shortcut and len(action.shortcut) == 1:
+            assert action.scope, action.name

@@ -54,6 +54,11 @@ def test_every_action_is_in_a_menu_and_in_the_sheet(window, qtbot):
     for button in window.panel.panel_buttons:
         if button.defaultAction() in window.panel.editor.panel_actions:
             placed[button.defaultAction().objectName()] = A.PANEL
+    # A tab's own actions: its buttons and keys (Stage 4)
+    groups = {tab: group for group, tab in A.TAB_GROUPS.items()}
+    for widget in window.tab_widgets:
+        for button in getattr(widget, "tab_buttons", []):
+            placed[button.defaultAction().objectName()] = groups[widget.name]
     sheet = D.ShortcutsDialog(window.qactions, window)
     qtbot.addWidget(sheet)
     rows = sheet.rows()
@@ -67,6 +72,24 @@ def test_every_action_is_in_a_menu_and_in_the_sheet(window, qtbot):
         assert row and row[0][2] == keys, spec.name
         if spec.shortcut:
             assert keys in qaction.toolTip()
+
+
+def test_a_tabs_keys_belong_to_the_tab(window):
+    """A single key acts only while its tab has the focus (Stage 4)."""
+    from qtpy import QtCore
+
+    tabs = {w.name: w for w in window.tab_widgets}
+    for spec in A.ACTIONS:
+        action = window.qactions[spec.name]
+        if spec.scope:
+            assert action.parent() is tabs[spec.scope], spec.name
+            if spec.shortcut:
+                assert (
+                    action.shortcutContext()
+                    == QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+                )
+        else:
+            assert action.parent() is window, spec.name
 
 
 def test_no_two_actions_share_a_shortcut(window):
