@@ -45,8 +45,8 @@ first builds the logic and the second the interface.
 | F4 Open an existing fit | 2, 3 | S12 First guess of log N (AOD) | 5 |
 | F5 Validate as you type | 2, 3 | S13 Live preview | 5 |
 | F6 Background fit runner | 6 | S14 One-click blends | 5 |
-| F6 Re-attach after closing | Later | S15 Limits and `link` editor | 5 |
-| F7 Run history (D26) | 6 | S15 Constraint templates | Later |
+| F6 Re-attach after closing | Later | S15 Limits; links read and shown | 5 |
+| F7 Run history (D26) | 6 | S15 `link` editor, constraint templates | Later |
 | F8 Blinding gate | 2 | S16 Cross-highlighting | 2, 4–5 |
 | F9 Settings from `ArgFlag` | 6 | S17 Pre-flight check | 6 |
 | F10 Shortcut sheet | 3 | S18 Fit-quality badges | 6 |
@@ -64,8 +64,9 @@ first builds the logic and the second the interface.
 | S30 Ion navigator | 5 | S31 Results from `run_alis` | 6 |
 
 Also later: Orders mode (D29–D32), with PypeIt spec1d (FITS) input (D13) and the
-stacked spectrum of a transition (Q4.20 of `dashboard_stage4.md`). S1 and S4 are not
-needed.
+stacked spectrum of a transition (Q4.20 of `dashboard_stage4.md`); S15's `link` editor
+and its templates, links being typed in the `.mod` panel until then (Q5.9 of
+`dashboard_stage5.md`, D65). S1 and S4 are not needed.
 
 ## Tasks
 

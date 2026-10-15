@@ -22,8 +22,9 @@ PANEL = ".mod panel"
 # the tab has the focus, so that typing in the .mod panel never sets them off
 DATA_TAB = "Data tab"
 REGIONS_TAB = "Regions tab"
-TAB_GROUPS = {DATA_TAB: "Data", REGIONS_TAB: "Regions"}
-GROUPS = MENUS + (PANEL, DATA_TAB, REGIONS_TAB)
+COMPONENTS_TAB = "Components tab"
+TAB_GROUPS = {DATA_TAB: "Data", REGIONS_TAB: "Regions", COMPONENTS_TAB: "Components"}
+GROUPS = MENUS + (PANEL, DATA_TAB, REGIONS_TAB, COMPONENTS_TAB)
 TABS = ("Data", "Regions", "Components", "Fit", "Plot")
 
 
@@ -414,6 +415,17 @@ ACTIONS += (
         section=3,
     ),
     Action(
+        "regions.model",
+        "Model",
+        REGIONS_TAB,
+        "",
+        "Show the model as it will be fitted, with the components of the Components"
+        " tab",
+        checkable=True,
+        scope="Regions",
+        section=3,
+    ),
+    Action(
         "regions.auto",
         "Auto first guess",
         REGIONS_TAB,
@@ -421,6 +433,62 @@ ACTIONS += (
         "Fit the continuum again, choosing its order by BIC",
         scope="Regions",
         section=3,
+    ),
+    # The Components tab (Stage 5): its keys act only while it has the focus
+    Action(
+        "components.previous",
+        "Previous ion",
+        COMPONENTS_TAB,
+        "Up",
+        "Show the ion above in the navigator",
+        scope="Components",
+    ),
+    Action(
+        "components.next",
+        "Next ion",
+        COMPONENTS_TAB,
+        "Down",
+        "Show the ion below in the navigator",
+        scope="Components",
+    ),
+    Action(
+        "components.add_component",
+        "+ Add component",
+        COMPONENTS_TAB,
+        "",
+        "Then click in a panel, at the new component's velocity (Esc cancels)",
+        checkable=True,
+        scope="Components",
+        section=1,
+    ),
+    Action(
+        "components.add_interloper",
+        "Add interloper…",
+        COMPONENTS_TAB,
+        "",
+        "Then click in a panel where the blend is, and choose a line of the Lyα"
+        " forest or another system's component (or right-click the panel)",
+        checkable=True,
+        scope="Components",
+        section=1,
+    ),
+    Action(
+        "components.add_ion",
+        "Add ion…",
+        COMPONENTS_TAB,
+        "",
+        "Add an ion to the system, with a line in each of its components",
+        scope="Components",
+        section=1,
+    ),
+    Action(
+        "components.add_system",
+        "Add system…",
+        COMPONENTS_TAB,
+        "",
+        "Add an absorption system at a redshift",
+        scope="Components",
+        section=1,
     ),
 )
 
@@ -472,7 +540,10 @@ def shortcut_sheet():
 
 def duplicate_shortcuts():
     """
-    Shortcuts given to more than one action (there must be none).
+    Shortcuts given to more than one action that can act at once (there must be
+    none). A tab's key acts only while that tab has the focus, so two tabs may each
+    give a key their own action (↑ on the Regions and Components tabs); a key of the
+    whole window clashes with any other.
 
     Returns
     -------
@@ -484,8 +555,13 @@ def duplicate_shortcuts():
     seen = {}
     for action in ACTIONS:
         if action.shortcut:
-            seen.setdefault(action.shortcut.lower(), []).append(action.name)
-    return {key: names for key, names in seen.items() if len(names) > 1}
+            seen.setdefault(action.shortcut.lower(), []).append(action)
+    out = {}
+    for key, found in seen.items():
+        scopes = [a.scope for a in found]
+        if len(found) > 1 and ("" in scopes or len(set(scopes)) < len(scopes)):
+            out[key] = [a.name for a in found]
+    return out
 
 
 def scoped(tab):

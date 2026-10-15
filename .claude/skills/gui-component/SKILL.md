@@ -120,6 +120,35 @@ shows no parameter value, so it needs no gate; the wheel zooms the wavelength ax
 only. pyqtgraph's `stepMode` cannot clip or downsample, so steps are built with
 `plots.step_curve`; keep the view's `clipToView` and downsampling for large spectra.
 
+## Models, ticks and drags (Stage 5)
+
+The model drawn is always ALIS's own: `profile.of(project)` (cached on the project's
+state) gives a `Profile` whose `evaluate(values=None, snips=None)` returns a `Curve`
+per snip (`model`, `continuum`, `normalised`, `residuals`, `chi2`), equal to
+`model_eval.model_func`. During a drag, give it values instead of changing the
+text: `profile.values({alis_index: value})` applies the links as ALIS does, and
+`evaluate(values, snips=[...])` evaluates only the snips shown.
+
+```python
+view.set_model(x, model)                # the model, divided by the view's continuum
+resid = PL.ResidualView(); resid.set_residuals(x, values)   # ±1σ lines, ±4σ clip
+view.set_ticks([{"x": v, "label": "a1", "kind": "own", "key": key,
+                 "selected": False}, ...])   # kinds: TICK_STYLE; not dragged
+view.set_edits(True)   # a left drag gives dragged(x0, y0, x, y, state); right pans
+```
+
+Signals: `tickClicked(key)` and `dragged(x0, y0, x, y, state)` (``"start"``,
+``"move"``, ``"finish"``). A drag is values while it moves (`components.drag`
+bounds them; `components.draggable` says what no link computes) and one step when
+it ends (`components.drag_step`); do not refresh the tab while a drag is held.
+Keys held during a drag (N, B) need an application event filter
+(`qt/components.DragKeys`): Qt reports only modifiers' states. Values
+a link computes are shown as ALIS computes them (`components.linked_values`,
+`components.shown`), through the gate. Cross-highlighting from a tab whose keys
+need its focus: `window.panel.select_items(items, move=False)` highlights and
+scrolls without moving the `.mod` cursor; `window.panel.cursor_line()` and
+`components.at_line(project, line)` say what the cursor's line describes.
+
 ## Notes
 
 - `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).

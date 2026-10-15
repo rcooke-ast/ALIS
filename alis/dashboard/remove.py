@@ -375,7 +375,9 @@ def _ui_without(project, key, ident, field_name="id"):
 
 def plan_component(project, component):
     """
-    The plan that removes a component: its voigt lines (D23).
+    The plan that removes a component: its voigt lines (D23), and the lines
+    commented out of it (Q5.18): no component would own them, and a later one could
+    take the same labels.
 
     A ratio line (``2H_I/1H_I``) stays while other lines of its denominator remain.
 
@@ -384,6 +386,20 @@ def plan_component(project, component):
     work = _Removal(project, "Remove component " + component.id)
     for line in component.lines:
         work.delete_line(line.line, "it is a line of component " + component.id)
+    for ion, num in component.excluded.items():
+        work.delete_line(
+            num,
+            "it is {0} in component {1}, commented out".format(
+                P.ion_name(ion), component.id
+            ),
+        )
+    for item in component.excluded_with:
+        work.delete_line(
+            item.line,
+            "it was commented out with {0} of component {1}".format(
+                P.ion_name(item.note[0]), component.id
+            ),
+        )
     return work.plan()
 
 

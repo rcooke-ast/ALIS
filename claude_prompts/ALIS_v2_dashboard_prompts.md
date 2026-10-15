@@ -622,6 +622,59 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
   12 ≥ −2, with Asplund et al. 2009 abundances; a preference), with a count of the
   others and a switch for all lines (Q4.4).
 
+*Stage 5 decisions (the Components tab)*
+
+*Added by Claude on 2026-10-15, from RJC's responses to Q5.1–Q5.22 of
+`dashboard_stage5.md` and his comments on the published screenshots of the tab.*
+
+- **D60. The model drawn is ALIS's own:** each snip's model as `model_eval.model_func`
+  computes it, with the links applied as ALIS applies them, evaluated for the snips
+  shown, during a drag too; no cap on sub-pixels is needed (Q5.5). The Regions tab
+  draws it with its Model switch (Q5.8).
+- **D61. One panel per snip** that holds a transition of the ion (refining D37): zero
+  velocity at the strongest of its transitions in the snip, whose components are the
+  ones dragged, the others drawn at the snip's other transitions; ordered by that
+  transition's strength, then dataset; one dataset chosen above the panels or all of
+  them; the data and the model divided by the continuum, the residuals underneath; two
+  columns to start with and never more columns than panels; ±200 km/s, linked (Q5.2,
+  Q5.3, Q5.19, Q5.21).
+- **D62. Adding a component** (refining D20): + Add component, then a click at its
+  velocity. It has a line for every ion of its system, sharing z, b and T, with b =
+  5 km/s and T = 0 K fixed (preferences) and each log N from the apparent optical
+  depth over ±½ FWHM against the current model: the lowest detected, unsaturated
+  estimate; else 15.0 or the highest lower limit when saturated; else the lowest 3σ
+  upper limit; else 12.0 with no data (Q5.6, Q5.13, Q5.16). An ion added to a system
+  gets a line in every component; one in no snip gives the tab a "!" (Q5.7).
+- **D63. Selecting and dragging:** a click selects the component nearest in
+  velocity (a click never adds one unless armed), Esc clears it; a drag moves the
+  component nearest where it starts, by its movement: above the continuum its z,
+  below it log N (vertically, 2 dex over the panel) and b (sideways) together, N
+  held keeping b and B held keeping log N; no handle; a right drag pans and the
+  wheel zooms; drags stop at the model's limits (`lim` lines, voigt.py's own) and,
+  for log N, at 8–23 (a preference); one step per drag; for a blinded component,
+  only the change in χ² (Q5.4, Q5.12, Q5.15, Q5.17, Q5.23).
+- **D64. Excluding and including** (Q5.11, Q5.15, Q5.18, Q5.20): Exclude comments a
+  component's line for an ion out, with the lines that depend on it, each with a note;
+  Include brings them back with z, b, T and the specids brought up to date; excluding
+  the last ion asks to remove the component. A card lists the log N of the ions the
+  component is in, and the others on one line ("Excluded: D I, O I"), a click
+  including one. ✕ is the only removal, after listing every line it deletes.
+- **D65. Links** are written in the `.mod` panel only: the tab reads them, shows what
+  they compute (ƒ, the expression, ALIS's value) and never drags or types it; S15's
+  link editor and its templates are after v1 (Q5.9).
+- **D66. The Lyα forest and interlopers:** one Lyα forest group for every `1Ly_a`
+  and `1H_IB` line of the project; Add interloper… (or a panel's right-click) adds,
+  at the clicked wavelength, a forest line (free or fixed; b = 20 km/s, a preference)
+  or a component of another system whose transition falls there (Q5.10, Q5.14,
+  Q5.22).
+- **D67. Notices of an imported fit** (Q0.3) are shown above the panels of the ion
+  they are about, with their one-click fix and Keep as imported (a digest in
+  `ui/project.json`, so that no value is written there).
+- **D68. Cross-highlighting** (S16) both ways: a component, ion or panel selected
+  highlights its lines in the `.mod` panel, without moving its cursor; the cursor on a
+  line selects what it describes (for a link or `lim param` line, what it
+  constrains).
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

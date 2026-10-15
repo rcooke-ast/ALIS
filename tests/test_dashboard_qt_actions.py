@@ -98,9 +98,13 @@ def test_no_two_actions_share_a_shortcut(window):
         keys = action.shortcut()
         if keys.isEmpty():
             continue
-        for other, their in seen.items():
-            assert keys != their, (name, other)
-        seen[name] = keys
+        scope = A.BY_NAME[name].scope
+        for other, (their, their_scope) in seen.items():
+            if keys == their:
+                # A tab's key acts only while that tab has the focus, so two tabs
+                # may each have their own ↑ (Stage 5); the window's keys are unique
+                assert scope and their_scope and scope != their_scope, (name, other)
+        seen[name] = (keys, scope)
 
 
 def test_the_toolbar_and_the_shortcut_sheet_action(window, qtbot):

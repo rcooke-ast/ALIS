@@ -86,6 +86,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   pixels fitted twice with their two fixes (keep, or merge after a preview), for
   every dataset at once. New modules `lines.py`, `snips.py`, `continuum.py` and
   `datasets.py` (no Qt), and `qt/plots.py`, `qt/data.py` and `qt/regions.py`.
+- The dashboard's Components tab (dashboard Stage 5). The ion navigator (each
+  system's ions, isotopes with their element, one Lyα forest group; Add ion… and Add
+  system…); one panel per snip that holds the ion, on a velocity axis at its
+  strongest transition, with the data and ALIS's own model over the continuum, the
+  residuals, and a tick per component; + Add component and a click, which adds a
+  component with a line for every ion of its system and each log N guessed from the
+  apparent optical depth; a click selecting the nearest component, and drags
+  that move it (z above the continuum; log N and b below it, N or B held keeping
+  one), bounded by the model's limits, with the model evaluated as the drag goes,
+  and a right drag panning; a card
+  per component (free, fixed and tied values, limits, the temperature's modes,
+  typed values, Exclude and Include, which comment a line out and back, Remove and
+  Blind…); Add interloper… (a line of the Lyα forest, or a component of another
+  system); links read and shown, and not dragged; the notices of an imported fit
+  with their fixes; cross-highlighting with the `.mod` panel both ways; and a Model
+  switch on the Regions tab. New modules `profile.py` (each snip's model as ALIS
+  computes it, equal to `model_eval.model_func`) and `components.py` (no Qt), and
+  `qt/components.py`.
 
 ### Fixed
 - `run_alis --extract`'s note about hidden starting values no longer ends with a

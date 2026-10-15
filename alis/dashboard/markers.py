@@ -287,6 +287,23 @@ def components_marker(project):
             notices[0].message
             + (" ({0} more.)".format(_plural(extra, "notice")) if extra else ""),
         )
+    from alis.dashboard import components as C
+
+    bare = C.unsnipped_ions(project)
+    if bare:
+        names = [
+            "{0} (z = {1:.5f})".format(row.name, system.z) for system, row in bare[:3]
+        ]
+        more = len(bare) - len(names)
+        return Marker(
+            ATTENTION,
+            "{0} {1} in no snip, so {2} lines constrain nothing: cut a snip of one of"
+            " {2} transitions on the Regions tab.".format(
+                ", ".join(names) + (" and {0} more".format(more) if more else ""),
+                "is" if len(bare) == 1 else "are",
+                "its" if len(bare) == 1 else "their",
+            ),
+        )
     marks = project.ui.get(MARKS)
     if marks is not None and marks.get("regions") != regions_fingerprint(project):
         return Marker(

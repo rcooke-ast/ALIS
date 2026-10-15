@@ -38,7 +38,7 @@ def test_the_folder_is_alis_home_or_dot_alis(tmp_path, monkeypatch):
 def test_the_defaults(folder):
     prefs = P.Preferences.load()
     assert prefs.messages == []
-    assert prefs["components.columns"] == 3
+    assert prefs["components.columns"] == 2
     assert prefs["components.velocity_range"] == 200.0
     assert prefs["autosave.interval"] == 60.0
     assert prefs["editor.typing_pause"] == 1.0
@@ -62,7 +62,7 @@ def test_the_user_file_overrides_the_defaults(folder):
     write(
         folder,
         {
-            "components": {"columns": 2, "velocity_range": 350},
+            "components": {"columns": 3, "velocity_range": 350},
             "autosave": {"interval": 120},
             "new_project": {
                 "settings": [["run", "ncpus", "4"], ["chisq", "ftol", "1e-8"]]
@@ -71,7 +71,7 @@ def test_the_user_file_overrides_the_defaults(folder):
     )
     prefs = P.Preferences.load()
     assert prefs.messages == []
-    assert prefs["components.columns"] == 2
+    assert prefs["components.columns"] == 3
     assert prefs["components.velocity_range"] == 350.0
     assert isinstance(prefs["components.velocity_range"], float)
     assert prefs["autosave.interval"] == 120.0
@@ -109,7 +109,7 @@ def test_a_bad_value_falls_back_to_the_default(
 def test_an_unknown_key_is_ignored_with_a_message(folder):
     write(folder, {"components": {"colums": 2}, "nosuch": {"a": 1}, "flat": 3})
     prefs = P.Preferences.load()
-    assert prefs["components.columns"] == 3
+    assert prefs["components.columns"] == 2
     assert len(prefs.messages) == 3
     assert all("ignored" in m for m in prefs.messages)
     assert "components.colums" in prefs.messages[0]
@@ -118,7 +118,7 @@ def test_an_unknown_key_is_ignored_with_a_message(folder):
 def test_a_file_that_cannot_be_read_gives_the_defaults(folder):
     (folder / P.PREFERENCES).write_text("{not json", encoding="utf-8")
     prefs = P.Preferences.load()
-    assert prefs["components.columns"] == 3
+    assert prefs["components.columns"] == 2
     assert len(prefs.messages) == 1 and "cannot be read" in prefs.messages[0]
 
 
@@ -137,7 +137,7 @@ def test_set_save_and_load_again(folder):
     again = P.Preferences.load()
     assert again["components.columns"] == 4 and again["new_project.fwhm"] == 2.5
     again.reset("components.columns")
-    assert again["components.columns"] == 3
+    assert again["components.columns"] == 2
     again.reset()
     assert again.changed() == {}
 

@@ -899,6 +899,58 @@ Every action is one step that Undo takes back, and every change is written to th
 `.mod` text, which stays the authority: the snips are written as `prepfit` writes
 them, and `run_alis project.model` fits the project as it stands.
 
+#### Building the model: the Components tab
+
+*Added 2026-10-15 (dashboard Stage 5).* The Components tab takes a project with
+snips and continua to a model ready to fit, without typing in the `.mod` panel.
+
+- **Ions.** Each system, the primary first, lists its ions with what they have
+  ("H I · 8 snips · 2 comp. · with D I"); an isotope sits with its element. One
+  group at the end, *Lyα forest*, holds every `1Ly_a` and `1H_IB` line of the
+  project. *Add ion…* lists first the ions with a transition inside a snip; *Add
+  system…* adds a redshift. ↑ ↓ change the ion while the tab has the focus.
+- **Panels.** One per snip that holds a transition of the ion, in the dataset chosen
+  above them or in all of them, on a velocity axis (±200 km/s, linked across the
+  panels) whose zero is the strongest of the ion's transitions in that snip; its
+  title counts the others ("O I 988.8 (+2)"). Each panel shows the data and ALIS's
+  own model, both divided by the continuum, the fit regions, and the residuals in σ
+  underneath. A tick at the top marks each component; other systems' and the
+  forest's lines are drawn grey and cannot be moved.
+- **Adding a component.** Press *+ Add component*, then click in a panel: the
+  component is added at that velocity, with a line for every ion of the system,
+  sharing z, b and T, and each ion's log N first-guessed from the apparent optical
+  depth of the data (b = 5 km/s and T = 0 K fixed, preferences). Otherwise a click
+  selects the component nearest in velocity; Esc clears the selection.
+- **Dragging.** A drag moves the component nearest where it starts, by how far the
+  mouse moves. Above the continuum (by the ticks) it moves the component's z;
+  below it, a vertical drag changes log N (down is deeper) and a horizontal one b
+  (away from the component is wider), together; hold N to change log N alone, or B
+  to change b alone. ALIS's model follows the drag; the `.mod` changes once, when
+  the drag ends. A drag stops at the model's limits (`lim` lines, or b_turb ≥
+  0.5 km/s), and for log N at 8 to 23 when the model sets none. A right drag pans
+  the panels; the wheel zooms.
+- **Cards.** One per component: z and b_turb with their state (● free, ■ fixed, ⛓
+  tied, ƒ computed by a link) and a menu to change it or set limits; the
+  temperature (0, 100 or 10⁴ K fixed, *Fixed at…*, free, or pure thermal); each
+  ion's log N. Any value can be typed. *Exclude from O I* comments the component's
+  O I line out of the `.mod` (with the lines that depend on it), *Include* brings it
+  back; the ions it is not in are listed on one line ("Excluded: D I, O I"), and a
+  click includes one. ✕ removes the component after listing every line it deletes.
+  *Blind…* hides its values until the model is unblinded.
+- **Blends.** *Add interloper…* (or a right-click in a panel) offers, at that
+  wavelength, a line of the Lyα forest (free or fixed), or a component of another
+  system whose transition falls there.
+- **Links and imported fits.** Links are written in the `.mod` panel's `link` block;
+  the tab shows what they compute and does not let a drag or a card change it. A fit
+  imported with lines that should share a parameter (an ion's z not tied to its
+  component's; D I not sharing b_turb or T with H I) gets a notice above the panels
+  with a one-click fix, or *Keep as imported*.
+- **The `.mod` panel and the tab follow each other.** Selecting a component or an
+  ion highlights its lines; the cursor on a line shows that line's ion and selects
+  its component. The tab's marker shows ! while an ion with lines has no snip.
+
+The *Model* switch on the Regions tab draws the same model on its spectra.
+
 ### 4.4 Pixels fitted twice
 
 When the data are loaded, ALIS warns if the same pixel of the same data is fitted
