@@ -592,3 +592,43 @@ No further questions on RJC's response to Q5.23.
   answered and resolved. No thread is open.
 - Batches at the close: `unit` 1881 passed, 0 failed; `gui` 146 passed; `fast` 112
   passed, 0 failed (13 min 31 s). Stage 5 is closed.
+
+### 2026-10-15 (Prompt 6 of this document: the stage closed; Stage 6's document)
+
+RJC committed the stage. Nothing was left to develop: Tasks 5.1–5.11 were done, every
+query had its response, and the review page's six threads were resolved (checked
+again; none open). The stage's Status now names Stage 6's document. No code changed,
+so the batches of Prompt 5 stand (`unit` 1881 passed, `gui` 146, `fast` 112).
+
+**Stage 6's document**, `claude_prompts/dashboard_stage6.md` (the Fit tab, which
+completes v1):
+- the design: a run of the project as it stands, by `run_alis` on a temporary
+  bundle in a separate process, its result stored in the project's file at once and
+  the model on disk changed only by Save; the χ² of each iteration read from the
+  process's output; Stop through ALIS's own `SIGQUIT` handler (an "interrupted" run,
+  whose errors ALIS sets to its values and are never shown) and Cancel; the settings
+  from `ArgFlag` (the model's `par` lines; the computer's backend, CPUs and GPUs as
+  preferences); the pre-flight check (what refuses Run, what is a note); Inspect
+  (the View menu, Initial | Final, the fit-quality marks computed as `report.py`
+  computes them); Results (the table and its flags, the correlations, the
+  statistics, the run history, Continue from best fit); Compare (quantities matched
+  across parametrisations: totals, isotope ratios, components by velocity; |Δ|/σ;
+  restoring a run's model); ALIS's convergence check and random restarts drawn by
+  the dashboard, since a bundle refuses `sim perturb`; outliers beyond 4σ reviewed
+  and left out as Tweak dataset regions leaves pixels out; command-line runs (S31);
+  the best fit on the Regions tab's Model switch; what each part shows of a blinded
+  parameter;
+- Tasks 6.1–6.11 (five new modules, `runs.py`, `settings.py`, `preflight.py`,
+  `results.py` and `compare.py`, and `qt/fit.py`; a review at 6.5; the end-to-end
+  fit run on the Fit tab at 6.10; v1 closed at 6.11);
+- Queries Q6.1–Q6.13, each with a lean. Two would change ALIS outside
+  `alis/dashboard/` (Q6.6: a description of each setting in `alis/config.py`;
+  `report.py`'s statistics made public functions).
+
+Found while writing it, and recorded there: a bundle run refuses `sim random` and
+`sim perturb` (`bundle.unsupported`), so random restarts need the dashboard to draw
+the starts (Q6.10); an interrupted fit's errors equal its values (`main.py`), which
+would show a blinded value as an error (Q6.3); `run_alis` prints the best-fit model
+at `out verbose 1` when the run is not blind, so the process's output is never shown;
+metal_line_abs's thermal and linear models fit other data files, so Compare's tests
+fit one project twice instead.

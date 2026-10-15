@@ -408,8 +408,8 @@ Q5.12, Q5.13, Q5.15–Q5.18).**
 
 ## Status (2026-10-15)
 
-*Written by Claude in Prompt 4, at Task 5.11, and brought up to date in Prompt 5. The
-details are in `claude_prompts/logs/dashboard_stage5_log.md`.*
+*Written by Claude in Prompt 4, at Task 5.11, and brought up to date in Prompts 5
+and 6. The details are in `claude_prompts/logs/dashboard_stage5_log.md`.*
 
 **Stage 5 is closed** (Prompt 5 of this document). Tasks 5.1–5.11 are done. The tab
 was reviewed halfway (Q5.1, Q5.19–Q5.22, and RJC's comment on the columns) and at the
@@ -418,7 +418,8 @@ nearest where it starts, N and B hold one of log N and b, a right drag pans); ev
 comment is applied, and draft 4 of the page shows the stage's final state:
 https://claude.ai/artifact/7hNzToHBQmpTPXa2RTpoQr. The stage's decisions are D60–D68
 of `ALIS_v2_dashboard_prompts.md`; S15's `link` editor moves to after v1 (Q5.9, the
-stage table of `dashboard_stage0.md`). Stage 6's document is to be written.
+stage table of `dashboard_stage0.md`). RJC committed the stage, and Stage 6's
+document, `dashboard_stage6.md`, was written in Prompt 6.
 - **Tests.** 3 new test files (`test_dashboard_profile.py`, 36 tests;
   `test_dashboard_components.py`, 31; `test_dashboard_qt_components.py`, 27 `gui`),
   and the end-to-end fit now through the Components tab. Coverage of the new modules
@@ -1095,3 +1096,4 @@ velocity axis, as before (D38). Draft 4 of the review page shows it.
 
 5. I have responded to query Q5.23. Please review my response, and if you have further questions, please ask them before continuing with development. Once everything is clear, please address these final fixes before closing Stage 5.
 
+6. I have committed all files to GitHub. If there are no more tasks to develop on this stage, please close this stage and generate a design document for stage 6. If you have questions during development, please pause the development, ask questions and I will respond (please log these questions and answers in the Queries section).
