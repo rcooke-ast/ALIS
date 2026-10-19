@@ -233,7 +233,8 @@ jobs fail. The **black** badge is deliberately *not* there yet; it goes up when
 ## 7. The dashboard: items deferred from its stages
 
 Added 2026-10-07 (dashboard Stage 4). Here `Q4.n` is a query in
-`claude_prompts/dashboard_stage4.md`.
+`claude_prompts/dashboard_stage4.md`. §7.5 and §7.6 were added on 2026-10-18 (dashboard
+Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`.
 
 ### 7.1 Telluric flags in the transition list
 - **What:** flag a transition whose observed wavelength falls in a telluric band,
@@ -285,3 +286,47 @@ Added 2026-10-07 (dashboard Stage 4). Here `Q4.n` is a query in
 - **To finish:** the stack (`snips.py`, no Qt: resampling, weights, the mapping of
   regions and continuum back to each snip), its strip on the Regions tab, and tests on
   Q1243p307's three datasets.
+
+### 7.5 Generating data from a model (`generate data`)
+- **What:** synthetic spectra made from a model, as ALIS's `generate data True` makes
+  them: the model evaluated on a grid of `generate pixelsize`, with noise set by
+  `generate peaksnr` and `generate skyfrac`, written as data files. From the
+  dashboard, for example to test whether a feature would be detected, or to plan
+  observations.
+- **Why deferred:** a bundle cannot run it, since it writes data files
+  (`bundle.unsupported`). RJC, Q6.16 of `dashboard_stage6.md`: to be implemented as
+  future work. In Stage 6, All settings… offers it, marked "command line only", and
+  the pre-flight check refuses Run while it is set, and says to export plain files
+  (File → Export plain files…) and run `run_alis` on them.
+- **Where:** Q6.4 and Q6.16 in `dashboard_stage6.md`; `alis/main.py` (the `generate
+  data` branch), `alis/load.py` (the grid from `generate pixelsize`), `alis/save.py`
+  (the noise from `generate peaksnr` and `generate skyfrac`).
+- **To finish:** the generated data written through a bundle's outputs instead of to
+  files beside the model, so that a bundle can run it; in the dashboard, a dialog for
+  the grid, the S/N and the sky fraction, the generated spectrum added to the project
+  as a new dataset or exported; tests against `run_alis` with `generate data True`.
+
+### 7.6 Simulated realisations and random restarts (`sim random`, `sim perturb`)
+- **What:** decide how ALIS draws its simulated realisations and restarts, and whether
+  a bundle can run them. While planning the dashboard's random restarts (Stage 6), Claude
+  found that `simulate.perturb` draws each restart's start about `slf._modpass['p0']`.
+  Its `bparams` argument is passed but not used. ALIS reaches `perturb` by two routes,
+  which therefore draw about different centres:
+  - `sim perturb N` in the model of a fit (`alis/main.py`, after the fit): `p0` is the
+    run's *starting* values, and the covariance is the best fit's;
+  - `sim perturb N` with `sim beginfrom <fit>`: `p0` and the covariance are read from
+    that fit's `.mod.out` and `.covar`, so the starts are drawn about its *best fit*.
+    This is what `sim newstart`, §6 of `doc/ALIS_workflow.md` and Q6.10 describe.
+
+  Each draw is clamped to ±`sim maxperturb` (10%) of its value (a value of zero is not
+  clamped), then to its limits. Unlike `sim_random`, `perturb` does not call
+  `convergence.assess_restarts`. A bundle refuses `sim random`, `sim perturb` and `sim
+  beginfrom`, since they write to `sims/` or read a fit from disk.
+- **Why deferred:** RJC, Q6.18(d) of `dashboard_stage6.md`: the approach to the
+  simulated realisations needs more thought.
+- **Where:** Q6.10, Q6.18 and Q6.22 in `dashboard_stage6.md`; `alis/simulate.py`
+  (`perturb`, `sim_random`), `alis/main.py`, `alis/convergence.py`.
+- **To finish:** decide the centre of each route's draws, and whether the 10% clamp
+  stays. Then decide whether `sim random` and `sim perturb` write through a bundle's
+  outputs, so that a bundle (and the dashboard) can run them. The dashboard's Random
+  restarts… (Q6.22) then follow the decision.

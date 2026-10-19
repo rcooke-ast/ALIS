@@ -23,8 +23,14 @@ PANEL = ".mod panel"
 DATA_TAB = "Data tab"
 REGIONS_TAB = "Regions tab"
 COMPONENTS_TAB = "Components tab"
-TAB_GROUPS = {DATA_TAB: "Data", REGIONS_TAB: "Regions", COMPONENTS_TAB: "Components"}
-GROUPS = MENUS + (PANEL, DATA_TAB, REGIONS_TAB, COMPONENTS_TAB)
+FIT_TAB = "Fit tab"
+TAB_GROUPS = {
+    DATA_TAB: "Data",
+    REGIONS_TAB: "Regions",
+    COMPONENTS_TAB: "Components",
+    FIT_TAB: "Fit",
+}
+GROUPS = MENUS + (PANEL, DATA_TAB, REGIONS_TAB, COMPONENTS_TAB, FIT_TAB)
 TABS = ("Data", "Regions", "Components", "Fit", "Plot")
 
 
@@ -243,14 +249,29 @@ ACTIONS = (
         "Show every hidden value. This cannot be undone",
         section=1,
     ),
-    # Fit
+    # Fit (Stage 6.4)
     Action(
         "fit.run",
         "Run",
         "Fit",
         "Ctrl+R",
-        "Run the fit (coming with the Fit tab)",
-        later=True,
+        "Fit the model as it stands, unsaved changes included, in the background;"
+        " the model on disk changes only with Save",
+    ),
+    Action(
+        "fit.save_run",
+        "Save and Run",
+        "Fit",
+        "Ctrl+Shift+R",
+        "Save the project, then fit it, so that the model on disk is the one fitted",
+    ),
+    Action(
+        "fit.stop",
+        "Stop",
+        "Fit",
+        "",
+        "Stop the fit at its current iteration and keep it; pressed again, cancel"
+        " it and keep nothing",
     ),
     Action(
         "fit.commit",
@@ -492,6 +513,26 @@ ACTIONS += (
     ),
 )
 
+ACTIONS += (
+    # The Fit tab (Stage 6.4): its keys act only while it has the focus
+    Action(
+        "fit.previous_view",
+        "Previous view",
+        FIT_TAB,
+        "[",
+        "Show the previous entry of the View menu: a snip, an ion, all snips",
+        scope="Fit",
+    ),
+    Action(
+        "fit.next_view",
+        "Next view",
+        FIT_TAB,
+        "]",
+        "Show the next entry of the View menu",
+        scope="Fit",
+    ),
+)
+
 BY_NAME = {action.name: action for action in ACTIONS}
 # The tab each View action shows
 TAB_ACTIONS = {
@@ -578,6 +619,8 @@ __all__ = [
     "scoped",
     "DATA_TAB",
     "REGIONS_TAB",
+    "COMPONENTS_TAB",
+    "FIT_TAB",
     "TAB_GROUPS",
     "ACTIONS",
     "BY_NAME",

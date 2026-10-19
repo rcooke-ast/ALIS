@@ -68,7 +68,7 @@ def build_funcarray(argflag, atomic):
 
 class ClassMain:
 
-    def __init__(self, argflag, getinst=False, modelfile=None, parlines=[], datlines=[], modlines=[], lnklines=[], data=None, fitonly=False, verbose=None, cli_overrides=None, writer=None, atomic=None):
+    def __init__(self, argflag, getinst=False, modelfile=None, parlines=[], datlines=[], modlines=[], lnklines=[], data=None, fitonly=False, verbose=None, cli_overrides=None, writer=None, atomic=None, iterhook=None):
         if getinst: return # Just get an instance
 
         # Set parameters
@@ -85,6 +85,11 @@ class ClassMain:
         # Where the output files go: to disk, or into memory when a project
         # bundle is run (dashboard Stage 1.4)
         self._outputs = writer if writer is not None else outputs.DiskOutputs()
+        # Called after each iteration of the fit with the iteration, the
+        # chi-squared, the parameter values and the degrees of freedom; a true
+        # return value stops the fit as Ctrl+\ does. None for a command-line run
+        # (dashboard Stage 6, Q6.19(b))
+        self._iterhook = iterhook
 
         # First send all signals to messages to be dealt
         # with (i.e. someone hits ctrl+c)
@@ -295,7 +300,7 @@ class ClassMain:
                 m = alfit(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                        ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], backend=self._argflag['run']['backend'], gputhresh=self._argflag['run']['gputhresh'], shmem=self._argflag['run']['shmem'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
+                        ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], backend=self._argflag['run']['backend'], gputhresh=self._argflag['run']['gputhresh'], shmem=self._argflag['run']['shmem'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], iterhook=self._iterhook)
                 model = self.myfunct(m.params, output=2)
                 # Pass the fitted information to the user module and obtain and updated model and completion status
                 newmodln = save.modlines(self, m.params, self._modpass, verbose=self._argflag['out']['verbose'])
@@ -336,7 +341,7 @@ class ClassMain:
             m = alfit(self._modpass['p0'], parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                         verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                         atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                        ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], backend=self._argflag['run']['backend'], gputhresh=self._argflag['run']['gputhresh'], shmem=self._argflag['run']['shmem'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'])
+                        ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], backend=self._argflag['run']['backend'], gputhresh=self._argflag['run']['gputhresh'], shmem=self._argflag['run']['shmem'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], iterhook=self._iterhook)
             # Influence must be fixed for the whole fit (Stage 3.5.2): warn if the
             # best-fit influence differs from the start-of-fit table (self._pinfl).
             load.check_par_influence(self, m.params, self._pinfl, verbose=self._argflag['out']['verbose'])
@@ -385,7 +390,7 @@ class ClassMain:
                         mc = alfit(mpars.params, parinfo=parinfo, functkw=fa, funcarray=self._funcarray,
                                 verbose=self._argflag['out']['verbose'], modpass=self._modpass, miniter=self._argflag['chisq']['miniter'], maxiter=self._argflag['chisq']['maxiter'],
                                 atol=self._argflag['chisq']['atol'], ftol=self._argflag['chisq']['ftol'], gtol=self._argflag['chisq']['gtol'], xtol=self._argflag['chisq']['xtol'],
-                                ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], backend=self._argflag['run']['backend'], gputhresh=self._argflag['run']['gputhresh'], shmem=self._argflag['run']['shmem'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], convtest=True)
+                                ncpus=self._argflag['run']['ncpus'], ngpus=self._argflag['run']['ngpus'], backend=self._argflag['run']['backend'], gputhresh=self._argflag['run']['gputhresh'], shmem=self._argflag['run']['shmem'], fstep=self._argflag['chisq']['fstep'],limpar=self._argflag['run']['limpar'], convtest=True, iterhook=self._iterhook)
                         # Update parameters
                         mpars = copy.deepcopy(mc)
                         # Keep going until this run has reached the tolerances

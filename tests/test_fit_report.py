@@ -24,28 +24,52 @@ RUN_ALIS = REPO_ROOT / "alis" / "scripts" / "run_alis.py"
 
 @pytest.mark.unit
 def test_runs_z_detects_correlation():
-    from alis.report import _runs_z
+    from alis.report import runs_z
 
     rng = np.random.default_rng(0)
     # Independent residuals -> |z| small.
-    assert abs(_runs_z(rng.normal(size=400))) < 3.0
+    assert abs(runs_z(rng.normal(size=400))) < 3.0
     # Perfectly alternating signs -> far too many runs -> large positive z.
     alt = np.array([1.0, -1.0] * 200)
-    assert _runs_z(alt) > 5.0
+    assert runs_z(alt) > 5.0
     # One long block of each sign -> far too few runs -> large negative z.
     block = np.array([1.0] * 200 + [-1.0] * 200)
-    assert _runs_z(block) < -5.0
+    assert runs_z(block) < -5.0
 
 
 @pytest.mark.unit
 def test_runs_z_degenerate_inputs_return_zero():
-    from alis.report import _runs_z
+    from alis.report import runs_z
 
     # All the same sign -> only one run, undefined variance -> defined as 0.
-    assert _runs_z(np.ones(50)) == 0.0
+    assert runs_z(np.ones(50)) == 0.0
     # Fewer than two non-zero residuals -> 0.
-    assert _runs_z(np.array([0.0, 0.0, 1.0])) == 0.0
-    assert _runs_z(np.array([])) == 0.0
+    assert runs_z(np.array([0.0, 0.0, 1.0])) == 0.0
+    assert runs_z(np.array([])) == 0.0
+
+
+@pytest.mark.unit
+def test_region_stats_are_the_reports_numbers():
+    # Public for the dashboard's marks (Q6.6(b)): what the report computes, unchanged
+    from alis.report import chi2_deviation, region_stats, runs_z
+
+    rng = np.random.default_rng(1)
+    resid = 1.3 * rng.normal(size=300)
+    st = region_stats(resid, 3.0)
+    assert st["npix"] == 300
+    assert st["chi2"] == pytest.approx(np.sum(resid**2))
+    assert st["redchi2"] == pytest.approx(st["chi2"] / 300)
+    assert st["dev"] == pytest.approx((st["redchi2"] - 1.0) / np.sqrt(2.0 / 300))
+    assert st["dev"] == chi2_deviation(resid)
+    assert st["runs_z"] == runs_z(resid)
+    assert st["nout"] == int(np.count_nonzero(np.abs(resid) > 3.0))
+    assert st["flagged"] and st["reasons"] == [
+        "redchi2 {0:+.1f}sigma".format(st["dev"])
+    ]
+    # Flagged only above for chi-squared; no residuals, no statistics
+    assert not region_stats(0.5 * rng.normal(size=300), 3.0)["flagged"]
+    assert region_stats(np.array([]), 3.0) is None
+    assert chi2_deviation(np.array([])) == 0.0
 
 
 @pytest.mark.unit

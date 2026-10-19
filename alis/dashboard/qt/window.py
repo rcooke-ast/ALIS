@@ -7,8 +7,13 @@ Dashboard Stage 3.5 (D34, D43, D44; Q3.4, Q3.10). One window:
 - the **five tabs** (Data, Regions, Components, Fit, Plot), each with its marker
   (F12), and a banner while the text does not read (QF.3);
 - the collapsible **.mod panel** at the right;
-- a **status bar**: the project's file, the fit, the state of the model, and the last
-  autosave.
+- a **status bar**: the project's file, the fit (the run going, with Stop), the state
+  of the model, and the last autosave;
+- **the run** (Stage 6.4; F6, Q6.2, Q6.14): Run fits the project as it stands, in
+  the background, after the pre-flight check; Save and Run saves it first; Stop ends
+  the fit at its current iteration and keeps it, and pressed again (Cancel) keeps
+  nothing; closing the project during a run asks whether to stop it, cancel it, or
+  keep it running.
 
 Everything shown comes from the session's project through the blinding gate, and
 every action is a step of the history. Questions to the user and file choices go
@@ -28,13 +33,18 @@ from alis.dashboard import actions as A
 from alis.dashboard import align as AL
 from alis.dashboard import blinding as BL
 from alis.dashboard import edit as E
+from alis.dashboard import fitview as FV
 from alis.dashboard import markers as MK
 from alis.dashboard import modes as MO
 from alis.dashboard import preferences as PR
+from alis.dashboard import preflight as PC
+from alis.dashboard import runs as R
 from alis.dashboard import session as S
+from alis.dashboard import settings as SE
 from alis.dashboard import sources as SR
 from alis.dashboard import validate as V
 from alis.dashboard.qt import dialogs as D
+from alis.dashboard.qt import fit as FT
 from alis.dashboard.qt import modpanel as MP
 from alis.dashboard.qt import style as ST
 from alis.dashboard.qt import tabs as TB
@@ -56,6 +66,14 @@ UNDO_STOP = (
     "Undo stops here: undoing further would show values that were hidden. Only"
     " Model → Unblind… shows them."
 )
+# What the status bar says when a run ends (Stage 6.4)
+RUN_ENDED = {
+    R.COMPLETED: "The fit has finished; the Fit tab shows its best fit.",
+    R.INTERRUPTED: "The fit was stopped: where it got to is kept, to inspect and to"
+    " continue from.",
+    R.STOPPED: "ALIS ended the run without a fit.",
+    R.CANCELLED: "The fit was cancelled: nothing was kept.",
+}
 
 
 class StartPage(QtWidgets.QFrame):
@@ -189,6 +207,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.markers = {}
         self.qactions = {}
         self._disk_seen = None
+        # The run going (Stage 6.4): one at a time
+        self.fit = FT.FitRun(self)
+        self.fit.progressed.connect(self._fit_progressed)
+        self.fit.ended.connect(self._fit_ended)
         self.setWindowTitle(TITLE)
         self.resize(1440, 900)
         self._build_actions()
@@ -351,6 +373,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabs.setTabEnabled(4, False)
         self.tabs.setTabToolTip(4, "Not yet available")
         self.tabs.currentChanged.connect(self._tab_changed)
+        self.fit_tab = self.tab_widgets[3]
         column.addWidget(self.tabs, 1)
         self._build_scoped()
         self.panel = MP.ModPanel()
@@ -444,6 +467,10 @@ class MainWindow(QtWidgets.QMainWindow):
         bar = self.statusBar()
         self.status_file = QtWidgets.QLabel("")
         self.status_fit = QtWidgets.QLabel(NO_FIT)
+        self.status_stop = QtWidgets.QToolButton()
+        self.status_stop.setObjectName("status_stop")
+        self.status_stop.setDefaultAction(self.qactions["fit.stop"])
+        self.status_stop.setVisible(False)
         self.status_model = QtWidgets.QLabel("")
         self.status_mode = W.muted("")
         self.status_mode.setToolTip("The project's mode, chosen when it was made")
@@ -451,6 +478,7 @@ class MainWindow(QtWidgets.QMainWindow):
         bar.addWidget(self.status_file)
         bar.addWidget(_separator())
         bar.addWidget(self.status_fit)
+        bar.addWidget(self.status_stop)
         bar.addWidget(_separator())
         bar.addWidget(self.status_model, 1)
         bar.addPermanentWidget(self.status_mode)
@@ -641,6 +669,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return True
         self.panel.flush()
         session = self.session
+        if self.fit.active and self.fit.session is session:
+            if not self._close_run():
+                return False
         if session.dirty:
             choice = self.ask(
                 "unsaved",
@@ -812,6 +843,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 "file.close",
             ):
                 action.setEnabled(has)
+        self._fit_actions()
         if not has:
             self.status_mode.setText("")
             self.setWindowTitle(TITLE)
@@ -840,16 +872,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.qactions["view.mod_panel"].setChecked(self.dock.isVisible())
         self.qactions["view.mod_window"].setChecked(self.dock.isFloating())
         self._remember_panel()
-        gate = BL.Gate(project)
-        self.markers = MK.markers(project, session.path)
-        for num, name in enumerate(A.TABS):
-            marker = self.markers[name]
-            self.tabs.setTabIcon(num, ST.marker_icon(marker.state))
-            self.tabs.setTabToolTip(num, gate.message(marker.tip))
         for widget in self.tab_widgets:
             widget.refresh(session)
             widget.setEnabled(not project.paused or widget.name == "Plot")
         self.tabs.setTabEnabled(4, False)
+        self.refresh_markers()
         self.pill.set_text(BL.pill_text(project))
         if not project.inferred and "imported" in self.notice_banner.label.text():
             # The structure was confirmed (Q2.4): the banner has done its work
@@ -859,7 +886,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.paused_banner.clear()
         self.status_file.setText(session.path or session.name + " (not saved yet)")
-        self.status_fit.setText(NO_FIT)
+        self._fit_status()
         try:
             mode = MO.get(project.ui.get("mode", MO.QSOAbsLineMode.name)).title
         except MO.ModeError:
@@ -872,6 +899,54 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_autosave.setText(
             ("Autosaved " + stamp.strftime("%H:%M")) if stamp else "Not autosaved yet"
         )
+
+    def refresh_markers(self):
+        """
+        Every tab's marker (F12): the Fit tab's says a run is going, and that the
+        pre-flight check refuses Run when its report is that of the model as it is.
+
+        Generated by RJC and Claude.
+        """
+        session = self.session
+        if session is None:
+            return
+        project = session.project
+        running = refused = None
+        if self.fit.active and self.fit.session is session:
+            running = FV.marker_text(self.fit.job)
+        report = self.fit_tab.inspect.report_for(project)
+        if report is not None and not report.ok:
+            refused = report.refusals[0].message
+        gate = BL.Gate(project)
+        self.markers = MK.markers(project, session.path, running, refused)
+        for num, name in enumerate(A.TABS):
+            marker = self.markers[name]
+            self.tabs.setTabIcon(num, ST.marker_icon(marker.state))
+            self.tabs.setTabToolTip(num, gate.message(marker.tip))
+
+    def _fit_actions(self):
+        """Run and Save and Run while no run goes; Stop (then Cancel) while one does."""
+        has = self.session is not None
+        running = self.fit.active
+        self.qactions["fit.run"].setEnabled(has and not running)
+        self.qactions["fit.save_run"].setEnabled(has and not running)
+        stop = self.qactions["fit.stop"]
+        stop.setEnabled(running)
+        stopping = running and self.fit.job.stopping
+        stop.setText("Cancel" if stopping else "Stop")
+        stop.setToolTip(
+            "End the fit at once, keeping nothing"
+            if stopping
+            else A.get("fit.stop").tip
+        )
+        self.status_stop.setVisible(running)
+
+    def _fit_status(self):
+        """The run going, in the status bar."""
+        if self.fit.active and self.fit.session is self.session:
+            self.status_fit.setText(FV.status_text(self.fit.job))
+        else:
+            self.status_fit.setText(NO_FIT)
 
     def _typing_started(self):
         """Typing not yet read can be undone: Undo reads it first."""
@@ -1003,6 +1078,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if session is None or session.path is None:
             return
         state = session.check_disk()
+        if state == S.RUNS and self.fit.active and self.fit.session is session:
+            # The dashboard's own run, storing its result: taken in when it ends
+            return
         if state == S.RUNS:
             session.take_runs()
             self.statusBar().showMessage(
@@ -1366,10 +1444,144 @@ class MainWindow(QtWidgets.QMainWindow):
     # -- Fit (Stage 6) --------------------------------------------------------------
 
     def do_fit_run(self):
-        """Run (built with the Fit tab)."""
+        """Run (Ctrl+R): fit the project as it stands, unsaved changes included."""
+        self.start_run(save=False)
+
+    def do_fit_save_run(self):
+        """Save and Run (Ctrl+Shift+R): save the project, then fit it."""
+        self.start_run(save=True)
+
+    def do_fit_stop(self):
+        """Stop: end the fit at its current iteration; pressed again, Cancel."""
+        self.fit.stop()
 
     def do_fit_commit(self):
-        """Commit run… (built with the Fit tab)."""
+        """Commit run… (built with the Fit tab's Results)."""
+
+    def start_run(self, save=False):
+        """
+        Run the fit (F6; Q6.2, Q6.14): the pre-flight check first (S17), which may
+        refuse it; then the project as it stands is handed to a fitting process,
+        with the dashboard's own settings on its command line (Q6.16(a)). Save and
+        Run saves the project first. The model on disk changes only with Save.
+
+        Returns
+        -------
+        bool
+            Whether a run was started.
+
+        Generated by RJC and Claude.
+        """
+        session = self.session
+        if session is None:
+            return False
+        if self.fit.active:
+            self.tell("Run", "A fit is running already: stop it first, or wait for it.")
+            return False
+        if save and not self.save():
+            return False
+        project = session.project
+        report = PC.check(project, self.prefs)
+        inspect = self.fit_tab.inspect
+        inspect.set_report(report)
+        if not report.ok:
+            inspect.show_findings(True)
+            gate = BL.Gate(project)
+            lines = [gate.message(f.message) for f in report.refusals]
+            self.tell(
+                "Run is refused",
+                "The pre-flight check refuses this run:\n\n• " + "\n• ".join(lines),
+                "warning",
+            )
+            return False
+        settings = SE.run_settings(project, self.prefs)
+        # The status bar says the run is going: a message there would hide it
+        self.statusBar().clearMessage()
+        self.fit.start(session, settings)
+        return True
+
+    def _fit_progressed(self):
+        """The run has reported: the status bar, the Fit marker and the tab."""
+        job = self.fit.job
+        if job is None or self.session is None or self.fit.session is not self.session:
+            return
+        self._fit_status()
+        self._fit_actions()
+        self.tabs.setTabToolTip(3, FV.marker_text(job))
+        self.fit_tab.inspect.progressed(job)
+
+    def _fit_ended(self, status):
+        """
+        The run has ended, and was taken into the project: say how, and show it. An
+        error is shown with the line it names (Stage 6.4).
+
+        Generated by RJC and Claude.
+        """
+        job = self.fit.job
+        session = self.session
+        self.refresh()
+        if session is None or self.fit.session is not session:
+            return
+        project = session.project
+        gate = BL.Gate(project)
+        if status == R.ERROR:
+            message = gate.message(job.message or "The fit stopped with an error.")
+            line = None if project.paused else V.locate(project.parsed, job.message)
+            if line is not None:
+                self.panel.go_to_line(line)
+            self.tell("The fit stopped with an error", message, "warning")
+            return
+        text = RUN_ENDED.get(status, "The fit has ended.")
+        if job.warnings and status in (R.COMPLETED, R.INTERRUPTED):
+            warning = " ".join(gate.message(job.warnings[0]).split())
+            text += " ALIS warned: " + warning
+        self.statusBar().showMessage(text, 15000)
+
+    def _close_run(self):
+        """
+        The project closes while its fit runs: stop it and keep it, cancel it, or
+        keep it running (its result is stored in the project's file, and shown when
+        the project is next opened; only for a project with a file).
+
+        Returns
+        -------
+        bool
+            False when the user chose not to close.
+
+        Generated by RJC and Claude.
+        """
+        job = self.fit.job
+        stop, cancel, keep, stay = (
+            "Stop the run",
+            "Cancel the run",
+            "Keep it running",
+            "Don't close",
+        )
+        keepable = job.path is not None
+        text = (
+            "A fit of {0} is running. Stop it at its current iteration and keep"
+            " where it got to, or cancel it and keep nothing".format(self.session.name)
+        )
+        if keepable:
+            text += (
+                ", or keep it running: its result will be stored in the project's"
+                " file, and shown when the project is next opened"
+            )
+        choices = [stop, cancel] + ([keep] if keepable else []) + [stay]
+        choice = self.ask("running", "A fit is running", text + ".", choices, stop)
+        if choice == stop:
+            self.fit.stop()
+            self.fit.wait()
+        elif choice == cancel:
+            self.fit.cancel()
+            if self.fit.active:
+                # It was storing its result: it ends once stored
+                self.fit.wait()
+        elif choice == keep:
+            self.fit.detach()
+        else:
+            return False
+        return True
 
     # -- Help -----------------------------------------------------------------------
 

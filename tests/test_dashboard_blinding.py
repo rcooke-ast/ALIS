@@ -236,6 +236,18 @@ def test_compare_shows_only_the_size_of_a_hidden_change(blind_project):
     assert gate.sigma_change(oxygen.param("ColDens"), -0.02, 0.05) == "-0.02 (-0.4σ)"
 
 
+def test_a_best_fit_that_alis_offsets_is_masked(blind_project):
+    # O I has a blindrange: ALIS writes its best fit offset, the dashboard reads it
+    # without the offset, so it masks it; its starting values are the user's own
+    gate = BL.Gate(blind_project)
+    oxygen = voigt(blind_project.parsed, "16O_I").param("ColDens")
+    assert not gate.is_hidden(oxygen) and gate.value(oxygen) == "14"
+    assert gate.best_fit(oxygen, 13.98) == BL.MASK
+    assert gate.best_fit_hidden(oxygen)
+    plain = BL.Gate(P.Project.import_model(str(METAL), registry=blind_project.registry))
+    assert plain.best_fit(voigt(plain.pm, "16O_I").param("ColDens"), 13.98) == "13.98"
+
+
 class _History:
     cleared = False
 

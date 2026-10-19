@@ -21,15 +21,18 @@ class _ListSettings(argparse.Action):
         super().__init__(option_strings, dest, nargs=0, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
-        from alis.config import ArgFlag
+        from alis.config import ArgFlag, settings_help
 
         cfg = ArgFlag()
+        helps = settings_help()
         print("ALIS settings. Put any of these in the 'par' block of a model")
         print("file, or pass them on the command line as --set 'section key value'.")
         for section in cfg.keys():
             print("\n[{0:s}]".format(section))
             for key in cfg[section].keys():
                 print("  {0:<14s} {1!r}".format(key, cfg[section][key]))
+                # What it does (dashboard Stage 6, Q6.6(a))
+                print("  {0:<14s}   {1:s}".format("", helps[section][key]))
         parser.exit()
 
 

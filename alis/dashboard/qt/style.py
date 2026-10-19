@@ -44,6 +44,13 @@ MARKER_COLOURS = {
     MK.NONE: "#8f8f8f",
 }
 SEVERITY_COLOURS = {"error": OKABE_ITO["vermillion"], "warning": OKABE_ITO["orange"]}
+# The fit-quality marks (D39): ✓ within 2σ, ! 2–3σ, ✕ beyond; each its background and
+# text, light tints of the palette's blue, orange and vermillion
+MARK_COLOURS = {
+    "✓": ("#e2eef7", "#0a4a74"),
+    "!": ("#fbefd3", "#734f00"),
+    "✕": ("#f9e0d2", "#953c00"),
+}
 SEVERITY_ICONS = {"error": "✕", "warning": "!"}
 # The .mod panel's colours, by kind of line or word
 TEXT_COLOURS = {
@@ -107,6 +114,9 @@ QListWidget#problems {{ border: none; border-top: 1px solid #d1d1d1; background:
 QToolButton#strip {{ background: {strip}; border: none; border-left: 1px solid #b0b0b0; }}
 QFrame#startPage {{ background: {window}; }}
 QLabel#startTitle {{ font-size: 22px; font-weight: 600; }}
+QFrame#snipChip {{ background: {base}; border: 1px solid #c8c8c8; border-radius: 4px; }}
+QFrame#snipChip[selected="true"] {{ border: 2px solid #0072B2; }}
+QLabel#preflight {{ padding: 4px 2px; }}
 """
 
 

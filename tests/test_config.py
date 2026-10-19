@@ -100,3 +100,31 @@ def test_out_onefits_is_an_unrecognised_setting(value):
     assert "onefits" not in ArgFlag()["out"]
     with pytest.raises(SystemExit):
         load.set_params(["out onefits " + value], ArgFlag(), verbose=-1)
+
+
+# -- What each setting does (dashboard Stage 6, Q6.6(a)) ---------------------
+
+
+def test_every_setting_has_a_one_line_description():
+    from alis.config import settings_help
+
+    cfg = ArgFlag()
+    helps = settings_help()
+    assert list(helps) == cfg.keys()
+    for section in cfg.keys():
+        assert list(helps[section]) == cfg[section].keys(), section
+        for key, text in helps[section].items():
+            assert text and "\n" not in text, (section, key)
+            assert len(text) <= 80, (section, key)
+
+
+def test_descriptions_leave_the_defaults_unchanged():
+    """The metadata changes no default, and no type that set_params reads."""
+    cfg = ArgFlag()
+    assert cfg["run"]["ncpus"] == -1 and isinstance(cfg["run"]["ncpus"], int)
+    assert cfg["chisq"]["maxiter"] == 2000
+    assert cfg["chisq"]["fstep"] == 20.0
+    assert cfg["run"]["backend"] == "auto"
+    assert cfg["plotscript"]["numcol"] is None
+    assert cfg["sim"]["perturb"] is None
+    assert cfg["out"]["reportsig"] == 3.0

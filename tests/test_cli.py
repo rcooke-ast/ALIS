@@ -204,6 +204,12 @@ def test_list_settings_prints_every_section_and_exits(capsys):
         assert "[{0:s}]".format(section) in printed, section
     # and the values, since the point is to be able to see the defaults
     assert "fstep" in printed and "20.0" in printed
+    # and what each does (dashboard Stage 6, Q6.6(a))
+    from alis.config import settings_help
+
+    for section, helps in settings_help().items():
+        for text in helps.values():
+            assert text in printed
 
 
 def test_the_gpu_flag_takes_a_count_not_a_boolean(captured_argflag):

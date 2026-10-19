@@ -818,23 +818,26 @@ def linked_values(project):
     return {i: float(values[i]) for i in indices}
 
 
-def shown(param, linked=None):
+def shown(param, linked=None, values=None):
     """
     A parameter's value as the tab shows it: what its link computes (``linked``,
-    from :func:`linked_values`), or its starting value.
+    from :func:`linked_values`), or its starting value; or, given ``values`` (every
+    parameter by ALIS's number: a run's best fit, Stage 6.4), its value there.
     """
+    if values is not None and 0 <= param.index < len(values):
+        return float(values[param.index])
     if linked and param.linked and param.index in linked:
         return linked[param.index]
     return param.start
 
 
-def component_z(comp, linked=None):
+def component_z(comp, linked=None, values=None):
     """A component's redshift as the tab shows it (what a link computes)."""
     zpar = comp.main.param("redshift") if comp.main is not None else None
-    return comp.z if zpar is None else shown(zpar, linked)
+    return comp.z if zpar is None else shown(zpar, linked, values)
 
 
-def _line_ticks(project, line, panel, label, kind, half, linked=None):
+def _line_ticks(project, line, panel, label, kind, half, linked=None, values=None):
     """The ticks of one voigt line's transitions inside a panel's window."""
     out = []
     zpar = line.param("redshift")
@@ -842,7 +845,7 @@ def _line_ticks(project, line, panel, label, kind, half, linked=None):
         return out
     ion = line.ion.split("/")[0]
     waves, _ = project.registry.transitions(ion)
-    z = shown(zpar, linked)
+    z = shown(zpar, linked, values)
     for rest in waves:
         vel = C_KMS * (rest * (1.0 + z) / panel.centre - 1.0)
         if abs(vel) <= half:
@@ -850,7 +853,7 @@ def _line_ticks(project, line, panel, label, kind, half, linked=None):
     return out
 
 
-def panel_ticks(project, system, ion, panel, half=None, linked=None):
+def panel_ticks(project, system, ion, panel, half=None, linked=None, values=None):
     """
     The ticks of a panel (D37): every component of the system at its velocity
     (excluded from the ion, or never in it: faint and dashed, Q5.15), and again in
@@ -865,6 +868,9 @@ def panel_ticks(project, system, ion, panel, half=None, linked=None):
     linked : dict, optional
         :func:`linked_values`: a redshift a link computes is drawn where ALIS puts
         it.
+    values : array, optional
+        Every parameter by ALIS's number (a run's best fit, links applied): the
+        ticks are drawn at its redshifts (the Fit tab's Final, Stage 6.4).
 
     Returns
     -------
@@ -883,7 +889,7 @@ def panel_ticks(project, system, ion, panel, half=None, linked=None):
     trans = panel.transition
     shifts = [C_KMS * (rest / trans.rest - 1.0) for rest in trans.others]
     for comp in system.components:
-        vel = P.velocity(component_z(comp, linked), system.z)
+        vel = P.velocity(component_z(comp, linked, values), system.z)
         own = ion in comp.ions
         kind = "own" if own else "excluded"
         key = ("component", comp.id)
@@ -913,18 +919,20 @@ def panel_ticks(project, system, ion, panel, half=None, linked=None):
         for comp in other.components:
             for line in comp.lines:
                 label = "{0} ({1})".format(P.ion_name(line.ion), other.id)
-                out += _line_ticks(project, line, panel, label, "other", half, linked)
+                out += _line_ticks(
+                    project, line, panel, label, "other", half, linked, values
+                )
     for line in project.absorbers:
-        out += _line_ticks(project, line, panel, "Lyα", "forest", half, linked)
+        out += _line_ticks(project, line, panel, "Lyα", "forest", half, linked, values)
     return out
 
 
-def forest_ticks(project, panel, half=None, linked=None):
+def forest_ticks(project, panel, half=None, linked=None, values=None):
     """The ticks of a Lyα forest panel: its lines where their transitions fall."""
     half = PF.SPEC["components.velocity_range"].default if half is None else half
     out = []
     for line in project.absorbers:
-        for tick in _line_ticks(project, line, panel, "", "own", half, linked):
+        for tick in _line_ticks(project, line, panel, "", "own", half, linked, values):
             out.append(tick)
     return out
 

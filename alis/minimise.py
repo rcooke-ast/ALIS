@@ -411,7 +411,7 @@ class alfit(object):
                  rescale=0, autoderivative=1, verbose=2, modpass=None,
                  diag=None, epsfcn=None, ncpus=None, ngpus=None,
                  backend=None, gputhresh=None, shmem=True, fstep=1.0, debug=0,
-                 convtest=False):
+                 convtest=False, iterhook=None):
         """
   Inputs:
     fcn:
@@ -505,6 +505,16 @@ class alfit(object):
 
         Set iterfunct=None if there is no user-defined routine and you don't
         want the internal default routine be called.
+
+     iterhook:
+        A function called after iterfunct, at each NPRINT iteration, as
+           iterhook(iter, fnorm, p, dof, convtest)
+        with the iteration number, the chi-squared, a copy of the current
+        parameters, the degrees of freedom and whether this fit checks the
+        convergence. A true return value ends the fit cleanly, as SIGQUIT does
+        (status -20), so that the dashboard can watch a fit and stop it
+        (dashboard Stage 6, Q6.19(b)).
+        Default: None
 
      maxiter:
         The maximum number of iterations to perform.  If the number is exceeded,
@@ -710,6 +720,8 @@ class alfit(object):
 
         if iterfunct == 'default':
             iterfunct = self.defiter
+        if iterhook is not None:
+            iterfunct = self._hooked(iterfunct, iterhook)
 
         # Parameter damping doesn't work when user is providing their own
         # gradients.
@@ -1396,6 +1408,19 @@ class alfit(object):
             msgs.info("The chi-squared minimisation was interrupted by the user." + msgs.newline() +
                       "Attempting to cleanly end fit and display the current results...")
             self.handler = False
+
+    # Call iterfunct, then the caller's hook (dashboard Stage 6, Q6.19(b)): a true
+    # return value from the hook ends the fit as the signal handler does.
+    def _hooked(self, iterfunct, iterhook):
+        def call(x, iter, fnorm, dof=1, convtest=False, **kwargs):
+            status = None
+            if iterfunct is not None:
+                status = iterfunct(x, iter, fnorm, dof=dof, convtest=convtest,
+                                   **kwargs)
+            if iterhook(iter, fnorm, numpy.array(x, copy=True), dof, convtest):
+                self.handler = False
+            return status
+        return call
 
     # Default procedure to be called every iteration.  It simply prints
     # the parameter values.
