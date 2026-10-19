@@ -745,3 +745,59 @@ CHANGELOG and `ALIS_workflow.md` that follow from them. They wait for RJC.
 
 **Q6.27** raised: whether new projects write `chisq miniter 5` once that is ALIS's
 default (lean: yes).
+
+### Q6.24, Q6.26 and Q6.27, after RJC's go-ahead in chat
+
+**Q6.24 — CPUs on ALIS's command line** (`alis/load.py`):
+- `reapply_cli_overrides` counts `run ncpus` with `cpucheck`, as a model's own is
+  counted, so `--set "run ncpus -1"` is all bar one. It counts quietly
+  (`cpucheck(..., quiet=True)`): `optarg` has already counted the same value and
+  said so. ALIS's logger ignores `verbose=`, so the quiet count was the only way not
+  to print the warning twice, found by tracing a real run.
+- `cpucheck`: a count that leaves no CPU (0, or -40 on this computer's 14) fits
+  with one, with a warning; "all bar one" on a one-CPU computer is one.
+- `run_alis fit_spectra.mod -p 0 --set "run ncpus -1"`, which stopped with a
+  traceback before, fits on 13 CPUs, χ² 357.8742 as the reference; `-40` fits
+  on one CPU, with one warning.
+- Tests: `test_load_units.py` (0, -8, -20 → 1 with the warning; one-CPU computer;
+  `reapply_cli_overrides` counts, quietly), `test_cli.py` (optarg → model line →
+  `check_argflag` → re-applied: 7 of 8, whether or not the model sets `run ncpus`).
+- Dashboard: runs are given the CPUs preference as it is (`run ncpus -1`), and
+  `settings.cpus` (Task 6.5's workaround) is gone; `settings.leaves_no_cpu` says
+  whether a count leaves none. The pre-flight check's `cpus` finding is a note now,
+  not a refusal ("ALIS will fit with 1 CPU: the CPUs preference (-14) leaves none
+  of this computer's 14…"). `preflight.py`'s docstring and the Design list it with
+  the notes.
+
+**Q6.26 — ALIS's defaults** (`alis/config.py`): `run blind False`, `chisq miniter
+5`.
+- `test_config.py` pins both. CHANGELOG: a Changed section (both defaults) and a
+  Fixed entry (the command line's CPUs). `ALIS_workflow.md` §2.1's table (`blind`
+  False; `ncpus` with `--set` and a count that leaves none), and the user guide's
+  table (`doc/tex_files/description.tex`: blind False, miniter 5; the PDF is not
+  rebuilt).
+- `chisq miniter` holds back only the `ftol` and `xtol` stops (`minimise.py`,
+  statuses 1–3), not `gtol` or `atol`; the CHANGELOG says so.
+- The dashboard follows: a model with no `run blind` line is not under global
+  blind, so deleting `run blind True` is refused as switching it to False is
+  (`test_dashboard_guard.py`), and the unblinding test of a model relying on the
+  old default became one of a model without the line. `blinding.unblind`'s branch
+  for a model that relies on the default is kept (it reads the default), with its
+  comment corrected.
+- The Run box no longer lists the metal example's `run blind False`; its
+  `chisq miniter 10` is listed (`test_the_run_box_settings`, which now checks the
+  read-only `run blind` row with the model under global blind).
+
+**Q6.27 (a)** — a new project writes `chisq miniter 5`
+(`preferences.NEW_PROJECT_SETTINGS`).
+
+The review page's question 4 shows the answer (draft 3).
+
+**Checks.** The harness cases of the six models that leave `chisq miniter` to the
+default (`test_minimisation`, `test_fixed_param`, summed_coldens's `test_bundle`,
+Her36's `test_bundle_matches_plain`): 14 passed (292 s). The review page's
+screenshots were retaken (real fits from the window) and the page republished as
+draft 3; its question 4 thread answered and resolved. `pytest -m unit`: 1973
+passed, 121 skipped (85 s; the 16 warnings are `test_save_helpers.py`'s log10 of
+a zero, in code this work did not touch); `pytest -m gui`: 164 passed (289 s);
+`pytest -m fast`: 129 passed (875 s).

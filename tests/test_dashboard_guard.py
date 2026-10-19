@@ -133,10 +133,11 @@ def test_switching_global_blind_off_is_refused(home, tmp_path, registry):
     with pytest.raises(BL.RevealError):
         history.type(replace(project, "run blind True", "run blind False"))
     assert project.text == before
-    # Deleting the line leaves the analysis blind: ALIS blinds a model that does not
-    # say (run blind is True by default), so nothing is shown and it is allowed
-    history.type(replace(project, "run blind True\n", ""))
-    assert project.parsed.blind
+    # Deleting the line switches it off too: ALIS does not blind a model that does
+    # not say (run blind is False by default, Q6.26)
+    with pytest.raises(BL.RevealError):
+        history.type(replace(project, "run blind True\n", ""))
+    assert project.text == before and project.parsed.blind
 
 
 def test_deleting_or_retyping_a_hidden_value_is_allowed(home, tmp_path, registry):
@@ -218,12 +219,17 @@ def test_unblinding_is_confirmed_logged_final_and_clears_the_history(
     assert "13.4729" in BL.Gate(project).view().text
 
 
-def test_unblinding_a_model_that_relies_on_alis_s_default(home, tmp_path, registry):
-    """ALIS blinds a model with no run blind line; unblinding writes one."""
+def test_a_model_with_no_run_blind_line_is_not_blind(home, tmp_path, registry):
+    """ALIS's default is run blind False (Q6.26): a model blinds itself by saying so,
+    and unblinding a line of it writes no run blind line."""
     session = session_of(METAL, tmp_path, registry)
     project, history = session.project, session.history
     history.type(replace(project, "run blind False\n", ""))
-    assert project.parsed.blind
+    assert not project.parsed.blind and not BL.Gate(project).global_blind
+    history.edit(
+        E.set_blind(project.parsed, project.parsed.function_lines("voigt")[1]), "Blind"
+    )
+    assert BL.pill_text(project) == "Blinded: Si II"
     session.unblind("done")
     assert not project.parsed.blind
-    assert "run blind False" in " ".join(project.text.split())
+    assert "run blind" not in project.text

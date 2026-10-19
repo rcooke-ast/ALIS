@@ -211,7 +211,11 @@ DECIDE = [
     "Settings you changed lists every setting the model writes that differs from"
     " ALIS's own default. Two of them may surprise: run blind False (ALIS's"
     " default is True; shown read-only, since only Model → Unblind… changes"
-    " blinding) and chisq miniter 10 (ALIS's default is 0). Keep?",
+    " blinding) and chisq miniter 10 (ALIS's default is 0). Keep? → Your"
+    " answer (Q6.26, Q6.27): ALIS's defaults are now run blind False and chisq"
+    " miniter 5, and a new project writes 5, so neither is listed for a new"
+    " project (done in draft 3; this example's model writes 10, which is"
+    " listed).",
 ]
 
 COVERED = [
@@ -225,8 +229,9 @@ COVERED = [
     " run, and the Fit marker.",
     "Found while taking these screenshots: a model that does not set run ncpus"
     " could not be fitted with the default CPUs preference (-1, all bar one),"
-    " because ALIS counts -1 so only in a model, not on its command line. The"
-    " dashboard now gives the number itself; ALIS's side is Q6.24.",
+    " because ALIS counted -1 so only in a model, not on its command line. ALIS"
+    " now counts it on its command line too, and fits with one CPU, with a"
+    " warning, when the count leaves none (Q6.24); the pre-flight check notes it.",
 ]
 
 TITLE = "Dashboard Fit Inspect"
@@ -284,7 +289,7 @@ def build(shots, out):
     body = (
         "<title>{title}</title>\n{fonts}<style>{css}{page}</style>{hatch}"
         '<div class="sheet"><div class="eyebrow">ALIS dashboard · Stage 6 · the'
-        " Fit tab's Inspect sub-tab, draft 2</div><h1>{title}</h1>"
+        " Fit tab's Inspect sub-tab, draft 3</div><h1>{title}</h1>"
         '<p class="lede">The Fit tab\'s Inspect sub-tab, and running a fit from the'
         " dashboard, beside the Inspect mockup of Stage 0. Each screenshot is taken"
         " off-screen at 1440×900, and every run on this page is a real fit made"

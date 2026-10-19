@@ -351,14 +351,14 @@ Key `run` sub-settings:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `ncpus` | −1 | CPU count; −1 = all bar one, −2 = all bar two |
+| `ncpus` | −1 | CPU count; −1 = all bar one, −2 = all bar two (also with `--set`); a count that leaves none uses one |
 | `backend` | auto | Which backend computes the Jacobian: `cpu`, `gpu` or `auto` |
 | `ngpus` | 0 | GPU count; 0 keeps the CPU backend (see *Fitting on GPUs*) |
 | `gputhresh` | 10000 | Smallest model group (sub-pixels × profiles) sent to a GPU |
 | `shmem` | True | Share the workers' read-only arrays via `/dev/shm` (see *Memory during a fit*) |
 | `nsubpix` | 5 | Sub-pixel oversampling (fixed count) |
 | `nsubmin`/`nsubmax` | 5/21 | Min/max sub-pixel oversampling (adaptive) |
-| `blind` | True | Global blind analysis |
+| `blind` | False | Global blind analysis: True blinds the whole fit |
 | `convergence` | False | Enable convergence testing |
 | `datatype` | default | Data format: `default`, `HIRESredux`, `UVESpopler` |
 

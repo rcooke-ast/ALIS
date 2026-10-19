@@ -131,16 +131,22 @@ def test_a_starting_value_outside_its_limits(project, prefs):
 
 
 def test_no_cpu_to_fit_with(project, prefs):
+    # ALIS fits with one CPU, and says so (Q6.24): a note, after which Run goes ahead
     project.apply(ST.set_step(project, "run", "ncpus", "0"))
-    assert "cpus" in PF.check(project, prefs).codes(PF.REFUSE)
+    report = PF.check(project, prefs)
+    assert "cpus" in report.codes(PF.NOTE) and "cpus" not in report.codes(PF.REFUSE)
+    (note,) = [f for f in report.findings if f.code == "cpus"]
+    assert "'run ncpus 0'" in note.message and note.line is not None
     project.apply(ST.clear_step(project, "run", "ncpus"))
     prefs.set("fit.ncpus", 0)
-    assert "cpus" in PF.check(project, prefs).codes(PF.REFUSE)
+    assert "cpus" in PF.check(project, prefs).codes(PF.NOTE)
     # Counted as ALIS counts them: more taken away than this computer has
     prefs.set("fit.ncpus", -cpu_count())
-    assert "cpus" in PF.check(project, prefs).codes(PF.REFUSE)
+    (note,) = [f for f in PF.check(project, prefs).findings if f.code == "cpus"]
+    assert "preference ({0})".format(-cpu_count()) in note.message
+    assert "computer's {0}".format(cpu_count()) in note.message and note.line is None
     prefs.set("fit.ncpus", -1)
-    assert "cpus" not in PF.check(project, prefs).codes(PF.REFUSE) or cpu_count() < 2
+    assert "cpus" not in PF.check(project, prefs).codes() or cpu_count() < 2
 
 
 def test_no_free_parameter(project, prefs):

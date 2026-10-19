@@ -41,7 +41,7 @@ NEW_PROJECT_SETTINGS = (
     ("run", "ncpus", "-1"),
     ("run", "blind", "False"),
     ("chisq", "atol", "0.001"),
-    ("chisq", "miniter", "10"),
+    ("chisq", "miniter", "5"),
     ("chisq", "maxiter", "1000"),
     ("out", "model", "True"),
     ("out", "fits", "True"),

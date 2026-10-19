@@ -123,6 +123,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (which asked for ±21% of the wavelength at 0.1 Å). Fewer unfitted pixels are
   loaded; a Legendre continuum of a model with `Afwhm` is then expressed over that
   narrower range, so its coefficients differ while the fit does not.
+- `run ncpus` given on the command line (`--set "run ncpus -1"`) is counted as in
+  a model file, so -1 is all CPUs bar one; it used to be set as written, and the
+  fit stopped ("Number of processes must be at least 1"). A count that leaves no
+  CPU (`run ncpus 0`, or -20 on a computer with 8) fits with one, with a warning,
+  rather than stopping.
+
+### Changed
+- `run blind` is False by default: a model that does not set it is no longer
+  blinded. A blind analysis is asked for with `run blind True` (or `blind=True`
+  on a line).
+- `chisq miniter` is 5 by default (it was 0): a fit takes at least 5 iterations
+  before it may stop because χ² or its parameters have stopped changing (`ftol`,
+  `xtol`).
 
 ### Removed
 - onefits (`out onefits`, `run_alis file.fits`): an experimental single-file

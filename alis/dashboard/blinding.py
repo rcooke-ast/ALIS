@@ -884,7 +884,8 @@ def unblind(project, confirmed=False, note="", history=None):
                 patches.append(T.replace_token(pm.text, setting.tokens[2], "False"))
     change = T.Change.from_spans(patches, "Unblind")
     if not found and pm.blind:
-        # ALIS blinds a model that does not say (run blind is True by default)
+        # A model that does not say has ALIS's default (True until Stage 6,
+        # Q6.26)
         after = E.reread(pm, change)
         change = change.then(E.set_setting(after, "run", "blind", "False"))
     step = P.Step(

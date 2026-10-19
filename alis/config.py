@@ -113,7 +113,9 @@ class RunConfig(_DictLike):
         100, "Warn when a snip needs more sub-pixels per pixel than this."
     )
     renew_subpix: bool = _s(False, "Work out the sub-pixels again at every evaluation.")
-    blind: bool = _s(True, "Blind analysis: no best-fit value is shown or written.")
+    # False since dashboard Stage 6 (Q6.26): a blind analysis is chosen, not
+    # fallen into by leaving the setting out
+    blind: bool = _s(False, "Blind analysis: no best-fit value is shown or written.")
     bintype: str = _s(
         "km/s", "The pixels' binning, unless a data line says: km/s, A or Hz."
     )
@@ -129,7 +131,8 @@ class RunConfig(_DictLike):
 class ChisqConfig(_DictLike):
     """The ``chisq`` settings section."""
 
-    miniter: int = _s(0, "The fewest iterations before the fit may stop.")
+    # 5 since dashboard Stage 6 (Q6.26); it was 0
+    miniter: int = _s(5, "The fewest iterations before the fit may stop.")
     # maxiter and fstep are the values the shipped settings.alis carried, not the
     # ones this dataclass used to declare (20000 and 1.0). Until Stage 6.1 the
     # file was read over the dataclass on every run, so the file's values were

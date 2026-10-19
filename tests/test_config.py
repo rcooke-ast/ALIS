@@ -48,7 +48,7 @@ def test_dictlike_unknown_key_raises_keyerror():
 def test_run_defaults_include_stage3_cache_on():
     run = RunConfig()
     assert run.cache is True  # Stage 3.1/3.4: caching default flipped on
-    assert run.blind is True
+    assert run.blind is False  # dashboard Stage 6 (Q6.26): it was True
     assert run.logn is True
     assert run.bintype == "km/s"
     assert run.ncpus == -1
@@ -124,6 +124,7 @@ def test_descriptions_leave_the_defaults_unchanged():
     assert cfg["run"]["ncpus"] == -1 and isinstance(cfg["run"]["ncpus"], int)
     assert cfg["chisq"]["maxiter"] == 2000
     assert cfg["chisq"]["fstep"] == 20.0
+    assert cfg["chisq"]["miniter"] == 5  # dashboard Stage 6 (Q6.26): it was 0
     assert cfg["run"]["backend"] == "auto"
     assert cfg["plotscript"]["numcol"] is None
     assert cfg["sim"]["perturb"] is None

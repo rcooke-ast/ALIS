@@ -162,12 +162,12 @@ def test_the_dashboards_settings_are_given_only_to_the_run(home, tmp_path, regis
 
 
 def test_a_run_with_the_default_cpus_preference(home, tmp_path, registry):
-    # The preference's -1 (all bar one) is given as the number itself: ALIS counts
-    # -1 so only when a model sets it (found while taking Task 6.5's screenshots)
+    # The preference's -1 (all bar one), given on the command line as it is: ALIS
+    # used to stop there (found while taking Task 6.5's screenshots; Q6.24)
     path = packed(tmp_path)
     session = S.Session.open(path, registry=registry)
     given = ST.run_settings(session.project, PR.Preferences(home))
-    assert "run ncpus -1" not in given
+    assert "run ncpus -1" in given
     job = run(session, settings=given)
     assert job.status == R.COMPLETED, job.message
 

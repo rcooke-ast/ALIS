@@ -55,6 +55,21 @@ def test_cpucheck_over_request_clamps(fixed_cpu_count):
     assert load.cpucheck(100, verbose=0) == 8
 
 
+@pytest.mark.parametrize("asked", [-8, -20, 0])
+def test_cpucheck_a_count_that_leaves_no_cpu_uses_one(fixed_cpu_count, recorder,
+                                                      asked):
+    """-N counts back from the computer's CPUs, so it can leave none: the fit then
+    runs on one, and says so, rather than stopping (dashboard Stage 6, Q6.24)."""
+    assert load.cpucheck(asked, verbose=0) == 1
+    assert [t for t in recorder.said if "leaves no CPU" in t]
+
+
+def test_cpucheck_all_bar_one_on_a_single_cpu(monkeypatch):
+    monkeypatch.setattr(load, "cpu_count", lambda: 1)
+    assert load.cpucheck(None, verbose=0) == 1
+    assert load.cpucheck(-1, verbose=0) == 1
+
+
 # -- get_binsize --------------------------------------------------------------
 
 
@@ -277,6 +292,20 @@ def test_the_command_line_is_reapplied_over_the_model_file(recorder):
     overrides = [("plot", "dims", "3x3", "0", True)]
     load.reapply_cli_overrides(cfg, overrides, verbose=0)
     assert cfg["plot"]["dims"] == "0"
+
+
+def test_cpus_given_on_the_command_line_are_counted(fixed_cpu_count, recorder):
+    """`--set "run ncpus -1"` is all CPUs bar one, as in the model file. It used to
+    be set as written, and the fit stopped: "Number of processes must be at least
+    1" (dashboard Stage 6, Q6.24)."""
+    cfg = ArgFlag()
+    cfg["run"]["ncpus"] = 4  # as the model file's par block would leave it
+    load.reapply_cli_overrides(cfg, [("run", "ncpus", 7, -1, True)], verbose=0)
+    assert cfg["run"]["ncpus"] == 7
+    load.reapply_cli_overrides(cfg, [("run", "ncpus", 7, -20, True)], verbose=0)
+    assert cfg["run"]["ncpus"] == 1
+    # optarg has already warned about it, when it read the command line
+    assert not [t for t in recorder.said if "leaves no CPU" in t]
 
 
 def test_a_line_marked_as_a_command_line_override_does_not_warn(recorder):

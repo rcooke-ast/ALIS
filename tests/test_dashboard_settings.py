@@ -125,10 +125,13 @@ def test_what_a_run_is_given(project, prefs):
     given = ST.run_settings(project, prefs)
     assert given[:3] == ["out verbose 1", "plot fits False", "out report True"]
     assert not any(s.startswith("out covar") for s in given)
-    # "All bar one" given as the number itself: ALIS counts -1 so only in a model
+    # "All bar one" given as the preference has it: ALIS counts -1 on its command
+    # line too (Q6.24)
     assert "run backend auto" in given
-    assert "run ncpus {0}".format(max(cpu_count() - 1, 0)) in given
-    assert ST.cpus(-1) == cpu_count() - 1 and ST.cpus(2) == min(2, cpu_count())
+    assert "run ncpus -1" in given
+    assert ST.leaves_no_cpu(0) and ST.leaves_no_cpu(-cpu_count())
+    assert not ST.leaves_no_cpu(1 - cpu_count()) and not ST.leaves_no_cpu(2)
+    assert not ST.leaves_no_cpu("all")
     prefs.set("fit.ncpus", 6)
     assert "run ncpus 6" in ST.run_settings(project, prefs)
     # A model without a covariance file is given one

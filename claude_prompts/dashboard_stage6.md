@@ -230,6 +230,8 @@ Run checks the project first (`preflight.py`). Each finding names its line in th
   - a starting value at one of its limits;
   - a b_turb starting below 1 km/s (a preference; `doc/ALIS_workflow.md` §4.1.2);
   - a snip with no continuum;
+  - CPUs that leave none of this computer's (`run ncpus 0`, or −20 on a computer
+    with 8), so that ALIS fits with one (Q6.24);
   - the notices of an imported fit kept as imported (D20, D22), pixels fitted twice
     (D19), and regions changed since the components were last edited (Stage 5's
     marker).
@@ -437,6 +439,9 @@ Run checks the project first (`preflight.py`). Each finding names its line in th
 
 ### Blinding (D24, D49, QF.20)
 
+- **Global blind** is `run blind True`, which a model writes to be blind: ALIS's
+  default is False (Q6.26), so a model without the line is not blind, and deleting
+  the line is refused as switching it off is.
 - **Values:** best-fit values, and those of the fit in progress, through
   `Gate.best_fit` (masked for a hidden parameter and under global blind); starting
   values as on the other tabs. A parameter hidden in the current model is hidden in
@@ -1259,9 +1264,9 @@ before it is kept.
   line as it counts the model's own (−1 is every CPU bar one), in
   `reapply_cli_overrides`. A count that leaves no CPU (−20 on a computer with 8, or
   0) will fit with one CPU, with a warning, rather than stop. So nobody has to know
-  their computer's count. The dashboard's pre-flight check will then note it,
-  where it now refuses Run. *Not made yet: the edits to `alis/load.py` were not
-  allowed in this session (Prompt 6's log).*
+  their computer's count. The dashboard's pre-flight check notes it, where it
+  refused Run, and the dashboard gives its runs the CPUs preference as it is
+  (−1), since ALIS now counts it. Done (Prompt 6's log).
 - **Q6.25.** Kept as it is, (b): one runs test per snip, over its fitted pixels
   joined across the gaps. Neither ALIS nor the dashboard changes. ALIS's report
   counts only the pixels it fits (those inside the fit regions, without bad pixels)
@@ -1271,8 +1276,9 @@ before it is kept.
   independent pair, like any other. There is nothing more correct to do.
 - **Q6.26.** `run blind False` and `chisq miniter 5`. The six harness models that
   leave `chisq miniter` to the default stopped at their 7th iteration or later, so
-  none of them changes. *Not made yet: the edit to `alis/config.py` was not allowed
-  in this session (Prompt 6's log).* See Q6.27 for new projects.
+  none of them changes. A model without a `run blind` line is no longer under
+  global blind, so deleting `run blind True` is refused, as switching it to False
+  is. Done (Prompt 6's log); see Q6.27 for new projects.
 
 *Raised by Claude on 2026-10-19 (Prompt 6), from RJC's response to Q6.26.*
 
@@ -1287,6 +1293,11 @@ default is 5:
 My lean: (a).
 
 **Response:** Agreed, please implement (a).
+
+**Note on the response.** A new project writes `chisq miniter 5`
+(`preferences.NEW_PROJECT_SETTINGS`), and `run blind False` as before; neither
+differs from ALIS's defaults now, so "Settings you changed" lists neither for a new
+project.
 
 ## Prompts
 

@@ -276,8 +276,9 @@ def test_the_run_box_settings(window, qtbot, tmp_path):
     assert window.prefs["fit.ncpus"] == 2 and not session.history.can_undo()
     # The settings the model changes, edited in place: one step
     rows = {r[0].setting.name: r for r in inspect.setting_rows}
-    assert "chisq maxiter" in rows and "run blind" in rows
-    assert rows["run blind"][1].isReadOnly()
+    assert "chisq maxiter" in rows and "chisq miniter" in rows  # 10; ALIS's is 5
+    # run blind False is ALIS's default (Q6.26), so it is not listed
+    assert "run blind" not in rows
     original = project.text
     item, edit, clear = rows["chisq maxiter"]
     edit.setText("500")
@@ -298,6 +299,13 @@ def test_the_run_box_settings(window, qtbot, tmp_path):
     window.refresh()
     assert not ncpus.isEnabled() and ncpus.value() == 3
     assert "run ncpus" in inspect.computer_note.text()
+    # Global blind is listed, read-only: only Model → Unblind… changes it
+    window.session.history.do(
+        project.step(E.set_setting(project.parsed, "run", "blind", "True"), "Blind")
+    )
+    window.refresh()
+    rows = {r[0].setting.name: r for r in inspect.setting_rows}
+    assert rows["run blind"][1].isReadOnly() and not rows["run blind"][2].isEnabled()
 
 
 def test_all_settings_makes_one_step(window, qtbot, tmp_path):
