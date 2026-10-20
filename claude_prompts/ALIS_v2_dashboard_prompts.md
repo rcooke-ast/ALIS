@@ -675,6 +675,53 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
   line selects what it describes (for a link or `lim param` line, what it
   constrains).
 
+*Stage 6 decisions (the Fit tab; version 1 complete)*
+
+*Added by Claude on 2026-10-20, from RJC's responses to Q6.1–Q6.27 of
+`dashboard_stage6.md` and his comments on the published screenshots of Inspect.*
+
+- **D69. Running** (Q6.2, Q6.14, Q6.19): Run fits the project as it stands in a
+  separate process, handed the project's bytes through a pipe and never written to a
+  file; Save and Run saves first. The result goes into the project's file at once, under
+  its lock (`bundle.execute` and `bundle.store`; `run_alis project.model` does both),
+  and the model on disk changes only with Save. One run at a time; closing during a run
+  offers Stop, Cancel or Keep it running.
+- **D70. Watching and stopping** (Q6.3, Q6.15): ALIS's per-iteration hook (`ClassMain`'s
+  `iterhook`) sends the χ² and the values of each iteration; Final draws the fit in
+  progress under a notice, throttled. Stop ends the fit at its iteration and keeps it
+  (interrupted: values, no errors); Cancel ends the process and keeps nothing. No Pause.
+- **D71. Settings** (Q6.4, Q6.6(a), Q6.16, Q6.24, Q6.26): this computer's backend, CPUs
+  and GPUs are preferences, given on the run's command line with the dashboard's own
+  (verbosity, no plot windows, the covariance, the report), never written in the model;
+  every setting has a description and is offered in All settings…; command-line-only
+  settings refuse Run. ALIS's defaults became `run blind False` and `chisq miniter 5`,
+  and negative CPU counts are counted on the command line too.
+- **D72. Inspect** (Q6.5, Q6.25, the review of Task 6.5): Initial is the model as it
+  stands, Final the shown run's best fit; the marks (χ²ν and the runs test, as ALIS's
+  report computes them over the fitted pixels, joined across the gaps) follow the model
+  drawn; the residual strip shades the pixels not fitted; all snips each on its own
+  axis, one ion on one shared axis.
+- **D73. Results and the run history** (Q6.7, Q6.12, Q6.23): only committed runs are
+  kept, with a description, their model and their snips (stored once each), numbered
+  when committed; at limit only on a bound; a continuum's coefficients are not flagged,
+  the continuum is flagged negative where its best fit falls below zero.
+- **D74. Copying best fits** (Q6.8, Q6.17, Q6.20, Q6.21): Continue from best fit copies
+  every parameter unchanged since the run, after a preview; Use best fit copies one
+  component (even into changed lines) or one continuum (refitted in the line's own
+  function and order, and how far it departs shown); Reset FWHM returns a dataset's
+  FWHM to the one given or imported.
+- **D75. Compare** (Q6.9): quantities matched across parametrisations (total log N, log
+  D/H from two column densities or a ratio, components by velocity), Δ and |Δ|/σ with σ
+  the larger of the two errors; blinded quantities show only |Δ|/σ, unsigned.
+- **D76. Convergence, restarts and outliers** (Q6.10, Q6.11, Q6.18, Q6.22): ALIS's own
+  convergence check; random restarts drawn as `sim perturb` draws them after `sim
+  beginfrom`, assessed by `convergence.assess_restarts`, kept with their run and
+  exported in `sim perturb`'s form (hidden parameters left out; how ALIS itself should
+  draw is `deferred_work.md` §7.6); outliers beyond 5σ reviewed before Apply.
+- **D77. After v1** (Q6.13): `prepfit` is deprecated (it keeps working, and says so);
+  Stage 7 takes RJC's list of changes and bug fixes from real use, each a task with its
+  check; then the Plot tab and the items marked later.
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

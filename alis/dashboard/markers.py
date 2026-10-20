@@ -393,7 +393,11 @@ def fit_marker(project, running=None, refused=None):
     chi2 = info.get("chi2_final")
     where = info.get("host", "")
     when = info.get("finished", "")[:16].replace("T", " ")
-    text = "The latest run ({0})".format(info.get("status", "completed"))
+    status = info.get("status", "completed")
+    if info.get("origin", "cmd") == "cmd":
+        # Made by run_alis project.model, not by the dashboard (S31)
+        status = "run_alis, " + status
+    text = "The latest run ({0})".format(status)
     if chi2 is not None and np.isfinite(chi2):
         text += ", χ² = {0:.6g}".format(chi2)
     if when:

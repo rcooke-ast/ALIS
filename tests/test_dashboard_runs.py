@@ -353,3 +353,23 @@ def test_restoring_a_run_is_one_step(home, path, registry):
     assert session.project.parsed.ok
     session.history.undo()
     assert (session.project.text, session.project.files) == changed
+
+
+def test_the_convergence_checks_result_from_alis_messages():
+    """run.json's ``convergence`` (Stage 6.8), from ALIS's own messages."""
+    import logging
+
+    from alis.dashboard import runner as RN
+
+    def record(text):
+        return logging.LogRecord("alis", logging.WARNING, "", 0, text, (), None)
+
+    found = RN._Convergence()
+    found.emit(record("Solution has not converged for 3/41 free parameters"))
+    assert found.found == {"converged": False, "failed": 3, "total": 41}
+    found.emit(record("Maximum parameter difference was 2.500000 sigma"))
+    assert found.found["largest"] == 2.5
+    found.emit(record("Solution has converged"))
+    assert found.found == {"converged": True}
+    found.emit(record("Cannot check convergence for an interrupted fit"))
+    assert found.found["converged"] is None

@@ -35,6 +35,10 @@ absorption lines of interest, given an estimate of the redshift of the absorptio
 system. Typically, a user will use the `prepfit` tool (`alis/prepfit/specplot.py`) to
 interactively select the fitting regions.
 
+> **Deprecated (2026-10-19).** The dashboard (`alis`, §4.3) now does what `prepfit`
+> does, and fits and inspects the result. `prepfit` keeps working, and says so when
+> it starts.
+
 For an example of how to use the `prepfit` tool, see the `examples/prepfit/README` ascii file
 for further context. A user typically creates a simple python script that specifies the data
 file that contains all of the absorption lines of interest and an estimate of the absorber
@@ -856,6 +860,12 @@ run_alis myfit.model     # fits the project from the command line, as before
   of the `.mod` panel, the settings and FWHM of a new project, and the like.
 - **The tabs** (Data, Regions, Components, Fit, Plot) each show a marker: ✓ complete,
   ↻ out of date, ! needs attention, ○ not started.
+- **Version 1** (dashboard Stage 6, 2026-10-19) takes a fit from a spectrum to a
+  result without leaving the dashboard: prepare it on the Data, Regions and
+  Components tabs, then run, inspect, keep, compare and check it on the Fit tab. The
+  Plot tab, for publication figures, comes after v1; until then the model's
+  `plotscript` settings write a plotting script, as they do for `run_alis`.
+  `prepfit` (§0) keeps working, and says that the dashboard now covers it.
 
 #### Preparing a fit: the Data and Regions tabs
 
@@ -951,6 +961,81 @@ snips and continua to a model ready to fit, without typing in the `.mod` panel.
 
 The *Model* switch on the Regions tab draws the same model on its spectra.
 
+#### Running and inspecting a fit: the Fit tab
+
+*Added 2026-10-19 (dashboard Stage 6, which completes v1).* The Fit tab runs the
+fit, shows it as it goes, and keeps, compares and checks the runs. It has three
+sub-tabs: Inspect, Results and Compare.
+
+- **Run** (Ctrl+R) fits the project as it stands, unsaved changes included, in a
+  separate process that is handed the project and never writes it to a file: the
+  model on disk changes only with Save. **Save and Run** (Ctrl+Shift+R) saves
+  first, so that the model on disk is the one fitted. The result goes into the
+  project's file at once (a project with no file keeps it until Save as). **Stop**
+  ends the fit at its current iteration and keeps it ("interrupted": its values, to
+  inspect and continue from, but no errors); pressed again (**Cancel**) it ends the
+  process and keeps nothing. Closing the project during a run asks whether to stop
+  it, cancel it, or keep it running (its result is then stored in the file and
+  shown when the project is next opened).
+- **What a run is given.** This computer's backend, CPUs and GPUs (preferences; a
+  model that sets `run ncpus` uses its own), `out verbose 1`, no plot windows, the
+  covariance and the report: all on the run's command line, recorded in its
+  `run.json`, never written in the model. `run_alis project.model` runs the model
+  exactly as written.
+- **Before each run** a pre-flight check refuses what would fail (a model that does
+  not read, a starting value outside its limits, no free parameter, a setting a
+  project cannot run such as `sim perturb`, for which File → Export plain files…
+  and `run_alis` are the way) and notes what is worth a look (a parameter no fitted
+  pixel constrains, a b_turb starting below 1 km/s, a snip with no continuum…).
+- **Inspect.** The Run box (this computer's settings; the settings the model
+  changes from ALIS's defaults, each edited in place or cleared with ✕; *All
+  settings…*, every setting of ALIS with its default and what it does); the χ² of
+  each iteration; and the panels: all snips, one ion, or one snip (‹ › or [ ]), in
+  velocity or wavelength, with *Initial* (the model as it stands) or *Final* (the
+  shown run's best fit, or the fit in progress, redrawn after each iteration), the
+  residuals underneath, and each snip's χ²ν and runs test, as ALIS's `.report`
+  computes them over the fitted pixels (✓ within 2σ, ! 2–3σ, ✕ beyond). *Review
+  clipped pixels…* marks the fitted pixels beyond 5σ of the best fit (lone ones and
+  pairs ticked, three or more in a row not, since they may be absorption the model
+  misses): a click ticks or unticks one, and *Apply* leaves the ticked ones out of
+  the fit, as one step.
+- **Results.** Each parameter's value, error, state (● free, ■ fixed, ⛓ tied, ƒ
+  linked) and flags: *at limit* (on a bound), *unconstrained* (an error larger than
+  1 dex for log N, 10 km/s for z, or the value for b and T; preferences), *blinded*,
+  and for a continuum *negative* when its best fit falls below zero between the
+  snip's first and last fitted pixels; *Copy as table*.
+  The fit statistics, and the correlation matrix of a system, an ion, the continua
+  or everything. The **run history**: only committed runs are kept; *Commit…* asks
+  for a short description (a double-click edits it), and a run is numbered when it is
+  committed. A run made by `run_alis` is listed as "cmd". Choosing a run shows it on
+  Inspect and Results.
+- **Continue from best fit…** copies the shown run's best fit into the model, after
+  listing what it changes; a parameter changed since the run keeps its value. **Use
+  best fit** copies one component's (on its card on the Components tab) or one
+  continuum's (in the Regions tab's Continuum box: the line's own function and order
+  fitted to the run's continuum, which is then drawn dotted beside it with how far
+  the two differ). **Reset FWHM** (the Data tab's FWHM cell, ↺ while it differs)
+  returns a dataset's FWHM to the one given when its file was added, or imported.
+- **Compare** any two runs: each ion's total log N, each isotope's ratio (log D/H,
+  whether the run fits the two column densities or the ratio), the components
+  matched by velocity (v, b, T), the FWHM, χ²ν, the degrees of freedom and the
+  iterations, each with Δ and |Δ|/σ (σ the larger of the two errors, from each
+  run's covariance); both best fits on the same data, the second dashed, their
+  difference in σ below. It starts with the latest run against the newest committed
+  run (or the one before, when the latest run is committed). *Restore …'s model…*
+  puts a run's model and snips back, as one step.
+- **Convergence check…** runs the fit with ALIS's own check (§6); Fit statistics
+  then says whether it converged. **Random restarts…** fits the model again from
+  starts drawn about the shown run's best fit, as `sim perturb` draws them after
+  `sim beginfrom` (§6), one after another, and assesses them as ALIS does; one set
+  is kept with the run (new restarts replace it, after a question), and *Export
+  restarts…* writes them in the form of `sim perturb`'s own file, which
+  `numpy.loadtxt` reads.
+- **Blinding.** Best-fit values of hidden parameters (and every best-fit value under
+  `run blind True`) are masked everywhere, the restarts' export included; their
+  profiles, χ², the marks, the correlations and the errors are shown; Compare shows
+  a blinded quantity's change only as |Δ|/σ, unsigned.
+
 ### 4.4 Pixels fitted twice
 
 When the data are loaded, ALIS warns if the same pixel of the same data is fitted
@@ -1006,6 +1091,9 @@ Example from `OI_SiII_fit.dat`:
 
 ALIS provides two mechanisms to validate that the fit has found the global minimum, rather
 than a local one.
+
+In the dashboard, *Convergence check…* and *Random restarts…* on the Fit tab do
+both of the checks below (§4.3).
 
 ### 5.1 Internal convergence check (`run convergence True`)
 

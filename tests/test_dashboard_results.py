@@ -387,6 +387,151 @@ def test_copy_as_table(j1358):
     assert "D I a2 b\t8.03\t0.08\tfree\tnot tied to H I" in lines
 
 
+# -- The continua's flags (Q6.23), and lines blinded since the run ---------------------
+
+
+def test_continuum_coefficients_are_flagged_neither_way(j1358):
+    groups = RS.View.latest(j1358).table()
+    conts = next(g for g in groups if g.kind == RS.CONTINUA)
+    assert len(conts.rows) == 54
+    loose = ("at limit", "unconstrained")
+    assert not any(f.startswith(loose) for r in conts.rows for f in r.flags)
+    # Lyα's continuum (H8) is below zero only beyond its last fit region, where it is
+    # extrapolated: not flagged (Q6.28)
+    assert conts.flagged == []
+    # The zero levels and the others keep the general rule (the forest's b_turb)
+    assert any("unconstrained" in r.flags for g in groups for r in g.rows)
+
+
+def test_a_continuum_below_zero_is_flagged_negative(metal, registry):
+    text = Path(str(METAL)[:-4] + ".mod.out.reference").read_text()
+    project = P.Project.import_model(str(METAL), registry=registry)
+    store_run(project, METAL, mod_out=text)
+    conts = next(g for g in RS.View.latest(project).table() if g.kind == RS.CONTINUA)
+    assert not conts.flagged
+    # The same continuum, its constant term made negative: below zero everywhere
+    store_run(project, METAL, mod_out=text.replace("1.00005846", "-0.00005846"))
+    conts = next(g for g in RS.View.latest(project).table() if g.kind == RS.CONTINUA)
+    assert [(r.name, r.flags) for r in conts.flagged] == [("0 c0", [RS.NEGATIVE])]
+    # Zero is allowed: a continuum on zero exactly is not below it
+    zero = text.replace(
+        "1.00005846      -7.90283154E-04  -0.00474372",
+        "0.00000000      0.00000000E+00  0.00000000",
+    )
+    store_run(project, METAL, mod_out=zero)
+    conts = next(g for g in RS.View.latest(project).table() if g.kind == RS.CONTINUA)
+    assert not conts.flagged
+    # Below zero only beyond the snip's fitted pixels (its edges, where the
+    # Legendre polynomial is extrapolated): not flagged; within them: flagged (Q6.28)
+    for c0, c2, flagged in ((1.0, -0.5, False), (0.2, -0.5, True)):
+        shaped = text.replace(
+            "1.00005846      -7.90283154E-04  -0.00474372",
+            "{0:.8f}      0.00000000E+00  {1:.8f}".format(c0, c2),
+        )
+        store_run(project, METAL, mod_out=shaped)
+        view = RS.View.latest(project)
+        snip = view.model.snips[0]
+        curve = CO.evaluate(view.model, snip, values=view.vector())
+        assert curve.min() < 0.0
+        conts = next(g for g in view.table() if g.kind == RS.CONTINUA)
+        assert bool(conts.flagged) is flagged
+
+
+def test_a_line_blinded_since_the_run_stays_hidden(registry):
+    project = imported(J1358, registry)
+    store_run(project, J1358, status="imported", started=None, finished=None)
+    for line in [ln for ln in project.parsed.function_lines("voigt")]:
+        if line.ion == "2H_I":
+            pm = project.parsed
+            project.apply(project.step(E.set_blind(pm, pm.item_at(line.line)), "b"))
+    view = RS.View.latest(project)
+    # Its lines are the run's lines, whatever their blinding
+    assert all(
+        view.lines.get(ln.line) is not None
+        for ln in view.model.parsed.function_lines("voigt")
+        if ln.ion == "2H_I"
+    )
+    rows = {r.name: r for g in view.table() for r in g.rows}
+    for name in ("D I a2 log N", "D I a2 b"):
+        assert rows[name].value == BL.MASK and "blinded" in rows[name].flags
+    # Its own values (log N and b; its z is H I's, tied, and shown with H I's)
+    best = view.values
+    shown = set(re.findall(r"[-\d.]+", RS.copy_text(view.table())))
+    for name in ("D I a2 log N", "D I a2 b"):
+        assert not renderings(best[rows[name].param.index]) & shown
+
+
+# -- The run history and the statistics (Stage 6.6; F7, D26, Q6.7) ---------------------
+
+
+def test_the_run_history(metal):
+    bundle = metal.bundle
+    [latest] = RS.history(metal)
+    assert (latest.key, latest.run, latest.committable) == (None, "Latest", True)
+    assert latest.reduced == "{0:.3f}".format(357.874162 / 360)
+    assert latest.where == "cmd · test" and latest.description == ""
+    number = R.commit(bundle, "first fit")
+    [one] = RS.history(metal)
+    # The latest run, once committed, is its committed row
+    assert (one.key, one.run, one.latest, one.committable) == (
+        1,
+        "1 · latest",
+        True,
+        False,
+    )
+    assert one.description == "first fit"
+    store_run(
+        metal,
+        METAL,
+        chi2_final=350.0,
+        dof=360,
+        iterations=9,
+        origin=R.DASHBOARD,
+        status=R.INTERRUPTED,
+    )
+    rows = RS.history(metal)
+    assert [(r.key, r.run, r.status) for r in rows] == [
+        (None, "Latest", "stopped"),
+        (number, "1", ""),
+    ]
+    assert rows[0].where == "dashboard" and "no errors" in rows[0].tip
+    R.describe(bundle, number, "T fixed")
+    assert RS.history(metal)[1].description == "T fixed"
+    # The run shown: chosen in the history, or the latest (also once removed)
+    assert RS.shown_record(metal, number).number == number
+    R.remove(bundle, number)
+    assert RS.shown_record(metal, number).latest
+    assert RS.shown_record(metal, None).latest
+
+
+def test_an_imported_fits_history_and_statistics(j1358):
+    [row] = RS.history(j1358)
+    assert row.where == "imported" and row.reduced == "0.914"
+    rows = dict(RS.statistics_rows(RS.View.latest(j1358).statistics()))
+    assert rows["χ²"] == "3790.5707 (initial 4002.7099)"
+    assert rows["Degrees of freedom"] == "4146" and rows["χ²ν"] == "0.9143"
+    assert rows["Iterations"] == "14" and rows["Run time"] == "15 s"
+    assert rows["Stopped because"].startswith("Both actual and predicted")
+    assert rows["Run from"].startswith("imported with the model")
+    assert RS.convergence_text({"converged": False, "failed": 3, "total": 41}) == (
+        "Not converged for 3 of 41 parameters"
+    )
+    assert RS.when_text("2026-10-03T22:14:05+01:00") == "2026-10-03 22:14"
+
+
+def test_a_continuums_departure_from_the_run(metal):
+    snip = metal.snips[0]
+    view = RS.View.latest(metal)
+    found = RS.continuum_departure(metal, view, snip)
+    # The starting continuum, against the best fit
+    assert found is not None and found.largest > 0.1
+    copy = RS.continuum_copy(metal, view, snip)
+    metal.apply(copy.step)
+    found = RS.continuum_departure(metal, RS.View.latest(metal), metal.snips[0])
+    assert found.largest < 1e-6 and found.rms <= found.largest
+    assert found.run.size == metal.snips[0].pixels.wave.size
+
+
 # -- Continue from best fit (S20, Q6.8) -----------------------------------------------
 
 

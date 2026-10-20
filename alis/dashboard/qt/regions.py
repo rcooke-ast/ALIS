@@ -21,8 +21,12 @@ spectrum per dataset that covers the transition, with the tools above, and the
   (from every dataset, or from this one alone).
 - **Continuum** (S8, D17, S10): the function, the order (− n +), and what acts on the
   continuum: Auto first guess, Add knot (a click adds a knot, a click on one removes
-  it; a knot can be dragged), Clear knots, and Normalised (S9); the table of orders,
-  and sharing with the same transition in other datasets.
+  it; a knot can be dragged), Clear knots, Use best fit (Stage 6.6: the line, its
+  function and order as they are, fitted to the Fit tab's shown run's best-fit
+  continuum, one step; that continuum then drawn dotted beside it, with how far
+  the two depart, Q6.20), Normalised (S9) and Model, which once a run exists draws
+  the starting model or the Fit tab's shown run's best fit (Q5.8; Stage 6.9); the
+  table of orders, and sharing with the same transition in other datasets.
 - **Snip** (S6, S26, D19): its extent, fitted pixels and buffers; the pixels it shares
   with other snips and the two fixes (for every dataset with the same overlap at
   once); and, with several datasets, where each one's regions came from.
@@ -42,6 +46,7 @@ from alis.dashboard import continuum as CO
 from alis.dashboard import lines as L
 from alis.dashboard import profile as PR
 from alis.dashboard import project as P
+from alis.dashboard import results as RS
 from alis.dashboard import snips as SN
 from alis.dashboard import sources as SR
 from alis.dashboard.qt import dialogs as D
@@ -82,6 +87,8 @@ CONTINUUM_BUTTONS = (
 )
 NORMALISED_Y = (-0.1, 1.35)
 BAR_WIDTH = 40
+# What Model draws (Q5.8): the starting model, or the shown run's best fit
+START, BEST = "start", "best"
 NO_SOURCE = (
     "No source spectrum: only the transitions with a snip are listed, and SNIP needs"
     " the source."
@@ -242,6 +249,10 @@ class RegionsTab(W.Tab):
         self._last_click = None
         self._stale = False
         self._filling = False
+        # The Fit tab's shown run, (View or None, why), and the snips whose
+        # continuum was copied from it, drawn beside it (Q6.17, Q6.20)
+        self._shown = (None, "")
+        self._compared = set()
         self._build_transitions()
         self._build_key()
         self._build_plot()
@@ -401,6 +412,7 @@ class RegionsTab(W.Tab):
         row.addWidget(self.order_label)
         row.addWidget(self.order_up)
         row.addStretch(1)
+        self.order_row = row
         box.addLayout(row)
         self.continuum_tools = QtWidgets.QHBoxLayout()
         self.continuum_tools.setSpacing(2)
@@ -410,6 +422,26 @@ class RegionsTab(W.Tab):
         self.clear_knots.clicked.connect(
             lambda: self._act("regions.knots", self.remove_knots)
         )
+        # The Model switch's choice once a run exists (Q5.8): the starting model, or
+        # the Fit tab's shown run's best fit
+        self.model_from = QtWidgets.QComboBox()
+        self.model_from.setObjectName("regions_model_from")
+        self.model_from.addItem("Start", START)
+        self.model_from.addItem("Best fit", BEST)
+        self.model_from.setToolTip(
+            "Model draws the model as it will be fitted, or the best fit of the run"
+            " the Fit tab shows"
+        )
+        self.model_from.hide()
+        self.model_from.currentIndexChanged.connect(self._model_from_chosen)
+        self.best_fit = QtWidgets.QToolButton()
+        self.best_fit.setText("Use best fit")
+        self.best_fit.setObjectName("continuum_best_fit")
+        self.best_fit.clicked.connect(
+            lambda: self._act("regions.best_fit", self.use_best_fit)
+        )
+        # Beside the order, which it keeps
+        self.order_row.addWidget(self.best_fit)
         self._continuum_buttons = {}
         self._order_continuum_tools()
         box.addLayout(self.continuum_tools)
@@ -425,6 +457,11 @@ class RegionsTab(W.Tab):
         )
         compact(self.orders, 4)
         box.addWidget(self.orders)
+        self.best_label = W.muted("")
+        self.best_label.setObjectName("continuum_departure")
+        self.best_label.setWordWrap(True)
+        self.best_label.hide()
+        box.addWidget(self.best_label)
         self.knots_label = W.muted("")
         self.knots_label.setWordWrap(True)
         box.addWidget(self.knots_label)
@@ -555,6 +592,7 @@ class RegionsTab(W.Tab):
         for name in ("regions.normalised", "regions.model"):
             if name in self._continuum_buttons:
                 self.continuum_tools.addWidget(self._continuum_buttons[name])
+        self.continuum_tools.addWidget(self.model_from)
 
     # -- acting ---------------------------------------------------------------------------
 
@@ -613,6 +651,8 @@ class RegionsTab(W.Tab):
                 k: self.state[k] for k in ("system", "ion", "rest") if k in self.state
             }
             data["row"] = self.selected
+            if self.state.get("model_from"):
+                data["model_from"] = self.state["model_from"]
             self._seen_view = data
             self.session.set_view("regions", data)
 
@@ -666,6 +706,7 @@ class RegionsTab(W.Tab):
         if session is not self.session:
             self.state, self.selected, self._seen_view = {}, None, None
             self._shown_key = None
+            self._compared = set()
         self.session = session
         if session is None or session.project.paused:
             return
@@ -677,7 +718,9 @@ class RegionsTab(W.Tab):
         if stored != self._seen_view:
             # Set elsewhere (the Data tab's coverage grid, a project opened)
             self.state = {
-                k: stored[k] for k in ("system", "ion", "rest") if k in stored
+                k: stored[k]
+                for k in ("system", "ion", "rest", "model_from")
+                if k in stored
             }
             self.selected = stored.get("row")
             self._seen_view = dict(stored)
@@ -688,6 +731,7 @@ class RegionsTab(W.Tab):
             if spec is not None:
                 self._spectra[row.id] = spec
         self._snip_map = L.snip_transitions(project)
+        self._shown = self.main.shown_run() if self.main is not None else (None, "")
         self._filling = True
         try:
             self._fill_systems()
@@ -695,6 +739,7 @@ class RegionsTab(W.Tab):
             self._fill_list()
         finally:
             self._filling = False
+        self._fill_model_from()
         self._fill_strips()
         self._fill_boxes()
 
@@ -948,6 +993,11 @@ class RegionsTab(W.Tab):
             if curve is not None:
                 view.set_continuum(pix.wave, curve)
             view.set_model(*self._model_of(snip))
+            found = self._departure(snip)
+            if found is None:
+                view.set_run_continuum(None, None)
+            else:
+                view.set_run_continuum(found.wave, found.run)
             low, high = snip.extent
             if spec is not None and not normalised:
                 width = high - low
@@ -989,12 +1039,50 @@ class RegionsTab(W.Tab):
         """
         if not self._model_shown():
             return None, None
+        if self.best_shown():
+            # The best fit of the Fit tab's shown run, drawn as on Inspect
+            try:
+                found = self._shown[0].curves().get(snip.data.index)
+            except RS.ResultsError:
+                found = None
+            return (None, None) if found is None else (found.wave, found.model)
         try:
             curve = PR.of(self.session.project).evaluate(snips=[snip.data.index])
         except PR.ProfileError:
             return None, None
         found = curve.get(snip.data.index)
         return (None, None) if found is None else (found.wave, found.model)
+
+    def best_shown(self):
+        """Whether Model draws the best fit (a run exists, and it is chosen)."""
+        view = self._shown[0]
+        return (
+            self.state.get("model_from") == BEST
+            and view is not None
+            and not view.in_progress
+        )
+
+    def _fill_model_from(self):
+        """The Model switch's choice: shown once a run with a best fit exists."""
+        view = self._shown[0]
+        has = view is not None and not view.in_progress
+        self.model_from.setVisible(has and self._model_shown())
+        self.model_from.blockSignals(True)
+        index = self.model_from.findData(self.state.get("model_from", START))
+        self.model_from.setCurrentIndex(max(index, 0))
+        self.model_from.blockSignals(False)
+        if has:
+            self.model_from.setToolTip(
+                "Model draws the starting model (Start), or the best fit of {0},"
+                " the run the Fit tab shows".format(view.name)
+            )
+
+    def _model_from_chosen(self, index):
+        if self._filling or self.session is None:
+            return
+        self.state["model_from"] = self.model_from.itemData(index)
+        self._remember()
+        self._fill_strips()
 
     def _other_regions(self, row, snip, low, high):
         """The regions other snips of the row fit within this snip's extent."""
@@ -1068,6 +1156,7 @@ class RegionsTab(W.Tab):
         has = snip is not None and snip.continuum is not None
         for widget in (self.function_box, self.order_down, self.order_up):
             widget.setEnabled(has)
+        self._fill_best_fit(snip)
         self.orders.setRowCount(0)
         self._clear_layout(self.share_row)
         self.share_label.setText("")
@@ -1101,6 +1190,69 @@ class RegionsTab(W.Tab):
             )
         self._fill_orders(project, snip, function, order)
         self._fill_sharing(project, snip)
+
+    def _departure(self, snip):
+        """The departure of a snip's continuum from the shown run's, once Use best
+        fit has copied it (Q6.20); else None."""
+        view = self._shown[0]
+        if view is None or snip is None or snip.specid not in self._compared:
+            return None
+        return RS.continuum_departure(self.session.project, view, snip)
+
+    def _best_fit_reason(self, snip):
+        """Why Use best fit cannot copy the snip's continuum, or ``""``."""
+        view, why = self._shown
+        if snip is None:
+            return "Select a dataset whose transition is a snip."
+        if view is None:
+            return why or "There is no run to copy from."
+        gate = BL.Gate(self.session.project)
+        return gate.message(RS.continuum_reason(self.session.project, view, snip))
+
+    def _fill_best_fit(self, snip):
+        """Use best fit's state, and how far the continuum departs from the run's."""
+        why = self._best_fit_reason(snip)
+        self.best_fit.setEnabled(not why)
+        view = self._shown[0]
+        self.best_fit.setToolTip(
+            why
+            or "Fit this continuum, its function and order as they are, to the"
+            " best-fit continuum of {0}, as one step".format(view.name)
+        )
+        found = self._departure(snip)
+        if found is None:
+            self.best_label.hide()
+            return
+        self.best_label.setText(
+            "The continuum departs from the best fit of {0} (dotted) by at most"
+            " {1:.2f}σ, rms {2:.2f}σ, over the fitted pixels. Change the order and"
+            " Use best fit again to compare.".format(
+                view.name, found.largest, found.rms
+            )
+        )
+        self.best_label.show()
+
+    def use_best_fit(self):
+        """
+        Use best fit (Q6.17, Q6.20): the selected snip's continuum line, its function,
+        order, range and scale factors kept, fitted to the shown run's best-fit
+        continuum, as one step; the run's continuum is then drawn beside it, dotted,
+        and the box says how far the copy departs from it.
+
+        Generated by RJC and Claude.
+        """
+        snip = self.current_snip()
+        view, why = self.main.shown_run() if self.main is not None else self._shown
+        if snip is None or view is None:
+            self._warn("Use best fit", why or "There is no run to copy from.")
+            return
+        try:
+            found = RS.continuum_copy(self.session.project, view, snip)
+        except RS.ResultsError as err:
+            self._warn("Use best fit", BL.Gate(self.session.project).message(str(err)))
+            return
+        self._compared |= {s.specid for s in found.snips} | {snip.specid}
+        self._do(found.step)
 
     def _fill_orders(self, project, snip, function, order):
         """The table of orders (S8): χ², Δχ² and ΔBIC against the order chosen."""
@@ -1503,7 +1655,9 @@ class RegionsTab(W.Tab):
         self._tool("regions.knot")
 
     def do_model(self):
-        """Model: draw the model as it will be fitted, or not (Q5.8)."""
+        """Model: draw the model as it will be fitted (or the best fit), or not
+        (Q5.8)."""
+        self._fill_model_from()
         self._fill_strips()
 
     def do_normalised(self):

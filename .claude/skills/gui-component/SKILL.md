@@ -149,6 +149,40 @@ need its focus: `window.panel.select_items(items, move=False)` highlights and
 scrolls without moving the `.mod` cursor; `window.panel.cursor_line()` and
 `components.at_line(project, line)` say what the cursor's line describes.
 
+## Runs and results (Stage 6)
+
+A component that shows a run's results never reads them itself: `results.View` (no
+Qt) reads a run (`record=`) or the fit in progress (`run=`), with the run's own
+model read as a project (`view.model`), its values by ALIS's number
+(`view.values`, `view.vector()` with the links applied), `view.curves()` (each
+snip's best fit, a `profile.Curve` with its best-fit continuum), `view.table()`,
+`view.statistics()`, `view.correlations(key)`, and its gate, `view.gate`
+(`results.RunGate`: `best_fit(param, value)`, `masked(param)`), through which every
+best-fit value is shown.
+
+```python
+view, why = window.shown_run()     # the Fit tab's shown run: the latest, the one
+                                   # chosen in the run history, or the fit in progress
+if view is None or view.in_progress:
+    button.setEnabled(False); button.setToolTip(why or "The fit is still running.")
+step = RS.component_step(project, view, comp)   # Use best fit: one step
+fit_tab.view_of(record)            # any run as a View, kept while nothing changes
+```
+
+- **Jobs** go through the window's `FitRun` (`window.fit`): `start(session,
+  settings)` for a run, `start_job(session, job)` for any `runs.Run` (random
+  restarts are `runs.Restarts`, whose `taker` keeps their results); the window's
+  `start_run(extra=…)` makes the pre-flight check first. Never start a process
+  from a tab.
+- **The spectrum view** gained, for the Fit tab: `set_second_model(x, model)`
+  (dashed: Compare), `set_run_continuum(wave, curve)` (dotted: a run's continuum
+  beside the one being edited), `set_marked(x, y, ticked)` with `markClicked(n)`
+  (pixels under review), and `plots.tame`, which draws a wild value (a junk
+  pixel's sentinel) as a gap: Qt drops a path that reaches one.
+- **The run history** (`results.history`): committing, describing and removing a
+  run change no model text and are not steps; call `session.runs_changed()` so that
+  Save writes them.
+
 ## Notes
 
 - `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).

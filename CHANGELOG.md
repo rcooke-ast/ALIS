@@ -104,6 +104,46 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   switch on the Regions tab. New modules `profile.py` (each snip's model as ALIS
   computes it, equal to `model_eval.model_func`) and `components.py` (no Qt), and
   `qt/components.py`.
+- The dashboard's Fit tab (dashboard Stage 6), which completes its version 1. Run
+  (Ctrl+R) fits the project as it stands, in a separate process that is handed the
+  project and writes no file but the project's own; Save and Run saves first; Stop
+  keeps where the fit got to, and Cancel keeps nothing; the χ² of each iteration and
+  the fit in progress are drawn as it goes. Inspect: the Run box (this computer's
+  backend, CPUs and GPUs as preferences, the settings the model changes, All
+  settings…, a pre-flight check), the progress chart, and each snip's data, model
+  and residuals with χ²ν and the runs test as ALIS's report computes them. Results:
+  every parameter's value, error, state and flags (at limit, unconstrained,
+  blinded, a negative continuum), the fit statistics, the correlations, and the run
+  history (Commit… with a description; runs kept in the project with their models
+  and snips). Continue from best fit, and Use best fit for one component or one
+  continuum; Reset FWHM on the Data tab. Compare: two runs' quantities matched
+  across parametrisations (total log N, log D/H, components by velocity), with Δ
+  and |Δ|/σ, and both best fits on the same data. Convergence check… (ALIS's own),
+  Random restarts… (drawn as `sim perturb` draws after `sim beginfrom`, assessed as
+  ALIS assesses them, kept with the run, and exported in `sim perturb`'s form), and
+  Review clipped pixels…. A run made by `run_alis project.model` is shown as a
+  "cmd" run; the Regions tab's Model switch can draw the best fit. New modules
+  `runs.py`, `runner.py`, `settings.py`, `preflight.py`, `results.py`,
+  `fitview.py`, `compare.py` and `restarts.py` (no Qt), and `qt/fit.py`,
+  `qt/fitresults.py`, `qt/fitcompare.py` and `qt/fittools.py`.
+- `bundle.execute` runs a bundle held in memory (or handed over as bytes, which
+  `bundle.read` takes) and returns its result, and `bundle.store` stores a result
+  in a bundle file or in memory; `bundle.run`, which `run_alis project.model`
+  uses, does both, as before. A run keeps the snips it fitted (once each, under
+  `runs/files/`) so that a run can be kept with them.
+- `ClassMain(iterhook=...)`: a function called after each iteration of the fit
+  with the iteration, χ², the parameters and the degrees of freedom; a true return
+  value stops the fit at that iteration, as Ctrl+\ does. None by default.
+- Every setting of `alis.config` has a one-line description
+  (`config.settings_help`), and `run_alis --list-settings` prints each with its
+  default.
+- `report.runs_z`, `report.chi2_deviation` and `report.region_stats`: the
+  report's statistics as public functions of a region's residuals, unchanged in
+  what they compute.
+
+### Deprecated
+- `prepfit` (`alis/prepfit/specplot.py`): the dashboard (`alis`) now does what it
+  does. It keeps working, and says so once when it starts.
 
 ### Fixed
 - `run_alis --extract`'s note about hidden starting values no longer ends with a

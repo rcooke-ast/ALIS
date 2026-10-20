@@ -66,10 +66,16 @@ def test_the_menus_of_the_design():
     ]
     assert "Blind the analysis…" in titles["Model"]
     assert "Blind lines…" in titles["Model"] and "Unblind…" in titles["Model"]
-    # Running is built (Stage 6.4); committing comes with the Results sub-tab
-    assert titles["Fit"] == ["Run", "Save and Run", "Stop", "Commit run…"]
+    # Running (Stage 6.4), and committing and continuing (Stage 6.6), are built
+    assert titles["Fit"][:5] == [
+        "Run",
+        "Save and Run",
+        "Stop",
+        "Commit run…",
+        "Continue from best fit…",
+    ]
     assert [a.shortcut for a in A.in_menu("Fit")][:2] == ["Ctrl+R", "Ctrl+Shift+R"]
-    assert [a.later for a in A.in_menu("Fit")] == [False, False, False, True]
+    assert not any(a.later for a in A.in_menu("Fit"))
     assert titles["Help"] == ["Keyboard shortcuts", "About ALIS"]
 
 

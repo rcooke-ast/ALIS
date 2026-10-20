@@ -236,7 +236,8 @@ def test_fit_is_out_of_date_after_an_edit_once_a_run_exists(home, tmp_path, regi
     marker = MK.fit_marker(project)
     assert marker.state == MK.COMPLETE
     assert marker.tip == (
-        "The latest run (completed), χ² = 512.25, finished 2026-10-06 10:00 on here."
+        "The latest run (run_alis, completed), χ² = 512.25, finished 2026-10-06 10:00"
+        " on here."
     )
     session.history.edit(E.set_value(project.parsed, coldens(project), 14.5), "N")
     marker = MK.fit_marker(project)

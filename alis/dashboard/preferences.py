@@ -566,6 +566,29 @@ SPECS = (
         "The results flag b, T and the other parameters as unconstrained when the"
         " error is larger than this times the value.",
     ),
+    # Compare, and the random restarts (Stage 6.7, 6.8: Q6.9, Q6.10)
+    Spec(
+        "fit.match_kms",
+        10.0,
+        float,
+        0.0,
+        1.0e4,
+        "Compare matches components within",
+        "km/s",
+        "Compare matches a component of one run to the nearest of the other run's"
+        " components of the same ion within this velocity.",
+    ),
+    Spec(
+        "fit.restarts",
+        10,
+        int,
+        1,
+        1000,
+        "Random restarts",
+        "",
+        "How many fits Random restarts… makes, each from values drawn about the"
+        " shown run's best fit.",
+    ),
 )
 SPEC = {spec.key: spec for spec in SPECS}
 

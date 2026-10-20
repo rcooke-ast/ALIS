@@ -48,7 +48,7 @@ def test_the_tabs_show_their_markers(window, qtbot):
     project.bundle.members[B.LATEST + "run.json"] = json.dumps(info).encode()
     window.refresh()
     assert shows(window, 3, MK.COMPLETE)
-    assert window.tabs.tabToolTip(3).startswith("The latest run (completed)")
+    assert window.tabs.tabToolTip(3).startswith("The latest run (run_alis, completed)")
     # An edit makes the Fit tab out of date
     par = next(p for p in project.parsed.params if p.name == "ColDens")
     window._run(

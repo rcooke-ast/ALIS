@@ -278,8 +278,53 @@ ACTIONS = (
         "Commit run…",
         "Fit",
         "",
-        "Keep the latest run in the run history (coming with the Fit tab)",
-        later=True,
+        "Keep the latest run in the run history, with your description of it",
+        section=1,
+    ),
+    Action(
+        "fit.continue",
+        "Continue from best fit…",
+        "Fit",
+        "",
+        "Copy the shown run's best-fit values into the model, as one step, skipping"
+        " what has changed since the run",
+        section=1,
+    ),
+    Action(
+        "fit.convergence",
+        "Convergence check…",
+        "Fit",
+        "",
+        "Run the fit with ALIS's own convergence check, which fits again with tighter"
+        " tolerances and says whether the parameters moved",
+        section=2,
+    ),
+    Action(
+        "fit.restarts",
+        "Random restarts…",
+        "Fit",
+        "",
+        "Fit again from starts drawn about the shown run's best fit, as sim perturb"
+        " draws them, and see whether the fits agree",
+        section=2,
+    ),
+    Action(
+        "fit.export_restarts",
+        "Export restarts…",
+        "Fit",
+        "",
+        "Write the shown run's random restarts as a table that numpy.loadtxt reads,"
+        " in the form of sim perturb's own file",
+        section=2,
+    ),
+    Action(
+        "fit.outliers",
+        "Review clipped pixels…",
+        "Fit",
+        "",
+        "Mark the fitted pixels far from the shown run's best fit, and choose which"
+        " to leave out of the fit",
+        section=2,
     ),
     # Help
     Action(

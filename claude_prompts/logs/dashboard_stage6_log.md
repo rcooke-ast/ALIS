@@ -801,3 +801,308 @@ draft 3; its question 4 thread answered and resolved. `pytest -m unit`: 1973
 passed, 121 skipped (85 s; the 16 warnings are `test_save_helpers.py`'s log10 of
 a zero, in code this work did not touch); `pytest -m gui`: 164 passed (289 s);
 `pytest -m fast`: 129 passed (875 s).
+
+## Prompt 7 — the rest of Stage 6, from Task 6.6 (2026-10-19)
+
+RJC committed Prompt 6's work and asked for the remaining tasks, 6.6 to 6.11, in
+order.
+
+### Task 6.6: Results, and Use best fit
+
+**The shown run.** Inspect, Results and Use best fit show one run: the latest, or the
+committed run chosen in the run history (the view state's `shown_run`), or, while a
+run goes, the fit in progress. `FitTab.shown_view` and `view_of` (moved from
+Inspect, and kept for a few runs at once: Compare shows two), `results.shown_record`
+(the latest when the chosen run has been removed), and `window.shown_run()` for the
+Components and Regions tabs. The progress chart follows the shown run
+(`fitview.progress(..., record)`).
+
+**`results.py`.**
+- Q6.23: a continuum's coefficients (`COEFFICIENT` rows) are flagged neither "at
+  limit" nor "unconstrained"; `View.negative(line)` flags the continuum once, on its
+  first row, "negative" when its best fit is below zero at a pixel of a snip it is
+  the continuum of. A hidden continuum is flagged too: Inspect draws it.
+- **A leak fixed:** a line blinded since the run was not matched to the run's line
+  (`match_lines` compares lines by their shape, and `blind=True` changed it), so its
+  best-fit values were shown in the results. `_shapes` now leaves the `blind=` word
+  out. Found on the first screenshot of J1358p6522 with D I blinded after the run;
+  tested (`test_a_line_blinded_since_the_run_stays_hidden`).
+- The run history (`history`, `HistoryRow`): the latest run until it is committed,
+  then the committed runs newest first; χ²ν from `run.json` or the `.mod.out`'s
+  header (`reduced_chi2`); where ("dashboard", "cmd · host", "imported") and when.
+  `statistics_rows`, `when_text`, `convergence_text`.
+- `continuum_departure`: how far a snip's continuum departs from the run's, in σ.
+- A run's values, errors, covariance and words are read once per run
+  (`_record_data`): a view of J1358p6522 took 157 ms after each edit, now 3 ms.
+- A z row's velocity is signed with a true minus.
+
+**`qt/fitresults.py`** (new; the Results frame left `tabs.py`): the table of the
+shown run (groups opened and closed by a click on their titles, kept in the view
+state; a collapsed group shows its flagged rows; flags with "!" and colour; a row
+selected highlights its lines, `ModPanel.select_lines`), Continue from best fit…
+and Copy as table; the run history (Commit…, a double-click edits a committed run's
+description, Remove… after a question, a row chosen shows that run); the statistics;
+the correlations (`CorrelationView`: vermillion +1, blue −1, names while the cells
+are tall enough, the pair under the mouse; the primary system by default). While a
+run goes: the values in progress under their notice (`fitview.results_notice_text`),
+redrawn at most once a second.
+
+**The window:** Commit run… (`dialogs.CommitDialog`, a description required) and
+Continue from best fit… (`dialogs.ContinueDialog`: the lines that receive the best
+fit and those that keep their values, and why, named and never valued) are built,
+in the Fit menu; Continue's button is also above Inspect's panels.
+
+**Use best fit** (Q6.17, Q6.20): on each component card (`card.best`, greyed with
+the reason as its tooltip); in the Continuum box (`best_fit`), after which the run's
+continuum is drawn dotted beside it (`SpectrumView.set_run_continuum`) and the box
+says how far the two depart, so that the order can be changed and the copy made
+again.
+
+**Reset FWHM** (Q6.21): `datasets.default_fwhm`, `fwhm_differs` and
+`reset_fwhm_step`; an imported fit records each data line's FWHM at import
+(`project.IMPORTED_FWHM` in `ui/project.json`). On the Data tab: "Reset FWHM to 7
+km/s" in the FWHM badge's menu and the row's menu, ↺ in the cell while it differs
+(not for a hidden FWHM).
+
+**Q6.28 raised:** J1358p6522's Lyα continuum (H8) is below zero at 563 of its 9,696
+pixels, all beyond its last fit region (5126–5150 Å; its fitted pixels end at 5056
+Å), so the agreed rule flags it. The rule stays as agreed until RJC answers.
+
+**Checks.** `test_dashboard_results.py` (+6: the continua's flags, a negative
+continuum, a line blinded since the run, the history, an imported fit's history and
+statistics, a continuum's departure), `test_dashboard_datasets.py` (+4, Reset FWHM:
+a file row, rows tied to it, an imported row, no default), `test_dashboard_qt_results.py`
+(10, `gui`): J1358p6522's Results as in the mockup, a row's lines, commit, describe,
+Save and reopen, choose and remove a run, Continue after its preview, Use best fit
+on a card (and with no run) and in the Continuum box, Reset FWHM after Continue on an
+imported row and on a file row, and no hidden value in the table, its tooltips, its
+copy or the cards on `examples/blind`. The `unit` batch: 1983 passed, 121 skipped.
+
+### Task 6.7: Compare
+
+**`alis/dashboard/compare.py`** (new; no Qt): `quantities(view)`: each ion's total
+log N in each system (log or linear form, or through a ratio line), each isotope's
+ratio to its main isotope (from the two column densities over the components that
+have both, or the ratio line, fitted or linked), each component's v, b and T, the
+components' count, each FWHM parameter (named by the datasets that share it), χ²ν,
+the degrees of freedom and the iterations. Errors are propagated from the run's
+covariance through numerical derivatives in the free parameters each quantity
+depends on, links followed; a quantity of one free parameter takes its error when
+there is no covariance; a fixed value has σ 0. `match_components` (the nearest
+velocity within `fit.match_kms`, 10 km/s, a new preference); `compare` (Δ, |Δ|/σ
+with σ the larger error, "—" when a run gives none; a hidden quantity's values and
+Δ masked, |Δ|/σ unsigned); `restore_preview`.
+
+**`qt/fitcompare.py`** (new): the two runs (the run before the latest, and the
+latest, by default; kept in the view state), Swap, Restore …'s model…
+(`dialogs.RestoreDialog`, the lines as they are and as the run had them, through
+each model's gate; one step); the table by group; the view: Inspect's View menu
+(one snip by default, as the mockup), ‹ › (the Fit tab's [ and ] now step through
+the sub-tab shown), Columns, the zoom bar; both best fits over the first's
+continuum, the second dashed (`SpectrumView.set_second_model`), and their
+difference in σ below, with the largest in the panel's corner.
+
+**The examples' thermal and linear models** read other data files
+(`OI_SiII_thermal.dat`, `OI_SiII_linear.dat`), so they cannot be a second run of the
+same project; the tests make T free and the linear O I from `fit_spectra.mod`, as the
+task's check says.
+
+**Checks.** `test_dashboard_compare.py` (7, `unit`, from reference outputs rewritten
+for the parametrisation made in the test): T fixed and T free matched (8,000
+(fixed) against 12,000 ± 2,000, 2.0σ), linear log N(O I) the same row, an error from
+the covariance equal to the parameter's, matching by the nearest velocity,
+J1358p6522's one log D/H row with D I's own N and as `2H_I/1H_I`, a blinded D I
+(only |Δ|/σ), Restore's preview. `test_dashboard_qt_compare.py` (4, `gui`): the
+two parametrisations, Swap, both models drawn, ‹ ›; the blinded D I; Restore one
+step that one undo reverses; one run. `test_dashboard_compare_fit.py` (1, `fast`, 16
+s): three real fits of metal_line_abs through the process (T fixed, T free, O I
+linear), compared.
+
+### Task 6.8: convergence, restarts and outliers
+
+**Convergence check…** (the Fit menu, and a button under Run): asks for `run
+convcriteria` (the model's, 0.2 by default) and runs the fit with `run convergence
+True` and that criterion on its command line (`start_run(extra=…, command=…)`).
+The fitting process reads the result from ALIS's own messages ("Solution has
+converged", "…not converged for 3/41 free parameters", the largest difference) into
+`run.json`'s `convergence` (`runner._Convergence`), which Fit statistics shows
+("Converged", "Not converged for 3 of 41 parameters").
+
+**`alis/dashboard/restarts.py`** (new; no Qt):
+- `draw_starts`: as `simulate.perturb` draws after `sim beginfrom` (Q6.22(a)): the
+  covariance's rows of zeros left out, the rest factored by Cholesky, each draw
+  clamped to ±`sim maxperturb` of its value (as ALIS writes the test, relative to the
+  value) and then to the parameter's limits; fixed and linked values unchanged.
+- `restart_bundle`: the run's model with the draws as its starting values, on the
+  snips as they are now, with the project's atomic table (the run's model, read as
+  a project, has none: the first restarts failed in the process with
+  "KeyError: atomic/atomic.ecsv").
+- `Kept` (`restarts.json` under the run's prefix, so committed with the run, saved
+  with Save, and hidden whole in the bundle while anything of the run is hidden);
+  `taker` keeps a job's results with the run they started from (and its committed
+  copy), or nothing when that run has gone.
+- `assess`: each free parameter's largest |Δ|/σ (or scatter over σ) across the
+  restarts, with ALIS's own `convergence.assess_restarts` called in memory for the
+  summary and its `.converge` report (its note about fresh noise, which these
+  restarts do not fit, left out); the restarts that reach a lower χ² than the run.
+- `export_text` and `export_name`: `<model>.perturb_0-N`, one row per fit (the run's
+  best fit first), every parameter by ALIS's number, χ² last; a header of `#` lines
+  naming each column ("O I a1 log N (ALIS parameter 3)"); hidden parameters left
+  out, and the header says which.
+- `restart_view`: a restart as a view, for Continue from best fit (`View.label`
+  names it "restart 2 of run 3").
+
+**The fitting process:** a header with `restarts` (their sizes) makes it fit each
+model in turn (`runner.Job.run_restarts`), sending `restart_started` and each
+`restart`'s result (its `run.json` fields, `.mod.out` and covariance), storing
+nothing; `stop` ends the restart being fitted, and the rest are not begun.
+`runs.Restarts` (a `Run`: `kind`, `total`, `restart`, `results`, `taker`);
+`runs.out_values` and `out_errors` read a `.mod.out`'s text (shared with
+`RunRecord`). The status bar says "Restart 3 of 10 · iteration 9 · …".
+
+**`qt/fittools.py`** (new): `RestartsDialog` — ALIS's summary with its mark, the
+assessment table, χ² against a parameter chosen in a menu (hidden ones not offered),
+each restart's χ², iterations and status, Run N restarts (the preference
+`fit.restarts`, 10), Continue from restart k… (when one is better), Export
+restarts…. The window: `do_fit_restarts`, `run_restarts`, `do_fit_export_restarts`,
+`export_restarts`, `continue_from` (shared with Continue from best fit).
+
+**Review clipped pixels…** (Inspect, above the panels): the fitted pixels beyond 5σ
+of the shown best fit (`results.outliers`), ✕ ticked and ○ not
+(`SpectrumView.set_marked`, `markClicked`), each panel's Accept all and Reject all, a
+banner with Apply and Cancel; the panel's range stretched to show them. Apply is one
+step ("Leave out 1 outlier") that undo reverses, and then Run is offered. The review
+ends when the model or the shown run changes.
+
+**Found while taking a screenshot:** with some pixels of metal_line_abs pushed out,
+Inspect drew no data at all. The data file's last pixel is a junk value (flux
+−9.6×10⁹, outside the fit range), and Qt drops a path that reaches it — whether it
+does depends on the other values. `plots.tame` now draws a value beyond 10⁴ times the
+spectrum's median size as a gap (`test_a_wild_pixel_is_a_gap`).
+
+**Checks.** `test_dashboard_restarts.py` (8, `unit`): the starts as sim perturb draws
+them (within ±10% and the limits, about the best fit, fixed and linked unchanged,
+seeded), none without a covariance, a restart's model, what is kept (with the run,
+committed, through a bundle written and read), ALIS's assessment (converged, one
+restart stuck, a better χ² offered), the export (`numpy.loadtxt`, header, χ²), a
+hidden parameter's columns left out and the file kept hidden, Continue from a
+restart. `test_dashboard_runs.py` (+1): the convergence check's result from ALIS's
+messages. `test_dashboard_qt_fit_tools.py` (6, `gui`; 2 also `fast`): Review
+clipped pixels and Apply (one step, undo, Run offered), none beyond 5σ and Cancel,
+the restarts' window and Export restarts…, Continue from a better restart; real
+restarts of metal_line_abs from the window (all agree; kept, committed, saved) and
+the convergence check shown. `test_dashboard_qt_plots.py` (+1). The `unit` batch:
+1999 passed, 121 skipped; `gui` (not `fast`): 176 passed after one older test
+followed the Results pane's new name.
+
+### Task 6.9: markers, actions, preferences, command-line runs
+
+- **The Fit marker** had its states from Task 6.4; a run made by `run_alis` is now
+  named so in its tip ("The latest run (run_alis, completed), χ² = …").
+- **The actions** are as the Design lists them (Run, Save and Run, Stop/Cancel,
+  Commit run…, Continue from best fit…, Convergence check…, Random restarts…,
+  Export restarts…, Review clipped pixels…, ‹ ›); **the preferences** gained
+  `fit.match_kms` (10 km/s) and `fit.restarts` (10) in Tasks 6.7 and 6.8.
+- **Command-line runs** (S31): taken in by the disk watcher as before (Stage 3,
+  `Session.take_runs`), and listed as "cmd · host" in the run history (Task 6.6).
+- **The Regions tab's Model switch** (Q5.8, `deferred_work.md` §7.2): once a run
+  exists, a menu beside Model chooses the starting model or "Best fit · the latest
+  run" (the Fit tab's shown run), drawn from `results.View.curves`; kept in the
+  view state (`model_from`).
+
+**Checks.** `test_dashboard_qt_fit_cmd.py` (3, `gui`; 1 also `fast`): the marker in
+each state (none, a dashboard run, a `run_alis` run, changed since, an error, refused);
+the Regions tab's best fit, and back; `run_alis project.model` on the open project's
+file taken in without a question, a "cmd" row in the history. `test_dashboard_markers.py`
+and `test_dashboard_qt_markers.py` follow the new wording.
+
+### Task 6.10: from a spectrum to a fit, in the dashboard
+
+`test_dashboard_qt_end_to_end.py` (`fast`): Task 5.10's preparation is now a helper
+(`prepare`), shared by its test and a new one whose last steps are on the Fit tab:
+Run (the best fit's column densities agree with `fit_spectra.mod.out.reference`
+within the errors, the marker ✓); Commit… ("T at 8000 K"); T made free on the
+Components tab and Run again; Compare (run 1 against the latest: T "8,000 (fixed)"
+against its fit, log N(O I) within 1σ); Continue from best fit (the model holds the
+second run's best fit); Use best fit on the card after its b_turb was changed; and
+Save keeps both runs. Both tests pass (19 s).
+
+### Task 6.11: closing the stage and v1
+
+**The review page** (`doc/dashboard/stage6/take_close_screenshots.py OUTDIR`, then
+`build_close_review.py SHOTS OUT.html`): Results and Compare beside their mockups,
+and the tools with no mockup, every run a real fit made from the window (134 s):
+- J1358p6522, D I blinded, fitted (χ² 3790.571, its reference) and committed as run
+  1; D I then made a ratio to H I (still blinded) and fitted again (χ² 4072.26: the
+  ratio puts D I in both H I components). Results with run 1 chosen; Compare on Lyα
+  and Ly8 (log D/H and log N(D I) only as |Δ|/σ).
+- metal_line_abs, imported, its FWHM freed and fitted (FWHM 10.9 km/s, b_turb at its
+  0.5 km/s limit: with one line the two are degenerate); Continue from best fit and
+  Reset FWHM's ↺; Use best fit on a card and in the Continuum box; eight random
+  restarts and their window; the convergence check (Converged); Review clipped
+  pixels with four pixels pushed 25σ (made for the screen).
+
+Published as draft 1 at https://claude.ai/artifact/Ea9QrHxSR1NThEEd4UDUmE, asking
+three questions: Q6.28; whether new restarts replace the kept ones; Compare's default
+pair. Applying the review waits for RJC's comments.
+
+**Found while taking them, and changed:** the Continuum box's tool row was crowded:
+Use best fit moved beside the order, and the Model menu reads Start | Best fit (its
+tooltip names the run); the run history's times are short ("19 Oct 23:57").
+
+**The documents:**
+- `doc/ALIS_workflow.md`: §4.3 gains "Running and inspecting a fit: the Fit tab" and
+  a paragraph on version 1; §0 marks `prepfit` deprecated; §6 points to the Fit
+  tab's two checks.
+- `CHANGELOG.md`: the Fit tab, and Stage 6's changes to ALIS that were not yet there
+  (`bundle.execute` and `store`, `ClassMain(iterhook=)`, `--list-settings` and
+  `config.settings_help`, `report.runs_z`/`chi2_deviation`/`region_stats`); a
+  Deprecated section for `prepfit`.
+- `tests/README.md`: Stage 6's test files.
+- The `gui-component` skill: "Runs and results (Stage 6)".
+- `deferred_work.md`: §7.2 done; §7.6 notes what the dashboard does meanwhile.
+- `ALIS_v2_dashboard_prompts.md`: Stage 6's decisions, D69–D77.
+- `dashboard_stage0.md`: Stage 6 done, v1 complete; Stage 7 in the table; "After
+  v1" (Stage 7, the Plot tab, the items marked Later, the deferred work; the release
+  is RJC's).
+- `dashboard_stage7.md` (new): the template, with a list for RJC's changes and bug
+  fixes, each to become a task with its check.
+
+**`prepfit` deprecated** (Q6.13(b), D4; `alis/prepfit/specplot.py`): it keeps
+working, and says once, when `SelectRegions` starts, that the dashboard (`alis`) now
+does what it does (`note_deprecated`; `test_prepfit_deprecated.py`, in a process of
+its own because importing prepfit picks matplotlib's Qt backend).
+
+**Coverage** of Stage 6's new modules, by their unit and window tests: 91% overall
+(`compare.py` 94%, `fitview.py` 91%, `preflight.py` 94%, `restarts.py` 91%,
+`results.py` 92%, `runs.py` 87%, `settings.py` 96%, `qt/fit.py` 91%,
+`qt/fitcompare.py` 93%, `qt/fitresults.py` 86%, `qt/fittools.py` 98%); `runner.py`
+runs in its own process, which the `fast` tests drive.
+
+**The stage's final batches.** `pytest -m unit`: 2000 passed, 121 skipped (94 s; the
+16 warnings are `test_save_helpers.py`'s, as before); `pytest -m gui`: 188 passed
+(377 s); `pytest -m fast`: 134 passed (939 s), with the regression harness, its
+bundle mode, and every dashboard test that fits. All of Stage 6's tasks are built;
+the review of draft 1 and Q6.28 wait for RJC.
+
+### RJC's answers on the closing review page (2026-10-20)
+
+RJC answered the page's three questions in its threads, and said everything else
+looks good.
+- **Q6.28** — from the snip's first fitted pixel to its last: `View.negative` looks
+  at that span only (gaps between regions included). J1358p6522's Lyα continuum,
+  below zero only beyond its last region, is no longer flagged. Tests: a metal
+  continuum below zero only beyond its fitted pixels is not flagged, one below zero
+  within them is (`test_a_continuum_below_zero_is_flagged_negative`); J1358p6522's
+  continua unflagged, in the unit and window tests.
+- **Random restarts** — one set per run, and a warning with a question before new
+  restarts replace it (`do_fit_restarts`, "restarts_overwrite"; the Run button's
+  tooltip says so). Test: `test_new_restarts_replace_the_kept_ones_after_a_question`.
+- **Compare's default pair** — the latest run against the newest committed run, or
+  against the one before when the latest run is that committed run. The sub-tab
+  already chose this pair; `CompareTab._defaults` now states the rule, and
+  `test_the_runs_compared_by_default` checks both cases.
+
+The stage document (notes on the answers; the Design's Results, Compare and
+restarts), `ALIS_workflow.md` §4.3, and the review page (draft 2, the answers
+recorded under the questions, its screenshots retaken) follow.

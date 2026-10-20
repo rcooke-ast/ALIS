@@ -66,7 +66,7 @@ def test_fit_results_has_the_run_history_beside_the_results(window):
     row = results.layout_.itemAt(0).widget().layout()
     columns = [row.itemAt(n).widget() for n in range(row.count())]
     titles = [
-        [p.title.text() for p in col.findChildren(type(results.table))]
+        [p.title.text() for p in col.findChildren(type(results.table_pane))]
         for col in columns
     ]
     assert titles == [["Results"], ["Run history"], ["Fit statistics", "Correlations"]]

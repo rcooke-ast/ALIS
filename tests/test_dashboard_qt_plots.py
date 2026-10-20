@@ -177,6 +177,19 @@ def test_log_and_normalised_views(view):
     widget.set_log(False)
 
 
+def test_a_wild_pixel_is_a_gap(view):
+    """A junk pixel's huge sentinel is not drawn: Qt would drop the whole path, as it
+    did with metal_line_abs's last pixel (Stage 6.8)."""
+    widget, _ = view
+    wave = np.linspace(1300.0, 1306.0, 200)
+    flux = np.ones(200)
+    flux[-1] = -9.57e9
+    widget.set_data(wave, flux, np.full(200, 0.05))
+    _, y = widget._items["data"].getData()
+    assert np.isnan(y[-2:]).all() and np.isfinite(y[:-2]).all()
+    assert np.isnan(PL.tame([1.0, 2.0, 1.0e9])[-1])
+
+
 def test_overlays_and_their_signals(view, qtbot):
     widget, _ = view
     widget.set_regions("fit", [(4010.0, 4020.0), (4030.0, 4031.0)], movable=True)

@@ -29,8 +29,28 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 3 | Qt skeleton of the chosen layout: the window, five tabs and their status markers (F12), the `.mod` panel, the status bar, open/save/autosave (F1), opening an existing fit (F4), relinking moved spectra (F13), the shortcut sheet (F10), the user's preferences file (Q2.2) and the `alis` command (F14, named `run_alisgui` until Q3.15). | `alis/dashboard/` |
 | 4 | Data and Regions tabs (steps 1–3). | `alis/dashboard/` |
 | 5 | Components tab (step 4). | `alis/dashboard/` |
-| 6 | Fit tab (step 6). This completes v1. | `alis/dashboard/` |
+| 6 | Fit tab (step 6). This completes v1. **Done 2026-10-20: v1 is complete** (`dashboard_stage6.md`). | `alis/dashboard/`, and `alis/` where its queries agreed |
+| 7 | RJC's changes and bug fixes from fitting real problems with v1 (`dashboard_stage7.md`), each a task with its check. | as each needs |
 | Later | The Plot tab (step 8), Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
+
+### After v1
+
+Version 1 (Stages 1–6) takes a fit from a spectrum to a result without leaving the
+dashboard. What follows, for RJC to order (Q6.13(a)):
+1. **Stage 7:** RJC's list of changes and bug fixes from real use (`dashboard_stage7.md`,
+   a template written at the close of Stage 6).
+2. **The Plot tab** (step 8, D28, D42): the layout, the panels, the preview drawn by the
+   plotting script, and the shipped style (`alis_publication.mplstyle`).
+3. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
+   (F6), command search (F10), the `link` editor and its templates (S15), the plot
+   preview (S22), attaching a source spectrum to an imported fit (S23), reproducing an
+   imported fit (S28); Orders mode, PypeIt spec1d input and the stacked spectrum.
+4. **Deferred work** (`deferred_work.md` §7): telluric flags, solar abundances in the
+   atomic table, generating data from a model, and how ALIS draws its simulated
+   realisations and restarts (§7.6), on which the dashboard's Random restarts…
+   follow.
+
+The release itself (the version number, the tag, publishing) is RJC's (Q6.13(c)).
 
 ### v1 and later
 

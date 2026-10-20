@@ -248,6 +248,9 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`.
   Regions tab's transition list.
 
 ### 7.2 The best-fit model on the Regions tab
+- **Done (dashboard Stage 6.9, 2026-10-19):** once a run exists, a menu beside the
+  Regions tab's Model switch draws the starting model or the Fit tab's shown run's
+  best fit (`qt/regions.py`, `model_from`). Kept here for the record.
 - **What:** a switch that draws a best-fit model (when one exists) over the data on
   the Regions tab, while the regions are being drawn.
 - **Why deferred:** RJC, Q4.12: the Regions tab draws no model in Stage 4; the model
@@ -330,3 +333,8 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`.
   stays. Then decide whether `sim random` and `sim perturb` write through a bundle's
   outputs, so that a bundle (and the dashboard) can run them. The dashboard's Random
   restarts… (Q6.22) then follow the decision.
+- **Meanwhile (Stage 6.8):** the dashboard draws its own starts as the second route
+  does (about the shown run's best fit, from its covariance, the 10% clamp and the
+  limits: `alis/dashboard/restarts.py`, `draw_starts`), fits each as an ordinary run,
+  and assesses them with `convergence.assess_restarts`. Only `draw_starts` changes
+  when the decision is made.

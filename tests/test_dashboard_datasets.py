@@ -1,7 +1,8 @@
 """The Data tab's edits: file rows and systems (dashboard Stage 4.4).
 
 Each edit is one step that ALIS reads, and one undo gives back the text, the files,
-``ui/project.json`` and the sources. The reference's shift is fixed at 0 and the old
+``ui/project.json`` and the sources. Reset FWHM (Stage 6.6) gives back the FWHM given
+when the file was added, or that the row had when it was imported. The reference's shift is fixed at 0 and the old
 reference's freed (D14); a row with snips keeps its column roles (Q4.14); removing a
 system lists its lines first (S27).
 
@@ -134,6 +135,69 @@ def test_fwhm_and_shift_values_states_and_ties(registry, tmp_path):
         project.rows[0].name
     ]
     assert project.rows[1].snips[0].data.param("resolution").start == 6.5
+
+
+# -- Reset FWHM (Stage 6.6, Q6.21) --------------------------------------------------
+
+
+def test_reset_fwhm_on_a_row_added_from_a_file(registry, tmp_path):
+    project, hist = two_rows(registry, tmp_path)
+    first = project.rows[0]
+    # The FWHM given when the file was added is its default
+    assert D.default_fwhm(project, first) == 7.0
+    assert not D.fwhm_differs(project, first)
+    hist.do(D.set_state_step(project, first, "resolution", D.FREE))
+    # A best fit copied in (as Continue from best fit copies it) moves it
+    hist.do(D.set_value_step(project, project.rows[0], "resolution", 6.12))
+    assert D.fwhm_differs(project, project.rows[0])
+    step = D.reset_fwhm_step(project, project.rows[0])
+    assert step.description == "Reset the FWHM of {0} to 7 km/s".format(first.name)
+    check_undo(project, hist, step)
+    row = project.rows[0]
+    # Only the value is reset: it stays free
+    assert row.fwhm.start == 7.0 and row.fwhm.free
+    assert not D.fwhm_differs(project, row)
+
+
+def test_reset_fwhm_reaches_the_rows_tied_to_it(registry, tmp_path):
+    project, hist = two_rows(registry, tmp_path)
+    hist.do(D.set_value_step(project, project.rows[1], "resolution", 5.0))
+    hist.do(
+        D.set_state_step(
+            project, project.rows[1], "resolution", D.TIED, project.rows[0]
+        )
+    )
+    hist.do(D.set_value_step(project, project.rows[0], "resolution", 6.0))
+    hist.do(D.reset_fwhm_step(project, project.rows[0]))
+    assert [r.fwhm.start for r in project.rows] == [7.0, 7.0]
+
+
+def test_reset_fwhm_on_an_imported_row(registry):
+    if not Q1243.exists():
+        pytest.skip("Q1243p307 is not present")
+    project = P.Project.import_model(str(Q1243), registry=registry)
+    hist = H.History(project)
+    hires = project.row("HIRES")
+    imported = hires.fwhm.start
+    # The FWHM each data line had when the fit was imported is kept with the project
+    assert project.ui[P.IMPORTED_FWHM][hires.specids[0]] == imported
+    assert D.default_fwhm(project, hires) == imported
+    hist.do(D.set_value_step(project, hires, "resolution", imported + 1.0))
+    assert D.fwhm_differs(project, project.row("HIRES"))
+    check_undo(project, hist, D.reset_fwhm_step(project, project.row("HIRES")))
+    assert project.row("HIRES").fwhm.start == imported
+    # Kept through the first edit's structure, and in the saved project data
+    assert P.IMPORTED_FWHM in project.structure()
+
+
+def test_reset_fwhm_needs_a_default_and_snips(registry, tmp_path):
+    project, _ = two_rows(registry, tmp_path, snip=False)
+    with pytest.raises(D.DatasetError, match="no snips"):
+        D.reset_fwhm_step(project, project.rows[0])
+    project.ui["rows"][0].pop("fwhm")
+    assert D.default_fwhm(project, project.rows[0]) is None
+    with pytest.raises(D.DatasetError, match="No default"):
+        D.reset_fwhm_step(project, project.rows[0])
 
 
 def test_zero_level_on_and_off(registry, tmp_path):

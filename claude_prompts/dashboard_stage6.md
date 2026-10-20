@@ -111,6 +111,9 @@ alis/                bundle.py      run split into running in memory and storing
 ```
 
 The names may change as the code is written; the log records the names as built.
+As built: Results, Compare and the tools' window are `qt/fitresults.py`,
+`qt/fitcompare.py` and `qt/fittools.py`, beside `qt/fit.py` (Inspect and the run
+going); the random restarts' logic is `restarts.py`.
 
 - **No logic in the widgets**, every change to the model one step of the `History`,
   every value through the `Gate` (Stages 3–5). Running, committing and describing a run
@@ -293,8 +296,9 @@ Run checks the project first (`preflight.py`). Each finding names its line in th
     limit is flagged "at limit" only;
   - **a continuum** (Q6.23): its coefficients are flagged neither way, since a
     polynomial's higher terms are often consistent with zero. Instead, the
-    continuum is flagged "negative" when its best fit is below zero at any pixel of
-    its snip. Zero is allowed, and the coefficients themselves may be negative.
+    continuum is flagged "negative" when its best fit is below zero at a pixel of
+    its snip from the first fitted pixel to the last (Q6.28). Zero is allowed, and
+    the coefficients themselves may be negative.
 
   J1358p6522's Lyα forest b_turb of 0.29 ± 60.53 (its bound 0.2) therefore reads
   "unconstrained", not "at limit" as the mockup shows it.
@@ -359,7 +363,9 @@ Run checks the project first (`preflight.py`). Each finding names its line in th
 
 - **Choose** any two runs (the committed runs and the latest), Swap, and "Restore run
   N's model…", which replaces the model and its snips with the run's, as one step,
-  after a preview of what changes.
+  after a preview of what changes. By default the latest run is compared with the
+  newest committed run, or, when the latest run is that one, with the committed run
+  before it (RJC's review).
 - **The quantities** (Q6.9), matched across different parametrisations:
   - each ion's total log N in each system, from the components' column densities,
     with its error from the run's covariance;
@@ -397,7 +403,8 @@ Run checks the project first (`preflight.py`). Each finding names its line in th
   follows what is decided.
 - **What is kept** (Q6.18(a)): each restart's starting values, best-fit values and
   errors, its χ², degrees of freedom, iterations and status, with the run the restarts
-  started from, and committed with it. They form a table of one row per restart and
+  started from, and committed with it. One set is kept with a run: new restarts
+  replace it, after a warning and a question (RJC's review). They form a table of one row per restart and
   one column per parameter, named by its ion, component and parameter ("O I a1 log
   N"), with its label.
 - **The restarts' window, and Export restarts…** (Q6.18(b)): the window shows the
@@ -1299,6 +1306,41 @@ My lean: (a).
 differs from ALIS's defaults now, so "Settings you changed" lists neither for a new
 project.
 
+*Raised by Claude on 2026-10-19 (Prompt 7), while building Task 6.6. Development
+goes on meanwhile, with the rule as agreed.*
+
+**Q6.28 — Which pixels "negative" looks at (Q6.23).** As agreed, a continuum is
+flagged "negative" when its best fit is below zero at any pixel of its snip.
+J1358p6522's Lyα snip (H8, 4750–5150 Å) is flagged: its Legendre continuum is below
+zero at 563 of its 9,696 pixels, all at 5126–5150 Å, beyond its last fit region (its
+fitted pixels end at 5056 Å). There the continuum is extrapolated and constrains
+nothing in the fit, although Inspect draws the data divided by it, which then
+diverges. The choices:
+- **(a)** every pixel of the snip, as now (H8 is flagged);
+- **(b)** only the fitted pixels (H8 is not);
+- **(c)** from the snip's first fitted pixel to its last, gaps between regions
+  included, where the continuum is interpolated rather than extrapolated (H8 is
+  not).
+
+My lean: (c). A continuum that dips below zero between two fit regions (in a
+damped line's trough, say) is worth a look, while one that runs away beyond the
+last region says only that the snip is cut wider than it is fitted.
+
+*Raised by Claude on 2026-10-20, from RJC's answers on the closing review page
+(https://claude.ai/artifact/Ea9QrHxSR1NThEEd4UDUmE).*
+
+**Notes on the review's answers.**
+- **Q6.28:** (c), "from the first fitted pixel to the last fitted pixel in a given
+  snip". Done: J1358p6522's Lyα continuum is no longer flagged.
+- **Random restarts:** one set is kept with a run; when one is kept, Run restarts
+  warns that the new ones replace it, and asks first. Done.
+- **Compare's default pair:** the latest run against the newest committed run, or,
+  when the latest run is that committed run, against the committed run before it.
+  This is the pair the sub-tab chose already; the rule is now written out and
+  tested.
+
+**Response:** Agreed, please implement (c).
+
 ## Prompts
 
 1. Please read the `ALIS_v2_code_plan.md` and `ALIS_v2_dashboard_prompts.md` files, and the work carried out during stages 0-5; see their design documents (`dashboard_stage0.md`, `dashboard_stage1.md`, `dashboard_stage2.md`, `dashboard_stage3.md`, `dashboard_stage4.md`, `dashboard_stage5.md`) and the logs (`dashboard_stage0_log.md`, `dashboard_stage1_log.md`,  `dashboard_stage2_log.md`,  `dashboard_stage3_log.md`, `dashboard_stage4_log.md`, `dashboard_stage5_log.md`) to understand the work that has been implemented until now. Then, please review the ALIS code to understand the current state of ALIS. Finally, read this document, including my responses to your queries. If you have any further queries, please ask them in the Queries section of this document, and I will provide responses. If everything is clear, then please notify me when you are ready to start implementing Stage 6, so that I can confirm before beginning.
@@ -1312,3 +1354,7 @@ project.
 5. Please read this document, and then execute Task 6.5. I will then review the results and provide feedback. If you have any questions or need clarification, please ask in the Queries section of this document.
 
 6. Please read this document, and then continue the development with my responses to your Q6.24, Q6.25, and Q6.26. If you have any questions or need clarification, please ask in the Queries section of this document if my responses to the above queries require further clarification. Once these are implemented, please let me know, and I will commit the changes before moving to Task 6.6. 
+
+7. I have committed the changes, and everything looks good so far. Please complete the remaining development of Stage 6, starting with Task 6.6, and executing all tasks until they are complete. If you have any questions or need clarification, please please the development and ask for clarification in the Queries section of this document.
+
+8. I have committed all files to GitHub. If there are no more tasks to develop on this stage, please close this stage and generate a design document for stage 7. The design document for stage 7 should be similar to the design documents for all other stages of development, but it should provide an additional section called `Feedback`. This feedback section will contain an enumerated list of all points I receive as feedback from users. The feedback section will be a collection of all feedback received from users, and it will be used to inform the development of future stages. Please ensure that the design document for stage 7 is clear, concise, and well-organized, and that it provides a comprehensive overview of the planned development for that stage. Once the design document for stage 7 is complete, please submit it for review and approval.
