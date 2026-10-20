@@ -27,6 +27,15 @@ ROOT = Path(__file__).resolve().parents[1]
 METAL = ROOT / "examples/metal_line_abs/model/fit_spectra.mod"
 BLIND = ROOT / "examples/blind/model/fit_spectra.mod"
 J1358 = ROOT / "context/fitting_examples/VMP_DLA/J1358p6522/model/J1358p6522.mod"
+
+
+def imported_j1358(registry):
+    """J1358p6522 as imported; skipped where the context examples are not present."""
+    if not J1358.exists():
+        pytest.skip("model not present: " + str(J1358.relative_to(ROOT)))
+    return P.Project.import_model(str(J1358), registry=registry)
+
+
 LEGENDRE = "    legendre 1.0   0.01   0.01    scale=[1.0,1.0,1.0]   specid=0\n"
 OI = "    voigt   ion=16O_I   14.0    0.0    1.0da   8000TA   specid=0\n"
 SIII = "    voigt   ion=28Si_II 13.0    0.0    1.0da   8000TA   specid=0\n"
@@ -75,7 +84,7 @@ def test_metal_line_abs_goes_ahead(project, prefs):
 
 
 def test_j1358_as_imported_gives_its_notices_and_no_refusal(registry, prefs):
-    project = P.Project.import_model(str(J1358), registry=registry)
+    project = imported_j1358(registry)
     report = PF.check(project, prefs)
     assert report.ok
     assert report.codes(PF.NOTE).count("notice") == 2
@@ -201,7 +210,7 @@ def test_a_snip_with_no_continuum(project, prefs):
 def test_an_ion_in_no_snip_and_regions_changed(registry, prefs):
     from alis.dashboard import markers as MK
 
-    project = P.Project.import_model(str(J1358), registry=registry)
+    project = imported_j1358(registry)
     ui = dict(project.working_structure())
     ui[MK.MARKS] = {"regions": "an older fingerprint"}
     project.apply(P.Step("marks", ui=(project.ui, ui)))

@@ -181,6 +181,8 @@ def test_the_values_errors_and_covariance_of_a_run(path, registry):
 
 
 def test_j1358_errors_agree_with_its_covariance(tmp_path, registry):
+    if not J1358.exists():
+        pytest.skip("model not present: " + str(J1358.relative_to(ROOT)))
     target = tmp_path / "j1358.model"
     B.pack_to(str(J1358), str(target))
     bundle = B.read(str(target))

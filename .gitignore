@@ -60,3 +60,9 @@ docs/_build/
 target/
 
 # Created by .ignore support plugin (hsz.mobi)
+
+# macOS folder metadata
+.DS_Store
+
+# JetBrains IDE settings
+.idea/

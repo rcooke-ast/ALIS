@@ -570,7 +570,7 @@ def test_an_ion_never_in_the_component_is_included_with_a_guess(metal):
 
 
 def test_exclude_needs_a_redshift_label(registry):
-    project = P.Project.import_model(str(J1358), registry=registry)
+    project = imported_j1358(registry)
     loose = [c for c in project.components if not c.label]
     if not loose:
         pytest.skip("every component has a redshift label")
@@ -652,7 +652,7 @@ def test_a_forest_choice_adds_a_line_of_the_forest(metal):
 
 
 def test_the_forest_shares_its_temperature_label(registry):
-    project = P.Project.import_model(str(J1358), registry=registry)
+    project = imported_j1358(registry)
     assert C.forest_temperature_label(project) == "ZEROT"
 
 
@@ -724,7 +724,7 @@ def test_the_notices_above_an_ion_and_their_fixes(registry):
 
 
 def test_a_notice_kept_as_imported(registry):
-    project = P.Project.import_model(str(J1358), registry=registry)
+    project = imported_j1358(registry)
     notices = [n for n in project.notices if n.lines]
     assert notices
     before = state(project)
