@@ -23,6 +23,25 @@ A bug is easiest to fix with the project (or the model and data) it happened wit
 and the steps that led to it. Mark an item **(bug)**, **(change)** or **(new)**.*
 
 1. **(new)** Allow the dashboard to load a `.mod` file and multiple snips from an analysis previously made with `ALIS`.
+2. **(bug)** When an ion (e.g. `D I`) is tied to another (e.g. `H I`), and then if `H I` is excluded from the fit, the `D I` component is not excluded from the fit. This is the expected behaviour, but there is no way to exclude the `D I` line from the fit, as well. The only way at the moment is to comment out the component. An example of this behaviour is provided in `context/fitting_examples/Temperature/J013301m400628/`.
+3. **(change)** The dashboard has two options "import a fit (.mod)..." and "Load a .mod...". I think it's a bit confusing having both of these options. Is there a distinction, and can/should we combine them into one option?
+4. **(new)** We should consider adding some documentation that can be included in readthedocs, that describes the dashboard, ALIS, and how to use them. This should include all available functionality of ALIS, and should build on the existing documentation that is already available in the `doc/tex_files/` folder. This should be a separate task, and not part of this stage. Please make a task (to be completed as the final part of this stage) to write the design document to prepare for the documentation.
+5. **(bug)** For the example (`context/fitting_examples/Temperature/J101155p294141/`), the component cards list `D I` components as "Excluded" when a ratio (`voigt   ion=2H_I/1H_I ...`) is specified.
+6. **(bug)** For the component cards, I sometimes receive the error:
+```
+alis.dashboard.components.ComponentError: The lines of component a1 do not share a redshift label: tie them first (the notice above the panels).
+Traceback (most recent call last):
+  File "/Users/rcooke/Software/ALIS/alis/dashboard/qt/components.py", line 1152, in <lambda>
+    lambda _=False, c=comp, i=ion, e=excluded: self._toggle_ion(c, i, e)
+                                               ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/rcooke/Software/ALIS/alis/dashboard/qt/components.py", line 1551, in _toggle_ion
+    plan = C.exclusion(project, comp, ion)
+  File "/Users/rcooke/Software/ALIS/alis/dashboard/components.py", line 1515, in exclusion
+    raise ComponentError(
+    ...<2 lines>...
+    )
+```
+when clicking the "Exclude" button. I _think_ this happens when there is no letter suffix on the redshift number (e.g. `z=0.123` instead of `z=0.123a`).
 
 ## Design
 
