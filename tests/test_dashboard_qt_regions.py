@@ -31,7 +31,7 @@ pytestmark = pytest.mark.gui
 pytest.importorskip("qtpy.QtWidgets")
 pytest.importorskip("pyqtgraph")
 
-from qtpy import QtCore  # noqa: E402
+from qtpy import QtCore, QtWidgets  # noqa: E402
 
 from alis.dashboard import blinding as BL  # noqa: E402
 from alis.dashboard import continuum as CO  # noqa: E402
@@ -39,6 +39,7 @@ from alis.dashboard import lines as L  # noqa: E402
 from alis.dashboard import markers as MK  # noqa: E402
 from alis.dashboard import session as S  # noqa: E402
 from alis.dashboard import snips as SN  # noqa: E402
+from alis.dashboard import sources as SR  # noqa: E402
 from alis.dashboard.qt import plots as PL  # noqa: E402
 
 Z_J1358 = 3.067258
@@ -169,6 +170,8 @@ def test_without_a_source_only_snipped_transitions(window, qtbot):
     assert rows and all(r[0] == "●" for r in rows)
     assert [r[1].split()[0] for r in rows[:2]] == ["Lyα", "Lyβ"]
     assert not tab.actions_["regions.snip"].isEnabled()
+    # Loaded snips are checked against a source spectrum, so there is nothing to load
+    assert not tab.actions_["regions.load_snips"].isEnabled()
     assert "No source spectrum" in tab.list_note.text()
     # Its snip is drawn, with the continuum
     strip = tab.strips[0]
@@ -703,3 +706,123 @@ def test_the_coverage_grid_opens_a_transition(window, qtbot):
     assert window.tabs.currentWidget() is tab
     assert tab.current_line().name == "Si II 1304.4"
     assert tab._row_name(tab.selected) == "KIRKMAN"
+
+
+# -- Load snips… and Load a .mod… (Task 7.1) ------------------------------------------
+
+
+def saved_snip(window, folder, ion_word, rest, half=150.0, fit=40.0, name=None):
+    """A snip as prepfit saves it, cut from the project's first spectrum (z = 0)."""
+    project = window.session.project
+    spec = SR.spectrum(project, project.rows[0])
+    vel = (spec.wave / rest - 1.0) * C_KMS
+    keep = np.abs(vel) <= half
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / (name or "OI_SiII_{0}_{1:.1f}_reg.dat".format(ion_word, rest))
+    table = np.column_stack(
+        [spec.wave, spec.flux, spec.error, (np.abs(vel) <= fit).astype(float)]
+    )
+    np.savetxt(str(path), table[keep])
+    return path
+
+
+def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
+    tab = new_project(window, tmp_path, z=0.0)
+    project = window.session.project
+    load = tab.actions_["regions.load_snips"]
+    assert load.isEnabled()
+    one = saved_snip(window, tmp_path / "data", "16O_I", 1302.16849)
+    two = saved_snip(window, tmp_path / "data", "28Si_II", 1304.3702)
+    before = state(project)
+    # A file that is not a snip: one message, and nothing loaded
+    nameless = saved_snip(
+        window, tmp_path / "other", "28Si_II", 1304.3702, name="x.dat"
+    )
+    window.chosen["open_many"] = [str(one), str(nameless)]
+    load.trigger()
+    kind, title, text = window.answers.asked[-1]
+    assert title == "Load snips" and text.startswith("x.dat: its file name names")
+    assert "Nothing was loaded." in text
+    assert state(project) == before
+    # Both snips: loaded with their fit ranges, the first one shown
+    window.chosen["open_many"] = [str(one), str(two)]
+    load.trigger()
+    project = window.session.project
+    assert sorted(s.specid for s in project.snips) == ["OI_1302", "SiII_1304"]
+    assert tab.current_line().name == "O I 1302.2"
+    assert listed(tab)[0][0] == "●"
+    strip = tab.strips[0]
+    assert strip.snip is not None and SN.fitted(strip.snip).any()
+    assert window.session.history.undo_description().startswith("Load 2 snips")
+    # A wider O I 1302 replaces the one loaded, once the user agrees
+    wider = saved_snip(window, tmp_path / "wider", "16O_I", 1302.16849, half=200.0)
+    loaded = state(project)
+    window.chosen["open_many"] = [str(wider)]
+    window.on_dialog = lambda dialog: 0
+    load.trigger()
+    dialog = window.dialogs[-1]
+    assert dialog.windowTitle() == "Load snips"
+    labels = [w.text() for w in dialog.findChildren(QtWidgets.QLabel)]
+    assert any("replaces the snip OI_1302" in t for t in labels)
+    assert any("data line of snip OI_1302" in r[2] for r in dialog.rows())
+    assert state(window.session.project) == loaded
+    window.on_dialog = lambda dialog: 1
+    load.trigger()
+    project = window.session.project
+    snip = project.snip("OI_1302")
+    assert project.files[snip.member] == wider.read_bytes()
+    window.session.history.undo()
+    window.session.history.undo()
+    window.refresh()
+    assert state(window.session.project) == before
+    assert not design_references(ui_strings(window))
+
+
+def test_load_a_mod_from_the_file_menu(window, qtbot, tmp_path):
+    tab = new_project(window, tmp_path, z=0.0)
+    data = tmp_path / "old" / "data"
+    one = saved_snip(window, data, "16O_I", 1302.16849)
+    two = saved_snip(window, data, "28Si_II", 1304.3702)
+    model = tmp_path / "old" / "model"
+    model.mkdir(parents=True)
+    mod = model / "old.mod"
+    mod.write_text(
+        "chisq miniter 7\n\ndata read\n"
+        "  ../data/{0}  specid=0  fitrange=columns  resolution=vfwhm(4.0VFIX)"
+        "  columns=[wave,flux,error,fitrange]\n"
+        "  ../data/{1}  specid=1  fitrange=columns  resolution=vfwhm(4.0VFIX)"
+        "  columns=[wave,flux,error,fitrange]\n"
+        "data end\n\nmodel read\n  emission\n"
+        "    legendre 1.0 0.01 scale=[1.0,1.0] specid=0\n"
+        "    legendre 1.0 0.01 scale=[1.0,1.0] specid=1\n"
+        "  absorption\n"
+        "    voigt ion=16O_I 14.0 0.0za 5.0ba 0.0TA specid=0,1\n"
+        "    voigt ion=28Si_II 13.0 0.0za 5.0ba 0.0TA specid=0,1\n"
+        "model end\n".format(one.name, two.name)
+    )
+    action = window.qactions["file.load_mod"]
+    assert action.isEnabled()
+    # The .mod panel's menu offers it too
+    assert action in window.panel.editor.panel_actions
+    before = window.session.project.text
+    window.chosen["open"] = str(mod)
+    window.on_dialog = lambda dialog: 0
+    action.trigger()
+    dialog = window.dialogs[-1]
+    assert dialog.windowTitle() == "Load old.mod"
+    assert window.session.project.text == before
+    window.on_dialog = lambda dialog: 1
+    action.trigger()
+    wait_idle(qtbot, window)
+    project = window.session.project
+    assert project.text == mod.read_text()
+    assert window.panel.editor.toPlainText() == mod.read_text()
+    assert [len(s.components) for s in project.systems] == [1]
+    assert project.rows[0].fwhm.start == 4.0
+    # The Regions tab lists the .mod's snips at the primary system
+    tab = regions(window)
+    show(tab, "O", "I", "O I 1302")
+    assert tab.strips[0].snip is not None
+    window.session.history.undo()
+    window.refresh()
+    assert window.session.project.text == before

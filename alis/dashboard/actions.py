@@ -101,6 +101,14 @@ ACTIONS = (
         "Open an existing fit, a .mod with its snips, as a new project",
     ),
     Action(
+        "file.load_mod",
+        "Load a .mod…",
+        "File",
+        "",
+        "Load an earlier fit's .mod into this project: its model, and the snips it"
+        " names, each checked against the project's spectra",
+    ),
+    Action(
         "file.save",
         "Save",
         "File",
@@ -424,6 +432,16 @@ ACTIONS += (
         REGIONS_TAB,
         "",
         "Remove this transition's snip, and its regions, from the selected dataset",
+        scope="Regions",
+        section=1,
+    ),
+    Action(
+        "regions.load_snips",
+        "Load snips…",
+        REGIONS_TAB,
+        "",
+        "Load snips saved earlier (by prepfit, for example), each checked against the"
+        " spectrum it was cut from",
         scope="Regions",
         section=1,
     ),

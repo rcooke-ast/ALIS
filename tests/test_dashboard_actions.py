@@ -51,6 +51,7 @@ def test_the_menus_of_the_design():
         "New project…",
         "Open…",
         "Import a fit (.mod)…",
+        "Load a .mod…",
         "Save",
         "Save as…",
         "Export plain files…",

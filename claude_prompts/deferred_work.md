@@ -15,6 +15,84 @@ the logs are `claude_prompts/logs/refactor_code_stage<n>_log.md`.
 
 ---
 
+## Priorities
+
+*Added 2026-10-20, after dashboard Stage 6 (v1 complete), at RJC's request. Drawn from
+the sections below, the dashboard's "Later" items (`dashboard_stage0.md`) and what
+each dashboard stage left out. The priorities are Claude's judgement, weighing
+correctness first, then what users need next, then effort; RJC orders the work.
+"D*n*", "F*n*" and "S*n*" are in `ALIS_v2_dashboard_prompts.md`.*
+
+### High priority
+1. **The Plot tab** (dashboard step 8; D28, D42, S22). It is next in the agreed
+   plan, and the part that writes the plotting script already exists
+   (`alis/plotscript.py`). Two of that script's D/H layouts (for one and two
+   datasets) have never run on real data (§1.1, §5).
+2. **How ALIS draws `sim perturb` and `sim random`** (§7.6). This is a correctness
+   question in ALIS itself. `simulate.perturb` ignores the best fit it is given and
+   draws about the starting values, so the two ways of reaching it draw about
+   different centres. The decision also settles whether a project file can run
+   simulations, and the dashboard's Random restarts would follow it.
+3. **Diagnose `examples/brokenpowerlaw`'s χ² mismatch** (§2.4: 374.98 against
+   338.15). The suspected cause is that ALIS reports a rejected trial step when the
+   fit stops on `atol`. If so, it would affect any model that stops on `atol`, not
+   just this example.
+4. **Sphinx/ReadTheDocs documentation and `CONTRIBUTING.md`** (§1.2). This was
+   deferred until v2.0.0 is ready to release, which is now the next milestone.
+   `doc/tex_files/` is out of date.
+
+### Medium priority
+5. **Wavelength-dependent resolution** (§2.1). Restore the per-pixel Gaussian
+   convolution, with a test against a hand-computed result. A non-Gaussian line
+   spread function that varies with wavelength, the real target, is a much larger
+   project.
+6. **Orders mode, PypeIt spec1d input and the stacked spectrum** (D29–D32, §7.4),
+   with the tidy-up of `load_fits`'s format detection (§3.1) that FITS input needs.
+7. **Re-attaching to a run** after the dashboard was closed, with its live progress
+   (F6).
+8. **Attaching a source spectrum to an imported fit** (S23). Without one, an
+   imported fit cannot SNIP new transitions.
+9. **Generating data from the dashboard** (§7.5). This needs `generate data` to
+   write through a project file's outputs.
+10. **Telluric flags** in the transition list (§7.1). A small change, useful for
+    ground-based data.
+11. **Two quick ALIS fixes:**
+    - the first data line must carry `columns=`, otherwise ALIS fails with an
+      unhelpful "Error reading in file" (§3.2);
+    - Ctrl+C makes ALIS exit with status 0, so a script cannot tell a stopped fit
+      from a finished one (§3.5).
+12. **The 63 bare `except:` statements**, several in the file loaders (§4.2). Each
+    can hide a real failure, and narrowing them needs tests of the failure paths
+    first.
+
+### Low priority
+13. The link editor and its templates (S15). Links can already be typed in the
+    `.mod` panel.
+14. Command search (F10).
+15. Reproducing an imported fit (S28).
+16. Solar abundances in `atomic.ecsv`, replacing the two hard-coded copies (§7.3).
+    This changes no behaviour.
+17. Deciding whether to keep `systmodule=`, which nobody uses (§2.3).
+18. Whether `msgs.bug` should stop the fit (§3.4).
+19. The black/isort reformat and the remaining lint rules, then the black badge on
+    the README (§4.1, §4.2, §6).
+20. Testing gaps: the plotting code, GPU coverage, and the `context/` fits in CI
+    (§5).
+21. The metal example's junk last pixel (`examples/metal_line_abs/data/OI_SiII.dat`,
+    flux −10¹⁰, outside the fit range), found in dashboard Stage 6.
+
+### Not planned, or entries to close
+- **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
+- **Pausing a run**: declined by RJC (Q6.15(c) of `dashboard_stage6.md`).
+- **The onefits menu** (§2.5): onefits has been removed and its code is gone, so
+  the entry can be closed.
+- **The GUI** (§1.1): built as the dashboard. Only the Plot tab remains, so the entry
+  needs updating.
+- **`1e4`** (§3.3): a permanent limit of the model-file format, which now reports an
+  error.
+
+---
+
 ## 1. Large features deferred whole
 
 ### 1.1 The GUI (Stage 6.2, and 6.6 with it)
