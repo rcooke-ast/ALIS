@@ -176,3 +176,183 @@ refused; S23 comes off the "After v1" list at the close. No further query was ne
 
   ALIS outside `alis/dashboard/` is unchanged, so the regression harness was not
   run.
+
+### 2026-10-31 (Prompt 2: RJC's list reviewed, Tasks 7.2–7.15, queries Q7.6–Q7.13)
+
+**Reading.**
+- Items 2–14 of the list, and the prompt.
+- The decisions D13–D24, D35–D38 and D52–D77.
+- The "After v1" list of `dashboard_stage0.md`.
+- `context/fitting_examples/Temperature/` (`context.md`, and the J013301m400628 and
+  J101155p294141 models).
+- The code behind each item:
+  - `components.py` (`exclusion`, `include`, `is_excluded`, `drag`, `draggable`,
+    `bounds`, `temperature`);
+  - `project.py` (`Component`, `_components`, `_attach_ratios`, `_attach_excluded`,
+    `_untied_notices`, `tie_component`, `Row`);
+  - `qt/components.py` (the card, `_toggle_ion`);
+  - `qt/dialogs.py` (`SpectrumDialog`);
+  - `qt/window.py` (the start page, the toolbar, `_fit_actions`, the two `.mod`
+    actions);
+  - `preferences.Recent`;
+  - `qt/fit.py` (the View pane, `_draw_panel`) and `qt/plots.py`'s
+    `set_normalised`;
+  - `datasets.py` (shift and zero level), `snips.row_shift`, `edit.set_limits` and
+    `add_zero_level`;
+  - in ALIS, voigt.py's limits, and the shift and zero level in `load.py` and
+    `model_eval.py`.
+
+**Facts that shaped the tasks.** Each bug was reproduced first, with scripts in the
+session's scratchpad.
+- **Items 5 and 6.** The test model was J101155p294141's absorption lines, with
+  J013301m400628's snips (its own are not in `context/`). Each component is one H I
+  line with an unlabelled redshift, and D I comes from the ratio line.
+  - The card lists D I under "Excluded", since `comp.lines_of("2H_I")` is empty.
+  - `exclusion` raises the error RJC quoted for both ions. The project lists no
+    notice but "inferred", because `_untied_notices` needs two lines.
+  - `_toggle_ion` calls `exclusion` outside `_act`, hence the traceback.
+- **Item 2** (J013301m400628). Excluding H I from a1 comments out its line and, with
+  a note, the link `nda(nha,FIXDH) = nha + FIXDH`. D I's log N is then free, and
+  excluding D I is `last`, which offers only removal.
+- **Item 12.** b_turb = 0 fixed, with T free, makes ALIS stop: "A parameter that = 0.0
+  is not within the specified limits" (voigt.py's lower limit is 0.5 km/s). With
+  `lim param BFIX [0.0,None]` the fit runs, with b_turb kept at 0.
+- **Item 11.** `temperature_mode` is "thermal" only for b_turb fixed at exactly 0, so
+  RJC's `0.5BFIX` reads as "free". `drag` then moves b_turb, which `_check_drag`
+  allows because it refuses only linked parameters.
+- **Item 14.** A synthetic saturated Lyα (log N 15.5, b 20 km/s, 800 pixels, σ = 0.01)
+  with a zero level of 0.05, fitted by `run_alis` from `constant 0.0` in the
+  `zerolevel` section, gave 0.0536 ± 0.0029. ALIS's own zero level works, so the
+  fault, if any, is in the dashboard's path or in how it was used (Q7.11).
+- **Item 8.** Off-screen, after J013301m400628.dat is chosen, the dialog grows from
+  233 to 349 px. The table (y 95–265) and the hint (y 241–286) overlap, as RJC saw.
+- **Items 3, 7, 9, 10 and 13.**
+  - The two `.mod` items differ only by whether the open project has a source
+    spectrum.
+  - `Recent` has `remove` but no `clear`, and the start page has no buttons for
+    either.
+  - The shift and the zero level are per row (D14): `snips.row_shift`, and one
+    `constant` per row, with ALIS allowing one zero level per specid.
+  - `SpectrumView.set_normalised(None)` already draws data as they are.
+  - `fit.run` is a shared action, so the toolbar can carry it.
+
+**The document.**
+- The Design section gains "7.2–7.14": what was found, and what stays as it is.
+- Tasks 7.2–7.14 are written in the order: exclusions, b_turb and T, the zero level,
+  the smaller fixes and changes, the new features, the documentation's design. Each
+  names its item, with its check.
+- 7.N became 7.15, with the checks that close the stage.
+- Q7.6–Q7.13 ask about the decisions, and the tasks follow their leans:
+  - Q7.6: a component excluded from every ion;
+  - Q7.7: what a card shows for a ratio;
+  - Q7.8: the label written by an exclusion;
+  - Q7.9: one item to open a `.mod`;
+  - Q7.10: pure thermal's limit, what counts as pure thermal, and what a drag moves;
+  - Q7.11: RJC's steps for the zero level;
+  - Q7.12: a snip's own shift and zero level;
+  - Q7.13: where the documentation's design document goes.
+- `build-docs` was added to the skills, and the Temperature examples to the context.
+
+No code was changed, so no batch was run. Task 7.2 waits for RJC's responses.
+
+### 2026-10-31 (Prompt 3: RJC's responses to Q7.6–Q7.13, the tasks revised, Q7.14–Q7.15)
+
+**Reading.**
+- RJC's responses to Q7.6–Q7.13. All accept the leans, and add:
+  - Q7.6: an excluded component's labels must not be used by another component;
+  - Q7.8: the label written must be unique;
+  - Q7.9: with no source spectrum, ask first whether to load it, and recommend it;
+  - Q7.10: check that ALIS still runs, with no side effects;
+  - Q7.11: the zero level was typed in the `.mod` panel; the project is
+    `context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model`
+    (the response's path leaves out `fitting_examples/`);
+  - Q7.12: a loaded `.mod`'s snips must allow their own shift and zero level.
+- RJC's project: its model, its runs and `runs/last_error.json`, and its
+  `ui/project.json`.
+- The code: `preflight._limits`; `edit.used_labels`, `label_uses`, `rename_label`,
+  `fix`, `untie` and `set_limits`; `edit.zero_level_line` and `Project`'s reading of a
+  row's zero level; `results.at_limit` and the results' rows; `constant.py`'s and
+  voigt.py's limits; `model_eval`'s zero level; `load.load_par_influence`.
+
+**Facts that changed the tasks.** Scripts in the session's scratchpad.
+- **Item 14.** The last run of RJC's project left its four zero levels at exactly 0,
+  with zero variance, though every fit region has dark pixels. `run_alis` outside the
+  dashboard gives the same, so the cause is in ALIS. Cut down to Lyα alone, it
+  persists with `fitrange=all`, with no continuum column, and from a start of 0.01,
+  which ends at 0. A legendre continuum in the synthetic test still fits.
+  - The cause: `constant`'s value has `_limited = [1, 0]`, `_limits = [0.0, 0.0]`, a
+    lower limit of 0 that a zero level inherits. The troughs lie below zero.
+  - With `lim param zla [None,None]`, Lyα's zero level is −0.01357737 ± 0.00088546,
+    and χ² falls from 918.8 to 695.5.
+  - The results table did flag each zero level "at limit (0)", shown in the collapsed
+    Instrument group. The pre-flight check's note says "value on line 16 starts at one
+    of its limits."
+- **Per-snip zero levels.** `Project` reads RJC's row as having no zero level, since
+  `zero_level_line` wants a `constant` covering all four snips.
+  `zero_level_step(…, True)` is accepted, and adds a fifth `constant`. ALIS stops on
+  that ("You can only specify the zero-level once for each specid",
+  `model_eval.py`).
+- **Item 12.** Prompt 2's log said the pre-flight check refuses pure thermal; it does
+  not. The dashboard's own pure-thermal step writes `0.000BA1`. The pre-flight check
+  finds no refusal, since `_limits` skips fixed parameters, and `run_alis` stops ("A
+  parameter that = 0.0 is not within the specified limits").
+  - With `lim param BA1 [0.0,None]`, the fit runs: T = 22,851 K, with b_turb at 0.
+  - With T also at 0, ALIS stops: "Voigt Total Doppler parameter is zero" (voigt.py,
+    T's lower limit 0 K). This is RJC's saved last error.
+  - The pre-flight check and the validator accept `lim param <label> [0.0,None]` and
+    `lim voigt bturb [0.0,None]`, on RJC's model and on synthetic ones. What rejected
+    RJC's limit is not certain; the saved error is the likeliest.
+- **Labels.** `used_labels` already includes commented-out lines' labels, so new
+  components and Q7.8's label are unique. The four checks of a typed label use
+  `ParsedModel.label_uses`, which sees only live lines. `edit.label_uses`, used by a
+  rename, does not touch commented-out lines either.
+
+**The document.**
+- The Design's "What was found" corrects item 12 and replaces item 14, and adds the
+  per-snip zero levels and the labels of excluded lines. "What stays as it is" allows
+  ALIS's zero-level limit to change (Q7.14).
+- The tasks are revised:
+  - 7.2 writes a new label;
+  - 7.4 keeps an excluded component's labels its own;
+  - 7.5 adds T's floor (Q7.15) and the pre-flight check's refusal of a fixed value
+    outside its limits, with a run through the Fit tab as its side-effect check;
+  - 7.6 adds RJC's project;
+  - 7.7 is rewritten: the zero level's lower limit, in ALIS (Q7.14), and the
+    dashboard's names and flags;
+  - 7.9 asks first, recommending the spectrum;
+  - 7.13 reads a snip's own shift and zero level from any model;
+  - 7.15 records Q7.1–Q7.15, and runs the regression harness for 7.7.
+- Q7.14 (where the zero level's limit is lifted) and Q7.15 (pure thermal and a total b
+  of 0) are new, with leans. The Context names RJC's project.
+
+No code was changed, so no batch was run. Tasks 7.2–7.4 can start now. Tasks 7.5 and
+7.7 follow the leans of Q7.15 and Q7.14 unless RJC responds otherwise.
+
+### 2026-10-31 (Prompt 4: RJC's responses to Q7.14–Q7.15; the tasks are ready)
+
+**Reading.** RJC agreed to both leans: (a) for Q7.14, so ALIS lets a zero level go
+below 0, and (a) for Q7.15, so pure thermal gives T a floor of 1 K. Nothing else in the
+document had changed. Q7.15's response, written on the same line as the lean, was put
+on a **Response:** line of its own, with RJC's words unchanged.
+
+**What was checked before saying the tasks are ready.**
+- **Where Task 7.7 changes ALIS.** `load.py` gives a line its function's limits twice:
+  `call_function_load` when the line is read, and then the pass that applies
+  `lim <function> <parameter>` commands. That pass calls `adjust_lim` for every line
+  whose limits differ from its function's, so a limit dropped only at load would be
+  put back. The task now names both places. Prompt 3's run with
+  `lim param zla [None,None]` showed that a `lim param` on a zero level's label
+  applies after both.
+- **Which functions.** Many functions have a lower limit of their own: `linear`'s
+  intercept, `powerlaw`'s amplitude, `gaussian`'s amplitude and width, and others.
+  Only `constant` changes, as Q7.14 agreed. A `linear` zero level's intercept keeps its
+  limit of 0; that is left for RJC to raise if a sloped zero level is wanted.
+
+**The document.**
+- The notes on the Design, the Tasks and Q7.14–Q7.15 now record the responses.
+- Task 7.5: an existing `lim param` of T's label has its lower bound raised to 1 K.
+- Task 7.7: the place in `load.py`, that only `constant` changes, and a check that a
+  `lim param` on a zero level still holds.
+- No other task changed. Tasks 7.2–7.15 are ready to execute in order.
+
+No code was changed, so no batch was run.
