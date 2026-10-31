@@ -42,6 +42,12 @@ Traceback (most recent call last):
     )
 ```
 when clicking the "Exclude" button. I _think_ this happens when there is no letter suffix on the redshift number (e.g. `z=0.123` instead of `z=0.123a`).
+7. **(change)** When opening alis on the command line without any other input, the landing page contains a list of recent projects. It would be good to have the ability to clear all recent projects from this list, and also to clear individual projects from the list.
+8. **(bug)** On the "Add a spectrum (ascii)" screen. Before selecting a file, everything looks fine. After selecting a file, the column information appears and the text near the bottom that says "Wavelength, flux and error are needed. Continuum..." is blended with the column information.
+9. **(new)** Each snip can have a shift parameter. It would be good to include this functionality in the dashboard on the "Regions" tab.
+10. **(new)** One the `Fit` tab, there is an `Inspect` subtab with a `View` panel. The view panel always displays the data and model with the continuum normalised. It would be good if there was a way to toggle between showing the continuum normalised or the actual model continuum.
+11. **(bug)** On the components tab, the user can drag the mouse so that the logN and bturb values can be adjusted interactively. However, if bturb is a fixed component (i.e. a thermal fit), then dragging the component values in the "Panels" view should adjust the temperature and not the turbulent Doppler parameter. However, if the temperature is fixed, then dragging the component values in the "Panels" view should adjust the turbulent Doppler parameter and not the temperature. If this is a turbulent+thermal component (i.e. both are free), then dragging the component values in the "Panels" view should adjust only the turbulent Doppler parameter. At the moment, all dragging only affects the turbulent Doppler parameter.
+12. **(change)** When a component's temperature is set to "pure thermal", the dashboard currently sets the bturb value to 0.0, but the limits don't currently allow this. The limits should automatically be adjusted to allow the bturb value to be set to 0.0 when the component is set to "pure thermal".
 
 ## Design
 
