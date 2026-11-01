@@ -29,6 +29,7 @@ from dashboard_qt_helpers import (
     BLIND,
     J1358,
     METAL,
+    ROOT,
     SPECTRUM,
     design_references,
     make_window,
@@ -126,9 +127,9 @@ def test_j1358s_results_as_in_the_mockup(window, qtbot):
     titles = [r[0] for r in rows if len(r) == 1]
     assert titles == [
         "▾ Primary system, z = 3.0672596 · 2 components",
-        "▸ Lyα forest (57 lines) · 8 flagged rows shown",
+        "▸ Lyα forest (57 lines) · 8 flagged of 168 rows shown",
         "▸ Continua (12 legendre) · 54 rows",
-        "▸ Instrument · 1 row",
+        "▾ Instrument",
     ]
     cells = {r[0]: r for r in rows if len(r) > 1}
     assert cells["H I a2 z"][1:] == ["3.0672580", "± 0.0000011", "−0.12", "⛓ ra", ""]
@@ -166,6 +167,38 @@ def test_j1358s_results_as_in_the_mockup(window, qtbot):
     assert "D I a2 b\t8.03\t0.08\tfree\tnot tied to H I" in text.splitlines()
     assert QtWidgets.QApplication.clipboard().text() == text
     assert not design_references(ui_strings(window))
+
+
+J1939 = ROOT / (
+    "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
+)
+
+
+def test_every_shift_and_zero_level_is_shown(window, qtbot, tmp_path):
+    # RJC's J193957m100241: the Instrument group, once closed, showed only the two
+    # flagged shifts, and none of the four zero levels
+    if not J1939.exists():
+        pytest.skip("project not present: " + J1939.name)
+    import shutil
+
+    path = tmp_path / "J1939.model"
+    shutil.copy(J1939, path)
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    results = show_results(window, qtbot)
+    rows = results.shown_rows()
+    titles = [r[0] for r in rows if len(r) == 1]
+    assert titles[-1] == "▾ Instrument"
+    names = [r[0] for r in rows[rows.index(["▾ Instrument"]) + 1 :]]
+    assert [n.split(" · ")[0] for n in names] == ["FWHM"] + ["Shift"] * 3 + [
+        "Zero level"
+    ] * 4
+    assert names[1] == "Shift · J193957m100241, Lyb"
+    # Closed, it says how many rows it hides
+    (instrument,) = [g for g in results.groups if g.kind == RS.INSTRUMENT]
+    results.toggle_group(instrument)
+    titles = [r[0] for r in results.shown_rows() if len(r) == 1]
+    assert titles[-1] == "▸ Instrument · 2 flagged of 8 rows shown"
 
 
 def test_a_row_shows_its_lines(window, qtbot):

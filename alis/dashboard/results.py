@@ -871,10 +871,16 @@ class View:
         for item in pm.data:
             for par in item.params:
                 what = "FWHM" if par.role == "resolution" else "Shift"
+                # Named, as a zero level is, by the snips that share it
+                sids = [
+                    d.specid
+                    for d in pm.data
+                    if any(p.index == par.index for p in d.params)
+                ]
                 add(
                     rows,
                     par,
-                    "{0} {1}".format(what, item.specid),
+                    "{0} · {1}".format(what, model.specids_name(sids or [item.specid])),
                     par.role,
                     prefs,
                     INSTRUMENT,
@@ -886,8 +892,10 @@ class View:
                     add(
                         rows, par, "Zero level · " + who, "zerolevel", prefs, INSTRUMENT
                     )
+        # Open: the shifts and zero levels are fitted values, which a closed group
+        # would hide unless flagged
         if rows:
-            groups.append(Group(INSTRUMENT, "Instrument", rows, INSTRUMENT, True, 0))
+            groups.append(Group(INSTRUMENT, "Instrument", rows, INSTRUMENT, False, 0))
         rows = []
         for line in model.others:
             if line in conts or line.section == "zerolevel":

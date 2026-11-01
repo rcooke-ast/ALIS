@@ -266,6 +266,9 @@ def test_no_hidden_value_leaves_the_process(home, tmp_path, registry, global_bli
 J1939 = ROOT / (
     "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
 )
+# χ² of J193957m100241's run with its zero levels pinned at 0 (run 2, before Task
+# 7.7). Its latest run is RJC's since, so it is not the one to beat
+J1939_PINNED_CHI2 = 3659.367
 
 
 def zero_rows(project):
@@ -318,14 +321,13 @@ def test_rjc_j1939_zero_levels_leave_0(home, tmp_path, registry):
     path = tmp_path / "J1939.model"
     shutil.copy(J1939, path)
     session = S.Session.open(str(path), registry=registry)
-    before = R.latest(session.project.bundle).chi2
     job = run(session)
     assert job.status == R.COMPLETED, job.message
     assert job.take(session)
     _, rows = zero_rows(session.project)
     assert len(rows) == 4
     assert all(float(r.value) != 0.0 and r.flags == [] for r in rows.values())
-    assert R.latest(session.project.bundle).chi2 < before
+    assert R.latest(session.project.bundle).chi2 < J1939_PINNED_CHI2
 
 
 # -- A snip's own shift (Stage 7, Task 7.13; Q7.12) ---------------------------------

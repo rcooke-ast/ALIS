@@ -479,12 +479,14 @@ class ResultsTab(W.Tab):
             )
         if not is_open:
             flagged = len(group.flagged)
+            rows = len(group.rows)
             if flagged:
-                title += " · {0} flagged row{1} shown".format(
-                    flagged, "" if flagged == 1 else "s"
+                # Says how many rows are hidden, so that a closed group is not read as
+                # all there is
+                title += " · {0} flagged of {1} row{2} shown".format(
+                    flagged, rows, "" if rows == 1 else "s"
                 )
             else:
-                rows = len(group.rows)
                 title += " · {0} row{1}".format(rows, "" if rows == 1 else "s")
         return title
 

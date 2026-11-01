@@ -314,6 +314,55 @@ def test_j1358_table_as_in_the_mockup(j1358):
     assert len(indices) == len(set(indices))
     forest = groups[1]
     assert forest.collapsed and forest.flagged
+    instrument = groups[3]
+    assert not instrument.collapsed
+    assert [r.name for r in instrument.rows] == ["FWHM · " + j1358.rows[0].name]
+
+
+J1939 = ROOT / (
+    "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
+)
+
+
+def test_every_shift_and_zero_level_is_shown_by_its_snip(registry, tmp_path):
+    # RJC's J193957m100241 after a run: three snips with their own shift and four
+    # with their own zero level. Only two shifts are flagged, so a collapsed
+    # Instrument group showed those two and no zero level
+    if not J1939.exists():
+        pytest.skip("project not present: " + J1939.name)
+    import shutil
+
+    path = tmp_path / "J1939.model"
+    shutil.copy(J1939, path)
+    project = P.Project.open(str(path), registry=registry)
+    groups = RS.View(project, record=R.latest(project.bundle)).table()
+    (instrument,) = [g for g in groups if g.kind == RS.INSTRUMENT]
+    assert not instrument.collapsed
+    row = project.rows[0].name
+    snips = ["Lya", "Lyb", "Lyg", "Lylim"]
+    assert [r.name for r in instrument.rows] == (
+        ["FWHM · " + row]
+        + ["Shift · {0}, {1}".format(row, s) for s in snips[1:]]
+        + ["Zero level · {0}, {1}".format(row, s) for s in snips]
+    )
+    assert len(instrument.flagged) == 2
+
+
+def test_what_a_set_of_specids_is_named(registry, tmp_path):
+    # A shift, FWHM or zero level is named by what it covers: whole datasets, or a
+    # dataset's snips by their labels
+    from dashboard_synthetic import write_shifted_fit
+
+    mod = write_shifted_fit(tmp_path / "shifted", shift=3.0)
+    project = P.Project.import_model(str(mod), registry=registry)
+    first, second = project.rows
+    assert (first.name, second.name) == ("A", "B")
+    assert project.specids_name(second.specids) == "B"
+    assert project.specids_name(second.specids[1:]) == "B, B"
+    assert project.specids_name(first.specids + second.specids) == "A; B"
+    assert project.specids_name(first.specids + second.specids[:1]) == "A; B, B"
+    assert project.specids_name(["nowhere"]) == "specid nowhere"
+    assert project.specids_name([]) == "every snip"
 
 
 def test_the_lya_forest_b_rows_are_unconstrained_not_at_limit(j1358):
