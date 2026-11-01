@@ -779,10 +779,11 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
   `<project>_<ion>_<rest, 2 places>_zabs<z, 4 places>_fit.dat` (`_2` for a second),
   with the columns chosen and in their order (Wavelength, Flux, Error, Fit range as
   1/0, Zero level (0, ALIS's default, where the model has none), Continuum and
-  Best-fit model by default; Starting model, Velocity (from a component chosen in
-  the dialog, its best fit with a run, for the transition the snip was cut for, on
-  the corrected wavelength) and Corrected wavelength (the snip's shift taken out,
-  for any of ALIS's shift functions; RJC's Prompt 8), Normalised flux, error and
+  Best-fit model by default; Velocity (under Wavelength: from a component chosen
+  in the dialog, its best fit with a run, for the transition the snip was cut for,
+  on the wavelength), Starting model, Corrected wavelength (the snip's shift taken
+  out, for any of ALIS's shift functions) and Corrected velocity (as Velocity, on
+  the corrected wavelength; RJC's Prompts 8 and 9), Normalised flux, error and
   best-fit
   model, and Residual on request, the normalised ones as (x − zero level) /
   (continuum − zero level) and error / (continuum − zero level), RJC's Prompt 7)

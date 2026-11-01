@@ -9,8 +9,9 @@ File ▸ Export… writes, to a folder of the user's choice, any of:
   snip's transitions and where the fit came from. Wavelength, Flux, Error, Fit range
   (1 for a fitted pixel, 0 otherwise), Zero level (0, ALIS's default, for a snip
   with none in the model; RJC's review), Continuum and Best-fit model by default;
-  Starting model, Velocity (from a component chosen) and Corrected wavelength (the
-  snip's shift taken out; RJC's Prompt 8), Normalised flux, error and best-fit model
+  Velocity (from a component chosen, on the wavelength), Starting model, Corrected
+  wavelength (the snip's shift taken out) and Corrected velocity (on it; RJC's
+  Prompts 8 and 9), Normalised flux, error and best-fit model
   (the zero level taken away, over the continuum less the zero level; RJC's Prompt
   7), and Residual on request;
 - **the starting model**, the ``.mod`` as it stands;
@@ -95,6 +96,14 @@ NORMALISED = (
 
 COLUMNS = (
     Column("wave", "Wavelength", True, "wave"),
+    Column(
+        "velocity",
+        "Velocity",
+        False,
+        "velocity",
+        "km/s from the chosen component's redshift, for the transition the snip was"
+        " cut for, on the wavelength",
+    ),
     Column("flux", "Flux", True, "flux"),
     Column("error", "Error", True, "error"),
     Column("fitrange", "Fit range", True, "fitrange"),
@@ -103,20 +112,19 @@ COLUMNS = (
     Column("model", "Best-fit model", True, "model"),
     Column("start", "Starting model", False, "start_model"),
     Column(
-        "velocity",
-        "Velocity",
-        False,
-        "velocity",
-        "km/s from the chosen component's redshift, for the transition the snip was"
-        " cut for, on the corrected wavelength",
-    ),
-    Column(
         "cwave",
         "Corrected wavelength",
         False,
         "corr_wave",
         "The wavelength with the snip's shift (shift=) taken out, as ALIS shifts the"
         " wavelengths of the model",
+    ),
+    Column(
+        "cvelocity",
+        "Corrected velocity",
+        False,
+        "corr_velocity",
+        "As Velocity, on the corrected wavelength",
     ),
     Column(
         "nflux",
@@ -147,6 +155,8 @@ BY_KEY = {c.key: c for c in COLUMNS}
 # The columns that need a run's best fit
 NEEDS_RUN = ("model", "nmodel", "residual")
 NORMAL_KEYS = ("nflux", "nerror", "nmodel")
+# The velocities, on the wavelength and on the corrected wavelength (RJC's Prompt 9)
+VELOCITIES = {"velocity": "wave", "cvelocity": "cwave"}
 # The columns a model's data line can name, so that it reads the exported files
 FOR_ALIS = ("wave", "flux", "error", "fitrange")
 NO_RUN = "No fit has run yet."
@@ -447,7 +457,7 @@ def tables(project, name, keys, view=None, velocity_of=""):
         except Exception as err:
             raise ExportError(gate.message(str(err))) from None
     zref = None
-    if "velocity" in keys:
+    if any(k in VELOCITIES for k in keys):
         if not velocity_of:
             found = reference_components(project, gate)
             velocity_of = found[0][0] if found else ""
@@ -473,14 +483,17 @@ def tables(project, name, keys, view=None, velocity_of=""):
             notes.append("the run did not fit this snip as it is now")
         trans = cut.get(snip.specid)
         values = _columns(project, snip, view, vector, mine, fit, gate, notes)
-        if "cwave" in values and zref is not None and trans is not None:
-            redshift = values["cwave"] / trans.rest - 1.0
-            values["velocity"] = P.velocity(redshift, zref)
-        elif "velocity" in keys and "cwave" in values:
+        asked = [k for k in VELOCITIES if k in keys]
+        if asked and zref is not None and trans is not None:
+            for key in asked:
+                if VELOCITIES[key] in values:
+                    redshift = values[VELOCITIES[key]] / trans.rest - 1.0
+                    values[key] = P.velocity(redshift, zref)
+        elif asked:
             notes.append(
-                "the velocity, as the transition the snip was cut for is not known"
+                "the velocities, as the transition the snip was cut for is not known"
                 if trans is None
-                else "the velocity, as no component's redshift can be shown"
+                else "the velocities, as no component's redshift can be shown"
             )
         words, cols = [], []
         for key in keys:
@@ -502,15 +515,21 @@ def tables(project, name, keys, view=None, velocity_of=""):
         )
         header += _transitions(project, snip, atom, gate)
         header.append("Continuum and zero level: " + source)
-        if "velocity" in values and "velocity" in keys:
+        written = [k for k in VELOCITIES if k in keys and k in values]
+        if written:
+            on = {
+                "velocity": "Velocity on the wavelength",
+                "cvelocity": "Corrected velocity on the corrected wavelength",
+            }
             header.append(
-                "Velocity: km/s from {0} at z = {1:.6f} ({2}), for {3} {4:.2f}, on the"
-                " corrected wavelength".format(
+                "Velocities: km/s from {0} at z = {1:.6f} ({2}), for {3} {4:.2f}; "
+                "{5}".format(
                     velocity_of,
                     zref,
                     "its best fit" if view is not None else "its starting value",
                     P.ion_name(trans.ion),
                     trans.rest,
+                    ", ".join(on[k] for k in written),
                 )
             )
         if "cwave" in values and "cwave" in keys:
@@ -587,7 +606,7 @@ def _columns(project, snip, view, vector, mine, fit, gate, notes):
         cwave = _shift_wave(model, run_snip.data, pix.wave, vector, hide)
         if cwave is None:
             notes.append(
-                "the corrected wavelength and the velocity, as the shift is hidden"
+                "the corrected wavelength and velocity, as the shift is hidden"
             )
         else:
             out["cwave"] = cwave
@@ -884,6 +903,7 @@ __all__ = [
     "COLUMNS",
     "BY_KEY",
     "NEEDS_RUN",
+    "VELOCITIES",
     "FOR_ALIS",
     "Choice",
     "Column",

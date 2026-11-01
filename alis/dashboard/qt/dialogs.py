@@ -1639,7 +1639,7 @@ class ExportDialog(QtWidgets.QDialog):
                 flags &= ~QtCore.Qt.ItemFlag.ItemIsEnabled
                 item.setToolTip(run_why)
                 ticked = False
-            if column.key == "velocity" and not components:
+            if column.key in X.VELOCITIES and not components:
                 flags &= ~QtCore.Qt.ItemFlag.ItemIsEnabled
                 item.setToolTip("No component's redshift can be shown.")
             item.setFlags(flags)
@@ -1776,7 +1776,9 @@ class ExportDialog(QtWidgets.QDialog):
         snips = self.boxes["snips"].isChecked()
         self.columns.setEnabled(snips)
         self.velocity_of.setEnabled(
-            snips and self.velocity_of.count() > 0 and "velocity" in self.keys()
+            snips
+            and self.velocity_of.count() > 0
+            and any(k in X.VELOCITIES for k in self.keys())
         )
         problem = self.problem()
         self.error.setText(problem)

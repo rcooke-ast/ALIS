@@ -206,8 +206,15 @@ def test_the_export_dialog(window, qtbot, tmp_path):
     dialog.tick("velocity")
     assert dialog.velocity_of.isEnabled() and dialog.choice().velocity_of == "a1"
     dialog.tick("velocity", False)
+    dialog.tick("cvelocity")
+    assert dialog.velocity_of.isEnabled()
+    dialog.tick("cvelocity", False)
+    # Velocity under Wavelength, Corrected velocity under Corrected wavelength
+    order = dialog.order()
+    assert order.index("velocity") == order.index("wave") + 1
+    assert order.index("cvelocity") == order.index("cwave") + 1
     # A column moved up, and one ticked
-    dialog.columns.setCurrentRow(3)
+    dialog.columns.setCurrentRow(dialog.order().index("fitrange"))
     dialog.move(-1)
     dialog.tick("residual")
     assert dialog.keys()[:4] == ["wave", "flux", "fitrange", "error"]

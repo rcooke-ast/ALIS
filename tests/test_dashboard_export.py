@@ -183,13 +183,13 @@ def test_the_velocity_and_the_corrected_wavelength(tmp_path, registry):
     session = imported(mod, tmp_path, registry)
     project = session.project
     assert X.reference_components(project) == [("a1", "a1 · z = 2.5036")]
-    keys = ["wave", "cwave", "velocity"]
+    keys = ["wave", "velocity", "cwave", "cvelocity"]
     tables = {t.index: t for t in X.tables(project, "fit", keys, velocity_of="a1")}
     c = 299792.458
     for snip in project.snips:
         table = tables[snip.data.index]
-        assert table.words == ["wave", "corr_wave", "velocity"]
-        wave, corrected, velocity = table.data.T
+        assert table.words == ["wave", "velocity", "corr_wave", "corr_velocity"]
+        wave, velocity, corrected, cvelocity = table.data.T
         expected = {
             "0": wave,
             "1": wave / (1.0 + 2.0 / c),
@@ -198,11 +198,15 @@ def test_the_velocity_and_the_corrected_wavelength(tmp_path, registry):
         }[snip.specid]
         assert np.allclose(corrected, expected, rtol=1e-12, atol=1e-9)
         rest = L.snip_transitions(project)[snip.specid].rest
-        assert np.allclose(velocity, c * (corrected / (rest * (1 + Z)) - 1.0))
+        # Velocity on the wavelength, Corrected velocity on the corrected one
+        # (RJC's Prompt 9)
+        assert np.allclose(velocity, c * (wave / (rest * (1 + Z)) - 1.0))
+        assert np.allclose(cvelocity, c * (corrected / (rest * (1 + Z)) - 1.0))
         # Each line is at the component's redshift: 0 km/s at its centre
         assert np.min(np.abs(velocity)) < 1.0
     header = " ".join(tables[project.snips[3].data.index].header)
-    assert "Velocity: km/s from a1 at z = 2.503600 (its starting value)" in header
+    assert "Velocities: km/s from a1 at z = 2.503600 (its starting value)" in header
+    assert "Corrected velocity on the corrected wavelength" in header
     assert "the wavelength with its vshift taken out" in header
 
 

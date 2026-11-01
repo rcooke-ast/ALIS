@@ -221,9 +221,10 @@ def main(outdir):
         X.best_fit_reason(window.session.project, view),
         X.reference_components(window.session.project),
     )
-    # The velocity and the corrected wavelength ticked (Prompt 8)
+    # The velocities and the corrected wavelength ticked (Prompts 8, 9)
     dialog.tick("velocity")
     dialog.tick("cwave")
+    dialog.tick("cvelocity")
     dialog.show()
     pump(0.3)
     shoot(dialog, outdir / "export_dialog.png")

@@ -1061,3 +1061,21 @@ The gui batch after Task 7.4: 196 passed (363 s), from 192 after Task 7.1.
 - **The documents.** D88, `ALIS_workflow.md` §4.3, the page's text.- **The batches.** `pytest -m unit`: 2088 passed, 119 skipped. `pytest -m gui`: 211
   passed. The page was republished (version 10).
 
+### 2026-11-01 (Prompt 9: Velocity and Corrected velocity)
+
+- **The request.** Velocity under Wavelength, on the wavelength; a Corrected
+  velocity under Corrected wavelength, as Velocity but on the corrected wavelength.
+- **The change.** `export.py`: `velocity` moved under `wave` and measured on the
+  wavelength; `cvelocity` "Corrected velocity" (`corr_velocity`) under `cwave`, on
+  the corrected wavelength (`VELOCITIES` maps each to its wavelength). One header
+  line, "Velocities: …", names the component, its z, the transition and the
+  velocities written. A hidden shift leaves out the corrected wavelength and
+  velocity only. The dialog's component drop-down is enabled while either velocity
+  is ticked, and both are greyed when no component's redshift can be shown.
+- **The tests.** The velocity test checks both against the wavelength and the
+  corrected wavelength; the dialog test checks the order and the drop-down for
+  Corrected velocity, and moves Fit range by its row. `test_dashboard_export.py`:
+  13 passed; `test_dashboard_qt_blinding.py`: 8 passed.
+- **The documents.** D88, `ALIS_workflow.md` §4.3, the page's text.- **The batches.** `pytest -m unit`: 2088 passed, 119 skipped. `pytest -m gui`: 211
+  passed. The page was republished (version 11).
+
