@@ -201,6 +201,11 @@ def test_the_export_dialog(window, qtbot, tmp_path):
     assert dialog.boxes["best"].toolTip().startswith(X.NO_RUN[:-1])
     assert dialog.order() == [c.key for c in X.COLUMNS]
     assert dialog.keys() == ["wave", "flux", "error", "fitrange", "zero", "continuum"]
+    # The velocity's component (Prompt 8): offered once Velocity is ticked
+    assert dialog.velocity_of.count() == 1 and not dialog.velocity_of.isEnabled()
+    dialog.tick("velocity")
+    assert dialog.velocity_of.isEnabled() and dialog.choice().velocity_of == "a1"
+    dialog.tick("velocity", False)
     # A column moved up, and one ticked
     dialog.columns.setCurrentRow(3)
     dialog.move(-1)

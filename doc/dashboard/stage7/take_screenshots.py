@@ -219,7 +219,11 @@ def main(outdir):
         lambda: None,
         X.run_reason(view),
         X.best_fit_reason(window.session.project, view),
+        X.reference_components(window.session.project),
     )
+    # The velocity and the corrected wavelength ticked (Prompt 8)
+    dialog.tick("velocity")
+    dialog.tick("cwave")
     dialog.show()
     pump(0.3)
     shoot(dialog, outdir / "export_dialog.png")

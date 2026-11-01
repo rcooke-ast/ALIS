@@ -1556,6 +1556,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.choose("folder", "Export to", start),
             run_why,
             model_why,
+            X.reference_components(project, BL.Gate(project)),
             self,
         )
         if not self.run_dialog(dialog):

@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from dashboard_synthetic import write_ratio_fit, write_trough
+from dashboard_synthetic import Z, write_ratio_fit, write_shifted_fit, write_trough
 from test_dashboard_results import _blind_out, store_run
 
 from alis.dashboard import export as X
@@ -135,6 +135,75 @@ def test_a_zero_level_is_written_and_0_where_there_is_none(tmp_path, registry):
     (table,) = X.tables(session.project, "metal", keys)
     assert table.words == words and not table.notes
     assert np.all(table.data[:, 4] == 0.0)
+
+
+def test_the_normalised_columns(tmp_path, registry):
+    # RJC's Prompt 7: the zero level taken away, over the continuum less the zero
+    # level
+    mod = write_trough(tmp_path / "trough", -0.02)
+    old = "constant 0.0 specid=0"
+    mod.write_text(mod.read_text().replace(old, "constant -0.02 specid=0"))
+    session = imported(mod, tmp_path, registry)
+    keys = ["flux", "error", "zero", "continuum", "nflux", "nerror"]
+    (table,) = X.tables(session.project, "trough", keys)
+    flux, error, zero, cont, nflux, nerror = table.data.T
+    assert np.all(zero == -0.02)
+    assert np.allclose(nflux, (flux + 0.02) / (cont + 0.02))
+    assert np.allclose(nerror, error / (cont + 0.02))
+    header = " ".join(table.header)
+    assert "Normalised columns: the zero level is taken away" in header
+    assert "continuum" not in table.words[4:]
+    with pytest.raises(X.ExportError, match="No fit has run yet"):
+        X.tables(session.project, "trough", ["nmodel"])
+    # With a run: the best-fit model, normalised the same way (no zero level here)
+    session = imported(METAL, tmp_path, registry, run=True)
+    view = RS.View.latest(session.project)
+    keys = ["model", "continuum", "nmodel"]
+    (table,) = X.tables(session.project, "metal", keys, view)
+    model, cont, nmodel = table.data.T
+    assert table.words == ["model", "continuum", "norm_model"]
+    assert np.allclose(nmodel, model / cont, equal_nan=True)
+    assert "(best-fit model − zero level)" in " ".join(table.header)
+
+
+def test_the_velocity_and_the_corrected_wavelength(tmp_path, registry):
+    # RJC's Prompt 8: the wavelength with each snip's shift taken out, whichever
+    # shift function it names, and the velocity from a component chosen
+    mod = write_shifted_fit(tmp_path / "fit")
+    shifts = {
+        "specid=1": "shift=polyshift(2.0,1.0)",
+        "specid=2": "shift=Ashift(0.05)",
+        "specid=3": "shift=vshift(3.0)",
+    }
+    lines = []
+    for line in mod.read_text().splitlines():
+        found = [v for k, v in shifts.items() if k + " " in line]
+        lines.append(line + ("  " + found[0] if found else ""))
+    mod.write_text("\n".join(lines) + "\n")
+    session = imported(mod, tmp_path, registry)
+    project = session.project
+    assert X.reference_components(project) == [("a1", "a1 · z = 2.5036")]
+    keys = ["wave", "cwave", "velocity"]
+    tables = {t.index: t for t in X.tables(project, "fit", keys, velocity_of="a1")}
+    c = 299792.458
+    for snip in project.snips:
+        table = tables[snip.data.index]
+        assert table.words == ["wave", "corr_wave", "velocity"]
+        wave, corrected, velocity = table.data.T
+        expected = {
+            "0": wave,
+            "1": wave / (1.0 + 2.0 / c),
+            "2": wave - 0.05,
+            "3": wave / (1.0 + 3.0 / c),
+        }[snip.specid]
+        assert np.allclose(corrected, expected, rtol=1e-12, atol=1e-9)
+        rest = L.snip_transitions(project)[snip.specid].rest
+        assert np.allclose(velocity, c * (corrected / (rest * (1 + Z)) - 1.0))
+        # Each line is at the component's redshift: 0 km/s at its centre
+        assert np.min(np.abs(velocity)) < 1.0
+    header = " ".join(tables[project.snips[3].data.index].header)
+    assert "Velocity: km/s from a1 at z = 2.503600 (its starting value)" in header
+    assert "the wavelength with its vshift taken out" in header
 
 
 def test_the_models_read_the_exported_snips(tmp_path, registry):
@@ -259,7 +328,10 @@ def test_a_hidden_continuum_is_left_out(tmp_path, registry):
     session = imported(mod, tmp_path, registry)
     (table,) = X.tables(session.project, "blind", ["wave", "continuum", "nflux"])
     assert table.words == ["wave"]
-    assert table.notes == ["the continuum, which is hidden"]
+    assert table.notes == [
+        "the continuum, which is hidden",
+        "the normalised columns, which would show a hidden value",
+    ]
     assert "Not written: the continuum, which is hidden" in table.header
 
 

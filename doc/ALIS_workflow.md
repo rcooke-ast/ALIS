@@ -1057,8 +1057,12 @@ sub-tabs: Inspect, Results and Compare.
   one ASCII file each (`<project>_<ion>_<rest wavelength>_zabs<z>_fit.dat`, with a
   `#` header naming the columns; by default wavelength, flux, error, the fit range
   as 1 and 0, the zero level (0 where the model has none), the continuum and the
-  best-fit model), the starting model, the best-fitting model of the run the Fit
-  tab shows, or everything `run_alis` needs. When the snips are written with their wavelength,
+  best-fit model; on request the starting model, the velocity from a component you
+  choose, the wavelength with the snip's shift taken out, the residual, and the
+  flux, error
+  and best-fit model normalised: the zero level taken away, then divided by the
+  continuum less the zero level), the starting model, the best-fitting model of the
+  run the Fit tab shows, or everything `run_alis` needs. When the snips are written with their wavelength,
   flux, error and fit range, the two models read them, so `run_alis` fits either one
   in that folder. Hidden values stay hidden: they are written as `BLIND` (so a
   blinded project's exported models run only once it is unblinded; `run_alis

@@ -1086,3 +1086,18 @@ plain-text warning is gone; no ion in a file name has a mass number (`13C IV` is
 5. Please execute the tasks in order, starting with Task 7.2-7.15. There's no need to pause between tasks, unless you have queries that require my thoughts and responses. If you have queries during development, please pause the development and log the queries and responses in the Queries section.
 
 6. You mentioned what should happen with the command line `run_alis --extract`, This should do the same thing as the dashboard option "Everything run_alis needs". I agree with omitting the zero level and continuum if the user has blinded those values. Please note that the dashboard should still show greyed out characters for the blinded entries, as before, it's only the output .mod files that should show BLIND for blinded parameters.
+
+7. It's OK to continue the current thread until 75% context is reached. There are two options in the "Export..." dialog box, "Normalised flux" and "Normalised error". There actually needs to be three options: (1) "Normalised flux", (2) "Normalised error", and (3) "Normalised best-fit model".
+```
+norm_flux = flux - zero
+norm_model = model - zero
+norm_continuum = continuum - zero
+norm_flux /= norm_continuum
+norm_error /= norm_continuum
+norm_model /= norm_continuum
+```
+Then, we need to save the `norm_flux`, `norm_error`, and `norm_model` variables. These three variables remove the zero level and normalise the continuum. We should make it clear that these three options remove the zero level and normalise the data and model by the continuum. The `norm_continuum` value should not be offered to save.
+
+8. Some final additions to the "Export..." dialog: (1) We should offer to output the velocity, relative to one of the component's redshift. Users should be allowed to select which component they wish to make the velocity relative to. (2) We should offer to output the corrected wavelength as well (if the shift parameter is provided for a snip). The `Corrected wavelength` option should appear just before the `Normalised Flux` option. The corrected wavelength will just be the wavelength, corrected for whatever function is used in the `shift=...` line of each snip. At this stage, we only support the `vshift` model, but eventually, we will also offer the other shifting models, such as `Ashift`, `vshiftscale`, and `polyshift`. If it is easy enough to implement them at this stage, please proceed to implement them, otherwise, we can save this for a future step.
+
+9. Some additions to the "Export..." dialog: (1) The "Velocity" option should appear below the "Wavelength" option. There should also be a "Corrected velocity" below the "Corrected wavelength" option. The "Corrected velocity" option should be the same as "Velocity" option, but is based on the "Corrected wavelength" instead of the "Wavelength".

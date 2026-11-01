@@ -1001,5 +1001,63 @@ The gui batch after Task 7.4: 196 passed (363 s), from 192 after Task 7.1.
   `test_dashboard_qt_blinding.py`: 8 passed. `pytest -m gui` before the change:
   211 passed.
 - **The documents.** D88; CHANGELOG (Changed: `run_alis --extract`);
-  `ALIS_workflow.md` §4.2.
+  `ALIS_workflow.md` §4.2.- **The batches after Prompt 6.** `pytest -m unit`: 2086 passed, 119 skipped.
+  `pytest -m gui`: 211 passed (432 s). The page was republished (version 8); no
+  comment thread is open.
+- **What remains:** RJC's word that the review is complete; the stage then closes.
+
+### 2026-11-01 (Prompt 7: the normalised columns)
+
+- **The request.** Three normalised columns, not two: flux, error and best-fit
+  model, each with the zero level removed and divided by the continuum less the
+  zero level (`norm_flux = (flux − zero)/(continuum − zero)`, `norm_error =
+  error/(continuum − zero)`, `norm_model = (model − zero)/(continuum − zero)`);
+  said clearly; `norm_continuum` not offered.
+- **The change.** `export.py`: `Column` has a `tip`; `nmodel` "Normalised best-fit
+  model" (`norm_model`, needs a run, `NEEDS_RUN`); `_columns` takes the zero level
+  first, then the continuum, and makes the three from them as asked, leaving all
+  three out (with a header note) while the zero level or the continuum is hidden; a
+  snip's header says how the normalised columns are made when one is written
+  (`NORMALISED`). The dialog's items carry the formulas as tooltips, and its note
+  says the normalised columns take the zero level away.
+- **The tests.** `test_the_normalised_columns` (a trough with a zero level of
+  −0.02: flux and error by the formula; no `norm_model` without a run; with a run,
+  metal_line_abs's normalised model); the hidden continuum's notes.
+  `test_dashboard_export.py`: 12 passed; `test_dashboard_qt_blinding.py`: 8 passed.
+- **The documents.** D88, `ALIS_workflow.md` §4.3, the page's text.- **The dialog's height.** With a twelfth column the list overlapped the note
+  under it (the dialog was sized before the note wrapped); the dialog now takes
+  its layout's height for its width.
+- **The batches.** `pytest -m unit`: 2087 passed, 119 skipped. `pytest -m gui`: 211
+  passed. The page was republished (version 9).
+
+### 2026-11-01 (Prompt 8: the velocity and the corrected wavelength)
+
+- **The request.** A Velocity column, relative to a component the user chooses; a
+  Corrected wavelength column (the wavelength with the snip's `shift=` taken out),
+  just before Normalised flux; `vshift` now, the other shift models if easy.
+- **The change.** `export.py`:
+  - `Corrected wavelength` (`corr_wave`): `_shift_wave` calls the data line's own
+    ALIS shift function (`Ashift`, `vshift`, `vshiftscale`, `polyshift`: all have
+    `call_CPU(x, p)`, and the parser keeps every shift parameter with role
+    "shift"), with the shown run's best fit or the starting values; left out (with
+    the velocity) while a shift parameter is hidden. `vshiftscale` and `polyshift`
+    scale about the middle pixel of the array given, here the whole snip file,
+    which can differ slightly from ALIS's when it loads part of it.
+  - `Velocity` (`velocity`): `P.velocity(λ_corr/λ_rest − 1, z_ref)`, for the
+    transition the snip was cut for; `z_ref` the chosen component's best fit with a
+    run (`view.gate.masked` hides it), else its starting value
+    (`C.component_z`). `reference_components` lists the components whose
+    redshift is shown; the first is the default. A header line names the
+    component, its z and the transition; another, the shift taken out.
+  - `Choice.velocity_of`; `tables(..., velocity_of=...)`.
+- **The dialog.** "Velocity relative to", a drop-down of the components, enabled
+  while Velocity is ticked; Velocity greyed when no component's redshift can be
+  shown. The window passes `reference_components`.
+- **The tests.** `test_the_velocity_and_the_corrected_wavelength` (the shifted
+  synthetic fit with polyshift, Ashift and vshift on three snips: each corrected
+  wavelength by its formula, the velocity, 0 km/s at the lines); the dialog test
+  ticks Velocity. `test_dashboard_export.py`: 13 passed;
+  `test_dashboard_qt_blinding.py`: 8 passed.
+- **The documents.** D88, `ALIS_workflow.md` §4.3, the page's text.- **The batches.** `pytest -m unit`: 2088 passed, 119 skipped. `pytest -m gui`: 211
+  passed. The page was republished (version 10).
 
