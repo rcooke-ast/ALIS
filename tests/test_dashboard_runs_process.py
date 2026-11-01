@@ -259,3 +259,98 @@ def test_no_hidden_value_leaves_the_process(home, tmp_path, registry, global_bli
             assert secret not in text
     if global_blind:
         assert any(m.endswith(".mod.out") for m in stored.hidden["files"])
+
+
+# -- A zero level below 0 (Stage 7, Task 7.7; Q7.11, Q7.14) --------------------------
+
+J1939 = ROOT / (
+    "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
+)
+
+
+def zero_rows(project):
+    """The results' zero-level rows, by name."""
+    from alis.dashboard import results as RS
+
+    view = RS.View(project, record=R.latest(project.bundle))
+    rows = [r for g in view.table() for r in g.rows if r.kind == "zerolevel"]
+    return view, {r.name: r for r in rows}
+
+
+@pytest.mark.parametrize("how", ["data tab", "typed"])
+def test_a_zero_level_below_0_is_fitted_from_the_dashboard(
+    home, tmp_path, registry, how
+):
+    from dashboard_synthetic import write_trough
+
+    from alis.dashboard import datasets as DS
+    from alis.dashboard import results as RS
+
+    mod = write_trough(tmp_path / "trough", -0.03, section=(how == "typed"))
+    session = S.Session.open(packed(tmp_path, model=mod), registry=registry)
+    project = session.project
+    if how == "data tab":
+        session.history.do(DS.zero_level_step(project, project.rows[0], True))
+    job = run(session)
+    assert job.status == R.COMPLETED, job.message
+    assert job.take(session)
+    view, rows = zero_rows(project)
+    (name,) = rows
+    row = rows[name]
+    assert name == "Zero level · " + project.rows[0].name
+    assert row.flags == []
+    value, error = float(row.value), float(row.error)
+    assert abs(value + 0.03) < 3.0 * error
+    # Inspect's Final draws it: the model's trough is below zero
+    (curve,) = [c for c in view.curves().values() if c is not None]
+    assert curve.model[curve.fitted].min() < 0.0
+    # Continue from best fit writes it
+    session.history.do(RS.continue_plan(project, view).step)
+    zero = next(ln for ln in project.parsed.lines if ln.section == "zerolevel")
+    assert abs(zero.params[0].start - value) < 1e-6
+
+
+def test_rjc_j1939_zero_levels_leave_0(home, tmp_path, registry):
+    if not J1939.exists():
+        pytest.skip("project not present: " + J1939.name)
+    import shutil
+
+    path = tmp_path / "J1939.model"
+    shutil.copy(J1939, path)
+    session = S.Session.open(str(path), registry=registry)
+    before = R.latest(session.project.bundle).chi2
+    job = run(session)
+    assert job.status == R.COMPLETED, job.message
+    assert job.take(session)
+    _, rows = zero_rows(session.project)
+    assert len(rows) == 4
+    assert all(float(r.value) != 0.0 and r.flags == [] for r in rows.values())
+    assert R.latest(session.project.bundle).chi2 < before
+
+
+# -- A snip's own shift (Stage 7, Task 7.13; Q7.12) ---------------------------------
+
+
+def test_a_snip_s_own_shift_is_fitted_back(home, tmp_path, registry):
+    from dashboard_synthetic import write_shifted_fit
+
+    from alis.dashboard import datasets as DS
+    from alis.dashboard import results as RS
+
+    mod = write_shifted_fit(tmp_path / "shifted", shift=3.0)
+    session = S.Session.open(packed(tmp_path, model=mod), registry=registry)
+    project = session.project
+    assert [r.name for r in project.rows] == ["A", "B"]
+    row = project.rows[1]
+    session.history.do(DS.snip_shift_step(project, row.snips[1], True))
+    row = project.rows[1]
+    own = row.own_shift[row.snips[1].specid]
+    assert own.start == 0.0 and not own.fixed
+    job = run(session)
+    assert job.status == R.COMPLETED, job.message
+    assert job.take(session)
+    view = RS.View(project, record=R.latest(project.bundle))
+    found = [r for g in view.table() for r in g.rows if r.param.line == own.line]
+    (shift,) = [r for r in found if r.kind == "shift"]
+    value, error = float(shift.value), float(shift.error)
+    assert abs(value - 3.0) < 3.0 * error, (value, error)

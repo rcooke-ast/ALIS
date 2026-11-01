@@ -37,15 +37,19 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 
 Version 1 (Stages 1–6) takes a fit from a spectrum to a result without leaving the
 dashboard. What follows, for RJC to order (Q6.13(a)):
-1. **Stage 7:** RJC's list of changes and bug fixes from real use (`dashboard_stage7.md`,
-   a template written at the close of Stage 6).
+1. **Stage 7:** RJC's list of changes and bug fixes from real use (`dashboard_stage7.md`):
+   done (D78–D87).
 2. **The Plot tab** (step 8, D28, D42): the layout, the panels, the preview drawn by the
    plotting script, and the shipped style (`alis_publication.mplstyle`).
 3. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
    (F6), command search (F10), the `link` editor and its templates (S15), the plot
-   preview (S22), attaching a source spectrum to an imported fit (S23), reproducing an
-   imported fit (S28); Orders mode, PypeIt spec1d input and the stacked spectrum.
-4. **Deferred work** (`deferred_work.md` §7): telluric flags, solar abundances in the
+   preview (S22), reproducing an imported fit (S28); Orders mode, PypeIt spec1d input
+   and the stacked spectrum. Attaching a source spectrum to an imported fit (S23) came
+   off at the close of Stage 7: Open a fit (.mod)… does it (D78, Q7.5).
+4. **The documentation** on readthedocs, ALIS's and the dashboard's: Documentation
+   Stages 1–5, planned in `documentation_stage0.md` (D87), once RJC has answered its
+   queries.
+5. **Deferred work** (`deferred_work.md` §7): telluric flags, solar abundances in the
    atomic table, generating data from a model, and how ALIS draws its simulated
    realisations and restarts (§7.6), on which the dashboard's Random restarts…
    follow.
@@ -74,7 +78,7 @@ first builds the logic and the second the interface.
 | F11 Modes as plug-ins | 2 | S20 Continue from best fit | 6 |
 | F12 Tab status markers | 2, 3 | S21 Convergence tools | 6 |
 | F13 Relink moved spectra | 1, 3 | S22 Plot preview (D28) | Later |
-| F14 One launcher | 3 | S23 Attach a source spectrum | Later |
+| F14 One launcher | 3 | S23 Attach a source spectrum | Stage 7 (D78) |
 | S2 Transition coverage | 4 | S24 "Set z here" | 4 |
 | S3 Column roles (D13) | 4 | S25 Dataset panel (D14) | 4 |
 | S5 Line identifications | 4 | S26 Showing shared pixels | 1, 4 |

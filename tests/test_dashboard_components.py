@@ -17,6 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from dashboard_synthetic import write_linked_fit, write_ratio_fit
 
 from alis.dashboard import blinding as BL
 from alis.dashboard import components as C
@@ -409,6 +410,60 @@ def test_a_linked_parameter_cannot_be_dragged(registry):
         C.drag(project, comp, "1H_I", logn=12.0)
 
 
+@pytest.mark.parametrize(
+    "words, moved",
+    [
+        ("0.0BX 10000.0tx", "temperature"),  # pure thermal
+        ("0.5BX 10000.0tx", "temperature"),  # RJC's 0.5BFIX
+        ("8.0bx 10000.0TX", "bturb"),  # T fixed
+        ("8.0bx 10000.0tx", "bturb"),  # both free: T held (D21)
+        ("8.0BX 10000.0TX", None),  # both fixed: nothing
+    ],
+)
+def test_a_drag_across_moves_the_free_one_of_b_turb_and_t(
+    registry, tmp_path, words, moved
+):
+    # Item 11 (Q7.10): the drag moved b_turb, even a fixed one
+    line = "voigt ion=1H_I 14.0 2.50360za1 {0} specid=0".format(words)
+    project = P.Project.import_model(
+        str(write_ratio_fit(tmp_path, [line])), registry=registry
+    )
+    comp = project.components[0]
+    target, why = C.drag_target(comp, "1H_I")
+    assert C.draggable(comp, "1H_I")["b"] == (moved is not None)
+    if moved is None:
+        assert target is None and "both fixed" in why
+        with pytest.raises(C.DragError, match="both fixed"):
+            C.drag(project, comp, "1H_I", b=25.0)
+        # log N still moves
+        ((par, value),) = C.drag(project, comp, "1H_I", logn=14.5)
+        assert par.name == "ColDens" and value == 14.5
+        return
+    ((par, value),) = C.drag(project, comp, "1H_I", b=25.0)
+    assert par.name == moved and target.name == moved and not par.fixed
+    # The profile drawn at the end of the drag has the width dragged to
+    bpar, tpar = comp.main.param("bturb"), comp.main.param("temperature")
+    bturb = value if moved == "bturb" else bpar.start
+    temp = value if moved == "temperature" else tpar.start
+    assert C.total_b(project.registry, "1H_I", bturb, temp) == pytest.approx(
+        25.0, abs=1e-6
+    )
+
+
+def test_a_drag_across_a_linked_b_turb_with_t_fixed_moves_nothing(registry, tmp_path):
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360za1 8.0bx 10000.0TX specid=0",
+        "variable 8.0bv specid=0",
+    ]
+    path = write_ratio_fit(tmp_path, lines, links=["bx(bv) = bv"])
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    (comp,) = project.components
+    target, why = C.drag_target(comp, "1H_I")
+    assert target is None and "computed by a link" in why
+    assert C.drag_target(comp, "2H_I") == (None, "Component a1 has no D I line.")
+
+
 # -- Temperature modes (D21) ----------------------------------------------------------
 
 
@@ -451,6 +506,105 @@ def test_temperature_modes(metal):
     for _ in range(5):
         hist.undo()
     assert state(project) == before
+
+
+def lim_lines(project):
+    return [ln.strip() for ln in project.text.splitlines() if "lim param" in ln]
+
+
+def test_pure_thermal_writes_the_limits_alis_needs(metal):
+    # Item 12 (Q7.10, Q7.15): b_turb may be 0, and T stays above 0 K
+    from alis.dashboard import preflight as PC
+
+    project, hist, _ = with_component(metal)
+    before = state(project)
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    assert errors(project) == []
+    assert lim_lines(project) == [
+        "lim param BA1 [0.0,None]",
+        "lim param ta1 [1.0,None]",
+    ]
+    assert PC.check(project).codes(PC.REFUSE) == []
+    hist.undo()
+    assert state(project) == before
+
+
+@pytest.mark.parametrize("mode", [("free", None), ("preset", 0.0), ("fixed", 8000.0)])
+def test_leaving_pure_thermal_takes_its_limits_out(metal, mode):
+    from alis.dashboard import preflight as PC
+
+    project, hist, _ = with_component(metal)
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    thermal = state(project)
+    hist.do(C.temperature(project, project.components[0], *mode))
+    assert errors(project) == [] and lim_lines(project) == []
+    comp = project.components[0]
+    # b_turb, free again, keeps voigt's own limit of 0.5 km/s
+    assert comp.main.param("bturb").start >= 0.5
+    assert PC.check(project).codes(PC.REFUSE) == []
+    hist.undo()
+    assert state(project) == thermal
+
+
+def test_a_limit_the_user_wrote_stays(metal):
+    project, hist, _ = with_component(metal)
+    pm = project.parsed
+    temp = project.components[0].main.param("temperature")
+    hist.do(project.step(E.set_limits(pm, temp, 100.0, 1.0e5)))
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    # T's limit is above 1 K already: it is left as it is
+    assert sorted(lim_lines(project)) == [
+        "lim param BA1 [0.0,None]",
+        "lim param ta1 [100.0,100000.0]",
+    ]
+    hist.do(C.temperature(project, project.components[0], "free"))
+    assert lim_lines(project) == ["lim param ta1 [100.0,100000.0]"]
+
+
+def test_a_b_turb_tied_across_components_gets_one_limit(metal):
+    project, hist, _ = with_component(metal)
+    step, _ = C.new_component(project, project.systems[0], 20.0 / C_KMS)
+    hist.do(step)
+    hist.do(C.temperature(project, project.component("a2"), "fixed", 8000.0))
+    pm = project.parsed
+    a2 = project.component("a2")
+    hist.do(project.step(E.tie(pm, a2.main.param("bturb"), "ba1")))
+    hist.do(C.temperature(project, project.component("a1"), "thermal"))
+    assert errors(project) == []
+    assert [ln for ln in lim_lines(project) if "BA1" in ln] == [
+        "lim param BA1 [0.0,None]"
+    ]
+
+
+def test_an_unlabelled_component_is_tied_for_pure_thermal(registry, tmp_path):
+    project, hist = ratio_fit(registry, tmp_path)
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    assert errors(project) == []
+    assert lim_lines(project) == [
+        "lim param BA1 [0.0,None]",
+        "lim param ta1 [1.0,None]",
+    ]
+    assert project.components[0].temperature_mode == ("thermal", None)
+
+
+@pytest.mark.parametrize(
+    "words, lims",
+    [("0.5BFIX 10000.0", []), ("0.01BX1 10000.0", ["lim param BX1 [0.01,None]"])],
+)
+def test_a_small_fixed_b_turb_with_t_free_reads_as_pure_thermal(
+    registry, tmp_path, words, lims
+):
+    # RJC's Temperature fits (Q7.10)
+    line = "voigt ion=1H_I 17.0 2.50360za1 {0} specid=0".format(words)
+    path = write_ratio_fit(tmp_path, [line])
+    if lims:
+        text = path.read_text().replace(
+            " emission\n", "".join("  " + ln + "\n" for ln in lims) + " emission\n"
+        )
+        path.write_text(text)
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    assert project.components[0].temperature_mode == ("thermal", None)
 
 
 # -- Excluding and including (Q5.15, Q5.18) -------------------------------------------
@@ -498,17 +652,30 @@ def test_include_brings_the_line_into_line_with_the_component(metal):
     assert si.param("ColDens").value_token.text == "12.9798"
 
 
-def test_the_last_ion_removes_the_component(metal):
+def test_removing_a_component_deletes_its_commented_out_lines(metal):
     project, hist, _ = with_component(metal)
     hist.do(C.exclude(project, project.components[0], "28Si_II"))
     comp = project.components[0]
     assert C.exclusion(project, comp, "16O_I").last
-    with pytest.raises(C.ComponentError, match="last ion"):
-        C.exclude(project, comp, "16O_I")
     # Removing the component (✕) deletes its commented-out line too (Q5.18)
     plan = R.plan_component(project, comp)
     reasons = [e.reason for e in plan.lines]
     assert any("commented out" in r for r in reasons) and len(plan.lines) == 2
+    hist.do(plan.step(project))
+    assert "za1" not in project.text and project.components == []
+
+
+def test_the_last_ion_leaves_the_component_excluded_from_every_ion(metal):
+    # Q7.6 (refining D64): it is no longer removed
+    project, hist, _ = with_component(metal)
+    hist.do(C.exclude(project, project.components[0], "28Si_II"))
+    hist.do(C.exclude(project, project.components[0], "16O_I"))
+    assert errors(project) == []
+    (comp,) = project.components
+    assert comp.everywhere_excluded and sorted(comp.excluded) == ["16O_I", "28Si_II"]
+    # ✕ still removes it, with both commented-out lines
+    plan = R.plan_component(project, comp)
+    assert len(plan.lines) == 2
     hist.do(plan.step(project))
     assert "za1" not in project.text and project.components == []
 
@@ -569,13 +736,297 @@ def test_an_ion_never_in_the_component_is_included_with_a_guess(metal):
         C.include(project, project.components[0], "12C_II")
 
 
-def test_exclude_needs_a_redshift_label(registry):
-    project = imported_j1358(registry)
-    loose = [c for c in project.components if not c.label]
-    if not loose:
-        pytest.skip("every component has a redshift label")
-    with pytest.raises(C.ComponentError, match="redshift label"):
-        C.exclusion(project, loose[0], loose[0].ions[0])
+def ratio_fit(registry, folder, lines=None, extra=()):
+    """J101155p294141's shape: unlabelled H I components, D I from a ratio line."""
+    path = write_ratio_fit(folder, lines, extra)
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    return project, H.History(project)
+
+
+def test_a_component_with_no_redshift_label_is_tied_as_it_is_excluded(
+    registry, tmp_path
+):
+    # Item 6 (Q7.8): Exclude raised "do not share a redshift label"
+    project, hist = ratio_fit(registry, tmp_path)
+    before = state(project)
+    a1 = project.components[0]
+    assert a1.label == "" and [ln.ion for ln in a1.lines] == ["1H_I"]
+    plan = C.exclusion(project, a1, "2H_I")
+    assert not plan.last and plan.others == ["a2"]
+    actions = {e.line: (e.action, e.after) for e in plan.entries}
+    h1 = a1.lines[0].line
+    ratio = a1.ratios[0].line
+    # H I gains the new label; the ratio line is commented out with its note
+    assert actions[h1][0] == "edit" and "2.50360za1" in actions[h1][1]
+    assert actions[ratio] == (
+        "comment",
+        "#"
+        + project.text.splitlines()[ratio]
+        + "  "
+        + P.EXCLUDED_NOTE.format("2H_I", "za1"),
+    )
+    hist.do(C.exclude(project, a1, "2H_I"))
+    assert errors(project) == []
+    a1 = project.components[0]
+    assert a1.label == "za1" and C.is_excluded(a1, "2H_I")
+    # Include brings back what was excluded; the label stays
+    step, guess = C.include(project, a1, "2H_I")
+    assert guess is None
+    hist.do(step)
+    assert errors(project) == []
+    assert not C.is_excluded(project.components[0], "2H_I")
+    assert project.text == before[0].replace("2.50360 ", "2.50360za1 ")
+    # One undo of each restores every byte
+    hist.undo()
+    hist.undo()
+    assert state(project) == before
+
+
+def test_the_last_line_of_an_unlabelled_component_is_tied_as_it_is_excluded(
+    registry, tmp_path
+):
+    project, hist = ratio_fit(registry, tmp_path)
+    plan = C.exclusion(project, project.components[0], "1H_I")
+    assert plan.last
+    hist.do(C.exclude(project, project.components[0], "1H_I"))
+    assert errors(project) == []
+    # The label keeps the commented-out line with its component (Task 7.4)
+    a1 = project.component("a1")
+    assert a1.everywhere_excluded and a1.label == "za1"
+
+
+def test_a_component_of_untied_lines_is_tied_and_excluded_in_one_step(
+    registry, tmp_path
+):
+    lines = [
+        "voigt ion=1H_I 17.0 2.50360 10.0 10000.0 specid=0",
+        "voigt ion=2H_I 12.4 2.50360 10.0 10000.0 specid=0",
+    ]
+    project, hist = ratio_fit(registry, tmp_path, lines)
+    before = state(project)
+    (comp,) = project.components
+    assert comp.label == "" and sorted(comp.ions) == ["1H_I", "2H_I"]
+    plan = C.exclusion(project, comp, "2H_I")
+    assert [e.action for e in plan.entries] == ["edit", "comment"]
+    hist.do(C.exclude(project, comp, "2H_I"))
+    assert errors(project) == []
+    (comp,) = project.components
+    assert comp.label == "za1" and comp.ions == ["1H_I"]
+    assert C.is_excluded(comp, "2H_I")
+    hist.undo()
+    assert state(project) == before
+
+
+def test_the_label_written_is_used_nowhere_else(registry, tmp_path):
+    # Q7.8's response: not even on a line commented out
+    old = "#voigt ion=1H_I 12.0 2.51000za1 10.0 10000.0 specid=0"
+    project, hist = ratio_fit(registry, tmp_path, extra=[old])
+    comp = project.components[0]
+    hist.do(C.exclude(project, comp, "2H_I"))
+    assert errors(project) == []
+    assert project.components[0].label == "za2"
+
+
+def test_an_ion_given_by_a_ratio_is_in_the_component(registry, tmp_path):
+    # Item 5 (Q7.7): the cards listed D I as "Excluded"
+    project, _ = ratio_fit(registry, tmp_path)
+    a1, a2 = project.components
+    ratio = a1.ratios[0]
+    assert C.card_ions(a1, ["1H_I", "2H_I", "16O_I"]) == [
+        ("1H_I", C.OWN, a1.lines[0]),
+        ("2H_I", C.RATIO, ratio),
+        ("16O_I", C.EXCLUDED, None),
+    ]
+    assert C.ratio_sharers(project, a1, ratio) == ["a2"]
+    assert C.ratio_sharers(project, a2, ratio) == ["a1"]
+    # A ratio is not dragged
+    assert C.draggable(a1, "2H_I") == {"z": True, "logn": False, "b": False}
+
+
+def test_a_ratio_excluded_is_listed_and_included_from_either_component(
+    registry, tmp_path
+):
+    project, hist = ratio_fit(registry, tmp_path)
+    before = project.text
+    hist.do(C.exclude(project, project.components[0], "2H_I"))
+    a1, a2 = project.components
+    # D I stays among the system's ions, excluded from both components
+    (row,) = C.navigator_ions(project, a1.system)
+    assert row.ions == ["1H_I", "2H_I"]
+    assert C.card_ions(a1, row.ions)[1] == ("2H_I", C.EXCLUDED, None)
+    assert C.card_ions(a2, row.ions)[1] == ("2H_I", C.EXCLUDED, None)
+    assert C.is_excluded(a1, "2H_I")
+    # Included from a2, whose exclusion it was not: the ratio line comes back
+    step, guess = C.include(project, a2, "2H_I")
+    assert guess is None
+    hist.do(step)
+    assert errors(project) == []
+    assert project.text == before.replace("2.50360 ", "2.50360za1 ")
+    assert [ln.ion for ln in project.parsed.function_lines("voigt")].count("2H_I") == 0
+
+
+# -- A component excluded from every ion (item 2 of Stage 7, Q7.6) --------------------
+
+J0133 = ROOT / (
+    "context/fitting_examples/Temperature/J013301m400628/model/J013301m400628.mod"
+)
+
+
+def linked_fit(registry, folder, extra=()):
+    """J013301m400628's shape: D I's log N computed from H I's by a link."""
+    path = write_linked_fit(folder, extra)
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    return project, H.History(project)
+
+
+def exclude_both(project, hist, ident="a1"):
+    """Exclude H I, then D I, from a component: ALIS reads the model after each."""
+    plans = []
+    for ion in ("1H_I", "2H_I"):
+        comp = project.component(ident)
+        plans.append(C.exclusion(project, comp, ion))
+        hist.do(C.exclude(project, comp, ion))
+        assert errors(project) == [], ion
+    return plans
+
+
+def test_a_component_can_be_excluded_from_every_ion(registry, tmp_path):
+    project, hist = linked_fit(registry, tmp_path)
+    plans = exclude_both(project, hist)
+    # Excluding H I frees D I's log N, which the link computed from H I's
+    assert not plans[0].last
+    assert any("D I's log N in a1" in n and "free" in n for n in plans[0].notes)
+    # The last ion: the component stays, excluded from every ion
+    assert plans[1].last
+    assert any("every ion" in n for n in plans[1].notes)
+    a1, a2 = project.components
+    assert (a1.id, a2.id) == ("a1", "a2")
+    assert a1.lines == [] and a1.main is None and a1.everywhere_excluded
+    assert sorted(a1.excluded) == ["1H_I", "2H_I"]
+    assert C.is_excluded(a1, "1H_I") and C.is_excluded(a1, "2H_I")
+    assert a1.z == pytest.approx(2.5036) and a1.label == "ra"
+    assert not a2.everywhere_excluded and len(a2.lines) == 2
+    # The system still has both ions, and the navigator still lists them
+    assert C.system_ions(project, a1.system) == ["1H_I", "2H_I"]
+
+
+@pytest.mark.parametrize("order", [("1H_I", "2H_I"), ("2H_I", "1H_I")])
+def test_including_again_in_either_order_restores_the_text(registry, tmp_path, order):
+    project, hist = linked_fit(registry, tmp_path)
+    before = state(project)
+    exclude_both(project, hist)
+    after_both = state(project)
+    for ion in order:
+        step, guess = C.include(project, project.component("a1"), ion)
+        assert guess is None
+        hist.do(step)
+        assert errors(project) == [], ion
+    assert state(project) == before
+    # Each undo restores every byte
+    hist.undo()
+    hist.undo()
+    assert state(project) == after_both
+    hist.undo()
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_link_stays_out_while_the_line_it_computes_is_excluded(registry, tmp_path):
+    project, hist = linked_fit(registry, tmp_path)
+    exclude_both(project, hist)
+    step, _ = C.include(project, project.component("a1"), "1H_I")
+    hist.do(step)
+    # nda is on D I's line alone, still excluded: the link stays commented out,
+    # with its note moved to D I's exclusion
+    assert project.parsed.links[0].target == "ndb"
+    link = [ln for ln in project.text.splitlines() if "nda(nha,FIXDH)" in ln][0]
+    assert link.lstrip().startswith("#")
+    assert link.endswith(P.EXCLUDED_NOTE.format("2H_I", "ra"))
+    a1 = project.component("a1")
+    assert [ln.ion for ln in a1.lines] == ["1H_I"] and C.is_excluded(a1, "2H_I")
+
+
+def test_a_component_commented_out_by_hand_is_shown_excluded(registry, tmp_path):
+    hand = "#voigt ion=1H_I 13.0 2.50500zq 10.0 10000.0 specid=0"
+    project, hist = ratio_fit(registry, tmp_path, extra=[hand])
+    before = state(project)
+    comps = project.components
+    assert [c.id for c in comps] == ["a1", "a2", "a3"]
+    a3 = comps[2]
+    assert a3.everywhere_excluded and list(a3.excluded) == ["1H_I"]
+    step, guess = C.include(project, a3, "1H_I")
+    assert guess is None
+    hist.do(step)
+    assert errors(project) == []
+    assert project.component("a3").lines_of("1H_I")
+    hist.undo()
+    assert state(project) == before
+    # ✕ removes it, and its commented-out line
+    plan = R.plan_component(project, project.component("a3"))
+    hist.do(plan.step(project))
+    assert "zq" not in project.text and len(project.components) == 2
+
+
+def test_the_labels_of_an_excluded_component_stay_its_own(registry, tmp_path):
+    # Q7.6's response: they are not taken by another component
+    project, hist = linked_fit(registry, tmp_path)
+    exclude_both(project, hist)
+    pm = project.parsed
+    reserved = E.reserved_labels(pm)
+    assert {"ra", "nha", "nda", "doppa", "tempa"} <= reserved
+    assert not set(E.new_component(pm, "a").values()) & reserved
+    a2 = project.component("a2")
+    bturb = a2.main.param("bturb")
+    with pytest.raises(E.ExcludedLabel, match="doppa"):
+        E.rename_label(pm, "doppb", "doppa")
+    with pytest.raises(E.ExcludedLabel):
+        E.untie(pm, bturb, label="doppa")
+    # fix and set_limits check a new label the same way, in either case
+    with pytest.raises(E.ExcludedLabel):
+        E.check_new_label(pm, "NDA")
+    assert C.label_owner(project, "doppa").id == "a1"
+    # Typed by hand in the .mod panel: a warning, and Include is refused
+    num = a2.main.line
+    typed = project.text.splitlines()[num].replace("10.0doppb", "10.0doppa")
+    hist.do(project.step(T.Change((T.replace_line(pm.text, num, typed),), "typed")))
+    warnings = [p.message for p in V.check(project) if p.severity == V.WARNING]
+    assert any("doppa" in w and "redshift label ra" in w for w in warnings)
+    with pytest.raises(C.ComponentError, match="doppa"):
+        C.include(project, project.component("a1"), "1H_I")
+
+
+def test_a_rename_also_renames_the_label_on_the_excluded_lines(registry, tmp_path):
+    project, hist = linked_fit(registry, tmp_path)
+    hist.do(C.exclude(project, project.component("a1"), "1H_I"))
+    pm = project.parsed
+    hist.do(project.step(E.rename_label(pm, "ra", "rz")))
+    assert errors(project) == []
+    assert "ra " not in project.text and " ra" not in project.text
+    a1 = project.component("a1")
+    assert a1.label == "rz" and C.is_excluded(a1, "1H_I")
+    step, _ = C.include(project, a1, "1H_I")
+    hist.do(step)
+    assert errors(project) == []
+    assert sorted(ln.ion for ln in project.component("a1").lines) == ["1H_I", "2H_I"]
+
+
+def test_j0133_a1_excluded_from_both_ions_and_back(registry):
+    if not J0133.exists():
+        pytest.skip("model not present: " + str(J0133.relative_to(ROOT)))
+    project = P.Project.import_model(str(J0133), registry=registry)
+    hist = H.History(project)
+    before = state(project)
+    ids = [c.id for c in project.components]
+    exclude_both(project, hist)
+    assert [c.id for c in project.components] == ids
+    assert project.component("a1").everywhere_excluded
+    for ion in ("1H_I", "2H_I"):
+        step, _ = C.include(project, project.component("a1"), ion)
+        hist.do(step)
+        assert errors(project) == []
+    assert state(project) == before
 
 
 # -- Interlopers (S14) --------------------------------------------------------------

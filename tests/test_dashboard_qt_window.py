@@ -106,6 +106,8 @@ def test_a_bundle_opens_that_project(window, qtbot, tmp_path):
 @pytest.mark.parametrize("model", [J1358, Q1243], ids=["J1358p6522", "Q1243p307"])
 def test_a_mod_is_imported(window, qtbot, model):
     need(model)
+    # `alis fit.mod` asks first, as Open a fit does (Q7.9)
+    window.answers.answers["open_fit"] = "Open without a spectrum"
     window.launch(S.launch_target(str(model)))
     wait_idle(qtbot, window, timeout=30000)
     check_workspace(window, os.path.splitext(model.name)[0] + ".model")
@@ -254,3 +256,119 @@ def test_no_dialog_names_a_design_document(window, qtbot, tmp_path):
             # The shortcut column holds keys (F1), not references
             strings += [c for row in dialog.rows() for n, c in enumerate(row) if n != 2]
         assert design_references(strings) == [], type(dialog).__name__
+
+
+# -- The Add a spectrum dialog (Stage 7, item 8) ----------------------------------
+
+J0133 = SPECTRUM.parents[3] / (
+    "context/fitting_examples/Temperature/J013301m400628/J013301m400628.dat"
+)
+
+
+def table_and_hint(dialog):
+    """The column table's and the hint's rectangles, in the dialog."""
+    hint = next(
+        w
+        for w in dialog.findChildren(QtWidgets.QLabel)
+        if w.text().startswith("Wavelength, flux and error are needed")
+    )
+    from qtpy import QtCore
+
+    def rect(widget):
+        return QtCore.QRect(widget.mapTo(dialog, QtCore.QPoint(0, 0)), widget.size())
+
+    return rect(dialog.columns), rect(hint), dialog.rect()
+
+
+def write_columns(path, ncols):
+    import numpy as np
+
+    wave = np.linspace(4000.0, 4010.0, 50)
+    cols = [wave, np.ones(50), np.full(50, 0.1), np.ones(50), np.zeros(50)]
+    np.savetxt(path, np.column_stack(cols[:ncols]), fmt="%.5f")
+    return str(path)
+
+
+def test_the_column_table_never_runs_under_the_hint(qtbot, tmp_path):
+    # Item 8 of Stage 7: after a file was chosen, the table overlapped the hint
+    from alis.dashboard.qt import dialogs as D
+
+    dialog = D.SpectrumDialog(str(tmp_path))
+    qtbot.addWidget(dialog)
+    dialog.show()
+    qtbot.waitExposed(dialog)
+    files = [write_columns(tmp_path / "three.dat", 3)]
+    files.append(write_columns(tmp_path / "five.dat", 5))
+    if J0133.exists():
+        files.insert(0, str(J0133))
+    for path in files:
+        dialog.set_file(path)
+        qtbot.wait(20)
+        assert dialog.columns.isVisible(), path
+        table, hint, inside = table_and_hint(dialog)
+        assert not table.intersects(hint), path
+        assert inside.contains(table) and inside.contains(hint), path
+        assert dialog.width() >= 640
+    # A file that cannot be read: no table, and the dialog shrinks again
+    tall = dialog.height()
+    bad = tmp_path / "words.dat"
+    bad.write_text("not a table\nof numbers\n")
+    dialog.set_file(str(bad))
+    qtbot.wait(20)
+    assert not dialog.columns.isVisible() and dialog.height() < tall
+    _, hint, inside = table_and_hint(dialog)
+    assert inside.contains(hint)
+    dialog.grab().save(str(tmp_path / "spectrum_dialog.png"))
+
+
+# -- Clearing the recent projects (Stage 7, item 7) ------------------------------------
+
+
+def test_the_recent_projects_are_removed_and_cleared(window, qtbot, home, tmp_path):
+    from qtpy import QtCore, QtTest
+
+    from alis.dashboard import preferences as PR
+
+    paths = []
+    for name in ("a", "b", "c"):
+        path = tmp_path / (name + ".model")
+        B.pack_to(str(METAL), str(path), with_outputs=False)
+        paths.append(path)
+    recent = PR.Recent(str(home))
+    for path in paths:
+        recent.add(str(path))
+    window.show_start()
+    start = window.start
+    listed = [
+        start.recent.item(n).text().split()[0] for n in range(start.recent.count())
+    ]
+    assert listed == ["c.model", "b.model", "a.model"]
+    assert not start.remove_button.isEnabled() and start.clear_button.isEnabled()
+    # Remove from list: the selected one
+    start.recent.setCurrentRow(1)
+    assert start.remove_button.isEnabled()
+    start.remove_button.click()
+    assert PR.Recent(str(home)).paths() == [str(paths[2]), str(paths[0])]
+    # Delete does the same
+    start.recent.setCurrentRow(0)
+    start.recent.setFocus()
+    QtTest.QTest.keyClick(start.recent, QtCore.Qt.Key.Key_Delete)
+    assert PR.Recent(str(home)).paths() == [str(paths[0])]
+    # Clear list asks first: Cancel keeps it
+    start.clear_button.click()
+    assert window.answers.asked[-1][0] == "clear_recent"
+    assert PR.Recent(str(home)).paths() == [str(paths[0])]
+    window.answers.answers["clear_recent"] = "Clear list"
+    start.clear_button.click()
+    assert PR.Recent(str(home)).paths() == []
+    assert start.recent.item(0).text() == "No recent projects."
+    assert not start.remove_button.isEnabled() and not start.clear_button.isEnabled()
+    # No project's file was touched
+    assert all(p.exists() for p in paths)
+    # File ▸ Open recent ends with Clear recent projects…
+    PR.Recent(str(home)).add(str(paths[1]))
+    window._fill_recent()
+    texts = [a.text() for a in window.recent_menu.actions() if a.text()]
+    assert texts[-1] == "Clear recent projects…"
+    window.recent_menu.actions()[-1].trigger()
+    assert PR.Recent(str(home)).paths() == []

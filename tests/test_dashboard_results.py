@@ -343,7 +343,21 @@ def test_a_value_on_its_bound_is_at_limit(metal, registry):
     assert RS.at_limit(oxygen, 6.0, "6.0000000") == 6.0
     # Above the bound by more than the value's precision: not at it
     assert RS.at_limit(oxygen, 6.0000002, "6.0000002") is None
+
     assert RS.at_limit(oxygen, 6.00004, "6.0000E+00") == 6.0
+
+
+def test_a_limit_of_the_function_s_own_is_named(metal, registry):
+    # Q7.14: no line of the model says where voigt's 0.5 km/s comes from
+    text = Path(str(METAL)[:-4] + ".mod.out.reference").read_text()
+    text = text.replace("5.088151da", "0.5000000da")
+    project = P.Project.import_model(str(METAL), registry=registry)
+    store_run(project, METAL, mod_out=text)
+    rows = {r.name: r for g in RS.View.latest(project).table() for r in g.rows}
+    assert rows["O I a1 b"].flags == ["at limit (0.5, voigt's own)"]
+    assert RS.own_limit(project.parsed, voigt(project, "16O_I").param("bturb")) == (
+        "voigt"
+    )
 
 
 def test_unconstrained_thresholds_are_preferences(metal):

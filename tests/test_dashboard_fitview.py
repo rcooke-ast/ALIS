@@ -377,3 +377,10 @@ def test_nothing_shown_names_a_hidden_value(blinded):
     shown += [FV.status_text(job()), FV.notice_text(job())]
     words = set(re.findall(r"\d[\d.]*", " ".join(shown)))
     assert not [b for b in bad if b in words and b not in ("0.0",)]
+
+
+def test_the_panels_are_normalised_unless_the_continuum_is_asked():
+    # Item 10 of Stage 7: Normalised | Continuum, kept in the view state
+    assert FV.scale({}) == FV.NORMALISED and FV.scale(None) == FV.NORMALISED
+    assert FV.scale({"scale": FV.CONTINUUM}) == FV.CONTINUUM
+    assert FV.scale({"scale": "something else"}) == FV.NORMALISED

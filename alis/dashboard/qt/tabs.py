@@ -181,7 +181,11 @@ class FitTab(Tab):
         self.inspect.show_items(items)
 
     def bind_action(self, name, action):
-        """The tab's own actions: ‹ and › on Inspect and on Compare."""
+        """The tab's own actions: ‹ and › on Inspect and on Compare; Normalised on
+        Inspect (item 10 of Stage 7)."""
+        if name == "fit.normalised":
+            self.inspect.bind_normalised(action)
+            return
         self.tab_buttons.append(self.inspect.bind_action(name, action))
         self.compare.bind_action(name, action)
 
@@ -197,6 +201,9 @@ class FitTab(Tab):
 
     def do_next_view(self):
         self._viewing().do_next_view()
+
+    def do_normalised(self):
+        self.inspect.do_normalised()
 
 
 class PlotTab(Tab):

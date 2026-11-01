@@ -95,18 +95,12 @@ ACTIONS = (
     ),
     Action(
         "file.import",
-        "Import a fit (.mod)…",
+        "Open a fit (.mod)…",
         "File",
         "Ctrl+I",
-        "Open an existing fit, a .mod with its snips, as a new project",
-    ),
-    Action(
-        "file.load_mod",
-        "Load a .mod…",
-        "File",
-        "",
-        "Load an earlier fit's .mod into this project: its model, and the snips it"
-        " names, each checked against the project's spectra",
+        "Open an earlier fit, a .mod with its snips: into this project when it has"
+        " the spectra they were cut from, or as a new project, with its spectrum"
+        " (recommended) or without",
     ),
     Action(
         "file.save",
@@ -127,11 +121,11 @@ ACTIONS = (
     ),
     Action(
         "file.export",
-        "Export plain files…",
+        "Export…",
         "File",
         "Ctrl+E",
-        "Write the model, its snips and the latest run's outputs to a folder,"
-        " as files run_alis runs",
+        "Write the snips (the columns you choose), the starting model, the"
+        " best-fitting model, or everything run_alis needs, to a folder",
         toolbar=True,
         section=2,
     ),
@@ -265,6 +259,7 @@ ACTIONS = (
         "Ctrl+R",
         "Fit the model as it stands, unsaved changes included, in the background;"
         " the model on disk changes only with Save",
+        toolbar=True,
     ),
     Action(
         "fit.save_run",
@@ -354,6 +349,16 @@ ACTIONS += (
         PANEL,
         "Ctrl+L",
         "Line up the values of the model in columns (spaces only)",
+    ),
+    # In the panel's right-click menu alone: the File menu's Open a fit (.mod)…
+    # does the same and more (Q7.9)
+    Action(
+        "panel.load_mod",
+        "Load a fit (.mod) into this project…",
+        PANEL,
+        "",
+        "Load an earlier fit's .mod into this project: its model, and the snips it"
+        " names, each checked against the project's spectra",
     ),
 )
 
@@ -592,6 +597,16 @@ ACTIONS += (
         FIT_TAB,
         "]",
         "Show the next entry of the View menu",
+        scope="Fit",
+    ),
+    Action(
+        "fit.normalised",
+        "Normalised",
+        FIT_TAB,
+        "",
+        "Inspect's panels: the data and the model divided by the continuum, or, off,"
+        " as they are, with the continuum drawn",
+        checkable=True,
         scope="Fit",
     ),
 )

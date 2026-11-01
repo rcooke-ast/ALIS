@@ -19,8 +19,8 @@ Dashboard Stage 6.2 (F9, D38; Q6.4, Q6.6(a), Q6.16). No Qt.
 - **Command line only** (Q6.16(b)): ``sim random``, ``sim perturb``, ``sim
   beginfrom``, ``iterate model`` and ``generate data``, which a bundle cannot run.
   They can be written like any other; while one is set, the pre-flight check
-  refuses Run and says how to run the model (File → Export plain files…, then
-  ``run_alis``). Generating data from the dashboard is future work
+  refuses Run and says how to run the model (File → Export…, Everything run_alis
+  needs, then ``run_alis``). Generating data from the dashboard is future work
   (``deferred_work.md`` §7.5).
 - **Left out:** the settings ALIS does not use, and ``run modname``, which ALIS
   sets itself.
@@ -82,7 +82,7 @@ LEFT_OUT = {
     ("iterate", "data"): "ALIS does not use it.",
 }
 EXPORT_ADVICE = (
-    "Export plain files (File → Export plain files…) and run run_alis on them, on"
+    "Export everything run_alis needs (File → Export…) and run run_alis on it, on"
     " this computer or another."
 )
 

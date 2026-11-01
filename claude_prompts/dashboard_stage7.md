@@ -1012,6 +1012,67 @@ My lean: (a).
 
 **Response:** I agree with option (a).
 
+*Q7.16 was raised on 2026-11-01, from RJC's review of the Task 7.15 page (a comment on
+the D I ratio figure). The export is paused until it is answered; the other review
+comments are applied (see the log).*
+
+**Q7.16 — Exporting only what is needed (review).** File ▸ Export plain files… now
+writes everything `run_alis` needs (the model, every snip, the latest run's outputs).
+Your comment asks for a dialog with checkboxes instead: snips, the starting model,
+the best-fitting model. Ticking snips opens a column picker, defaulting to Wavelength,
+Flux, Error, Fit range, Zero level (when the snip has one), Continuum and Best-fit
+model. Each snip goes to its own ASCII file, in a folder you choose. Some details
+need deciding before I build it:
+- **(a) Fit range.** Written as 1 for a fitted pixel and 0 otherwise. This is how
+  ALIS reads a `fitrange` column, so an exported snip can be fitted again as it is.
+  My lean: yes.
+- **(b) File names.** Each file is named after its snip's label (`OI_1302.dat`),
+  with a `#` header line naming the columns. A file that exists already is
+  overwritten only after a question. My lean: yes.
+- **(c) Which best fit.** The best-fit model, continuum and zero level come from the
+  run the Fit tab shows: the latest, or the one chosen in the run history, as Use
+  best fit does. Without a run, the best-fit options are greyed, with the reason.
+  The starting model, and an extra Starting model column, are always available.
+  My lean: yes.
+- **(d) The two models.** The starting model is the `.mod` as it stands. The
+  best-fitting model is ALIS's `.mod.out` of that run. When snips are exported too,
+  both models' data lines point at the exported files, so `run_alis` runs either one
+  in the chosen folder. My lean: yes.
+- **(e) Blinding.** As now, the starting model writes its hidden starting values in
+  plain text, after a warning. The best-fitting model would write hidden best-fit
+  values, so it is greyed while any value is hidden. The snips' Best-fit model column
+  stays, as the panels already draw that curve. My lean: yes.
+- **(f) The other columns.** The picker can also offer, unticked by default:
+  Starting model, Normalised flux and error (divided by the continuum), and
+  Residual ((flux − model)/error). Each column can be ticked and moved up or down.
+  My lean: offer them.
+- **(g) Everything, as now.** A fourth checkbox, "Everything run_alis needs (model,
+  snips, run outputs)", keeps today's export. The menu item becomes Export…, opening
+  the dialog with your three boxes ticked. My lean: yes.
+
+**Response** (on the review page's thread, 2026-11-01): "Yes, the Fit Range should be
+0 and 1. Yes, the files should be named after their snip labels. Something like:
+`ProjectName_Ion_TransitionRestWavelength_zabsBLAH_fit.dat`, where "BLAH" should be a
+4 decimal place redshift value of the system this transition corresponds to. If you
+can suggest something that might be more suitable, please do!"
+
+*Refinements of (b) proposed in reply, which the export follows unless RJC says
+otherwise: the ion without spaces or ALIS's mass prefix (HI, CIV, FeII); the rest
+wavelength to 2 decimals, so that close lines (Si II 1260.42, Fe II 1260.53) do not
+share a name; `_2`, `_3` added when two snips still would; a snip holding several
+transitions named after the one it was cut for, the others in the file's header; the
+project name's spaces and slashes as underscores. For example
+`J101155p294141_HI_1215.67_zabs2.5020_fit.dat`. (c)–(g) follow the leans unless RJC
+says otherwise.*
+
+**Response:** I agree with the proposed suggestions. Please note that blind parameters and blind models must stay hidden in the exported files. For example, blind parameters could be replaced with the word BLIND. Also, just to be clear, note that the output snip naming convention should not include any mass number on the ion. Your example is correct (`J101155p294141_HI_1215.67_zabs2.5020_fit.dat`), but we do not want to  use `1HI` in the file names (for example, we should avoid `J101155p294141_1HI_1215.67_zabs2.5020_fit.dat`).
+
+*Applied (2026-11-01): hidden values are written as `BLIND` in both models and in
+"everything" (with `blindseed`, `blindrange` and the `.mod.out`'s copy of the input
+model), so the best-fitting model is no longer greyed for a blinded project and the
+plain-text warning is gone; no ion in a file name has a mass number (`13C IV` is
+`CIV`); a hidden redshift is `zabsBLIND`. See D88 and the log.*
+
 ## Prompts
 
 1. Please read this document, with my current list of changes and bug fixes, and the work of Stages 0–6 (their documents and logs). I have written Task 1 based on a feature that would be good to include in the ALIS dashboard. Let's implement this first, and then I will draft a more complete list of bugs, improvements, and additions to the dashboard. If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please execute Task 7.1.
@@ -1023,3 +1084,5 @@ My lean: (a).
 4. I have responded to your next round of queries. Please review all of this information, and if anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please update the ordered list of tasks, if needed. I have already written Task 7.1. Please write all the remaining tasks, each with a description of what it builds or fixes, and the check that will verify it. Each task should be written in the same style as Task 7.1, and should be numbered sequentially (7.2, 7.3, etc.). Once everything is clear, please let me know when you're ready to execute the tasks.
 
 5. Please execute the tasks in order, starting with Task 7.2-7.15. There's no need to pause between tasks, unless you have queries that require my thoughts and responses. If you have queries during development, please pause the development and log the queries and responses in the Queries section.
+
+6. You mentioned what should happen with the command line `run_alis --extract`, This should do the same thing as the dashboard option "Everything run_alis needs". I agree with omitting the zero level and continuum if the user has blinded those values. Please note that the dashboard should still show greyed out characters for the blinded entries, as before, it's only the output .mod files that should show BLIND for blinded parameters.

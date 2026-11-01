@@ -721,6 +721,77 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
 - **D77. After v1** (Q6.13): `prepfit` is deprecated (it keeps working, and says so);
   Stage 7 takes RJC's list of changes and bug fixes from real use, each a task with its
   check; then the Plot tab and the items marked later.
+- **D78. An earlier fit's snips and `.mod`** (Stage 7: Q7.1–Q7.5, Q7.9): Load snips…
+  places `prepfit`'s snips after checking them against the source spectrum, replacing
+  overlapping ones after one question. A `.mod` brings its own snips and replaces the
+  project's, its settings as written but `run blind`, and its FWHM (Reset FWHM
+  returns to the dialog's). One File-menu item, Open a fit (.mod)…, loads into a
+  project of its spectrum, after a preview that also offers a new project. With no
+  such project it asks first, recommending a new project with the spectrum, which
+  is written only once the fit is loaded. Loading into the project also stays in the
+  `.mod` panel's menu. S23 is covered by this.
+- **D79. Excluding, refined** (Q7.6, Q7.8, refining D64): excluding a component's last
+  ion keeps it, excluded from every ion, as a greyed card with each ion under
+  Excluded ions, and ✕. A component is also read from commented-out lines whose
+  redshift label no live line carries. Its labels stay its own: no new label takes
+  them, and a rename renames them on its excluded lines. A component with no redshift
+  label is given a new one as it is excluded. A link that computes a line still
+  excluded stays out with it. Every card ends with two lists under faint rules,
+  "Included ions (click to exclude):" and "Excluded ions (click to include):", each
+  ion a link, live while the card is greyed (RJC's review of the stage; they replace
+  the Exclude/Include buttons and the "Excluded:" line of Q5.15, Q5.20).
+- **D80. Ratios on the cards** (Q7.7): an ion given by a ratio line has a row under the
+  ion it is a ratio to (↳ D I · log D I/H I), its value typed and badged, with the
+  other components sharing it named.
+- **D81. Pure thermal and the drag** (Q7.10, Q7.15, refining D21): pure thermal writes
+  `lim param <b_turb> [0.0,None]` and `lim param <T> [1.0,None]`, taken out when the
+  mode changes. A b_turb fixed at 0.5 km/s or less with T free is pure thermal. A drag
+  across moves b_turb when it is free, else T when it is free, else nothing (the
+  status bar says why). The pre-flight check refuses a fixed value outside its limits
+  and a line with b_turb and T both 0.
+- **D82. A zero level of either sign** (Q7.11, Q7.14): in ALIS, a `constant` of the
+  `zerolevel` section has no lower limit; an emission `constant` keeps its 0. The
+  dashboard names a zero level by its dataset, and an at-limit flag says when the
+  limit is a function's own.
+- **D83. A snip's own shift and zero level** (Q7.12, refining D14 and D35): the Snip
+  box gives a snip a shift (a `vshift` with its own label) and a zero level (a
+  `constant` of its specid alone) of its own. Those of a loaded model are read as
+  each snip's own; the dataset's are those of its other snips. The Data tab counts
+  them; regions copied move by each snip's own shift.
+- **D84. Inspect with the continuum** (item 10, refining D72): Normalised | Continuum
+  in the View pane, kept with the project, and Fit ▸ Normalised. The View pane's
+  choices are four drop-downs, Velocity / Wavelength, Initial / Final, Normalised /
+  Continuum and All / Fit Residuals, with no Residuals label (RJC's review of the
+  stage).
+- **D85. The start page and the toolbar** (items 7, 13): Remove from list and Clear
+  list… for the recent projects (the list alone changes); Run on the toolbar after
+  Save. Run, Save and Run and Convergence check… are greyed while the pre-flight
+  check refuses a run, their tooltip its first refusal; it now refuses a project
+  with no snip or no component, a continuum alone (RJC's review of the stage,
+  refining S17).
+- **D86. Refusals as messages** (item 6): a refusal of Exclude, Include or a label is a
+  message, never a traceback.
+- **D87. The documentation** (Q7.13): planned in `documentation_stage0.md` (its
+  queries DQ.1–DQ.7), and written in Documentation Stages 1–5 after the dashboard's
+  v1; added to "After v1".
+- **D88. Export…, only what is needed** (Q7.16, refining D10): File → Export…
+  writes what is ticked to a chosen folder: the snips, one ASCII file each, named
+  `<project>_<ion>_<rest, 2 places>_zabs<z, 4 places>_fit.dat` (`_2` for a second),
+  with the columns chosen and in their order (Wavelength, Flux, Error, Fit range as
+  1/0, Zero level (0, ALIS's default, where the model has none), Continuum and
+  Best-fit model by default) under
+  a `#` header (the ion with no mass number, even for a rarer isotope; `zabsBLIND`
+  while the redshift is hidden); the starting model; the best-fitting model of the
+  run the Fit tab shows (greyed without one); everything `run_alis` needs (D10's
+  export). The models' data lines name the exported snips when they have their
+  wavelength, flux, error and fit range. Hidden values stay hidden (RJC's response,
+  refining D10's plain text): each is written as `BLIND` in the models and in
+  everything, with `blindseed`, `blindrange` and the `.mod.out`'s copy of the input
+  model masked too; a hidden continuum or zero level is left out of a snip's file.
+  A blinded project's exported models run only once it is unblinded. The
+  best-fitting model is written as `<project>_bestfit.mod.out`. `run_alis
+  --extract` writes what Everything run_alis needs writes (RJC's Prompt 6); the
+  dashboard itself keeps its grey masks.
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

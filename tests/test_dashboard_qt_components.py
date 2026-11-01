@@ -23,13 +23,14 @@ from dashboard_qt_helpers import (
     ui_strings,
     wait_idle,
 )
+from dashboard_synthetic import write_linked_fit, write_ratio_fit
 
 pytestmark = pytest.mark.gui
 
 pytest.importorskip("qtpy.QtWidgets")
 pytest.importorskip("pyqtgraph")
 
-from qtpy import QtCore  # noqa: E402
+from qtpy import QtCore, QtWidgets  # noqa: E402
 
 from alis.dashboard import components as C  # noqa: E402
 from alis.dashboard import lines as L  # noqa: E402
@@ -40,9 +41,16 @@ from alis.dashboard import session as S  # noqa: E402
 from alis.dashboard import snips as SN  # noqa: E402
 from alis.dashboard import sources as SR  # noqa: E402
 from alis.dashboard.qt import dialogs as D  # noqa: E402
-from alis.dashboard.qt.components import BADGES  # noqa: E402
+from alis.dashboard.qt.components import (  # noqa: E402
+    BADGES,
+    EXCLUDED_IONS,
+    INCLUDED_IONS,
+)
 
 COLUMNS = {str(SPECTRUM): {"wave": 0, "flux": 1, "error": 2}}
+J1939 = Path(__file__).resolve().parents[1] / (
+    "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
+)
 SUMMED = Path(__file__).resolve().parents[1] / (
     "examples/summed_coldens/model/fit_spectra.mod"
 )
@@ -454,6 +462,49 @@ def test_a_drag_is_one_step(window, qtbot, tmp_path):
     assert comp.lines_of("16O_I")[0].param("ColDens").start == logn0
 
 
+def test_a_drag_across_a_pure_thermal_line_writes_t(window, qtbot, tmp_path):
+    # Item 11 of Stage 7: b_turb fixed at 0.5 (0.5BFIX), T free
+    line = "voigt ion=1H_I 14.0 2.50360za1 0.5BFIX 10000.0ta1 specid=0"
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit", [line]))
+    choose(tab, "H I")
+    view = tab.panel_widgets[0].view
+    drag(view, (10.0, 0.5), (16.0, 0.5), state="move")
+    assert "· T " in tab.panel_widgets[0].readout.text()
+    assert one_step(
+        window, lambda: view.dragged.emit(10.0, 0.5, 16.0, 0.5, "finish")
+    ) == ("Drag component a1")
+    main = window.session.project.components[0].main
+    assert main.param("bturb").start == 0.5 and main.param("bturb").fixed
+    assert main.param("temperature").start > 10000.0
+
+
+def test_rjc_j1939_a_drag_writes_t(window, qtbot, tmp_path):
+    # RJC's project (Q7.11): b_turb fixed at 0.01 (0.01BX1), T free
+    need(J1939)
+    import shutil
+
+    path = tmp_path / "J1939.model"
+    shutil.copy(J1939, path)
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    tab = components(window)
+    choose(tab, "H I")
+    project = window.session.project
+    comp = next(c for c in project.components if c.main.param("bturb").label == "BX1")
+    assert comp.temperature_mode == ("thermal", None)
+    view = next(w.view for w in tab.panel_widgets)
+    vel = comp.velocity
+    t0 = comp.main.param("temperature").start
+    one_step(window, lambda: drag(view, (vel + 5.0, 0.5), (vel + 9.0, 0.5)))
+    comp = next(
+        c
+        for c in window.session.project.components
+        if c.main.param("bturb").label == "BX1"
+    )
+    assert comp.main.param("bturb").start == pytest.approx(0.01)
+    assert comp.main.param("temperature").start != t0
+
+
 def test_n_and_b_hold_one_of_log_n_and_b(window, qtbot, tmp_path):
     from qtpy import QtTest
 
@@ -598,10 +649,13 @@ def test_j1358_cards_as_in_the_mockup(window, qtbot):
     }
     assert set(a1.values) == {"redshift", "bturb", "ColDens:1H_I"}
     assert a2.temp.text() == "0 K · fixed ▾"
-    assert a1.toggle.text() == "Exclude from H I"
-    # a1 is in H I alone: the system's other ions are on one line
-    assert plain(a1.excluded) == "Excluded: D I, O I"
-    assert a2.excluded is None
+    # a1 is in H I alone: the system's other ions are under Excluded ions (RJC's
+    # review of Stage 7)
+    assert plain(a1.included) == "H I" and plain(a1.excluded) == "D I, O I"
+    assert plain(a2.included) == "H I, D I, O I" and plain(a2.excluded) == "none"
+    labels = card_labels(a1)
+    assert INCLUDED_IONS in labels and EXCLUDED_IONS in labels
+    assert not [w for w in a1.findChildren(QtWidgets.QPushButton)]
     # Selecting a card's component highlights its ticks
     a2.on_click()
     assert tab.selected_component().id == "a2"
@@ -611,6 +665,15 @@ def test_j1358_cards_as_in_the_mockup(window, qtbot):
 def plain(label):
     """A rich-text label's words."""
     return re.sub("<[^>]+>", "", label.text()).replace("&nbsp;", " ")
+
+
+def click_ion(card, ion):
+    """A click on an ion in a card's lists: under Included ions it excludes it."""
+    for label in (card.included, card.excluded):
+        if 'href="{0}"'.format(ion) in label.text():
+            label.linkActivated.emit(ion)
+            return
+    raise AssertionError(ion)
 
 
 def one_step(window, act):
@@ -653,12 +716,12 @@ def test_every_badge_menu_and_button_is_one_step(window, qtbot, tmp_path):
     edit = tab.card_widgets["a1"].values["ColDens:16O_I"]
     edit.setText("14.1")
     assert one_step(window, edit.editingFinished.emit) == "Set log N of O I in a1"
-    # Exclude from O I: the card greyed, but its Include button
+    # Exclude from O I: the card greyed, but for its lists of ions
     card = tab.card_widgets["a1"]
-    one_step(window, card.toggle.click)
+    one_step(window, lambda: click_ion(card, "16O_I"))
     card = tab.card_widgets["a1"]
-    assert not card.body.isEnabled() and card.toggle.isEnabled()
-    assert card.toggle.text() == "Include in O I"
+    assert not card.body.isEnabled() and card.excluded.isEnabled()
+    assert plain(card.excluded) == "O I"
     # Its tick faint and dashed; a drag of it does nothing in O I's panels
     view = tab.panel_widgets[0].view
     (excluded,) = [t for t in view.ticks() if t.kind == "excluded"]
@@ -666,7 +729,7 @@ def test_every_badge_menu_and_button_is_one_step(window, qtbot, tmp_path):
     drag(view, (excluded.value(), 1.2), (excluded.value() + 9.0, 1.2))
     drag(view, (excluded.value() + 3.0, 0.5), (excluded.value() + 6.0, 0.3))
     assert len(window.session.history.done) == count
-    one_step(window, card.toggle.click)
+    one_step(window, lambda: click_ion(card, "16O_I"))
     assert tab.card_widgets["a1"].body.isEnabled()
     # Blind…, after its question
     window.answers.answers["blind_component"] = "Blind"
@@ -679,39 +742,137 @@ def test_every_badge_menu_and_button_is_one_step(window, qtbot, tmp_path):
     assert window.session.project.components == []
 
 
-def test_the_excluded_line_includes_an_ion(window, qtbot, tmp_path):
+def test_the_lists_exclude_and_include_an_ion(window, qtbot, tmp_path):
+    # RJC's review of Stage 7: Included ions and Excluded ions, each a click away
     tab = fit_ready(window, tmp_path)
     choose(tab, "O I")
     added(window, tab)
-    assert tab.card_widgets["a1"].excluded is None
-    choose(tab, "Si II")
-    one_step(window, tab.card_widgets["a1"].toggle.click)
-    choose(tab, "O I")
     card = tab.card_widgets["a1"]
-    assert "ColDens:28Si_II" not in card.values
-    assert plain(card.excluded) == "Excluded: Si II"
-    # A click on Si II includes it again: one step
+    assert plain(card.included) == "O I, Si II" and plain(card.excluded) == "none"
+    assert card.included.toolTip() == "Click an ion to exclude a1 from it"
+    # A click on Si II, though O I is shown, excludes it: one step
+    one_step(window, lambda: card.included.linkActivated.emit("28Si_II"))
+    card = tab.card_widgets["a1"]
+    assert "ColDens:28Si_II" not in card.values and card.body.isEnabled()
+    assert plain(card.included) == "O I" and plain(card.excluded) == "Si II"
+    assert card.excluded.toolTip() == "Click an ion to include a1 in it"
+    # And a click on it under Excluded ions includes it again
     one_step(window, lambda: card.excluded.linkActivated.emit("28Si_II"))
     card = tab.card_widgets["a1"]
-    assert card.excluded is None and "ColDens:28Si_II" in card.values
+    assert plain(card.excluded) == "none" and "ColDens:28Si_II" in card.values
 
 
-def test_excluding_the_last_ion_asks_first(window, qtbot, tmp_path):
+def test_excluding_the_last_ion_leaves_a_greyed_card(window, qtbot, tmp_path):
+    # Q7.6, refining D64: the component stays, excluded from every ion
     tab = fit_ready(window, tmp_path)
     choose(tab, "O I")
     added(window, tab)
-    choose(tab, "Si II")
-    one_step(window, tab.card_widgets["a1"].toggle.click)
-    choose(tab, "O I")
-    # Cancel: nothing changes
+    one_step(window, lambda: click_ion(tab.card_widgets["a1"], "28Si_II"))
+    # Its preview first: Cancel changes nothing
     count = len(window.session.history.done)
-    tab.card_widgets["a1"].toggle.click()
-    assert window.answers.asked[-1][0] == "exclude_last"
+    click_ion(tab.card_widgets["a1"], "16O_I")
     assert len(window.session.history.done) == count
-    window.answers.answers["exclude_last"] = "Remove the component"
-    one_step(window, tab.card_widgets["a1"].toggle.click)
+    window.on_dialog = lambda dialog: 1
+    one_step(window, lambda: click_ion(tab.card_widgets["a1"], "16O_I"))
+    (comp,) = window.session.project.components
+    assert comp.everywhere_excluded
+    card = tab.card_widgets["a1"]
+    assert not card.title.isEnabled() and card.excluded.isEnabled()
+    assert plain(card.included) == "none" and plain(card.excluded) == "O I, Si II"
+    # ✕ removes it, with its commented-out lines
+    one_step(window, card.remove.click)
     assert window.session.project.components == []
     assert "za1" not in window.session.project.text
+
+
+def test_d_i_is_excluded_after_h_i_and_both_come_back(window, qtbot, tmp_path):
+    # Item 2 of Stage 7, on J013301m400628's shape (D I's log N linked to H I's)
+    tab = imported(window, qtbot, write_linked_fit(tmp_path / "fit"))
+    before = window.session.project.text
+    choose(tab, "H I")
+    card = tab.card_widgets["a1"]
+    assert plain(card.included) == "H I, D I" and plain(card.excluded) == "none"
+    notes = []
+    window.on_dialog = lambda dialog: notes.append(dialog) or 1
+    one_step(window, lambda: click_ion(card, "1H_I"))
+    card = tab.card_widgets["a1"]
+    # Greyed for H I, but D I can still be excluded on its own
+    assert not card.body.isEnabled() and card.included.isEnabled()
+    assert plain(card.included) == "D I" and plain(card.excluded) == "H I"
+    one_step(window, lambda: click_ion(card, "2H_I"))
+    assert sorted(tab.card_widgets) == ["a1", "a2"]
+    card = tab.card_widgets["a1"]
+    assert plain(card.included) == "none" and plain(card.excluded) == "H I, D I"
+    assert window.session.project.component("a1").everywhere_excluded
+    one_step(window, lambda: click_ion(card, "1H_I"))
+    one_step(window, lambda: click_ion(tab.card_widgets["a1"], "2H_I"))
+    assert window.session.project.text == before
+
+
+def test_excluding_from_an_unlabelled_component_shows_its_preview(
+    window, qtbot, tmp_path
+):
+    # Item 6 of Stage 7: Exclude raised a ComponentError as a traceback
+    lines = [
+        "voigt ion=1H_I 17.0 2.50360 10.0 10000.0 specid=0",
+        "voigt ion=2H_I 12.4 2.50360 10.0 10000.0 specid=0",
+    ]
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit", lines))
+    choose(tab, "H I")
+    shown = []
+    window.on_dialog = lambda dialog: shown.append(dialog.windowTitle()) or 1
+    assert one_step(window, lambda: click_ion(tab.card_widgets["a1"], "1H_I")) == (
+        "Exclude H I from a1"
+    )
+    # The preview, not an error: H I's line is commented, D I's gains the label
+    assert shown == ["Exclude H I from a1"]
+    assert not [a for a in window.answers.asked if a[0] == "tell"]
+    (comp,) = window.session.project.components
+    assert comp.label == "za1" and C.is_excluded(comp, "1H_I")
+
+
+def card_labels(card):
+    return [w.text() for w in card.findChildren(QtWidgets.QLabel)]
+
+
+def test_an_ion_given_by_a_ratio_has_its_row_on_the_card(window, qtbot, tmp_path):
+    # Item 5 of Stage 7 (Q7.7): D I from 2H_I/1H_I was listed as "Excluded"
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit"))
+    choose(tab, "H I")
+    a1 = tab.card_widgets["a1"]
+    assert plain(a1.included) == "H I, D I" and plain(a1.excluded) == "none"
+    assert "ColDens:2H_I" not in a1.values
+    assert float(a1.values["ratio:2H_I"].text()) == -4.5974
+    assert a1.badges["ratio:2H_I"].text() == BADGES[C.FIXED]
+    labels = card_labels(a1)
+    assert "↳ D I · log D I/H I" in labels and "shared with a2" in labels
+    assert "shared with a1" in card_labels(tab.card_widgets["a2"])
+    # Typed: one step, seen on a2's card too
+    edit = a1.values["ratio:2H_I"]
+    edit.setText("-4.6")
+    assert one_step(window, edit.editingFinished.emit) == "Set log D I/H I in a1"
+    assert float(tab.card_widgets["a2"].values["ratio:2H_I"].text()) == -4.6
+    # Excluded: listed as such, and a click includes it again
+    session = window.session
+    session.history.do(
+        C.exclude(session.project, session.project.components[0], "2H_I")
+    )
+    window.refresh()
+    card = tab.card_widgets["a1"]
+    assert plain(card.excluded) == "D I" and "ratio:2H_I" not in card.values
+    one_step(window, lambda: card.excluded.linkActivated.emit("2H_I"))
+    assert "ratio:2H_I" in tab.card_widgets["a1"].values
+
+
+def test_a_blinded_ratio_is_masked_on_the_card(window, qtbot, tmp_path):
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360 10.0 10000.0 specid=0",
+        "voigt ion=2H_I/1H_I -4.5974FIXDH specid=0 blind=True",
+    ]
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit", lines))
+    choose(tab, "H I")
+    edit = tab.card_widgets["a1"].values["ratio:2H_I"]
+    assert edit.text() == "▒▒▒▒" and "4.5974" not in " ".join(ui_strings(window))
 
 
 def test_no_hidden_value_on_a_card(window, qtbot):

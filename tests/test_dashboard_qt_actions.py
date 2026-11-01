@@ -54,6 +54,11 @@ def test_every_action_is_in_a_menu_and_in_the_sheet(window, qtbot):
     for button in window.panel.panel_buttons:
         if button.defaultAction() in window.panel.editor.panel_actions:
             placed[button.defaultAction().objectName()] = A.PANEL
+    # and those in its right-click menu alone (Load a fit into this project…)
+    for action in window.panel.editor.panel_actions:
+        placed.setdefault(action.objectName(), A.PANEL)
+    # Inspect's Normalised follows its View pane's segment (Stage 7)
+    placed[window.fit_tab.inspect._normalised.objectName()] = A.FIT_TAB
     # A tab's own actions: its buttons and keys (Stage 4)
     groups = {tab: group for group, tab in A.TAB_GROUPS.items()}
     for widget in window.tab_widgets:
@@ -112,6 +117,8 @@ def test_the_toolbar_and_the_shortcut_sheet_action(window, qtbot):
     for spec in A.ACTIONS:
         if spec.toolbar:
             assert spec.name in names
+    # Run follows Save (item 13 of Stage 7)
+    assert names[:5] == ["edit.undo", "edit.redo", "file.open", "file.save", "fit.run"]
     window.qactions["help.shortcuts"].trigger()
     assert isinstance(window.dialogs[-1], D.ShortcutsDialog)
 
@@ -179,3 +186,22 @@ def test_the_view_actions_show_the_tabs(window, qtbot):
     for name, index in A.TAB_ACTIONS.items():
         window.qactions[name].trigger()
         assert window.tabs.currentIndex() == (index if index < 4 else 3)
+
+
+@pytest.mark.fast
+def test_run_on_the_toolbar_runs_from_any_tab(window, qtbot):
+    # Item 13 of Stage 7: the Fit tab's own Run, on the toolbar
+    window.import_path(str(METAL))
+    wait_idle(qtbot, window)
+    window.prefs.set("fit.ncpus", 1)
+    window.tabs.setCurrentIndex(0)
+    run = window.qactions["fit.run"]
+    button = window.toolbar.widgetForAction(run)
+    assert button is not None and button.text() == "Run" and button.isEnabled()
+    button.click()
+    assert window.fit.active and not button.isEnabled()
+    assert window.tabs.currentIndex() == 0
+    qtbot.waitUntil(lambda: not window.fit.active, timeout=300000)
+    qtbot.wait(100)
+    assert button.isEnabled()
+    window.session.discard_recovery()

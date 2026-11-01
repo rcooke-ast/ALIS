@@ -213,7 +213,7 @@ def main(outdir):
     pump(0.5)
     # Si II excluded from a1 (its card greyed, its tick faint and dashed)
     choose(tab, "Si II")
-    tab.card_widgets["a1"].toggle.click()
+    tab.card_widgets["a1"].included.linkActivated.emit("28Si_II")
     pump(1.0)
     shoot(window, outdir / "components_excluded.png")
     window.session.history.undo()

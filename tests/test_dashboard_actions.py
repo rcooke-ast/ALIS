@@ -50,16 +50,19 @@ def test_the_menus_of_the_design():
     assert titles["File"] == [
         "New project…",
         "Open…",
-        "Import a fit (.mod)…",
-        "Load a .mod…",
+        "Open a fit (.mod)…",
         "Save",
         "Save as…",
-        "Export plain files…",
+        "Export…",
         "Relink spectra…",
         "Preferences…",
         "Close project",
         "Quit",
     ]
+    # One item for a .mod (Q7.9); loading into the project is also in the .mod
+    # panel's right-click menu
+    assert A.get("file.import").shortcut == "Ctrl+I"
+    assert A.get("panel.load_mod").menu == A.PANEL
     assert titles["Edit"][:2] == ["Undo", "Redo"]
     assert titles["View"][:5] == list(A.TABS)
     assert [A.get(n).shortcut for n in A.TAB_ACTIONS] == [
@@ -87,13 +90,15 @@ def test_the_toolbar_of_the_mockups():
         "file.export",
         "edit.undo",
         "edit.redo",
+        "fit.run",  # item 13 of Stage 7
         "help.shortcuts",
     ]
 
 
 def test_align_columns_belongs_to_the_mod_panel():
     """RJC's review: column alignment lives on the .mod panel only."""
-    assert [a.name for a in A.in_menu(A.PANEL)] == ["panel.align"]
+    # and Load a fit (.mod) into this project…, in its right-click menu (Q7.9)
+    assert [a.name for a in A.in_menu(A.PANEL)] == ["panel.align", "panel.load_mod"]
     assert all(a.text != "Align columns" for m in A.MENUS for a in A.in_menu(m))
     assert A.get("panel.align").shortcut == "Ctrl+L"
 

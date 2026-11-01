@@ -458,6 +458,11 @@ def plan_system(project, system):
     for comp in system.components:
         for line in comp.lines:
             work.delete_line(line.line, "it is a line of system " + system.name)
+        # And what is commented out of its components (Q5.18, Q7.6)
+        for num in list(comp.excluded.values()) + [i.line for i in comp.excluded_with]:
+            work.delete_line(
+                num, "it is commented out of a component of system " + system.name
+            )
     return work.plan(_ui_without(project, "systems", system.id))
 
 

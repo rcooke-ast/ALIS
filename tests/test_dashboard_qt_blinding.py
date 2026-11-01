@@ -1,7 +1,8 @@
 """Blinding and export in the window (dashboard Stage 3.10, D24, D10, Q3.9, Q3.13).
 
 - Unblinding needs the confirmation, is logged in the bundle and clears the history.
-- Export warns when anything is blinded.
+- Export writes hidden values as BLIND (Q7.16); its dialog writes the snips, the
+  models or everything, and greys the best fit without a run.
 - Switching global blind on is one step, which undo does not pass.
 - The pill says what is blinded.
 
@@ -23,6 +24,7 @@ from qtpy import QtWidgets  # noqa: E402
 
 from alis import bundle as B  # noqa: E402
 from alis.dashboard import blinding as BL  # noqa: E402
+from alis.dashboard import export as X  # noqa: E402
 from alis.dashboard.qt import dialogs as D  # noqa: E402
 
 
@@ -139,34 +141,101 @@ def test_unblinding_needs_the_confirmation_and_is_logged(window, qtbot, tmp_path
     assert window.answers.asked[-1][2] == "Nothing is blinded in this project."
 
 
-def test_export_warns_when_anything_is_blinded(window, qtbot, tmp_path):
+def export_to(window, folder, **ticks):
+    """Answer Export…'s dialog: the folder, and what is ticked."""
+
+    def answer(dialog):
+        dialog.folder.setText(str(folder))
+        for key, on in ticks.items():
+            dialog.boxes[key].setChecked(on)
+        return 1
+
+    window.on_dialog = answer
+
+
+EVERYTHING = dict(snips=False, start=False, best=False, everything=True)
+
+
+def test_export_keeps_hidden_values_hidden(window, qtbot, tmp_path):
+    # RJC's response to Q7.16: hidden values are written as BLIND, with no question
     open_saved(window, qtbot, BLIND, tmp_path)
     out = tmp_path / "exported"
     out.mkdir()
-    window.chosen["folder"] = str(out)
-    # Cancelled at the warning: nothing is written
-    window.qactions["file.export"].trigger()
-    assert window.answers.asked[-1][0] == "export_blind"
-    assert "plain text" in window.answers.asked[-1][2]
-    assert os.listdir(out) == []
-    window.answers.answers["export_blind"] = "Export"
+    export_to(window, out, **EVERYTHING)
     window.qactions["file.export"].trigger()
     model = out / "model" / "fit_spectra.mod"
-    assert model.exists()
-    assert "ion=28Si_II 13.0" in " ".join(model.read_text().split())
-    assert window.answers.asked[-1][0] == "tell"
+    words = " ".join(model.read_text().split())
+    assert "ion=28Si_II BLIND BLIND BLINDda BLINDTA" in words
+    assert "ion=28Si_II 13.0" not in words
+    assert [a[0] for a in window.answers.asked] == ["tell"]
     assert "Wrote" in window.answers.asked[-1][2]
-    assert "(D10)" not in window.answers.asked[-1][2]
+    assert "written as BLIND" in window.answers.asked[-1][2]
+    # The starting model alone, masked the same way
+    export_to(window, tmp_path / "start", snips=False, start=True, best=False)
+    window.qactions["file.export"].trigger()
+    text = (tmp_path / "start" / "project_start.mod").read_text()
+    assert "ion=28Si_II BLIND" in " ".join(text.split())
 
 
 def test_export_of_an_unblinded_project_does_not_warn(window, qtbot, tmp_path):
     open_saved(window, qtbot, METAL, tmp_path)
     out = tmp_path / "exported"
     out.mkdir()
-    window.chosen["folder"] = str(out)
+    export_to(window, out, **EVERYTHING)
     window.qactions["file.export"].trigger()
     assert [a[0] for a in window.answers.asked] == ["tell"]
     assert (out / "model" / "fit_spectra.mod").exists()
     # Exporting again asks before overwriting
     window.qactions["file.export"].trigger()
     assert window.answers.asked[-1][0] == "export_overwrite"
+
+
+def test_the_export_dialog(window, qtbot, tmp_path):
+    # Q7.16: the snips and the starting model ticked; the best fit greyed with no run
+    open_saved(window, qtbot, METAL, tmp_path)
+    window.qactions["file.export"].trigger()
+    dialog = window.dialogs[-1]
+    ticked = {k: b.isChecked() for k, b in dialog.boxes.items()}
+    assert ticked == dict(snips=True, start=True, best=False, everything=False)
+    assert not dialog.boxes["best"].isEnabled()
+    assert dialog.boxes["best"].toolTip().startswith(X.NO_RUN[:-1])
+    assert dialog.order() == [c.key for c in X.COLUMNS]
+    assert dialog.keys() == ["wave", "flux", "error", "fitrange", "zero", "continuum"]
+    # A column moved up, and one ticked
+    dialog.columns.setCurrentRow(3)
+    dialog.move(-1)
+    dialog.tick("residual")
+    assert dialog.keys()[:4] == ["wave", "flux", "fitrange", "error"]
+    # Nothing to write, no column, no folder: Export is greyed with the reason
+    dialog.folder.setText("")
+    assert dialog.problem() == "Choose a folder."
+    assert not ok_button(dialog).isEnabled()
+    dialog.folder.setText(str(tmp_path))
+    for box in dialog.boxes.values():
+        box.setChecked(False)
+    assert dialog.problem() == "Tick something to write."
+    dialog.boxes["snips"].setChecked(True)
+    for key in X.BY_KEY:
+        dialog.tick(key, False)
+    assert dialog.problem() == "Tick a column for the snips."
+
+
+def test_export_writes_the_snips_and_both_models(window, qtbot, tmp_path):
+    from test_dashboard_results import store_run
+
+    open_saved(window, qtbot, METAL, tmp_path)
+    store_run(window.session.project, METAL, status="imported", started=None)
+    window.refresh()
+    out = tmp_path / "exported"
+    export_to(window, out, best=True)
+    window.qactions["file.export"].trigger()
+    assert window.dialogs[-1].boxes["best"].isEnabled()
+    assert sorted(os.listdir(out)) == [
+        "project_OI_1302.17_zabs0.0000_fit.dat",
+        "project_bestfit.mod.out",
+        "project_start.mod",
+    ]
+    assert window.answers.asked[-1][0] == "tell"
+    assert "Wrote 3 files" in window.answers.asked[-1][2]
+    header = (out / "project_OI_1302.17_zabs0.0000_fit.dat").read_text()
+    assert "# wave flux error fitrange zerolevel continuum model\n" in header

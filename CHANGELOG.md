@@ -140,6 +140,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `report.runs_z`, `report.chi2_deviation` and `report.region_stats`: the
   report's statistics as public functions of a region's residuals, unchanged in
   what they compute.
+- The dashboard's Stage 7, from RJC's list of changes and bug fixes:
+  - an earlier fit's `prepfit` snips and `.mod` are loaded, through one File-menu
+    item, Open a fit (.mod)…, which offers to open the fit with its source spectrum
+    (recommended);
+  - a component can be excluded from every ion and included again, and D I excluded
+    on its own;
+  - an ion given by a ratio has its row on the cards;
+  - pure thermal writes the limits ALIS needs, and a drag moves T when b_turb is
+    fixed;
+  - a snip can have its own shift and zero level (the Regions tab's Snip box);
+  - Inspect draws the data and the model with their continuum;
+  - recent projects can be removed from the start page's list, and Run is on the
+    toolbar;
+  - from RJC's review of the stage: Inspect's view choices are drop-downs; each
+    component card lists its included and excluded ions, a click excluding or
+    including one; Run is greyed, with the reason, while the model cannot run (no
+    snip, no fit region, no component); and File → Export… writes only what is
+    ticked (the snips as ASCII files with the columns chosen, the starting model,
+    the best-fitting model, or everything `run_alis` needs), hidden values written
+    as `BLIND`.
 
 ### Deprecated
 - `prepfit` (`alis/prepfit/specplot.py`): the dashboard (`alis`) now does what it
@@ -163,6 +183,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (which asked for ±21% of the wavelength at 0.1 Å). Fewer unfitted pixels are
   loaded; a Legendre continuum of a model with `Afwhm` is then expressed over that
   narrower range, so its coefficients differ while the fit does not.
+- A zero level can go below zero: a `constant` in the `zerolevel` section no longer
+  takes `constant`'s lower limit of 0, which is a continuum's. A trough below zero
+  pinned the zero level at 0, with an error of 0. An emission `constant` keeps the
+  limit; a `lim param` or `lim constant value` command still applies.
+- The dashboard: Exclude on a component whose lines share no redshift label gives it
+  one, instead of a traceback; the Add a spectrum dialog no longer lays the column
+  table over its hint; pure thermal no longer writes a b_turb that ALIS refuses.
 - `run ncpus` given on the command line (`--set "run ncpus -1"`) is counted as in
   a model file, so -1 is all CPUs bar one; it used to be set as written, and the
   fit stopped ("Number of processes must be at least 1"). A count that leaves no
@@ -170,6 +197,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   rather than stopping.
 
 ### Changed
+- `run_alis --extract` writes a blinded project's hidden values as `BLIND`
+  (`blindseed`, `blindrange` and the `.mod.out`'s copy of the input model too),
+  as the dashboard's Export… does, rather than its hidden starting values in plain
+  text. A project with nothing hidden is extracted byte for byte, as before.
 - `run blind` is False by default: a model that does not set it is no longer
   blinded. A blind analysis is asked for with `run blind True` (or `blind=True`
   on a line).

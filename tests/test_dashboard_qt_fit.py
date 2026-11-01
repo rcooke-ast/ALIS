@@ -30,13 +30,14 @@ from dashboard_qt_helpers import (
     ui_strings,
     wait_idle,
 )
+from dashboard_synthetic import write_thermal_fit
 
 pytestmark = pytest.mark.gui
 
 pytest.importorskip("qtpy.QtWidgets")
 pytest.importorskip("pyqtgraph")
 
-from qtpy import QtCore  # noqa: E402
+from qtpy import QtCore, QtWidgets  # noqa: E402
 from test_dashboard_blinding import renderings  # noqa: E402
 from test_dashboard_results import _blind_out, store_run  # noqa: E402
 
@@ -45,6 +46,7 @@ from alis.dashboard import blinding as BL  # noqa: E402
 from alis.dashboard import edit as E  # noqa: E402
 from alis.dashboard import fitview as FV  # noqa: E402
 from alis.dashboard import markers as MK  # noqa: E402
+from alis.dashboard import preflight as PC  # noqa: E402
 from alis.dashboard import profile as PR  # noqa: E402
 from alis.dashboard import results as RS  # noqa: E402
 from alis.dashboard import runs as R  # noqa: E402
@@ -176,7 +178,7 @@ def test_velocity_or_wavelength(window, qtbot):
     assert widget.view.x_title == "Velocity (km/s)"
     (x0, x1), _ = widget.view.view_range()
     assert x0 < 0 < x1
-    inspect.view_buttons[FV.WAVELENGTH].click()
+    inspect.select("axis", FV.WAVELENGTH)
     [widget] = inspect.panel_widgets
     assert widget.view.x_title == "Wavelength (Å)"
     (x0, x1), _ = widget.view.view_range()
@@ -197,13 +199,13 @@ def test_the_residuals_of_pixels_not_fitted(window, qtbot):
     _, drawn = widget.resid._item.getData()
     every = np.count_nonzero(np.isfinite(drawn))
     # Fitted: the residuals of the fitted pixels only, the bands kept
-    inspect.view_buttons[FV.FITTED_PIXELS].click()
+    inspect.select("residuals", FV.FITTED_PIXELS)
     assert window.session.view["fit"]["residuals"] == FV.FITTED_PIXELS
     [widget] = inspect.panel_widgets
     _, drawn = widget.resid._item.getData()
     assert np.count_nonzero(np.isfinite(drawn)) < every
     assert widget.resid.unfitted()
-    inspect.view_buttons[FV.ALL_PIXELS].click()
+    inspect.select("residuals", FV.ALL_PIXELS)
     assert window.session.view["fit"]["residuals"] == FV.ALL_PIXELS
 
 
@@ -220,7 +222,7 @@ def test_initial_and_final_draw_the_start_and_the_best_fit(window, qtbot):
     drawn = y[np.isfinite(y)]
     expected = (best.model / best.continuum)[finite]
     assert np.allclose(np.sort(drawn), np.sort(expected), rtol=1e-6)
-    inspect.view_buttons[FV.INITIAL].click()
+    inspect.select("model", FV.INITIAL)
     assert inspect.mode == FV.INITIAL
     assert inspect.shown_label.text().startswith("Initial")
     [widget] = inspect.panel_widgets
@@ -237,16 +239,89 @@ def test_initial_and_final_draw_the_start_and_the_best_fit(window, qtbot):
         assert chips[FV.snip_key(snip)] == quality
     assert widget.marks.text() == fit_marks(chips[FV.snip_key(snip)])
     # And Final's with Final
-    inspect.view_buttons[FV.FINAL].click()
+    inspect.select("model", FV.FINAL)
     assert "runs −9.6 ✕" in inspect.chip_widgets[0].marks.text()
+
+
+def test_the_view_choices_are_drop_downs(window, qtbot, tmp_path):
+    # RJC's review of Stage 7: four drop-downs in place of the toggles, with no
+    # Residuals label
+    open_metal(window, qtbot, tmp_path)
+    inspect = window.fit_tab.inspect
+    texts = {
+        key: [box.itemText(i) for i in range(box.count())]
+        for key, box in inspect.view_boxes.items()
+    }
+    assert texts == {
+        "axis": ["Velocity", "Wavelength"],
+        "model": ["Initial", "Final"],
+        "scale": ["Normalised", "Continuum"],
+        "residuals": ["All Residuals", "Fit Residuals"],
+    }
+    labels = [w.text() for w in inspect.view_pane.findChildren(QtWidgets.QLabel)]
+    assert "Residuals" not in labels
+    # Each shows its choice, the tooltip that choice's, and the choice is kept
+    box = inspect.view_boxes["axis"]
+    assert box.currentText() == "Velocity"
+    inspect.select("axis", FV.WAVELENGTH)
+    assert box.currentText() == "Wavelength"
+    assert box.toolTip() == "Observed wavelength"
+    assert inspect.selected("axis") == FV.WAVELENGTH
+    assert window.session.view["fit"]["axis"] == FV.WAVELENGTH
+    assert inspect.panel_widgets[0].view.x_title == "Wavelength (Å)"
+
+
+RUN_ACTIONS = ("fit.run", "fit.save_run", "fit.convergence")
+
+
+def test_run_is_greyed_while_there_is_nothing_to_fit(window, qtbot, tmp_path):
+    # RJC's review of Stage 7: greyed, its tooltip the pre-flight check's reason
+    from test_dashboard_qt_components import metal_project
+
+    metal_project(window, tmp_path, [])
+    for name in RUN_ACTIONS:
+        action = window.qactions[name]
+        assert not action.isEnabled() and action.toolTip() == PC.NO_SNIPS
+    window.session.discard_recovery()
+    # A snip with no fit region
+    (tmp_path / "second").mkdir()
+    metal_project(window, tmp_path / "second", [("16O_I", 1302.16849, 1300.5, 1303.4)])
+    run = window.qactions["fit.run"]
+    assert not run.isEnabled() and "no fit region" in run.toolTip()
+
+
+def test_run_waits_for_a_component(window, qtbot, tmp_path):
+    from test_dashboard_qt_components import added, choose, fit_ready
+
+    tab = fit_ready(window, tmp_path)
+    run = window.qactions["fit.run"]
+    assert not run.isEnabled() and run.toolTip() == PC.NO_COMPONENTS
+    button = window.toolbar.widgetForAction(run)
+    assert not button.isEnabled()
+    # The Fit tab's marker says so too, before Inspect is shown
+    # The Fit tab's marker leaves nothing to fit yet to the earlier tabs'
+    assert window.markers["Fit"].state == MK.NONE
+    choose(tab, "O I")
+    added(window, tab)
+    for name in RUN_ACTIONS:
+        action = window.qactions[name]
+        assert action.isEnabled() and action.toolTip() == action.property("tip")
+    assert "(" in run.toolTip() and button.isEnabled()
+    window.qactions["edit.undo"].trigger()
+    assert not run.isEnabled() and run.toolTip() == PC.NO_COMPONENTS
 
 
 def test_final_waits_for_a_run(window, qtbot, tmp_path):
     open_metal(window, qtbot, tmp_path)
     inspect = window.fit_tab.inspect
     assert inspect.mode == FV.INITIAL
-    assert not inspect.view_buttons[FV.FINAL].isEnabled()
-    assert "No fit has run yet" in inspect.view_buttons[FV.FINAL].toolTip()
+    box = inspect.view_boxes["model"]
+    index = box.findData(FV.FINAL)
+    assert not box.model().item(index).isEnabled()
+    assert "No fit has run yet" in box.itemData(
+        index, QtCore.Qt.ItemDataRole.ToolTipRole
+    )
+    assert box.currentText() == "Initial"
     # Initial is drawn, and its marks are on the chips
     assert inspect.chip_widgets[0].chip.quality is not None
     assert model_drawn(inspect.panel_widgets[0]) is not None
@@ -362,10 +437,14 @@ def test_run_is_refused_with_a_problem(window, qtbot, tmp_path):
     assert "refused" in inspect.preflight.text()
     assert window.markers["Fit"].state == MK.ATTENTION
     assert "refuses Run" in window.tabs.tabToolTip(3)
-    window.qactions["fit.run"].trigger()
+    # Run is greyed, its tooltip the reason (RJC's review of Stage 7); asked
+    # anyway, the check refuses it
+    run = window.qactions["fit.run"]
+    assert not run.isEnabled() and "sim perturb" in run.toolTip()
+    assert not window.start_run()
     assert not window.fit.active
     [text] = tell_texts(window)
-    assert "sim perturb" in text and "Export plain files" in text
+    assert "sim perturb" in text and "File → Export…" in text
     assert inspect.findings.isVisible() and inspect.findings.count()
     # A click on a finding shows its line
     item = inspect.findings.item(0)
@@ -514,6 +593,59 @@ def test_a_run_from_the_tab(window, qtbot, tmp_path):
     assert "13.1" in R.latest(disk).model_text() and session.dirty
 
 
+def a1_rows(project):
+    """The results' rows of a1's T and b_turb, by kind."""
+    view = RS.View(project, record=R.latest(project.bundle))
+    main = project.component("a1").main.line
+    rows = [r for g in view.table() for r in g.rows if r.param.line == main]
+    return {r.kind: r for r in rows if r.kind in ("temperature", "bturb")}
+
+
+def lim_lines(project):
+    return sorted(ln.strip() for ln in project.text.splitlines() if "lim param" in ln)
+
+
+@pytest.mark.fast
+def test_pure_thermal_runs_from_the_tab(window, qtbot, tmp_path):
+    # Item 12 of Stage 7 (Q7.10's response): ALIS still runs, with no side effects
+    from alis.dashboard import components as C
+
+    window.import_path(str(write_thermal_fit(tmp_path / "fit", temperature=15000.0)))
+    wait_idle(qtbot, window)
+    session = window.session
+    project = session.project
+    session.history.do(C.temperature(project, project.components[0], "thermal"))
+    window.refresh()
+    assert lim_lines(project) == [
+        "lim param BA1 [0.0,None]",
+        "lim param ta1 [1.0,None]",
+    ]
+    window.qactions["fit.run"].trigger()
+    wait_run(qtbot, window)
+    assert window.fit.job.status == R.COMPLETED
+    rows = a1_rows(project)
+    temp, bturb = rows["temperature"], rows["bturb"]
+    value, error = float(temp.value.replace(",", "")), float(temp.error)
+    assert abs(value - 15000.0) < 3.0 * error
+    assert float(bturb.value) == 0.0 and bturb.flags == [] and temp.flags == []
+    # Continue from best fit keeps both limits
+    window.on_dialog = lambda dialog: 1
+    window.qactions["fit.continue"].trigger()
+    assert lim_lines(project) == [
+        "lim param BA1 [0.0,None]",
+        "lim param ta1 [1.0,None]",
+    ]
+    # The turbulent component beside it keeps voigt's limit of b_turb
+    assert project.component("a2").main.param("bturb").limits == (0.5, None)
+    # Started at 1 K, on its floor, it also runs to the end
+    tpar = project.component("a1").main.param("temperature")
+    session.history.do(project.step(E.set_value(project.parsed, tpar, 1.0), "Set"))
+    window.refresh()
+    window.qactions["fit.run"].trigger()
+    wait_run(qtbot, window)
+    assert window.fit.job.status == R.COMPLETED
+
+
 @pytest.mark.fast
 def test_save_and_run_saves_first_and_cancel_keeps_nothing(window, qtbot, tmp_path):
     path = open_metal(window, qtbot, tmp_path)
@@ -598,3 +730,71 @@ def test_closing_during_a_run(window, qtbot, tmp_path, choice):
     window.open_path(path)
     inspect = show_inspect(window, qtbot)
     assert inspect.mode == FV.FINAL and inspect.shown is not None
+
+
+# -- Normalised or with the continuum (Stage 7, item 10) ----------------------------
+
+
+def drawn(widget):
+    """What a panel draws: its data, its model and residuals (finite), and marks."""
+    view = widget.view
+    _, model = model_drawn(widget)
+    _, data = view._items["data"].getData()
+    resid = (
+        widget.resid._items["residuals"].getData()[1]
+        if hasattr(widget.resid, "_items") and "residuals" in widget.resid._items
+        else None
+    )
+    return {
+        "data": data[np.isfinite(data)],
+        "model": model[np.isfinite(model)],
+        "resid": None if resid is None else resid[np.isfinite(resid)],
+        "marks": widget.marks.text(),
+    }
+
+
+@pytest.mark.fast
+def test_inspect_draws_the_continuum_when_asked(window, qtbot, tmp_path):
+    open_metal(window, qtbot, tmp_path)
+    inspect = window.fit_tab.inspect
+    window.qactions["fit.run"].trigger()
+    wait_run(qtbot, window)
+    action = window.qactions["fit.normalised"]
+    assert action.isCheckable() and action.isChecked()
+    for mode in (FV.INITIAL, FV.FINAL):
+        inspect.select("model", mode)
+        inspect.select("scale", FV.NORMALISED)
+        widget = inspect.panel_widgets[0]
+        curve, cont = widget.curve, widget.curve.continuum
+        normal = drawn(widget)
+        assert widget.view._norm is not None
+        assert "continuum" not in widget.view._items or (
+            widget.view._items["continuum"] is None
+        )
+        inspect.select("scale", FV.CONTINUUM)
+        assert not action.isChecked()
+        widget = inspect.panel_widgets[0]
+        raw = drawn(widget)
+        # The data as they are, and ALIS's model before its division
+        assert widget.view._norm is None
+        assert np.array_equal(widget.view._flux, curve.flux, equal_nan=True)
+        assert np.array_equal(widget.view._model[1], curve.model, equal_nan=True)
+        fine = np.isfinite(curve.model)
+        assert np.allclose(raw["model"], curve.model[fine])
+        assert np.allclose(normal["model"], (curve.model / cont)[fine])
+        # The continuum itself, dashed
+        _, line = widget.view._items["continuum"].getData()
+        assert np.allclose(line[np.isfinite(line)], cont[np.isfinite(cont)])
+        # The residuals and the marks do not change
+        assert raw["marks"] == normal["marks"]
+        if raw["resid"] is not None:
+            assert np.array_equal(raw["resid"], normal["resid"])
+    # The choice is kept when the tab is left and shown again
+    window.tabs.setCurrentIndex(0)
+    window.tabs.setCurrentIndex(3)
+    assert inspect.selected("scale") == FV.CONTINUUM and not action.isChecked()
+    assert window.session.view["fit"]["scale"] == FV.CONTINUUM
+    # The action switches back
+    action.trigger()
+    assert inspect.selected("scale") == FV.NORMALISED
+    assert inspect.panel_widgets[0].view._norm is not None

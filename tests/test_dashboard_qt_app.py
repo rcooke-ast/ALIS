@@ -91,7 +91,8 @@ def test_the_start_page_lists_recent_projects_and_unsaved_work(home, qtbot, tmp_
     # The Open recent menu
     window._fill_recent()
     names = [a.text() for a in window.recent_menu.actions()]
-    assert names == ["metal.model", "gone.model"]
+    # and, after a line, Clear recent projects… (Stage 7)
+    assert names == ["metal.model", "gone.model", "", "Clear recent projects…"]
     assert not window.recent_menu.actions()[1].isEnabled()
 
 

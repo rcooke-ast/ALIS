@@ -117,6 +117,7 @@ QLabel#startTitle {{ font-size: 22px; font-weight: 600; }}
 QFrame#snipChip {{ background: {base}; border: 1px solid #c8c8c8; border-radius: 4px; }}
 QFrame#snipChip[selected="true"] {{ border: 2px solid #0072B2; }}
 QLabel#preflight {{ padding: 4px 2px; }}
+QFrame#cardRule {{ color: {light}; }}
 """
 
 

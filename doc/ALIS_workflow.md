@@ -822,8 +822,9 @@ run_alis --extract myfit.model       # writes everything out as plain files
   does not depend on the machine or on the version of ALIS.
 - **Blinding.** Lines with `blind=True` are stored hidden in the bundle, and so are
   the outputs that reveal blinded values. They are never printed. `--extract`
-  writes the hidden starting values in plain text, after a warning, so that the
-  extracted model runs, but writes best-fit values only as a plain blind run would.
+  (like the dashboard's Export…) writes every hidden value as `BLIND`, `blindseed`
+  and `blindrange` too, so the extracted model of a blinded project runs only once
+  it is unblinded; `run_alis myfit.model` runs the project itself.
 - **Not supported in a bundle:** simulations (`sim random`, `sim perturb`),
   `sim beginfrom`, `iterate model`, `generate data`, and data lines that read other
   files (`lsffile`, `systematics=`, `systmodule=`). Extract the bundle first.
@@ -835,9 +836,9 @@ running and inspecting a fit. It needs the optional `gui` extra
 (`pip install "alis[gui]"`: PySide6, qtpy and pyqtgraph), and is opened with `alis`:
 
 ```bash
-alis                     # the start page: New project, Open, Import a fit, recent projects
+alis                     # the start page: New project, Open, Open a fit, recent projects
 alis myfit.model         # opens a project bundle
-alis myfit.mod           # imports a plain fit into a new project (saved with Save as)
+alis myfit.mod           # opens a plain fit, with its source spectrum or without
 run_alis myfit.model     # fits the project from the command line, as before
 ```
 
@@ -866,6 +867,23 @@ run_alis myfit.model     # fits the project from the command line, as before
   Plot tab, for publication figures, comes after v1; until then the model's
   `plotscript` settings write a plotting script, as they do for `run_alis`.
   `prepfit` (§0) keeps working, and says that the dashboard now covers it.
+- **Since version 1** (dashboard Stage 7, 2026-10-31), from real use:
+  - **An earlier fit.** File → Open a fit (.mod)… loads a `.mod` and its snips into a
+    project of their spectrum, after a preview. With no such project open, it asks
+    whether to open the fit with its full spectrum (recommended: the snips are
+    checked against it and new snips can be cut from it) or without. The Regions
+    tab's Load snips… places `prepfit`'s snips one by one.
+  - **Excluding.** Each ion of a card's row (H I, and D I with it) has its own
+    Exclude/Include. A component excluded from every ion stays, greyed, until it is
+    included again or removed with ✕, and its labels stay its own. An ion given by a
+    ratio (`ion=2H_I/1H_I`) has its row on the cards.
+  - **Temperatures.** Pure thermal writes the limits ALIS needs (b_turb may be 0, T
+    stays at 1 K or more), and a drag across a line moves T when b_turb is fixed.
+  - **A zero level** can go below zero (ALIS no longer gives a zero level
+    `constant`'s lower limit of 0).
+  - **A snip's own shift and zero level** are set in the Regions tab's Snip box.
+  - **Inspect** draws the data and the model with their continuum (View →
+    Continuum), and Run is also on the toolbar.
 
 #### Preparing a fit: the Data and Regions tabs
 
@@ -984,8 +1002,8 @@ sub-tabs: Inspect, Results and Compare.
   exactly as written.
 - **Before each run** a pre-flight check refuses what would fail (a model that does
   not read, a starting value outside its limits, no free parameter, a setting a
-  project cannot run such as `sim perturb`, for which File → Export plain files…
-  and `run_alis` are the way) and notes what is worth a look (a parameter no fitted
+  project cannot run such as `sim perturb`, for which File → Export…, Everything
+  run_alis needs, and `run_alis` are the way) and notes what is worth a look (a parameter no fitted
   pixel constrains, a b_turb starting below 1 km/s, a snip with no continuum…).
 - **Inspect.** The Run box (this computer's settings; the settings the model
   changes from ALIS's defaults, each edited in place or cleared with ✕; *All
@@ -1035,6 +1053,18 @@ sub-tabs: Inspect, Results and Compare.
   `run blind True`) are masked everywhere, the restarts' export included; their
   profiles, χ², the marks, the correlations and the errors are shown; Compare shows
   a blinded quantity's change only as |Δ|/σ, unsigned.
+- **Export…** (File menu) writes what you tick to a folder you choose: the snips,
+  one ASCII file each (`<project>_<ion>_<rest wavelength>_zabs<z>_fit.dat`, with a
+  `#` header naming the columns; by default wavelength, flux, error, the fit range
+  as 1 and 0, the zero level (0 where the model has none), the continuum and the
+  best-fit model), the starting model, the best-fitting model of the run the Fit
+  tab shows, or everything `run_alis` needs. When the snips are written with their wavelength,
+  flux, error and fit range, the two models read them, so `run_alis` fits either one
+  in that folder. Hidden values stay hidden: they are written as `BLIND` (so a
+  blinded project's exported models run only once it is unblinded; `run_alis
+  project.model` runs the project itself). Run, Save and Run and Convergence check… are greyed, with the
+  reason, while the pre-flight check would refuse a run (no snip, a snip with no
+  fit region, no component…).
 
 ### 4.4 Pixels fitted twice
 

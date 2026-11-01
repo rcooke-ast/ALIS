@@ -38,12 +38,13 @@ hold the chosen ion's transitions, on one velocity axis; at the right, the
   shown where ALIS computes it.
 - **Cards** (S11, D20–D22, Q5.9, Q5.14, Q5.15, Q5.20): the components of the system
   shown (the forest's lines, for the Lyα forest), in order of velocity. Each has its
-  velocity, Exclude from / Include in the ion shown (an excluded card is greyed but
-  for that button), Blind… and Remove (✕, after the plan of what it deletes); z and
-  b_turb with their badges (● free, ■ fixed, ⛓ tied, ƒ computed by a link) and the
-  menus behind them (free, fixed, tie, limits); the temperature's modes; the log N
-  of each ion it is in, isotopes under their element; and the system's other ions
-  on one line, "Excluded: D I, O I", a click on one including it. A value can be
+  velocity, Blind… and Remove (✕, after the plan of what it deletes); z and b_turb
+  with their badges (● free, ■ fixed, ⛓ tied, ƒ computed by a link) and the menus
+  behind them (free, fixed, tie, limits); the temperature's modes; the log N of each
+  ion it is in, isotopes under their element. Under faint rules, "Included ions
+  (click to exclude):" and "Excluded ions (click to include):" list the system's
+  ions (RJC's review of Stage 7); a card excluded from the ion shown is greyed but
+  for the lists. A value can be
   typed, a hidden one too, and stays hidden; the step that writes it names no value.
   Use best fit (Stage 6.6, Q6.17) copies the Fit tab's shown run's best fit of the
   component (z, b_turb, T, each ion's log N) into its lines, as one step; greyed,
@@ -93,6 +94,8 @@ BADGE_TIPS = {
 WHAT = {"redshift": "z", "bturb": "b_turb", "temperature": "T", "ColDens": "log N"}
 DIGITS = {"redshift": 10, "ColDens": 6, "bturb": 6, "temperature": 6}
 LEGEND = "● free  ■ fixed  ⛓ tied  ƒ computed by a link"
+INCLUDED_IONS = "Included ions (click to exclude):"
+EXCLUDED_IONS = "Excluded ions (click to include):"
 # More components than this in a panel: only the selected one's tick is labelled
 CROWDED = 6
 # The Lyα forest's lines, as people name them
@@ -1141,38 +1144,32 @@ class ComponentsTab(W.Tab):
         excluded = ion is not None and (
             C.is_excluded(comp, ion) or ion not in comp.ions
         )
-        card.toggle = None
-        if ion is not None:
-            text = ("Include in {0}" if excluded else "Exclude from {0}").format(
-                P.ion_name(ion)
+        everywhere = comp.everywhere_excluded
+        if not everywhere:
+            card.best = QtWidgets.QToolButton()
+            card.best.setText("Use best fit")
+            card.best.setObjectName("card_best_fit")
+            why = self._best_fit_reason(comp)
+            card.best.setEnabled(not why)
+            card.best.setToolTip(
+                why
+                or "Copy the best fit of {0} (z, b_turb, T and each ion's log N) from"
+                " {1} into this component, as one step".format(
+                    comp.id, self._shown[0].name
+                )
             )
-            card.toggle = QtWidgets.QPushButton(text)
-            card.toggle.setObjectName("card_include" if excluded else "card_exclude")
-            card.toggle.clicked.connect(
-                lambda _=False, c=comp, i=ion, e=excluded: self._toggle_ion(c, i, e)
+            card.best.clicked.connect(lambda _=False, c=comp: self.use_best_fit(c))
+            head.addWidget(card.best)
+            card.blind = QtWidgets.QToolButton()
+            card.blind.setText("Blind…")
+            card.blind.setObjectName("card_blind")
+            blinded = all(ln.blind for ln in comp.lines)
+            card.blind.setEnabled(not blinded)
+            card.blind.setToolTip(
+                "Its values are hidden" if blinded else "Hide this component's values"
             )
-        card.best = QtWidgets.QToolButton()
-        card.best.setText("Use best fit")
-        card.best.setObjectName("card_best_fit")
-        why = self._best_fit_reason(comp)
-        card.best.setEnabled(not why)
-        card.best.setToolTip(
-            why
-            or "Copy the best fit of {0} (z, b_turb, T and each ion's log N) from"
-            " {1} into this component, as one step".format(comp.id, self._shown[0].name)
-        )
-        card.best.clicked.connect(lambda _=False, c=comp: self.use_best_fit(c))
-        head.addWidget(card.best)
-        card.blind = QtWidgets.QToolButton()
-        card.blind.setText("Blind…")
-        card.blind.setObjectName("card_blind")
-        blinded = all(ln.blind for ln in comp.lines)
-        card.blind.setEnabled(not blinded)
-        card.blind.setToolTip(
-            "Its values are hidden" if blinded else "Hide this component's values"
-        )
-        card.blind.clicked.connect(lambda _=False, c=comp: self._blind(c))
-        head.addWidget(card.blind)
+            card.blind.clicked.connect(lambda _=False, c=comp: self._blind(c))
+            head.addWidget(card.blind)
         card.remove = QtWidgets.QToolButton()
         card.remove.setText("✕")
         card.remove.setObjectName("card_remove")
@@ -1180,12 +1177,8 @@ class ComponentsTab(W.Tab):
         card.remove.clicked.connect(lambda _=False, c=comp: self._remove(c))
         head.addWidget(card.remove)
         layout.addLayout(head)
-        if card.toggle is not None:
-            # On a row of its own, so that the card fits its column
-            toggle = QtWidgets.QHBoxLayout()
-            toggle.addWidget(card.toggle)
-            toggle.addStretch(1)
-            layout.addLayout(toggle)
+        if everywhere:
+            return self._everywhere_card(card, layout, comp, ion, rows)
         body = QtWidgets.QWidget()
         grid = QtWidgets.QGridLayout(body)
         grid.setContentsMargins(0, 0, 0, 0)
@@ -1204,46 +1197,68 @@ class ComponentsTab(W.Tab):
         grid.addWidget(card.temp, row, 1, 1, 2)
         row += 1
         notes = self.notes.get(comp.label or comp.id, {})
-        # The ions it is in, each with its log N; the others on one line (Q5.20)
-        others = []
+        # The ions it is in, each with its log N, or the ratio that gives it (Q7.7);
+        # listed again under the rows, with the others (Q5.20)
+        included, others = [], []
         for item in rows:
-            for num, each in enumerate(item.ions):
-                lines = comp.lines_of(each)
-                if not lines:
+            for num, (each, kind, line) in enumerate(C.card_ions(comp, item.ions)):
+                if kind == C.EXCLUDED:
                     others.append(each)
                     continue
+                included.append(each)
                 under = num and comp.lines_of(item.ions[0])
-                label = QtWidgets.QLabel(("↳ " if under else "") + P.ion_name(each))
+                name, key, what = P.ion_name(each), "ColDens:" + each, None
+                note = notes.get(each)
+                if kind == C.RATIO:
+                    denom = P.ion_name(line.ion.split("/")[1])
+                    name = "{0} · log {0}/{1}".format(P.ion_name(each), denom)
+                    key = "ratio:" + each
+                    what = "log {2}/" + denom + " in {1}"
+                    shared = C.ratio_sharers(self.session.project, comp, line)
+                    note = "shared with " + ", ".join(shared) if shared else None
+                label = QtWidgets.QLabel(("↳ " if under else "") + name)
                 if each == ion:
                     font = label.font()
                     font.setBold(True)
                     label.setFont(font)
                 grid.addWidget(label, row, 0)
-                par = lines[0].param("ColDens")
                 self._value_row(
                     grid,
                     row,
                     card,
                     comp,
-                    par,
-                    "ColDens:" + each,
-                    "log N of {2} in {1}",
+                    line.param("ColDens"),
+                    key,
+                    what or "log N of {2} in {1}",
                     ion=each,
                 )
-                note = notes.get(each)
                 if note:
                     grid.addWidget(W.muted(note), row, 3)
                 row += 1
         grid.setColumnStretch(1, 1)
         layout.addWidget(body)
-        card.excluded = None
-        if others:
-            card.excluded = self._excluded_line(comp, ion, others)
-            grid.addWidget(card.excluded, row, 0, 1, 4)
         card.body = body
-        # Excluded from the ion shown: greyed, but for its Include button
+        self._ion_sections(card, layout, comp, ion, included, others)
+        # Excluded from the ion shown: greyed, but for the lists of ions
         body.setEnabled(not excluded)
         card.title.setEnabled(not excluded)
+        return card
+
+    def _everywhere_card(self, card, layout, comp, ion, rows):
+        """
+        The card of a component excluded from every ion (Q7.6): greyed, with each of
+        the system's ions under Excluded ions, and ✕.
+
+        Generated by RJC and Claude.
+        """
+        note = W.muted("Excluded from every ion: include it in one to fit it again.")
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        card.body = QtWidgets.QWidget()
+        card.body.setEnabled(False)
+        card.title.setEnabled(False)
+        others = [i for r in rows for i in r.ions]
+        self._ion_sections(card, layout, comp, ion, [], others)
         return card
 
     def _best_fit_reason(self, comp):
@@ -1276,27 +1291,56 @@ class ComponentsTab(W.Tab):
 
         self._act("components.best_fit", do)
 
-    def _excluded_line(self, comp, ion, others):
+    def _ion_sections(self, card, layout, comp, ion, included, excluded):
         """
-        "Excluded: D I, O I": the system's ions a component has no line of
-        (excluded, or never in it, Q5.20); a click on one includes it.
+        The card's lists of ions (RJC's review of Stage 7), each under a faint rule:
+        "Included ions (click to exclude):" and "Excluded ions (click to include):",
+        the latter with the system's ions it never had (Q5.20).
+
+        Generated by RJC and Claude.
+        """
+        card.included = self._ion_list(comp, ion, included, False)
+        card.excluded = self._ion_list(comp, ion, excluded, True)
+        for title, label in (
+            (INCLUDED_IONS, card.included),
+            (EXCLUDED_IONS, card.excluded),
+        ):
+            rule = QtWidgets.QFrame()
+            rule.setObjectName("cardRule")
+            rule.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+            rule.setFrameShadow(QtWidgets.QFrame.Shadow.Plain)
+            layout.addWidget(rule)
+            layout.addWidget(QtWidgets.QLabel(title))
+            layout.addWidget(label)
+
+    def _ion_list(self, comp, ion, ions, excluded):
+        """
+        "H I, D I, O I", each a link (the ion shown in bold): a click on one excludes
+        the component from it, or, ``excluded``, includes it; "none" when empty.
 
         Generated by RJC and Claude.
         """
         names = []
-        for each in others:
+        for each in ions:
             # Wrapped between names, never inside one ("O I")
             name = P.ion_name(each).replace(" ", "&nbsp;")
             if each == ion:
                 name = "<b>{0}</b>".format(name)
             names.append('<a href="{0}">{1}</a>'.format(each, name))
-        label = QtWidgets.QLabel("Excluded: " + ", ".join(names))
-        label.setObjectName("card_excluded")
+        none = '<span style="color: {0};">none</span>'.format(ST.GREY["muted"])
+        label = QtWidgets.QLabel(", ".join(names) or none)
+        label.setObjectName("card_excluded" if excluded else "card_included")
         label.setTextFormat(QtCore.Qt.TextFormat.RichText)
         label.setWordWrap(True)
-        label.setToolTip("Click an ion to include {0} in it".format(comp.id))
+        if names:
+            tip = (
+                "Click an ion to include {0} in it"
+                if excluded
+                else ("Click an ion to exclude {0} from it")
+            )
+            label.setToolTip(tip.format(comp.id))
         label.linkActivated.connect(
-            lambda each, c=comp: self._toggle_ion(c, each, True)
+            lambda each, c=comp, e=excluded: self._toggle_ion(c, each, e)
         )
         return label
 
@@ -1345,6 +1389,8 @@ class ComponentsTab(W.Tab):
         others = []
         if par.name in E.COMPONENT_PREFIX:
             for other in comp.system.components:
+                if other.main is None:
+                    continue  # excluded from every ion: no tie to it (Q7.6)
                 theirs = other.main.param(par.name)
                 if other is not comp and theirs is not None and theirs.label:
                     if theirs.label != par.label:
@@ -1450,7 +1496,8 @@ class ComponentsTab(W.Tab):
         self._act("components.value", do)
 
     def _with_label(self, make, par):
-        """Make a change; a parameter that needs a label is given one (asked)."""
+        """Make a change; a parameter that needs a label is given one (asked). A
+        label refused is said in a message."""
         try:
             return make(None)
         except E.LabelNeeded as need:
@@ -1462,7 +1509,26 @@ class ComponentsTab(W.Tab):
             )
             if not self.main.run_dialog(dialog):
                 return None
-            return make(dialog.values()["label"])
+            try:
+                return make(dialog.values()["label"])
+            except E.EditError as error:
+                self._warn("Label", self._refusal(error))
+                return None
+        except E.EditError as error:
+            self._warn("Label", self._refusal(error))
+            return None
+
+    def _refusal(self, error):
+        """An edit's refusal in words; a label of an excluded component names it."""
+        if isinstance(error, E.ExcludedLabel):
+            owner = C.label_owner(self.session.project, error.label)
+            if owner is not None:
+                return (
+                    "The label {0} belongs to {1}, which is excluded from the fit:"
+                    " it stays {1}'s, so that including {1} again ties it to nothing"
+                    " else. Choose another label.".format(error.label, owner.id)
+                )
+        return str(error)
 
     def _param_step(self, kind, par, description, label=None):
         def do():
@@ -1536,34 +1602,30 @@ class ComponentsTab(W.Tab):
         self._act("components.temperature", do)
 
     def _toggle_ion(self, comp, ion, excluded):
-        """Exclude from or include in the ion shown (Q5.15)."""
+        """Exclude from or include in an ion (Q5.15), clicked in a card's lists."""
         project = self.session.project
         if excluded:
 
             def include():
-                step, guess = C.include(project, comp, ion, self.prefs())
+                try:
+                    step, guess = C.include(project, comp, ion, self.prefs())
+                except C.ComponentError as error:
+                    self._warn("Include in " + P.ion_name(ion), str(error))
+                    return
                 self._do(step)
                 if guess is not None:
                     self.notes.setdefault(comp.label or comp.id, {})[ion] = guess.note
 
             self._act("components.include", include)
             return
-        plan = C.exclusion(project, comp, ion)
-        if plan.last:
-            # Its last ion: the component would have no line left (Q5.15(d))
-            choice = self.main.ask(
-                "exclude_last",
-                "Exclude " + P.ion_name(ion),
-                "{0} is the last ion of component {1}. Excluding it removes the"
-                " component. Remove {1}?".format(P.ion_name(ion), comp.id),
-                ["Remove the component", "Cancel"],
-                icon="warning",
-            )
-            if choice == "Remove the component":
-                removal = R.plan_component(project, comp)
-                self._act("components.remove", lambda: self._do(removal.step(project)))
+        # A refusal is a message, never a traceback (item 6 of Stage 7)
+        try:
+            plan = C.exclusion(project, comp, ion)
+        except C.ComponentError as error:
+            self._warn("Exclude from " + P.ion_name(ion), str(error))
             return
-        if len(plan.entries) > 1:
+        # Its last ion leaves it excluded from every ion (Q7.6): the preview says so
+        if plan.last or plan.notes or len(plan.entries) > 1:
             dialog = D.PlanDialog(plan.description, plan, self.gate, "Exclude", self)
             if not self.main.run_dialog(dialog):
                 return
@@ -1903,6 +1965,9 @@ class ComponentsTab(W.Tab):
             kind = "z" if y0 > 1.0 else "shape"
             if kind == "z" and not axes["z"]:
                 return
+            if kind == "shape" and not axes["b"] and self.main is not None:
+                # Say why a drag across moves nothing (Q7.10)
+                self.main.statusBar().showMessage(C.drag_target(comp, ion)[1], 8000)
             if kind == "shape" and not (axes["logn"] or axes["b"]):
                 return
             self._start_drag(comp, ion, kind)

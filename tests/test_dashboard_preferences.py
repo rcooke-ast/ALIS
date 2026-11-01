@@ -169,6 +169,23 @@ def test_the_recent_list(folder):
     assert (folder / P.RECENT).exists() and not (folder / P.PREFERENCES).exists()
 
 
+def test_the_recent_list_is_cleared_and_no_project_is_touched(folder):
+    # Item 7 of Stage 7: only recent.json changes
+    projects = [folder / (name + ".model") for name in ("a", "b", "c")]
+    for path in projects:
+        path.write_bytes(b"a project")
+    recent = P.Recent()
+    for path in projects:
+        recent.add(str(path))
+    before = {p.name: p.read_bytes() for p in folder.iterdir() if p.name != P.RECENT}
+    P.Recent().remove(str(projects[1]))
+    assert P.Recent().paths() == [str(projects[2]), str(projects[0])]
+    P.Recent().clear()
+    assert P.Recent().paths() == []
+    after = {p.name: p.read_bytes() for p in folder.iterdir() if p.name != P.RECENT}
+    assert after == before and (folder / P.RECENT).exists()
+
+
 def test_a_damaged_recent_list_is_empty(folder):
     (folder / P.RECENT).write_text("[1, 2", encoding="utf-8")
     assert P.Recent().paths() == []

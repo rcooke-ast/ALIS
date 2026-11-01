@@ -55,6 +55,19 @@ COLUMNS = (
     "Checksum",
 )
 BADGES = {DS.FREE: "●", DS.FIXED: "■", DS.TIED: "⛓"}
+
+
+def _own_text(row, what, form):
+    """`` · 2 snips their own``: a row's snips with a shift or a zero level of their
+    own (Q7.12), or ``""``."""
+    count = DS.own_count(row, what)
+    if not count:
+        return ""
+    return " · " + form.format(
+        count, "" if count == 1 else "s", "its" if count == 1 else "their"
+    )
+
+
 BADGE_TIPS = {
     DS.FREE: "Free: the fit varies it",
     DS.FIXED: "Fixed: the fit keeps it",
@@ -532,7 +545,7 @@ class DataTab(W.Tab):
                 DS.contents(row, spec),
                 self._value_text(gate, row, "resolution"),
                 self._shift_text(gate, row),
-                "On" if row.zero is not None else "Off",
+                self._zero_text(row),
                 DS.checksum(state) + (" · Relink…" if state == SR.MISSING else ""),
             ]
             for col, text in enumerate(cells):
@@ -554,7 +567,16 @@ class DataTab(W.Tab):
                         )
                     item.setToolTip(tip)
                 if col == 5:
-                    item.setToolTip("Click to switch the zero level on or off")
+                    tip = "Click to switch the zero level on or off"
+                    if (
+                        row.zero is None
+                        and row.snips
+                        and len(row.own_zero) == len(row.snips)
+                    ):
+                        tip = DS.EVERY_SNIP_ZERO.format(row.name)
+                    elif row.own_zero:
+                        tip += "; snips with their own (the Snip box) keep it"
+                    item.setToolTip(tip)
                 if col == 6 and state == SR.MISSING:
                     item.setToolTip("The file has moved: click to relink it")
                 self.table.setItem(num, col, item)
@@ -612,14 +634,23 @@ class DataTab(W.Tab):
         return "Reset FWHM to {0:g} km/s".format(default)
 
     def _shift_text(self, gate, row):
+        own = _own_text(row, "shift", "{0} snip{1} {2} own")
         if row.reference:
-            return "0 · reference"
+            return "0 · reference" + own
         if not row.snips:
             return "free, once it has a snip"
-        par = row.snips[0].data.param("shift")
-        if par is None or "shift" not in row.snips[0].data.keywords:
-            return "0"
-        return gate.value(par) + " " + self._badge(self.session.project, row, "shift")
+        par = row.shift
+        shared = row.shared_snips
+        if par is None or not shared or "shift" not in shared[0].data.keywords:
+            return "0" + own
+        text = gate.value(par) + " " + self._badge(self.session.project, row, "shift")
+        return text + own
+
+    def _zero_text(self, row):
+        """On or Off, and how many snips have a zero level of their own (Q7.12)."""
+        return ("On" if row.zero is not None else "Off") + _own_text(
+            row, "zero", "{0} snip{1} {2} own"
+        )
 
     def _refresh_coverage(self, project):
         rows = project.rows
@@ -1022,6 +1053,10 @@ class DataTab(W.Tab):
         """Zero level Off/On (D14)."""
         project = self.session.project
         on = row.zero is None
+        if on and row.snips and len(row.own_zero) == len(row.snips):
+            # Nothing to switch on (Q7.12)
+            self.main.tell("Zero level", DS.EVERY_SNIP_ZERO.format(row.name))
+            return
         if not on:
             shared = DS.zero_level_shared(project, row)
             if shared:

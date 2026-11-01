@@ -485,6 +485,7 @@ class Session:
         overwrite=False,
         columns=None,
         fwhm=None,
+        save=True,
     ):
         """
         A new project, from the New project dialog (Q3.12), written at once so that
@@ -508,6 +509,9 @@ class Session:
             otherwise.
         fwhm : dict, optional
             The FWHM of each spectrum, in km/s, by path; the preferences' otherwise.
+        save : bool
+            Write it at once. Open a fit (.mod)… writes it only once the fit is
+            loaded into it, so that Cancel leaves nothing behind (Q7.9).
 
         Returns
         -------
@@ -535,7 +539,8 @@ class Session:
             bundle_path=path,
         )
         session = cls(project, None, prefs, folder)
-        session.save(path)
+        if save:
+            session.save(path)
         return session, notes
 
     @classmethod

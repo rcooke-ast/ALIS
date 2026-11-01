@@ -33,6 +33,7 @@ from alis.dashboard import actions as A
 from alis.dashboard import align as AL
 from alis.dashboard import blinding as BL
 from alis.dashboard import edit as E
+from alis.dashboard import export as X
 from alis.dashboard import fitview as FV
 from alis.dashboard import loadfit as LF
 from alis.dashboard import markers as MK
@@ -80,6 +81,12 @@ RUN_ENDED = {
 }
 
 
+# Open a fit (.mod)…'s choices (Q7.9)
+WITH_SPECTRUM = "Open with its spectrum (recommended)…"
+NEW_PROJECT = "Open as a new project…"
+OTHER_SPECTRUM = "Choose another spectrum…"
+
+
 class StartPage(QtWidgets.QFrame):
     """
     What the window shows with no project open: New project, Open, Import a fit, the
@@ -115,7 +122,30 @@ class StartPage(QtWidgets.QFrame):
         self.recent = QtWidgets.QListWidget()
         self.recent.itemActivated.connect(self._open_recent)
         self.recent.itemDoubleClicked.connect(self._open_recent)
-        lists.addWidget(W.Pane("Recent projects", self.recent), 3)
+        self.recent.currentItemChanged.connect(lambda *_: self._recent_buttons())
+        # Remove from list and Clear list (item 7 of Stage 7): the list alone
+        # changes, never a project's file
+        self.recent.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
+        self.recent.customContextMenuRequested.connect(self._recent_menu)
+        delete = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Delete, self.recent)
+        delete.setContext(QtCore.Qt.ShortcutContext.WidgetShortcut)
+        delete.activated.connect(self.remove_recent)
+        self.remove_button = QtWidgets.QPushButton("Remove from list")
+        self.remove_button.setToolTip("Take the selected project off this list")
+        self.remove_button.clicked.connect(self.remove_recent)
+        self.clear_button = QtWidgets.QPushButton("Clear list…")
+        self.clear_button.setToolTip("Empty this list")
+        self.clear_button.clicked.connect(self.clear_recent)
+        recent_box = QtWidgets.QWidget()
+        column = QtWidgets.QVBoxLayout(recent_box)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.addWidget(self.recent, 1)
+        row = QtWidgets.QHBoxLayout()
+        row.addWidget(self.remove_button)
+        row.addWidget(self.clear_button)
+        row.addStretch(1)
+        column.addLayout(row)
+        lists.addWidget(W.Pane("Recent projects", recent_box), 3)
         self.orphans = QtWidgets.QListWidget()
         recover = QtWidgets.QPushButton("Recover")
         recover.clicked.connect(self._recover)
@@ -157,6 +187,7 @@ class StartPage(QtWidgets.QFrame):
             self.recent.addItem(item)
         if not recent.paths():
             self.recent.addItem("No recent projects.")
+        self._recent_buttons()
         self.orphans.clear()
         for note in S.orphans(window.folder):
             item = QtWidgets.QListWidgetItem(
@@ -173,6 +204,40 @@ class StartPage(QtWidgets.QFrame):
         path = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if path:
             self.window.open_path(path)
+
+    def _recent_path(self):
+        item = self.recent.currentItem()
+        return item.data(QtCore.Qt.ItemDataRole.UserRole) if item else None
+
+    def _recent_buttons(self):
+        listed = any(
+            self.recent.item(n).data(QtCore.Qt.ItemDataRole.UserRole)
+            for n in range(self.recent.count())
+        )
+        self.remove_button.setEnabled(bool(self._recent_path()))
+        self.clear_button.setEnabled(listed)
+
+    def _recent_menu(self, point):
+        item = self.recent.itemAt(point)
+        if item is None or not item.data(QtCore.Qt.ItemDataRole.UserRole):
+            return
+        self.recent.setCurrentItem(item)
+        menu = QtWidgets.QMenu(self)
+        menu.addAction("Remove from list", self.remove_recent)
+        menu.addAction("Clear list…", self.clear_recent)
+        menu.exec(self.recent.mapToGlobal(point))
+
+    def remove_recent(self):
+        """Take the selected project off the recent list (item 7)."""
+        path = self._recent_path()
+        if path:
+            window = self.window
+            PR.Recent(window.folder, window.prefs["recent.length"]).remove(path)
+            self.refresh()
+
+    def clear_recent(self):
+        """Empty the recent list, after asking once (item 7)."""
+        self.window.clear_recent()
 
     def _recover(self):
         item = self.orphans.currentItem()
@@ -252,6 +317,8 @@ class MainWindow(QtWidgets.QMainWindow):
             if spec.shortcut:
                 tip += " ({0})".format(action.shortcut().toString(native))
             action.setToolTip(tip)
+            # Kept, for a tooltip that gives way to a reason for a while (Run's)
+            action.setProperty("tip", tip)
             action.setStatusTip(spec.tip)
             action.setCheckable(spec.checkable)
             handler = getattr(self, "do_" + spec.name.replace(".", "_"))
@@ -306,11 +373,36 @@ class MainWindow(QtWidgets.QMainWindow):
             )
         if not paths:
             self.recent_menu.addAction("No recent projects").setEnabled(False)
+            return
+        self.recent_menu.addSeparator()
+        clear = self.recent_menu.addAction("Clear recent projects…")
+        clear.triggered.connect(lambda: self._run("recent", self.clear_recent))
+
+    def clear_recent(self):
+        """
+        Empty the recent projects, after asking once: only the list changes, never
+        a project's file (item 7 of Stage 7).
+
+        Generated by RJC and Claude.
+        """
+        choice = self.ask(
+            "clear_recent",
+            "Clear recent projects",
+            "Empty the list of recent projects? The projects themselves are not"
+            " changed.",
+            ["Clear list", "Cancel"],
+        )
+        if choice != "Clear list":
+            return
+        PR.Recent(self.folder, self.prefs["recent.length"]).clear()
+        if self.session is None:
+            self.start.refresh()
 
     def _build_toolbar(self):
         """
         The toolbar, as in the mockups: undo and redo; open and save, with the time
-        of the last autosave; the blinding pill; export and the shortcut sheet. The
+        of the last autosave; Run (item 13 of Stage 7); the blinding pill; export and
+        the shortcut sheet. The
         mode is chosen in the New project dialog, and not changed after (RJC), so it
         is shown in the status bar rather than offered here.
 
@@ -330,6 +422,8 @@ class MainWindow(QtWidgets.QMainWindow):
         bar.addAction(self.qactions["file.save"])
         self.autosave_label = W.muted("")
         bar.addWidget(self.autosave_label)
+        # The Fit tab's Run itself, enabled as it is (item 13 of Stage 7)
+        bar.addAction(self.qactions["fit.run"])
         bar.addSeparator()
         self.pill = W.Pill()
         bar.addWidget(self.pill)
@@ -339,7 +433,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
         bar.addWidget(spacer)
-        self.qactions["file.export"].setIconText("Export plain files…")
+        self.qactions["file.export"].setIconText("Export…")
         self.qactions["help.shortcuts"].setIconText("?  Shortcuts")
         bar.addAction(self.qactions["file.export"])
         bar.addAction(self.qactions["help.shortcuts"])
@@ -461,8 +555,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # The window's shortcuts also work in the panel's own window
         self.panel.addActions(list(self.qactions.values()))
         self.panel.set_panel_actions(
-            [self.qactions[a.name] for a in A.in_menu(A.PANEL)],
-            menu_only=[self.qactions["file.load_mod"]],
+            [
+                self.qactions[a.name]
+                for a in A.in_menu(A.PANEL)
+                if a.name != "panel.load_mod"
+            ],
+            menu_only=[self.qactions["panel.load_mod"]],
         )
         self.dock.visibilityChanged.connect(self._dock_shown)
         self.dock.topLevelChanged.connect(self._dock_floated)
@@ -613,7 +711,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if target.kind == S.OPEN:
             self.open_path(target.path)
         elif target.kind == S.IMPORT:
-            self.import_path(target.path)
+            self.open_fit_new(target.path)
         else:
             self.show_start()
 
@@ -848,14 +946,14 @@ class MainWindow(QtWidgets.QMainWindow):
             elif name.split(".")[0] in ("edit", "view", "model") or name in (
                 "file.save",
                 "file.save_as",
-                "file.load_mod",
+                "panel.load_mod",
                 "file.export",
                 "file.relink",
                 "file.close",
             ):
                 action.setEnabled(has)
-        self._fit_actions()
         if not has:
+            self._fit_actions()
             self.status_mode.setText("")
             self.setWindowTitle(TITLE)
             self.setWindowModified(False)
@@ -886,6 +984,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for widget in self.tab_widgets:
             widget.refresh(session)
             widget.setEnabled(not project.paused or widget.name == "Plot")
+        # After the tabs: Run asks the Inspect sub-tab's pre-flight check
+        self._fit_actions()
         self.tabs.setTabEnabled(4, False)
         self.refresh_markers()
         self.pill.set_text(BL.pill_text(project))
@@ -926,8 +1026,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.fit.active and self.fit.session is session:
             running = FV.marker_text(self.fit.job)
         report = self.fit_tab.inspect.report_for(project)
-        if report is not None and not report.ok:
-            refused = report.refusals[0].message
+        found = [] if report is None else report.refusals
+        # Nothing to fit yet is for the earlier tabs' markers to say
+        found = [f for f in found if f.code not in PC.NOT_YET]
+        if found:
+            refused = found[0].message
         gate = BL.Gate(project)
         self.markers = MK.markers(project, session.path, running, refused)
         for num, name in enumerate(A.TABS):
@@ -950,16 +1053,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _fit_actions(self):
         """
-        Run and Save and Run while no run goes; Stop (then Cancel) while one does;
-        Commit run… while the latest run is not committed; Continue from best fit…
-        while the shown run has a best fit and no run goes.
+        Run, Save and Run and Convergence check… while no run goes and the
+        pre-flight check would let one go (greyed, with its reason as their tooltip);
+        Stop (then Cancel) while one does; Commit run… while the latest run is not
+        committed; Continue from best fit… while the shown run has a best fit and no
+        run goes.
 
         Generated by RJC and Claude.
         """
         has = self.session is not None
         running = self.fit.active
-        self.qactions["fit.run"].setEnabled(has and not running)
-        self.qactions["fit.save_run"].setEnabled(has and not running)
+        why = self.run_refusal() if has and not running else ""
+        for name in ("fit.run", "fit.save_run", "fit.convergence"):
+            action = self.qactions[name]
+            action.setEnabled(has and not running and not why)
+            action.setToolTip(why or action.property("tip"))
         latest = R.latest(self.session.project.bundle) if has else None
         commit = self.qactions["fit.commit"]
         commit.setEnabled(latest is not None and latest.committed_as is None)
@@ -977,7 +1085,6 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         shown = has and not running and record is not None
         self.qactions["fit.continue"].setEnabled(shown)
-        self.qactions["fit.convergence"].setEnabled(has and not running)
         self.qactions["fit.restarts"].setEnabled(shown)
         self.qactions["fit.outliers"].setEnabled(shown)
         self.qactions["fit.export_restarts"].setEnabled(
@@ -993,6 +1100,23 @@ class MainWindow(QtWidgets.QMainWindow):
             else A.get("fit.stop").tip
         )
         self.status_stop.setVisible(running)
+
+    def run_refusal(self):
+        """
+        Why Run cannot go now, or ``""`` (RJC's review of Stage 7): the first
+        refusal of the pre-flight check of the project as it stands (no snip, no
+        fit region, no component, …), through the blinding gate. The check is the
+        Inspect sub-tab's, kept until the project changes.
+
+        Generated by RJC and Claude.
+        """
+        inspect = self.fit_tab.inspect
+        if self.session is None or inspect.session is not self.session:
+            return ""
+        report = inspect.check()
+        if report.ok:
+            return ""
+        return BL.Gate(self.session.project).message(report.refusals[0].message)
 
     def _fit_status(self):
         """The run going, in the status bar."""
@@ -1184,7 +1308,18 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         if not self.run_dialog(dialog):
             return
-        values = dialog.values()
+        made = self._new_session(dialog.values())
+        if made is None or not self.close_session():
+            return
+        self.set_session(*made)
+
+    def _new_session(self, values, save=True):
+        """
+        The session of the New project dialog's values, after asking to replace a
+        file that exists; None when the user would not.
+
+        Generated by RJC and Claude.
+        """
         overwrite = False
         if os.path.exists(values["path"]):
             choice = self.ask(
@@ -1195,11 +1330,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 icon="warning",
             )
             if choice != "Replace":
-                return
+                return None
             overwrite = True
-        if not self.close_session():
-            return
-        session, notes = S.Session.new(
+        return S.Session.new(
             values["path"],
             values["sources"],
             z=values["z"],
@@ -1211,8 +1344,8 @@ class MainWindow(QtWidgets.QMainWindow):
             folder=self.folder,
             registry=self.registry,
             overwrite=overwrite,
+            save=save,
         )
-        self.set_session(session, notes)
 
     def do_file_open(self):
         """Open…"""
@@ -1221,30 +1354,91 @@ class MainWindow(QtWidgets.QMainWindow):
             self.open_path(path)
 
     def do_file_import(self):
-        """Import a fit (.mod)…"""
+        """Open a fit (.mod)… (Q7.9)."""
         path = self.choose(
-            "open", "Import a fit", "", "ALIS models (*.mod *.mod.out);;All files (*)"
+            "open", "Open a fit", "", "ALIS models (*.mod *.mod.out);;All files (*)"
         )
         if path:
-            self.import_path(path)
+            self.open_fit(path)
 
-    def do_file_load_mod(self):
+    def open_fit(self, path):
         """
-        Load a .mod…: an earlier fit's model, as written, and the snips it names,
-        each checked against the project's spectra, replace the project's model and
-        snips, after a preview; one step (Task 7.1, Q7.1, Q7.3).
+        Open a fit (.mod)… (Q7.9): into the open project when it has a source
+        spectrum, after a preview that also offers a new project; otherwise as a new
+        project, after asking whether with its spectrum.
 
         Generated by RJC and Claude.
         """
-        path = self.choose(
-            "open",
-            "Load a .mod",
-            "",
-            "ALIS models (*.mod *.mod.out);;All files (*)",
-        )
-        if not path:
-            return
         session = self.session
+        if session is not None and any(r.source for r in session.project.rows):
+            self.load_fit(path, offer_new=True)
+        else:
+            self.open_fit_new(path)
+
+    def open_fit_new(self, path):
+        """
+        A fit as a new project, after asking whether with the full spectrum its
+        snips were cut from: the recommended way (Q7.9's response).
+
+        Generated by RJC and Claude.
+        """
+        name = os.path.basename(path)
+        choice = self.ask(
+            "open_fit",
+            "Open a fit",
+            "Open {0} with the full spectrum its snips were cut from? This is the"
+            " recommended way: the snips are checked against it, and new snips can"
+            " be cut from it. Without it, the fit opens with its snips alone.".format(
+                name
+            ),
+            [WITH_SPECTRUM, "Open without a spectrum", "Cancel"],
+            default=WITH_SPECTRUM,
+        )
+        if choice == WITH_SPECTRUM:
+            self.open_fit_with_spectrum(path)
+        elif choice == "Open without a spectrum":
+            self.import_path(path)
+
+    def open_fit_with_spectrum(self, path):
+        """
+        A new project of the fit's spectrum, from the New project dialog (in the
+        folder of its snips, with its FWHM), with the fit loaded into it, after its
+        preview. The project is written only then: Cancel leaves nothing (Q7.9).
+
+        Generated by RJC and Claude.
+        """
+        folder, fwhm = LF.mod_hints(path)
+        dialog = D.NewProjectDialog(
+            folder, fwhm or self.prefs["new_project.fwhm"], self
+        )
+        if not self.run_dialog(dialog):
+            return
+        values = dialog.values()
+        made = self._new_session(values, save=False)
+        if made is None:
+            return
+        session, notes = made
+        plan = self._fit_plan(session, path, offer_new=False, retry=True)
+        if plan is None:
+            return
+        dialog = D.PlanDialog(
+            plan.description, plan, BL.Gate(session.project), "Load", self
+        )
+        if not self.run_dialog(dialog) or not self.close_session():
+            return
+        self.set_session(session, notes)
+        session.history.do(plan.step)
+        self.save(values["path"])
+        self._loaded(path, plan)
+
+    def _fit_plan(self, session, path, offer_new, retry=False):
+        """
+        The plan that loads a fit into a session's project, or None when it cannot
+        be loaded: the message says why, and offers a new project (``offer_new``),
+        or another spectrum or none (``retry``).
+
+        Generated by RJC and Claude.
+        """
         project = session.project
         spectra = {}
         for row in project.rows:
@@ -1253,19 +1447,75 @@ class MainWindow(QtWidgets.QMainWindow):
                 spectra[row.id] = spec
         try:
             plan = LF.load_mod_plan(project, path, spectra)
+            why = "" if plan.ok else plan.message()
         except LF.LoadError as error:
-            self.tell(
-                "Load a .mod", "The .mod cannot be loaded:\n" + str(error), "warning"
-            )
+            plan, why = None, "The fit cannot be loaded:\n" + str(error)
+        if not why:
+            return plan
+        choices = ["OK"]
+        if offer_new:
+            choices = [NEW_PROJECT, "Cancel"]
+        elif retry:
+            choices = [OTHER_SPECTRUM, "Open without a spectrum", "Cancel"]
+        choice = self.ask(
+            "open_fit_refused", "Open a fit", why, choices, icon="warning"
+        )
+        if choice == NEW_PROJECT:
+            self.open_fit_new(path)
+        elif choice == OTHER_SPECTRUM:
+            self.open_fit_with_spectrum(path)
+        elif choice == "Open without a spectrum":
+            self.import_path(path)
+        return None
+
+    def do_panel_load_mod(self):
+        """
+        Load a fit (.mod) into this project… (the ``.mod`` panel): an earlier fit's
+        model, as written, and the snips it names, each checked against the
+        project's spectra, replace the project's model and snips, after a preview;
+        one step (Task 7.1, Q7.1, Q7.3).
+
+        Generated by RJC and Claude.
+        """
+        path = self.choose(
+            "open",
+            "Load a fit",
+            "",
+            "ALIS models (*.mod *.mod.out);;All files (*)",
+        )
+        if path:
+            self.load_fit(path)
+
+    def load_fit(self, path, offer_new=False):
+        """
+        Load a fit into the open project, after its preview; with ``offer_new``,
+        the preview and a refusal also offer Open as a new project… (Q7.9).
+
+        Generated by RJC and Claude.
+        """
+        session = self.session
+        plan = self._fit_plan(session, path, offer_new)
+        if plan is None:
             return
-        if not plan.ok:
-            self.tell("Load a .mod", plan.message(), "warning")
+        dialog = D.PlanDialog(
+            plan.description,
+            plan,
+            BL.Gate(session.project),
+            "Load",
+            self,
+            other=NEW_PROJECT if offer_new else None,
+        )
+        result = self.run_dialog(dialog)
+        if result == D.OTHER:
+            self.open_fit_new(path)
             return
-        dialog = D.PlanDialog(plan.description, plan, BL.Gate(project), "Load", self)
-        if not self.run_dialog(dialog):
+        if not result:
             return
         session.history.do(plan.step)
         self.panel.redraw()
+        self._loaded(path, plan)
+
+    def _loaded(self, path, plan):
         self.statusBar().showMessage(
             "Loaded {0}: {1} snip{2}.".format(
                 os.path.basename(path),
@@ -1285,50 +1535,71 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def do_file_export(self):
         """
-        Export plain files…: the model, its snips and the latest run's outputs, as
-        files that run_alis runs (D10). Hidden starting values are written in plain
-        text, after a warning.
+        Export… (Q7.16): the snips (the columns chosen, one ASCII file each), the
+        starting model, the best-fitting model of the run the Fit tab shows, or
+        everything run_alis needs (D10), to a folder of the user's choice. Hidden
+        values are written as BLIND (RJC's response to Q7.16).
 
         Generated by RJC and Claude.
         """
-        project = self.session.project
-        if project.hidden_lines() or project.parsed.blind:
-            choice = self.ask(
-                "export_blind",
-                "Export a blinded project",
-                "This project is blinded. The exported model must run without the"
-                " dashboard, so its hidden starting values will be written in plain"
-                " text. Hidden best-fit values are not written. Export anyway?",
-                ["Export", "Cancel"],
-                icon="warning",
-            )
-            if choice != "Export":
-                return
-        folder = self.choose("folder", "Export plain files to", os.getcwd())
-        if not folder:
+        session = self.session
+        project = session.project
+        view, why = self.shown_run()
+        if view is None:
+            run_why = model_why = why or X.NO_RUN
+        else:
+            run_why = X.run_reason(view)
+            model_why = X.best_fit_reason(project, view)
+        start = os.path.dirname(session.path) if session.path else os.getcwd()
+        dialog = D.ExportDialog(
+            start,
+            lambda: self.choose("folder", "Export to", start),
+            run_why,
+            model_why,
+            self,
+        )
+        if not self.run_dialog(dialog):
             return
-        bundle = self.session.to_bundle()
+        choice = dialog.choice()
+        gate = BL.Gate(project)
         try:
-            written, notes = B.extract(bundle, folder)
-        except B.BundleError:
-            choice = self.ask(
-                "export_overwrite",
-                "Export plain files",
-                "Some of the files exist already in {0}. Overwrite them?".format(
-                    folder
-                ),
-                ["Overwrite", "Cancel"],
-                icon="warning",
-            )
-            if choice != "Overwrite":
+            planned, notes = X.plan(session, choice, view)
+        except X.ExportError as error:
+            self.tell("Export", gate.message(str(error)), "warning")
+            return
+        overwrite = False
+        if [path for path in planned if os.path.exists(path)]:
+            if not self._overwrite(choice.folder):
                 return
-            written, notes = B.extract(bundle, folder, overwrite=True)
-        notes = [n for n in notes if "plain text" not in n]
+            overwrite = True
+        written = X.write(planned, overwrite=overwrite)
+        if choice.everything:
+            try:
+                more, extra = X.everything(session, choice.folder, overwrite)
+            except B.BundleError:
+                if not self._overwrite(choice.folder):
+                    return
+                more, extra = X.everything(session, choice.folder, True)
+            written += more
+            notes += [n for n in extra if n not in notes]
         self.tell(
-            "Export plain files",
-            "Wrote {0} files to {1}.".format(len(written), folder)
+            "Export",
+            "Wrote {0} file{1} to {2}.".format(
+                len(written), "" if len(written) == 1 else "s", choice.folder
+            )
             + ("\n\n" + "\n".join(notes) if notes else ""),
         )
+
+    def _overwrite(self, folder):
+        """Whether to write over the files that exist already in a folder."""
+        answer = self.ask(
+            "export_overwrite",
+            "Export",
+            "Some of the files exist already in {0}. Overwrite them?".format(folder),
+            ["Overwrite", "Cancel"],
+            icon="warning",
+        )
+        return answer == "Overwrite"
 
     def do_file_relink(self):
         """Relink spectra… (F13)."""

@@ -1842,6 +1842,10 @@ def load_model(slf, modlines, updateself=True):
         elif mdlspl[0] in slf._funcarray[0]: # Load the model parameters
             instr = nocoms.strip().lstrip(mdlspl[0]).strip()
             modpass, paridt = call_function_load(slf._funcarray[1][mdlspl[0]], slf._funcarray[2][mdlspl[0]], instr, cntr, modpass, slf._specid)
+            if emabtag == 'zl' and mdlspl[0] == 'constant':
+                # A zero level corrects an offset of either sign: constant's lower
+                # limit of 0 is a continuum's (dashboard Stage 7, Q7.14)
+                for lims in modpass['mlim'][cntr]: lims[0] = None
             for j in range(len(pnumlin),len(modpass['p0'])): pnumlin.append(i) # Store which element of modlines each parameter comes from
             parid.append(paridt)
             if mdlspl[0] not in funcused: funcused.append(mdlspl[0])
@@ -1882,6 +1886,7 @@ def load_model(slf, modlines, updateself=True):
     cntr = 0
     fixparid=[]
     limparid=[]
+    funclim = set() # The (function, parameter) limits that a 'lim' command sets
     for i in range(0,len(modlines)):
         if len(modlines[i].strip()) == 0: continue # Nothing on a line
         nocoms = modlines[i].lstrip().split('#')[0] # Remove everything on a line after the first instance of a comment symbol: #
@@ -1911,6 +1916,7 @@ def load_model(slf, modlines, updateself=True):
                 if mdlspl[1] not in slf._funcarray[0]: msgs.error("Keyword 'lim' does not accept the parameter "+mdlspl[1]+" on line -"+msgs.newline()+modlines[i])
                 if mdlspl[2] not in slf._funcarray[2][mdlspl[1]]._parid: msgs.error("Keyword "+mdlspl[1]+" does not accept the parameter "+mdlspl[2]+" on line -"+msgs.newline()+modlines[i])
                 find = np.where(np.array(slf._funcarray[2][mdlspl[1]]._parid)==mdlspl[2])[0][0]
+                funclim.add((mdlspl[1], find))
                 limspl=mdlspl[3].strip('[]').split(',')
                 if len(limspl) != 2: msgs.error("Keyword 'lim' only accepts a two element array on line -"+msgs.newline()+modlines[i])
                 for j in range(2):
@@ -1928,7 +1934,10 @@ def load_model(slf, modlines, updateself=True):
         for j in range(len(parid[cntr])):
             if slf._funcarray[2][mdlspl[0]]._fixpar[parid[cntr][j]] is None: pass
             else: slf._funcarray[1][mdlspl[0]].adjust_fix(slf._funcarray[2][mdlspl[0]], modpass, cntr, j, parid[cntr][j])
-            if slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][0] == (0 if modpass['mlim'][cntr][j][0] is None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][0] == modpass['mlim'][cntr][j][0]: pass
+            # A zero level keeps no lower limit of constant's own (see above); a
+            # 'lim constant value' command still applies to it
+            if modpass['emab'][cntr] == 'zl' and mdlspl[0] == 'constant' and ('constant', parid[cntr][j]) not in funclim: pass
+            elif slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][0] == (0 if modpass['mlim'][cntr][j][0] is None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][0] == modpass['mlim'][cntr][j][0]: pass
             else: slf._funcarray[1][mdlspl[0]].adjust_lim(slf._funcarray[2][mdlspl[0]], modpass, cntr, j, 0, parid[cntr][j])
             if slf._funcarray[2][mdlspl[0]]._limited[parid[cntr][j]][1] == (0 if modpass['mlim'][cntr][j][1] is None else 1) and slf._funcarray[2][mdlspl[0]]._limited[j][1] == modpass['mlim'][cntr][j][1]: pass
             else: slf._funcarray[1][mdlspl[0]].adjust_lim(slf._funcarray[2][mdlspl[0]], modpass, cntr, j, 1, parid[cntr][j])

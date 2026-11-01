@@ -20,7 +20,12 @@ Create a new panel or widget for the ALIS dashboard. The windows live in
 - **Labels.** New parameters take labels from `edit.new_component` and
   `edit.new_row_labels` (Q2.3). When an edit raises `edit.LabelNeeded`, ask the user
   for a label; offer `error.suggestion` when it is not None (column densities have
-  none).
+  none). A label only commented-out lines carry is reserved (`edit.reserved_labels`,
+  Stage 7): edits refuse it with `edit.ExcludedLabel`, and `components.label_owner`
+  names the excluded component for the message.
+- **Refusals are messages** (Stage 7): catch the logic's own errors
+  (`ComponentError`, `EditError`, `DatasetError`, `SnipError`) where the action is
+  made and show them with the tab's `_warn`, never as a traceback.
 - **Every value goes through the blinding gate (F8).** Show values with
   `blinding.Gate(project)`: `value`, `word`, `best_fit`, `error`, `velocity`,
   `keyword`, `message`/`problem` for any text that may quote a value, and
@@ -182,6 +187,17 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
 - **The run history** (`results.history`): committing, describing and removing a
   run change no model text and are not steps; call `session.runs_changed()` so that
   Save writes them.
+
+## Stage 7 additions
+
+- **Components with no live line:** `Component.main` is None and
+  `everywhere_excluded` is True for a component excluded from every ion; guard any
+  use of `comp.main`, and give it a greyed card (`_everywhere_card`).
+- **A row's shift and zero level** are the dataset's (`Row.shift`, `Row.zero`); a
+  snip's own are `Row.own_shift` and `Row.own_zero`, and `Row.shared_snips` are the
+  snips that take the dataset's. Use `snips.snip_shift(snip)` for a snip's shift.
+- **A dialog's third button:** `PlanDialog(..., other="…")` closes with
+  `dialogs.OTHER`.
 
 ## Notes
 

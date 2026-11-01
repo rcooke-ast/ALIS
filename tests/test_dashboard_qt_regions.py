@@ -666,6 +666,56 @@ def test_the_snip_box_of_a_new_snip(window, qtbot, tmp_path):
     assert tab.datasets.isHidden() and tab.copy_button.isHidden()
 
 
+def test_a_snip_s_own_shift_and_zero_level_in_the_snip_box(window, qtbot, tmp_path):
+    # Items 9 and 14 of Stage 7 (Q7.12)
+    tab = new_project(window, tmp_path, z=0.0)
+    for element, stage, name in (("O", "I", "O I 1302"), ("Si", "II", "Si II 1304")):
+        show(tab, element, stage, name)
+        tab.actions_["regions.snip"].trigger()
+        lo = tab.strips[0].snip.extent[0] + 0.5
+        tab._act(
+            "regions.draw", lambda lo=lo: tab.draw(tab.strips[0].row_id, lo, lo + 0.6)
+        )
+    before = window.session.project.text
+    assert tab.own_box.isVisible()
+    assert tab.shift_choice.currentText() == "As the dataset"
+    assert tab.zero_choice.currentText() == "As the dataset"
+    assert tab.shift_value.isHidden()
+    # Its own shift: one step, then typed and badged
+    one = len(window.session.history.done)
+    tab.shift_choice.setCurrentIndex(1)
+    tab.shift_choice.activated.emit(1)
+    assert len(window.session.history.done) == one + 1
+    assert tab.shift_value.isVisible() and tab.shift_badge.text() == "●"
+    tab.shift_value.setText("2.5")
+    tab.shift_value.editingFinished.emit()
+    row = window.session.project.rows[0]
+    (par,) = row.own_shift.values()
+    assert par.start == 2.5
+    assert (
+        window.session.history.undo_description() == "Set the shift of snip SiII_1304"
+    )
+    # Its own zero level
+    tab.zero_choice.setCurrentIndex(1)
+    tab.zero_choice.activated.emit(1)
+    row = window.session.project.rows[0]
+    assert list(row.own_zero) == ["SiII_1304"]
+    # The Data tab counts them
+    window.tabs.setCurrentIndex(0)
+    data = window.tab_widgets[0]
+    data.refresh(window.session)
+    texts = [data.table.item(0, c).text() for c in range(data.table.columnCount())]
+    assert "1 snip its own" in texts[4] and texts[5] == "Off · 1 snip its own"
+    # Back to As the dataset: the text as it was
+    window.tabs.setCurrentIndex(1)
+    show(tab, "Si", "II", "Si II 1304")
+    for choice in (tab.zero_choice, tab.shift_choice):
+        choice.setCurrentIndex(0)
+        choice.activated.emit(0)
+    assert window.session.project.text == before
+    assert not design_references(ui_strings(window))
+
+
 # -- Cross-highlighting (S16) and the Data tab's coverage grid -------------------------
 
 
@@ -778,8 +828,8 @@ def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
     assert not design_references(ui_strings(window))
 
 
-def test_load_a_mod_from_the_file_menu(window, qtbot, tmp_path):
-    tab = new_project(window, tmp_path, z=0.0)
+def old_fit(window, tmp_path):
+    """An earlier fit of the project's spectrum: two prepfit snips and a .mod."""
     data = tmp_path / "old" / "data"
     one = saved_snip(window, data, "16O_I", 1302.16849)
     two = saved_snip(window, data, "28Si_II", 1304.3702)
@@ -800,16 +850,23 @@ def test_load_a_mod_from_the_file_menu(window, qtbot, tmp_path):
         "    voigt ion=28Si_II 13.0 0.0za 5.0ba 0.0TA specid=0,1\n"
         "model end\n".format(one.name, two.name)
     )
-    action = window.qactions["file.load_mod"]
-    assert action.isEnabled()
-    # The .mod panel's menu offers it too
-    assert action in window.panel.editor.panel_actions
+    return mod
+
+
+def test_open_a_fit_loads_it_into_a_project_of_its_spectrum(window, qtbot, tmp_path):
+    tab = new_project(window, tmp_path, z=0.0)
+    mod = old_fit(window, tmp_path)
+    action = window.qactions["file.import"]
+    assert action.text() == "Open a fit (.mod)…" and action.isEnabled()
     before = window.session.project.text
     window.chosen["open"] = str(mod)
     window.on_dialog = lambda dialog: 0
     action.trigger()
     dialog = window.dialogs[-1]
     assert dialog.windowTitle() == "Load old.mod"
+    # The preview also offers a new project (Q7.9)
+    texts = [b.text() for b in dialog.box.buttons()]
+    assert "Open as a new project…" in texts and "Load" in texts
     assert window.session.project.text == before
     window.on_dialog = lambda dialog: 1
     action.trigger()
@@ -826,3 +883,98 @@ def test_load_a_mod_from_the_file_menu(window, qtbot, tmp_path):
     window.session.history.undo()
     window.refresh()
     assert window.session.project.text == before
+    # The .mod panel's right-click menu still loads into this project
+    load = window.qactions["panel.load_mod"]
+    assert load in window.panel.editor.panel_actions and load.isEnabled()
+    load.trigger()
+    assert window.session.project.text == mod.read_text()
+
+
+def test_open_a_fit_with_no_project_asks_first(window, qtbot, tmp_path):
+    # Q7.9's response: the source spectrum first, and that is the recommended way
+    from alis.dashboard.qt import dialogs as D
+    from alis.dashboard.qt import window as WN
+
+    (tmp_path / "first").mkdir()
+    new_project(window, tmp_path / "first", z=0.0)
+    mod = old_fit(window, tmp_path)
+    window.close_session()
+    assert window.session is None
+    window.chosen["open"] = str(mod)
+    # Cancel: nothing opens
+    window.qactions["file.import"].trigger()
+    kind, title, text = window.answers.asked[-1]
+    assert kind == "open_fit" and "recommended" in text
+    assert window.session is None
+    # Without a spectrum: as Import made it
+    window.answers.answers["open_fit"] = "Open without a spectrum"
+    window.qactions["file.import"].trigger()
+    wait_idle(qtbot, window)
+    assert window.session is not None and window.session.path is None
+    assert not any(r.source for r in window.session.project.rows)
+    window.session.discard_recovery()
+    window.show_start()
+    # With its spectrum: the New project dialog in the snips' folder, with the
+    # .mod's FWHM, then the fit's preview; the project is written once it loads
+    window.answers.answers["open_fit"] = WN.WITH_SPECTRUM
+    target = tmp_path / "projects"
+    target.mkdir()
+    seen = []
+
+    def answer(dialog):
+        seen.append(type(dialog).__name__)
+        if isinstance(dialog, D.NewProjectDialog):
+            assert dialog.folder.text() == str(tmp_path / "old" / "data")
+            assert dialog.default_fwhm == 4.0
+            dialog.name.setText("again")
+            dialog.folder.setText(str(target))
+            assert dialog.add_spectrum(str(SPECTRUM)) == ""
+            dialog.redshift.setText("0.0")
+        return 1
+
+    window.on_dialog = answer
+    window.qactions["file.import"].trigger()
+    wait_idle(qtbot, window)
+    assert seen == ["NewProjectDialog", "PlanDialog"]
+    project = window.session.project
+    assert window.session.path == str(target / "again.model")
+    assert (target / "again.model").exists()
+    assert project.text == mod.read_text() and project.rows[0].source
+    # Cancel at the preview: no file is left
+    window.close_session()
+    window.on_dialog = lambda dialog: (
+        answer(dialog) if isinstance(dialog, D.NewProjectDialog) else 0
+    )
+    (target / "again.model").unlink()
+    window.qactions["file.import"].trigger()
+    assert window.session is None and not (target / "again.model").exists()
+
+
+def test_open_a_fit_of_another_spectrum_says_why(window, qtbot, tmp_path):
+    from alis.dashboard.qt import window as WN
+
+    new_project(window, tmp_path, z=0.0)
+    mod = old_fit(window, tmp_path)
+    # A project of another spectrum
+    other = tmp_path / "other.dat"
+    wave = np.linspace(5000.0, 5100.0, 2000)
+    np.savetxt(
+        other, np.column_stack([wave, np.ones(wave.size), np.full(wave.size, 0.1)])
+    )
+    (tmp_path / "second").mkdir()
+    new_project(window, tmp_path / "second", z=0.0, spectra=(other,))
+    before = window.session.project.text
+    window.chosen["open"] = str(mod)
+    window.qactions["file.import"].trigger()
+    kind, title, text = window.answers.asked[-1]
+    assert kind == "open_fit_refused" and title == "Open a fit" and text
+    assert window.session.project.text == before
+    # Open as a new project… asks the question of a fit with no project
+    window.answers.answers["open_fit_refused"] = WN.NEW_PROJECT
+    window.qactions["file.import"].trigger()
+    assert window.answers.asked[-1][0] == "open_fit"
+    assert window.session.project.text == before
+    # So does `alis fit.mod`
+    window.close_session()
+    window.launch(S.Target(S.IMPORT, str(mod)))
+    assert window.answers.asked[-1][0] == "open_fit" and window.session is None

@@ -117,7 +117,7 @@ def test_a_command_line_only_setting(project, prefs, setting):
     assert not report.ok
     found = [f for f in report.refusals if f.code == "command_line"]
     assert len(found) == 1
-    assert "Export plain files" in found[0].message
+    assert "File → Export…" in found[0].message
     assert found[0].line == ST.model_settings(project)[setting[:2]][1]
 
 
@@ -137,6 +137,33 @@ def test_a_starting_value_outside_its_limits(project, prefs):
     report = PF.check(project, prefs)
     assert "outside_limits" not in report.codes()
     assert "at_limit" in report.codes(PF.NOTE)
+
+
+def test_a_fixed_value_outside_its_limits_is_refused(project, prefs):
+    # Q7.10: ALIS checks fixed values against their limits too, and stops
+    set_value(project, "bturb", OI, 0.0)
+    rewrite(project, "0.0da", "0.0DA")
+    report = PF.check(project, prefs)
+    assert "fixed_outside_limits" in report.codes(PF.REFUSE)
+    (found,) = [f for f in report.findings if f.code == "fixed_outside_limits"]
+    assert "fixed at 0, below its limit of 0.5" in found.message
+    # With pure thermal's limit, the fit goes ahead
+    rewrite(project, "model read\n", "model read\n  lim param DA [0.0,None]\n")
+    assert "fixed_outside_limits" not in PF.check(project, prefs).codes()
+
+
+def test_a_zero_level_is_named_by_its_dataset(project, prefs):
+    # Q7.14: not "value on line 16"
+    end = "model end\n"
+    rewrite(project, end, " zerolevel\n  constant 0.0zl specid=0\n" + end)
+    rewrite(project, "model read\n", "model read\n  lim param zl [0.0,None]\n")
+    (note,) = [
+        f
+        for f in PF.check(project, prefs).findings
+        if f.code == "at_limit" and "zero level" in f.message
+    ]
+    name = project.rows[0].name
+    assert note.message.startswith("The zero level of {0} (line ".format(name))
 
 
 def test_no_cpu_to_fit_with(project, prefs):
@@ -173,6 +200,28 @@ def test_more_free_parameters_than_fitted_pixels(project, prefs):
     project.apply(project.set_regions(snip, [(1302.16, 1302.19)]))
     report = PF.check(project, prefs)
     assert "too_many_free" in report.codes(PF.REFUSE)
+
+
+def test_no_component_to_fit(project, prefs):
+    # RJC's review of Stage 7: a continuum alone is not fitted, and Run is greyed
+    rewrite(project, "  absorption\n" + OI + SIII, "")
+    report = PF.check(project, prefs)
+    (found,) = [f for f in report.refusals if f.code == "no_components"]
+    assert found.message == PF.NO_COMPONENTS
+    assert "no_snips" not in report.codes()
+
+
+def test_a_new_project_has_no_snip_to_fit(tmp_path, prefs):
+    from alis.dashboard import session as S
+
+    spectrum = ROOT / "examples/metal_line_abs/data/OI_SiII.dat"
+    columns = {str(spectrum): {"wave": 0, "flux": 1, "error": 2}}
+    session, _ = S.Session.new(
+        str(tmp_path / "new.model"), [str(spectrum)], z=0.0, columns=columns
+    )
+    report = PF.check(session.project, prefs)
+    assert report.codes(PF.REFUSE) == ["no_snips", "no_components"]
+    assert report.refusals[0].message == PF.NO_SNIPS
 
 
 # -- Notes ----------------------------------------------------------------------------

@@ -550,3 +550,25 @@ def test_the_j013301m400628_snips_and_mod_load(registry):
         "2H_I",
     }
     assert errors(project) == []
+
+
+def test_a_shift_on_one_data_line_is_that_snip_s_own(registry, source, tmp_path):
+    # Q7.12's response: a loaded .mod's snips keep their own shift and zero level
+    project = new_project(registry, [source])
+    hist = H.History(project)
+    mod = write_mod(tmp_path / "old", source)
+    text = (
+        mod.read_text()
+        .replace("label=SiII", "label=SiII   shift=vshift(2.0vsx)")
+        .replace("model end", "  zerolevel\n    constant 0.0 specid=1\nmodel end")
+    )
+    mod.write_text(text)
+    plan = LF.load_mod_plan(project, str(mod), spectra(project))
+    assert plan.ok
+    hist.do(plan.step)
+    assert errors(project) == []
+    (row,) = project.rows
+    assert list(row.own_shift) == ["1"] and row.own_shift["1"].label == "vsx"
+    # The other line has no shift: ALIS's own, fixed at 0, is the dataset's
+    assert row.shift.fixed and row.shift.start == 0.0
+    assert list(row.own_zero) == ["1"] and row.zero is None

@@ -484,6 +484,38 @@ def test_lim_param_on_a_tie_label_that_does_not_exist_is_fatal(state):
         parse(state, ["lim param zz [1.0,9.0]\n"] + MODEL)
 
 
+# -- a zero level (dashboard Stage 7, Q7.14) ----------------------------------
+
+ZEROLEVEL = [
+    "emission\n",
+    "  constant 1.0 specid=0\n",
+    "absorption\n",
+    "  voigt ion=1H_I 15.0 0.0 15.0 0.0TFIX specid=0\n",
+    "zerolevel\n",
+    "  constant 0.0zl specid=0\n",
+]
+
+
+def test_a_zero_level_has_no_lower_limit(state):
+    # constant's lower limit of 0 is a continuum's: an offset has either sign
+    _mp, parinfo = parse(state, ZEROLEVEL)
+    continuum, zero = parinfo[0], parinfo[-1]
+    assert continuum["limited"] == [1, 0] and continuum["limits"][0] == 0.0
+    assert zero["limited"] == [0, 0]
+
+
+def test_a_lim_command_still_bounds_a_zero_level(state):
+    _mp, parinfo = parse(state, ["lim param zl [0.0,None]\n"] + ZEROLEVEL)
+    assert parinfo[-1]["limited"] == [1, 0] and parinfo[-1]["limits"][0] == 0.0
+
+
+def test_a_lim_constant_command_bounds_the_zero_level_too(atomic_data):
+    state = _State(atomic_data)
+    _mp, parinfo = parse(state, ["lim constant value [-0.5,None]\n"] + ZEROLEVEL)
+    assert parinfo[-1]["limited"] == [1, 0] and parinfo[-1]["limits"][0] == -0.5
+    assert parinfo[0]["limits"][0] == -0.5
+
+
 # -- the resolution and shift functions appended after the model -------------
 
 

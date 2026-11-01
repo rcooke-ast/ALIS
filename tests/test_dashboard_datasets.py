@@ -328,3 +328,153 @@ def test_an_edit_keeps_an_imported_structure_marked_guessed(registry):
     assert [r.name for r in project.rows] == ["HIRES", "PROCHASKA", "KIRKMAN"]
     hist.do(project.confirm_structure())
     assert P.GUESSED not in project.ui and not project.inferred
+
+
+# -- A snip's own shift and zero level (Stage 7, Task 7.13; Q7.12) ---------------------
+
+J1939 = ROOT / (
+    "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
+)
+C_KMS = 299792.458
+
+
+def transition(registry, ion, rest):
+    atom = L.atomic(registry)
+    return next(ln for ln in atom.ion_lines(ion) if abs(ln.rest - rest) < 0.01)
+
+
+def two_snips(registry, tmp_path):
+    """Two datasets of O I 1302 and Si II 1304; the second's zero level on."""
+    project, hist = two_rows(registry, tmp_path)
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    line = transition(registry, "28Si_II", 1304.3702)
+    hist.do(S.snip_step(project, project.systems[0], line, spec))
+    for one in project.snips:
+        if one.specid.startswith("SiII"):
+            hist.do(S.add_region_step(project, one, 1303.9, 1304.8))
+    hist.do(D.zero_level_step(project, project.rows[1], True))
+    assert errors(project) == []
+    return project, hist
+
+
+def constants(project):
+    return [c.specids for c in project.parsed.function_lines("constant", "zerolevel")]
+
+
+def test_a_snip_s_own_shift_and_zero_level(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    before = everything(project)
+    row = project.rows[1]
+    oxygen, silicon = row.snips
+    dataset = row.shift.label
+    check_undo(project, hist, D.snip_shift_step(project, silicon, True))
+    row = project.rows[1]
+    own = row.own_shift[silicon.specid]
+    assert own.label == "vsn1" and own.start == 0.0 and not own.fixed
+    assert row.shift.label == dataset and list(row.own_shift) == [silicon.specid]
+    assert row.snips[0].data.param("shift").label == dataset
+    assert D.own_count(row, "shift") == 1
+    with pytest.raises(D.DatasetError, match="already"):
+        D.snip_shift_step(project, row.snips[1], True)
+    check_undo(project, hist, D.snip_zero_step(project, row.snips[1], True))
+    with pytest.raises(D.DatasetError, match="already"):
+        D.snip_zero_step(project, project.rows[1].snips[1], True)
+    row = project.rows[1]
+    # The specid in one constant only
+    assert row.zero.specids == [oxygen.specid]
+    assert row.own_zero[silicon.specid].specids == [silicon.specid]
+    flat = [sid for group in constants(project) for sid in group]
+    assert len(flat) == len(set(flat))
+    # The dataset's value changes the dataset's snips alone
+    hist.do(D.set_value_step(project, row, "shift", 2.5))
+    row = project.rows[1]
+    assert row.shift.start == 2.5 and row.own_shift[silicon.specid].start == 0.0
+    hist.undo()
+    # Back to As the dataset: the text as before, byte for byte
+    hist.do(D.snip_shift_step(project, project.rows[1].snips[1], False))
+    hist.do(D.snip_zero_step(project, project.rows[1].snips[1], False))
+    assert errors(project) == []
+    assert everything(project) == before
+
+
+def test_a_snip_of_the_reference_can_have_its_own_shift(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    row = project.rows[0]
+    # The reference's snips share a fixed vshift(0.0)
+    assert row.reference and row.shift.fixed and row.own_shift == {}
+    before = everything(project)
+    check_undo(project, hist, D.snip_shift_step(project, row.snips[1], True))
+    row = project.rows[0]
+    assert list(row.own_shift) == [row.snips[1].specid] and row.shift.fixed
+    hist.do(D.snip_shift_step(project, row.snips[1], False))
+    assert everything(project) == before
+
+
+def test_regions_copied_move_by_a_snip_s_own_shift(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    hist.do(D.snip_shift_step(project, project.rows[1].snips[1], True))
+    row = project.rows[1]
+    par = row.own_shift[row.snips[1].specid]
+    from alis.dashboard import edit as E
+
+    hist.do(project.step(E.set_value(project.parsed, par, 30.0), "Set"))
+    source = project.rows[0].snips[1]
+    target = project.rows[1].snips[1]
+    assert S.snip_shift(target) == 30.0 and S.snip_shift(source) == 0.0
+    hist.do(S.copy_regions_step(project, source, [target], only_empty=False))
+    moved = S.regions_of(project.snip(target.specid))
+    factor = 1.0 + 30.0 / C_KMS
+    for (a, b), (c, d) in zip(S.regions_of(project.snip(source.specid)), moved):
+        assert c == pytest.approx(a * factor, abs=0.03)
+        assert d == pytest.approx(b * factor, abs=0.03)
+
+
+def test_snip_gives_the_dataset_s_and_clear_takes_a_snip_s_own(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    hist.do(D.snip_shift_step(project, project.rows[1].snips[1], True))
+    hist.do(D.snip_zero_step(project, project.rows[1].snips[1], True))
+    dataset = project.rows[1].shift.label
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    # O I 1302 of a second system, which puts it at 1305 Å
+    hist.do(D.add_system_step(project, 0.0022))
+    system = next(s for s in project.systems if abs(s.z - 0.0022) < 1e-9)
+    line = transition(registry, "16O_I", 1302.16849)
+    hist.do(S.snip_step(project, system, line, spec))
+    for one in project.snips:
+        if not S.fitted(one).any():
+            hist.do(S.add_region_step(project, one, 1304.9, 1305.3))
+    assert errors(project) == []
+    row = project.rows[1]
+    new = row.snips[-1]
+    assert new.data.param("shift").label == dataset
+    assert new.specid in row.zero.specids and new.specid not in row.own_zero
+    # CLEAR of the snip with its own: its shift and its zero level go
+    own = row.snips[1]
+    plan = R.plan_snip(project, own, empty_sections=True)
+    hist.do(plan.step(project))
+    assert errors(project) == []
+    row = project.rows[1]
+    assert row.own_shift == {} and row.own_zero == {}
+    assert "vsn1" not in project.text
+    assert all(own.specid not in group for group in constants(project))
+
+
+def test_rjc_j1939_snips_each_have_their_own_zero_level(registry):
+    if not J1939.exists():
+        pytest.skip("project not present: " + J1939.name)
+    from alis import bundle as B
+
+    project = P.Project(B.read(str(J1939)), registry)
+    (row,) = project.rows
+    assert row.zero is None and sorted(row.own_zero) == ["0", "1", "2", "3"]
+    assert D.own_count(row, "zero") == 4
+    with pytest.raises(D.DatasetError, match="Every snip"):
+        D.zero_level_step(project, row, True)
+
+
+def test_a_dataset_s_shift_and_zero_level_read_as_before(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    for row in project.rows:
+        assert row.own_shift == {} and row.own_zero == {}
+    row = project.rows[1]
+    assert row.zero.specids == row.specids and row.shift.label

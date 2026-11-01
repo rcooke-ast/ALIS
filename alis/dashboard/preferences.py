@@ -830,6 +830,11 @@ class Recent:
         self.entries = [e for e in self.entries if e["path"] != path]
         self.save()
 
+    def clear(self):
+        """Empty the list, and write it; no project's file is touched (item 7)."""
+        self.entries = []
+        self.save()
+
     def save(self):
         """Write the list."""
         write_json(self.path, {"projects": self.entries})
