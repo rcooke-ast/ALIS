@@ -695,6 +695,11 @@ together:*
   - Task 7.7 changes ALIS outside `alis/dashboard/` (Q7.14), so the regression harness
     runs again at the close, with its `test_bundle` mode.
 
+*Stage 7 closed on 2026-11-01 (Prompt 10), after RJC's review (Prompts 5–9: the View
+drop-downs, the cards' lists of ions, Run greyed, and the Export dialog of Q7.16,
+D88). The log has each task, the review and the closing batches. Stage 8, feedback
+from users, is planned in `dashboard_stage8.md`.*
+
 ## Skills to use for this stage
 
 - `gui-component`: any panel or widget changed or added; it documents the project

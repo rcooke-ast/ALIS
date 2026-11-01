@@ -30,7 +30,8 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 4 | Data and Regions tabs (steps 1–3). | `alis/dashboard/` |
 | 5 | Components tab (step 4). | `alis/dashboard/` |
 | 6 | Fit tab (step 6). This completes v1. **Done 2026-10-20: v1 is complete** (`dashboard_stage6.md`). | `alis/dashboard/`, and `alis/` where its queries agreed |
-| 7 | RJC's changes and bug fixes from fitting real problems with v1 (`dashboard_stage7.md`), each a task with its check. | as each needs |
+| 7 | RJC's changes and bug fixes from fitting real problems with v1 (`dashboard_stage7.md`), each a task with its check, and the changes from RJC's review of it (the Export dialog among them). **Done 2026-11-01.** | as each needs |
+| 8 | Feedback from users (`dashboard_stage8.md`): RJC collects the points in its Feedback section, and each becomes a task with its check, after its queries (Q8.1–Q8.5). | as each needs |
 | Later | The Plot tab (step 8), Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
 
 ### After v1
@@ -38,18 +39,20 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 Version 1 (Stages 1–6) takes a fit from a spectrum to a result without leaving the
 dashboard. What follows, for RJC to order (Q6.13(a)):
 1. **Stage 7:** RJC's list of changes and bug fixes from real use (`dashboard_stage7.md`):
-   done (D78–D87).
-2. **The Plot tab** (step 8, D28, D42): the layout, the panels, the preview drawn by the
+   done 2026-11-01 (D78–D88).
+2. **Stage 8:** feedback from users (`dashboard_stage8.md`), collected by RJC in its
+   Feedback section, with four items carried over from Stage 7 (Q8.2).
+3. **The Plot tab** (step 8, D28, D42): the layout, the panels, the preview drawn by the
    plotting script, and the shipped style (`alis_publication.mplstyle`).
-3. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
+4. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
    (F6), command search (F10), the `link` editor and its templates (S15), the plot
    preview (S22), reproducing an imported fit (S28); Orders mode, PypeIt spec1d input
    and the stacked spectrum. Attaching a source spectrum to an imported fit (S23) came
    off at the close of Stage 7: Open a fit (.mod)… does it (D78, Q7.5).
-4. **The documentation** on readthedocs, ALIS's and the dashboard's: Documentation
+5. **The documentation** on readthedocs, ALIS's and the dashboard's: Documentation
    Stages 1–5, planned in `documentation_stage0.md` (D87), once RJC has answered its
    queries.
-5. **Deferred work** (`deferred_work.md` §7): telluric flags, solar abundances in the
+6. **Deferred work** (`deferred_work.md` §7): telluric flags, solar abundances in the
    atomic table, generating data from a model, and how ALIS draws its simulated
    realisations and restarts (§7.6), on which the dashboard's Random restarts…
    follow.
