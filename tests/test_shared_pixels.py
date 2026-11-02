@@ -14,6 +14,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from optional_deps import marked
 
 from alis import load
 from alis.config import ArgFlag
@@ -124,11 +125,14 @@ def _shared_in(model, atomic, monkeypatch):
     slf = _State(atomic)
     _, datlines, _, _ = load.load_input(slf, filename=model.name)
     found = []
-    monkeypatch.setattr(load, "warn_shared_pixels",
-                        lambda sh, names, waves=None, verbose=2:
-                        found.extend((os.path.basename(names[i]),
-                                      os.path.basename(names[j]), a.size)
-                                     for i, j, a, _ in sh))
+    monkeypatch.setattr(
+        load,
+        "warn_shared_pixels",
+        lambda sh, names, waves=None, verbose=2: found.extend(
+            (os.path.basename(names[i]), os.path.basename(names[j]), a.size)
+            for i, j, a, _ in sh
+        ),
+    )
     load.load_data(slf, datlines)
     return found
 
@@ -145,9 +149,12 @@ def test_the_lyman_series_snips_of_j1358p6522_share_pixels(atomic_data, monkeypa
 
 
 def test_o_i_and_si_ii_of_q1243p307_share_pixels_in_every_dataset(
-        atomic_data, monkeypatch):
-    model = (ROOT / "context/fitting_examples/DH/Q1243p307/model/"
-             "Q1243p307_converge_newstart76.mod")
+    atomic_data, monkeypatch
+):
+    model = (
+        ROOT / "context/fitting_examples/DH/Q1243p307/model/"
+        "Q1243p307_converge_newstart76.mod"
+    )
     if not model.exists():
         pytest.skip("context model not present")
     found = _shared_in(model, atomic_data, monkeypatch)
@@ -155,7 +162,10 @@ def test_o_i_and_si_ii_of_q1243p307_share_pixels_in_every_dataset(
         assert (pre + "O_I_1302.2_reg.dat", pre + "Si_II_1304.4_reg.dat", 97) in found
 
 
-@pytest.mark.parametrize("model", sorted(ROOT.glob("examples/*/model/fit_spectra.mod")),
-                         ids=lambda p: p.parts[-3])
+@pytest.mark.parametrize(
+    "model",
+    marked(sorted(ROOT.glob("examples/*/model/fit_spectra.mod"))),
+    ids=lambda p: p.parts[-3],
+)
 def test_the_shipped_examples_fit_each_pixel_once(model, atomic_data, monkeypatch):
     assert _shared_in(model, atomic_data, monkeypatch) == []

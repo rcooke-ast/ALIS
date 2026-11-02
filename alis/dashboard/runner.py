@@ -441,6 +441,11 @@ def main():
     os.dup2(quiet, 2)
     os.environ["MPLBACKEND"] = "Agg"
     stdin = sys.stdin.buffer
+    # The commands are read from the original standard input on a thread, and
+    # sys.stdin goes nowhere too (Q7.17): on Linux, ALIS's Pool forks its workers,
+    # and a forked worker first closes sys.stdin, which would wait forever for the
+    # lock that thread holds while it reads. sys.__stdin__ keeps the original open
+    sys.stdin = open(os.devnull, encoding="utf-8")
     try:
         header = json.loads(stdin.readline().decode("utf-8"))
         if header.get("protocol") != PROTOCOL:

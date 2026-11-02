@@ -18,6 +18,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from optional_deps import marked
 from test_dashboard_blinding import forbidden, leaks
 
 from alis import load, logger, model_eval
@@ -122,7 +123,7 @@ def _alis_state(path):
 
 @pytest.mark.parametrize(
     "path",
-    _fit_models(),
+    marked(_fit_models()),
     ids=lambda p: p.parent.parent.name + "/" + p.name,
 )
 def test_the_model_is_alis_own(path, registry):

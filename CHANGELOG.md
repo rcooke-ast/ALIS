@@ -190,6 +190,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The dashboard: Exclude on a component whose lines share no redshift label gives it
   one, instead of a traceback; the Add a spectrum dialog no longer lays the column
   table over its hint; pure thermal no longer writes a b_turb that ALIS refuses.
+- The dashboard on Linux: a fit run from the dashboard (Run, random restarts, the
+  convergence check) never got past its first iteration. The fitting process read
+  Stop from its standard input on a thread, and each worker that ALIS's Pool forked
+  for the Jacobian waited forever for that input's lock. macOS starts its workers
+  with `spawn`, and was not affected.
+- The dashboard's Fit · Results: the Instrument group (FWHMs, shifts, zero levels)
+  is open by default, and a closed group says how many rows it hides; shifts and
+  FWHMs are named by their dataset and snip, as zero levels are.
 - `run ncpus` given on the command line (`--set "run ncpus -1"`) is counted as in
   a model file, so -1 is all CPUs bar one; it used to be set as written, and the
   fit stopped ("Number of processes must be at least 1"). A count that leaves no

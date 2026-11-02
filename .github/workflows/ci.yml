@@ -7,6 +7,9 @@
 #   stack are excluded from CI.
 # - gui: runs the dashboard's window tests (`pytest -m gui`) off-screen, with
 #   the gui, gui-test and dev extras (dashboard Stage 3).
+# - Each job has a time limit (Q7.17, Q7.18): a test that hangs then fails the
+#   job, and the last line of the log (-v) names it, rather than the job running
+#   until GitHub cancels it after 6 hours with no traceback.
 # - lint: runs the pre-commit hooks (ruff / isort / black) on the files
 #   changed in the push or PR only, since the legacy codebase is not yet
 #   auto-formatted (Task 1.3: config-first rollout).
@@ -24,6 +27,7 @@ concurrency:
 jobs:
   unit:
     name: unit (${{ matrix.os }}, py${{ matrix.python-version }})
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +49,7 @@ jobs:
 
   test:
     name: examples (${{ matrix.os }}, py${{ matrix.python-version }})
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -68,6 +73,7 @@ jobs:
     # The dashboard's windows (dashboard Stage 3): PySide6 through qtpy, driven
     # off-screen by pytest-qt. The unit and examples jobs stay free of Qt.
     name: gui (${{ matrix.os }}, py${{ matrix.python-version }})
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:

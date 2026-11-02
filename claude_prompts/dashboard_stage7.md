@@ -1078,6 +1078,126 @@ model), so the best-fitting model is no longer greyed for a blinded project and 
 plain-text warning is gone; no ion in a file name has a mass number (`13C IV` is
 `CIV`); a hidden redshift is `zabsBLIND`. See D88 and the log.*
 
+*Q7.17–Q7.19 were raised on 2026-11-02, from the GitHub Actions logs RJC saved in
+`context/misc/` (`GitHub_{unit,examples,gui}_*.txt`). Nothing is changed until they
+are answered.*
+
+**What was found.**
+- **unit (Ubuntu and macOS): five failures, one cause.** All five are
+  `examples/lsf_hst`, whose model uses the `lsf` function. `lsf` needs linetools,
+  which CI does not install, so ALIS stops when it reads the model ("The 'lsf' model
+  function needs linetools…").
+  - The five tests (`test_dashboard_continuum`, `test_dashboard_profile`,
+    `test_dashboard_validate`, `test_load_memory`, `test_shared_pixels`) take every
+    example. None of them gives `lsf_hst` the `linetools` marker, which skips a test
+    where linetools is absent (`conftest.py`; `test_regression.py` already marks its
+    cases).
+  - They pass here because linetools is installed. They have failed in CI since they
+    were written (5–15 October).
+- **examples and gui (Ubuntu): every fit the dashboard runs hangs.** The failures are
+  the tests that fit through the dashboard's fitting process
+  (`alis/dashboard/runner.py`): `test_dashboard_runs_process`, `_compare_fit` and
+  `_results_fit`, and Run on the Fit tab and the toolbar. Tests that run `run_alis`,
+  or a bundle in the test's own process, pass. Both jobs end "canceled", with no
+  traceback: each failing test waits up to 600 s (300 s in the window tests) for a run
+  that never ends, and `test_no_hidden_value_leaves_the_process` waits with no limit.
+  - **The cause.** The fitting process reads its commands (`stop`) on a thread, which
+    sits blocked reading `sys.stdin` all through the fit. ALIS computes each Jacobian
+    in a `multiprocessing` Pool (`minimise._make_cpu_pool`), even with `run ncpus 1`.
+    On Linux a Pool's workers are started with `fork`; on macOS with `spawn`. A forked
+    worker first closes `sys.stdin` (`multiprocessing.util._close_stdin`). That waits
+    for the lock the thread held at the fork, which no thread will ever release. The
+    worker never starts, and the fit waits for it forever.
+  - **Reproduced here,** with the start method forced to `fork`. `metal_line_abs`,
+    run from a session with the tests' settings, reports iteration 1 (the starting χ²)
+    and then nothing for 60 s. With `spawn` it completes in 9.5 s, after 6 iterations.
+    A ten-line script (a thread reading stdin, then a Pool) hangs with `fork`, and
+    works without the thread or with `spawn`.
+  - **Not only CI.** On Linux, Run, random restarts and the convergence check would
+    never end for a user either. macOS is unaffected, which is why it never showed
+    here. The fitting process came in with Stage 6 (19 October).
+  - **To confirm:** were the macOS examples and gui jobs green? By this reading they
+    should be.
+
+**Q7.17 — The fitting process on Linux.** Three ways:
+- **(a) Keep `sys.stdin` out of the workers' way.** Once the project is read, the
+  thread reads the commands from the original standard input, and `sys.stdin` becomes
+  `os.devnull`, as the process's standard output and error already do. A forked
+  worker then closes `/dev/null`, not the pipe the thread reads. Linux keeps `fork`,
+  so workers start as fast as under `run_alis`. One line in `runner.main()`.
+- **(b) `spawn` everywhere.** The process starts its Pool with `spawn` on every
+  platform. That avoids every hazard of forking a process that has a thread. But each
+  worker re-imports ALIS (the cost Stage 3.4 measured), so a dashboard fit on Linux
+  would start more slowly than `run_alis`.
+- **(c) No thread.** The per-iteration hook checks for `stop` without blocking
+  (`select`). Stop takes effect at the same point as now, the next iteration, but
+  `select` does not work on pipes on Windows.
+
+With each, a new test runs the process with the start method forced to `fork`
+(wherever `fork` exists, so on macOS too) and checks that the fit completes. It fails
+now.
+
+My lean: (a).
+
+**Response:** I agree with option (a).
+
+**Q7.18 — A run that never ends, in the tests and in CI.** A hang now shows only as a
+cancelled job with no traceback, after GitHub's limit of 6 hours or a manual cancel. I
+propose:
+- every test that waits for a run has a limit, as `run()` already has
+  (`test_no_hidden_value_leaves_the_process`, and the loop of `wait_for_iteration`, in
+  `test_dashboard_runs_process.py`);
+- `timeout-minutes` on each CI job: 20 for unit, 60 for examples and gui. A job that
+  overruns then fails, and with `-v` the last line of its log names the test that was
+  running.
+
+No new dependency (pytest-timeout would also do it, test by test).
+
+My lean: as proposed. If a green examples or gui job takes more than 20 minutes on
+GitHub, its limit should be three times its usual time instead.
+
+**Response:** I agree with this plan.
+
+**Q7.19 — `lsf_hst` where linetools is not installed.** Two ways, or both:
+- **(a) Mark it.** The five tests give an example whose model uses `lsf(` the
+  `linetools` marker, so it is skipped where linetools is absent and run where it is
+  installed. `test_regression.py`'s `_needs_linetools` moves to a helper that the six
+  files share.
+- **(b) Install linetools in CI,** in a CI step or as an `lsf` extra in
+  `pyproject.toml`, so that CI tests `lsf` too. linetools brings its own
+  dependencies, and CI would then never take the path that skips it.
+
+My lean: (a), with (b) later if you want `lsf` covered in CI.
+
+**Response:** Let's just use (a) for now. We will always be checking the `lsf` function locally, so please don't remove any functionality from the tests. We only want to skip the `lsf` tests in CI if linetools is not installed. We can consider (b) later if we want to cover `lsf` in CI.
+
+*Applied (2026-11-02), as RJC answered; RJC reports that every other CI job was
+green:*
+- *Q7.17 (a): `runner.main()` sets `sys.stdin` to `os.devnull` once it holds the
+  original standard input, which its thread reads for Stop. A run with the start
+  method forced to `fork` now completes (`metal_line_abs`, 6 iterations, 5.5 s).
+  `test_dashboard_runs_process.py::test_a_run_ends_when_alis_s_workers_are_forked`
+  forces `fork` wherever it exists, macOS included. It fails on the old runner (no
+  end within its limit) and passes now.*
+- *Q7.18: `test_no_hidden_value_leaves_the_process` fails after 600 s instead of
+  waiting forever, and cancels its run. `wait_for_iteration` already had a limit of
+  300 s; the query was wrong to list it. `.github/workflows/ci.yml` gives unit 20
+  minutes, examples and gui 60 each.*
+- *Q7.19 (a): `tests/optional_deps.py` (`needs_linetools`, `marked`) replaces
+  `test_regression.py`'s `_needs_linetools`, and the five tests mark each model that
+  uses `lsf(`. Where linetools is installed every case runs as before, under the
+  same ids. With linetools hidden, as on CI, they skip six cases and fail none: the
+  five that failed, and the validator's case of `lsf_hst/generate_spectra.mod`. That
+  case passed on CI only because its data file is absent, so ALIS never reached
+  `lsf`.*
+- *`test_load_memory.py`, `test_shared_pixels.py` and `test_regression.py` are
+  reformatted with black, since CI's lint job checks every changed file and none of
+  the three was on the exclude lists (line wrapping only).*
+- *`CHANGELOG.md` and `tests/README.md` brought up to date.*
+- *Batches here (macOS): `unit` 2090 passed, 119 skipped; `examples` 108 passed, 40
+  skipped (9.5 min); `gui` 212 passed (7 min). Linux is checked by the next CI run:
+  no Linux machine was available here.*
+
 ## Prompts
 
 1. Please read this document, with my current list of changes and bug fixes, and the work of Stages 0–6 (their documents and logs). I have written Task 1 based on a feature that would be good to include in the ALIS dashboard. Let's implement this first, and then I will draft a more complete list of bugs, improvements, and additions to the dashboard. If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please execute Task 7.1.

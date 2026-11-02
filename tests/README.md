@@ -16,6 +16,10 @@ in a temporary copy — and it never overwrites a reference.
 - `alisrun.py` — stages a disposable copy of an example and runs `run_alis`
   (headless, `-p 0`); builds the fixed-parameter input.
 - `compare.py` — parses `.mod.out` and applies the tolerance comparisons.
+- `optional_deps.py` — marks a model that uses the `lsf` function (which needs the
+  optional linetools) with the `linetools` marker, which `conftest.py` skips where
+  linetools is not installed (as on CI) and runs where it is. Use `marked(paths)`
+  for a test that takes every model of a folder.
 - `test_regression.py` — the pytest suite (see the two test modes below).
 - `conftest.py` / `../pytest.ini` — import path and batch-marker config.
 

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from optional_deps import marked
 
 from alis.dashboard import continuum as CO
 from alis.dashboard import history as H
@@ -56,7 +57,7 @@ def _fit_models():
 
 
 @pytest.mark.parametrize(
-    "path", _fit_models(), ids=lambda p: p.parent.parent.name + "/" + p.name
+    "path", marked(_fit_models()), ids=lambda p: p.parent.parent.name + "/" + p.name
 )
 def test_the_curve_is_alis_own(path, registry):
     project = P.Project.import_model(str(path), registry=registry)

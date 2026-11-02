@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from optional_deps import marked
 
 from alis import load
 from alis.dashboard import model as M
@@ -210,7 +211,7 @@ def test_an_unexpected_error_goes_to_the_terminal(registry, monkeypatch, logmsgs
 
 
 @pytest.mark.parametrize(
-    "path", EXAMPLES, ids=[str(p.relative_to(ROOT)) for p in EXAMPLES]
+    "path", marked(EXAMPLES), ids=[str(p.relative_to(ROOT)) for p in EXAMPLES]
 )
 def test_every_example_gives_no_errors(path, registry):
     text = path.read_text()
