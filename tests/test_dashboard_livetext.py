@@ -104,11 +104,13 @@ def test_an_edit_inside_a_mask_asks_for_the_value(blind_bundle, registry):
     result = type_at(live, mask + 2, "1")
     assert result == L.MaskEdit(mask + 2, mask + 2, "1")
     assert not live.dirty
-    # Selecting the whole mask and pasting a value: made as it is, still hidden
-    patch = type_at(live, mask, "13.5", delete=len(BL.MASK))
+    # Selecting the whole mask and pasting a value asks too, with the value in the
+    # box, so it is never in the panel's text (Q7.23)
+    result = type_at(live, mask, "13.5", delete=len(BL.MASK))
+    assert result == L.MaskEdit(mask, mask + len(BL.MASK), "13.5")
+    assert not live.dirty and "13.5" not in live.shown
+    patch = live.replace_masked(result.start, result.end, result.typed)
     assert patch.old == "13.0" and patch.new == "13.5"
-    # The typed value is shown as typed until the text is read again
-    assert "13.5" in live.shown
     project.apply(project.step(live.pending()))
     live = L.LiveText(BL.Gate(project).view())
     assert "13.5" not in live.shown
@@ -123,6 +125,37 @@ def test_an_edit_inside_a_mask_asks_for_the_value(blind_bundle, registry):
     project.apply(project.step(live.pending()))
     view = BL.Gate(project).view().text
     assert "13.75" not in view
+
+
+def test_deleting_a_mask_alone_asks_for_the_value(blind_bundle, registry):
+    # Q7.23: deleting a hidden value, alone or with its keyword, would leave the
+    # parameter with nothing, so it asks; only an edit of the whole line is made
+    project = project_of(blind_bundle, registry)
+    live = L.LiveText(BL.Gate(project).view())
+    real, segments = live.real, live.segments
+    keyword = live.shown.index("blindrange=")
+    at = keyword + len("blindrange=")
+    result = type_at(live, at, "", delete=len(BL.MASK))
+    assert result == L.MaskEdit(at, at + len(BL.MASK), "")
+    # Typed over, at the end of its line: still asks, as the line's blind seed is
+    # before it, so this is not the whole line retyped
+    result = type_at(live, at, "-5,5", delete=len(BL.MASK))
+    assert result == L.MaskEdit(at, at + len(BL.MASK), "-5,5")
+    result = type_at(live, keyword, "", delete=at + len(BL.MASK) - keyword)
+    assert isinstance(result, L.MaskEdit)
+    assert live.real == real and live.segments == segments and not live.dirty
+    # The whole line, without its line ending: made, and its masks go with it
+    start = live.shown.rfind("\n", 0, at) + 1
+    end = live.shown.index("\n", at)
+    result = type_at(live, start, "", delete=end - start)
+    assert isinstance(result, P.T.Patch)
+    assert "blindrange" not in live.real
+    assert [live.real[s[2] : s[3]] for s in live.segments] == [
+        "13.0",
+        "0.0",
+        "1.0",
+        "8000",
+    ]
 
 
 def test_crlf_line_endings(blind_bundle, registry):

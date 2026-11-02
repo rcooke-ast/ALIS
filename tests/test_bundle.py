@@ -27,11 +27,18 @@ def _stage(tmp_path, example, extra_data=()):
     """Copy an example's model and data into ``tmp_path``; return the model."""
     src = ROOT / "examples" / example
     dest = tmp_path / example
-    shutil.copytree(src / "model", dest / "model",
-                    ignore=shutil.ignore_patterns("*.out", "*.reference", "*.report",
-                                                  "*.pdf", "*.covar", "*.png"))
-    shutil.copytree(src / "data", dest / "data",
-                    ignore=shutil.ignore_patterns("*_fit.dat", "reference_fits"))
+    shutil.copytree(
+        src / "model",
+        dest / "model",
+        ignore=shutil.ignore_patterns(
+            "*.out", "*.reference", "*.report", "*.pdf", "*.covar", "*.png"
+        ),
+    )
+    shutil.copytree(
+        src / "data",
+        dest / "data",
+        ignore=shutil.ignore_patterns("*_fit.dat", "reference_fits"),
+    )
     return dest / "model" / "fit_spectra.mod"
 
 
@@ -49,8 +56,11 @@ def _all_models():
     for path in sorted(ROOT.glob("examples/*/model/*.mod")):
         params.append(pytest.param(path, id=str(path.relative_to(ROOT))))
     for path in sorted(ROOT.glob("context/fitting_examples/**/*.mod")):
-        params.append(pytest.param(path, id=str(path.relative_to(ROOT)),
-                                   marks=pytest.mark.context))
+        params.append(
+            pytest.param(
+                path, id=str(path.relative_to(ROOT)), marks=pytest.mark.context
+            )
+        )
     return params
 
 
@@ -77,7 +87,7 @@ def test_packing_then_extracting_gives_back_every_file(model, tmp_path, monkeypa
     for member in made.members:
         if not member.startswith(bundle.TREE):
             continue
-        rel = member[len(bundle.TREE):]
+        rel = member[len(bundle.TREE) :]
         original = (root / rel).read_bytes()
         assert (tmp_path / "out" / rel).read_bytes() == original, rel
 
@@ -88,8 +98,13 @@ def test_a_bundle_holds_the_model_its_snips_and_its_atomic_table(tmp_path):
     path = tmp_path / "metal.model"
     bundle.pack_to(str(model), str(path))
     names = set(_members(path))
-    assert {"manifest.json", "sources.json", "files/model/fit_spectra.mod",
-            "files/data/OI_SiII.dat", "atomic/atomic.ecsv"} <= names
+    assert {
+        "manifest.json",
+        "sources.json",
+        "files/model/fit_spectra.mod",
+        "files/data/OI_SiII.dat",
+        "atomic/atomic.ecsv",
+    } <= names
     manifest = json.loads(_members(path)["manifest.json"])
     assert manifest["format"] == "alis-project"
     assert manifest["model"] == "files/model/fit_spectra.mod"
@@ -99,9 +114,10 @@ def test_a_bundle_holds_the_model_its_snips_and_its_atomic_table(tmp_path):
 @UNIT
 def test_absolute_data_paths_are_refused(tmp_path):
     model = _stage(tmp_path, "metal_line_abs")
-    text = model.read_text().replace("run datadirc ../data/",
-                                     "run datadirc " + str(tmp_path / "metal_line_abs"
-                                                           / "data") + "/")
+    text = model.read_text().replace(
+        "run datadirc ../data/",
+        "run datadirc " + str(tmp_path / "metal_line_abs" / "data") + "/",
+    )
     model.write_text(text)
     with pytest.raises(bundle.BundleError, match="relative paths"):
         bundle.pack(str(model))
@@ -111,8 +127,10 @@ def test_absolute_data_paths_are_refused(tmp_path):
 def test_snips_on_commented_data_lines_are_packed_when_they_exist(tmp_path):
     model = _stage(tmp_path, "metal_line_abs")
     text = model.read_text().replace(
-        "data end", "# OI_SiII_linear.dat specid=1 fitrange=[1301,1305]\n"
-                    "# missing.dat specid=2\ndata end")
+        "data end",
+        "# OI_SiII_linear.dat specid=1 fitrange=[1301,1305]\n"
+        "# missing.dat specid=2\ndata end",
+    )
     model.write_text(text)
     made = bundle.pack(str(model))
     assert "files/data/OI_SiII_linear.dat" in made.members
@@ -125,7 +143,9 @@ def test_the_outputs_of_an_earlier_run_become_the_latest_run(tmp_path):
     (model.parent / "fit_spectra.mod.out").write_text("# best fit\n")
     (model.parent.parent / "data" / "OI_SiII_fit.dat").write_text("1 2 3\n")
     made = bundle.pack(str(model))
-    assert made.members["runs/latest/files/model/fit_spectra.mod.out"] == b"# best fit\n"
+    assert (
+        made.members["runs/latest/files/model/fit_spectra.mod.out"] == b"# best fit\n"
+    )
     assert "runs/latest/files/data/OI_SiII_fit.dat" in made.members
     info = json.loads(made.members["runs/latest/run.json"])
     assert info["status"] == "imported"
@@ -144,8 +164,9 @@ def test_unsupported_names_each_reason():
 
     argflag = ArgFlag()
     argflag["sim"]["random"] = 10
-    reasons = bundle.unsupported(argflag, [
-        "  a.dat resolution=lsffile(name:x.dat) systmodule=mod.py,f\n"])
+    reasons = bundle.unsupported(
+        argflag, ["  a.dat resolution=lsffile(name:x.dat) systmodule=mod.py,f\n"]
+    )
     text = "\n".join(reasons)
     for word in ("sim random", "lsffile", "systmodule"):
         assert word in text
@@ -254,8 +275,7 @@ def test_sources_are_checked_relinked_and_embedded(packed, tmp_path):
     spec = tmp_path / "spectrum.dat"
     spec.write_text("1 2 3\n")
     made = bundle.read(str(packed))
-    entry = bundle.add_source(made, str(spec), dataset="HIRES",
-                              bundle_path=str(packed))
+    entry = bundle.add_source(made, str(spec), dataset="HIRES", bundle_path=str(packed))
     assert bundle.check_sources(made, str(packed))[0][1] == "present"
     moved = tmp_path / "moved.dat"
     spec.rename(moved)
@@ -333,8 +353,10 @@ def test_messages_that_quote_a_hidden_line_are_masked(logmsgs):
     mask = bundle._MaskHidden({"1": "    " + SI_II})
     load.msgs.addFilter(mask)
     try:
-        load.msgs.warn("A parameter that = 13.000000 is not within specified limits"
-                       " on line -" + load.msgs.newline() + SI_II)
+        load.msgs.warn(
+            "A parameter that = 13.000000 is not within specified limits"
+            " on line -" + load.msgs.newline() + SI_II
+        )
         load.msgs.warn("Nothing hidden here: 13.0")
     finally:
         load.msgs.removeFilter(mask)
@@ -355,8 +377,7 @@ def _run(path, *extra):
     from alis.scripts.run_alis import parser
 
     plt.close("all")
-    args = parser([str(path), "-p", "0", "-c", "1", "--set", "run backend cpu",
-                   *extra])
+    args = parser([str(path), "-p", "0", "-c", "1", "--set", "run backend cpu", *extra])
     overrides = []
     argflag = load.optarg(argv=args, overrides=overrides, verbose=-1)
     argflag["run"]["modname"] = args.alis_modfile
@@ -378,7 +399,9 @@ def test_a_blinded_bundle_run_hides_what_reveals_a_value(tmp_path, capsys, logms
     made = bundle.read(str(path))
     out = "runs/latest/files/model/fit_spectra.mod.out"
     hidden = made.hidden["lines"][out]
-    assert any(line.lstrip().startswith("voigt   ion=28Si_II") for line in hidden.values())
+    assert any(
+        line.lstrip().startswith("voigt   ion=28Si_II") for line in hidden.values()
+    )
     for line in hidden.values():
         assert line.encode() not in made.members[out]
     info = json.loads(made.members["runs/latest/run.json"])
@@ -408,8 +431,9 @@ def test_under_run_blind_the_whole_best_fit_model_is_hidden(tmp_path):
 
 @pytest.mark.fast
 @pytest.mark.examples
-def test_a_run_that_fails_on_a_hidden_line_keeps_the_last_result(tmp_path, capsys,
-                                                                 logmsgs):
+def test_a_run_that_fails_on_a_hidden_line_keeps_the_last_result(
+    tmp_path, capsys, logmsgs
+):
     model = _stage(tmp_path, "blind")
     path = tmp_path / "blind.model"
     bundle.pack_to(str(model), str(path))
@@ -417,8 +441,9 @@ def test_a_run_that_fails_on_a_hidden_line_keeps_the_last_result(tmp_path, capsy
     good = bundle.read(str(path)).members["runs/latest/run.json"]
 
     def bad_limit(made):
-        text = made.model_text().replace("model read",
-                                         "model read\n  lim voigt ColDens [13.5,16.0]")
+        text = made.model_text().replace(
+            "model read", "model read\n  lim voigt ColDens [13.5,16.0]"
+        )
         made.members[made.model_member] = text.encode()
 
     bundle.update(str(path), bad_limit)
@@ -444,8 +469,7 @@ def test_a_simulation_in_a_bundle_stops_with_a_message(tmp_path, logmsgs):
 
 @pytest.mark.fast
 @pytest.mark.examples
-def test_an_extracted_bundle_runs_as_a_plain_model_and_matches_the_reference(
-        tmp_path):
+def test_an_extracted_bundle_runs_as_a_plain_model_and_matches_the_reference(tmp_path):
     """--pack then --extract, then a plain run_alis of what was extracted.
 
     Generated by RJC and Claude.
@@ -461,11 +485,21 @@ def test_an_extracted_bundle_runs_as_a_plain_model_and_matches_the_reference(
 
     model = _stage(tmp_path, "metal_line_abs")
     run_alis.main(run_alis.parser(["--pack", str(model), str(tmp_path / "m.model")]))
-    run_alis.main(run_alis.parser(["--extract", str(tmp_path / "m.model"),
-                                   str(tmp_path / "out")]))
+    run_alis.main(
+        run_alis.parser(["--extract", str(tmp_path / "m.model"), str(tmp_path / "out")])
+    )
     extracted = tmp_path / "out" / "model" / "fit_spectra.mod"
     run_plain(extracted)
-    reference = (Path(__file__).resolve().parent.parent / "examples"
-                 / "metal_line_abs" / "model" / "fit_spectra.mod.out.reference")
-    assert compare_mod_out(extracted.parent / "fit_spectra.mod.out", reference,
-                           CHISQ_RTOL_MINIMISATION) == []
+    reference = (
+        Path(__file__).resolve().parent.parent
+        / "examples"
+        / "metal_line_abs"
+        / "model"
+        / "fit_spectra.mod.out.reference"
+    )
+    assert (
+        compare_mod_out(
+            extracted.parent / "fit_spectra.mod.out", reference, CHISQ_RTOL_MINIMISATION
+        )
+        == []
+    )

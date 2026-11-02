@@ -255,12 +255,16 @@ def test_invocation_only_flags_are_marked_not_to_persist():
     assert persist[("sim", "random")] is False
 
 
-@pytest.mark.parametrize("argv, model_line, section, key, expected", [
-    (["--set", "run blind True"], "run blind False", "run", "blind", True),
-    (["-p", "3x3"], "plot dims 2x2", "plot", "dims", "3x3"),
-])
+@pytest.mark.parametrize(
+    "argv, model_line, section, key, expected",
+    [
+        (["--set", "run blind True"], "run blind False", "run", "blind", True),
+        (["-p", "3x3"], "plot dims 2x2", "plot", "dims", "3x3"),
+    ],
+)
 def test_an_explicit_setting_equal_to_the_default_still_beats_the_model_file(
-        argv, model_line, section, key, expected):
+    argv, model_line, section, key, expected
+):
     """A flag must win even when it repeats the default (dashboard Stage 1.6).
 
     Before this was fixed, '--set "run blind True"' was not recorded, because
@@ -272,16 +276,16 @@ def test_an_explicit_setting_equal_to_the_default_still_beats_the_model_file(
     from alis.scripts.run_alis import parser
 
     overrides = []
-    argflag = load.optarg(argv=parser(["fit.mod"] + argv), overrides=overrides,
-                          verbose=-1)
+    argflag = load.optarg(
+        argv=parser(["fit.mod"] + argv), overrides=overrides, verbose=-1
+    )
     argflag = load.set_params([model_line], argflag, verbose=-1)
     load.reapply_cli_overrides(argflag, overrides, verbose=-1)
     assert argflag[section][key] == expected
 
 
 @pytest.mark.parametrize("model_line", ["run ncpus 4", "chisq atol 0.001"])
-def test_a_negative_cpu_count_on_the_command_line_counts_back(model_line,
-                                                               monkeypatch):
+def test_a_negative_cpu_count_on_the_command_line_counts_back(model_line, monkeypatch):
     """`--set "run ncpus -1"` is all CPUs bar one, whether the model file sets
     `run ncpus` or not; it used to be re-applied as written, and the fit stopped
     (dashboard Stage 6, Q6.24).
@@ -293,8 +297,11 @@ def test_a_negative_cpu_count_on_the_command_line_counts_back(model_line,
 
     monkeypatch.setattr(load, "cpu_count", lambda: 8)
     overrides = []
-    argflag = load.optarg(argv=parser(["fit.mod", "--set", "run ncpus -1"]),
-                          overrides=overrides, verbose=-1)
+    argflag = load.optarg(
+        argv=parser(["fit.mod", "--set", "run ncpus -1"]),
+        overrides=overrides,
+        verbose=-1,
+    )
     argflag = load.set_params([model_line], argflag, verbose=-1)
     load.check_argflag(argflag)
     load.reapply_cli_overrides(argflag, overrides, verbose=-1)
@@ -329,8 +336,7 @@ def test_pack_writes_a_bundle_named_after_the_model(tmp_path, monkeypatch):
     run_alis.main(run_alis.parser(["--pack", "fit_spectra.mod", "-w"]))
 
 
-def test_extract_writes_beside_the_bundle_and_never_over_a_file(
-        tmp_path, monkeypatch):
+def test_extract_writes_beside_the_bundle_and_never_over_a_file(tmp_path, monkeypatch):
     model = _stage_example(tmp_path)
     monkeypatch.chdir(tmp_path)
     run_alis.main(run_alis.parser(["--pack", str(model), "metal.model"]))
@@ -345,10 +351,13 @@ def test_extract_writes_beside_the_bundle_and_never_over_a_file(
     assert (tmp_path / "elsewhere" / "model" / "fit_spectra.mod").exists()
 
 
-@pytest.mark.parametrize("argv", [
-    ["--extract", "--pack", "a.model"],
-    ["a.mod", "b.mod"],
-])
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--extract", "--pack", "a.model"],
+        ["a.mod", "b.mod"],
+    ],
+)
 def test_a_second_name_needs_extract_or_pack_and_not_both(argv):
     with pytest.raises(SystemExit):
         run_alis.main(run_alis.parser(argv))
@@ -358,8 +367,8 @@ def test_a_bundle_is_run_by_the_bundle_runner(monkeypatch):
     calls = []
     from alis import bundle
 
-    monkeypatch.setattr(bundle, "run", lambda path, argflag, overrides:
-                        calls.append(path))
+    monkeypatch.setattr(
+        bundle, "run", lambda path, argflag, overrides: calls.append(path)
+    )
     run_alis.main(run_alis.parser(["project.model", "-p", "0"]))
     assert calls == ["project.model"]
-

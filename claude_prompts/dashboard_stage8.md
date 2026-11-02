@@ -30,7 +30,8 @@ it arrives. For each point:*
 *A point already on the list is not added twice: a note goes under the first, saying
 how many users raised it. Claude reads this list and does not add to it.*
 
-1. 
+1. **(new)** It would be good if the dashboard could handle different choices for the FWHM. At the moment, the dashboard only allows users to specify the vFWHM value, but some users may wish to choose a different functional form, or they may wish to load an LSF from a file. There is an example that loads an LSF from a file in the `examples/lsf_file/` directory that we could test this functionality with. Ultimately, each snip would need to have the option to choose the FWHM functional form, and the dashboard would need to be able to handle this. The most obvious place to do this is in the Regions tab, in the same place that we allow each snip to have its own shift and zerolevel. We should allow the user to choose between all the LSF options that ALIS currently has built in. In the case of a file, the user will need to be able to specify the file path, and the dashboard will need to handle this. If there are multi parameter LSFs, we should instruct the user to set the parameters in the .mod editor until this functional form is fully supported. For now, any LSF function in ALIS that has only 1 parameter, or load 1 file, should be supported in the dashboard. Everything else should be supported in the .mod editor, and we should instruct the user to use this for now. This is a new feature request, and it is not a bug. It is a change to the dashboard that would allow users to have more flexibility in their fits.
+
 
 ## Carried over from Stage 7
 

@@ -1198,6 +1198,210 @@ green:*
   skipped (9.5 min); `gui` 212 passed (7 min). Linux is checked by the next CI run:
   no Linux machine was available here.*
 
+*Q7.20–Q7.22 were raised on 2026-11-02, from the two jobs that still failed after the
+fixes above (`context/misc/GitHub_examples_Ubuntu-latest_py313.txt` and
+`GitHub_lint.txt`). The hang is fixed: every test of the dashboard's fitting process
+passed on Ubuntu, including the new `fork` test. Nothing is changed until these are
+answered.*
+
+**What was found.**
+- **lint: the two copies of black disagree.** The lint job runs black 24.10.0, the
+  version pinned in `.pre-commit-config.yaml`. Here, and wherever the dev extras are
+  installed today, black is 26.5.1, which is what I ran. They differ on one construct,
+  a `.replace(…)` straight after a closing `"""`:
+  ```python
+  MODEL = """run ncpus 1
+  ...
+  """.replace("{B_LINE}", B_LINE)
+  ```
+  - 24.10.0 splits it over three lines, and 26.5.1 joins it back, so neither layout
+    satisfies both. It is in two files, both written in Stage 2:
+    `test_dashboard_validate.py`, which failed because Q7.19 changed it, and
+    `test_dashboard_model.py`, which would fail the next time it is changed.
+  - Across the repo nothing else separates them: there is no file that 26.5.1 rejects
+    and 24.10.0 accepts. ruff and isort give the same results at the hook's versions
+    and at the ones installed here.
+- **examples (Ubuntu): `splineabs/fit_spectra` lands on a different solution.**
+  - Only this case fails, in two tests: `test_minimisation` and `test_bundle`, which
+    run the same fit as plain files and as a bundle. Both report the same numbers, so
+    the Linux result is repeatable, not random.
+  - What differs: six 1σ errors on the O I line, and one pixel of the model in 368,
+    which is out by 0.0128 of its error against a limit of 0.01. χ² and every
+    best-fit value are within tolerance. This case's fixed-parameter test (mode (b))
+    passes on Linux, so ALIS computes the model the same way there.
+  - Why it is fragile: the fit is degenerate. Several spline knots end at or beside
+    their lower bound of 0. On O I, knot 1 is 0.0019 ± 0.107 and knot 2 is 0. On Linux,
+    knot 1 reaches 0 too (its error is printed as 0.0). A parameter at its bound is left
+    out of the covariance, so the parameters correlated with it get smaller errors: the
+    error on the line's `bturb` (1.48 km/s) falls from 6.43 to 2.91.
+  - Not reproduced here (macOS, arm64). The fit is bit-identical to the reference
+    (χ² 354.932230, 30 iterations) with `run ncpus` 1, 2, 3, 4 and 13, and with workers
+    started by `fork` as on Linux. I also scaled the flux by 1 ± 10⁻¹⁵ up to
+    1 ± 10⁻⁸: the values moved by up to 0.3% and the errors by under 0.1%, but knot 1
+    never reached its bound. The macOS examples job on CI passes too.
+  - The difference is therefore in how Linux on x86-64 does the arithmetic (numpy's
+    vectorised maths, OpenBLAS, the C maths library), which sends the minimiser down a
+    slightly different path. No Linux or x86-64 machine was available here to show
+    that directly.
+  - Not new in this change. The reference was made on 5 October. Since 19 October the
+    hang of Q7.17 stopped the Ubuntu examples job before it reached
+    `test_regression.py`, so this case can only have run on Linux between those dates.
+
+**Q7.20 — Which black the lint job runs.** Two ways:
+- **(a) Raise the hook's black to 26.5.1** in `.pre-commit-config.yaml`. That is the
+  version the dev extras install today. Across the repo it rejects no file that
+  24.10.0 accepts, and it accepts the two files 24.10.0 rejects.
+- **(b) Keep 24.10.0, and write the two templates as f-strings**
+  (`MODEL = f"""…{B_LINE}…"""`, with no `.replace`). Both versions accept that, and I
+  checked that both strings come out character for character the same.
+
+Whichever you choose, I will run the lint checks through pre-commit itself
+(`pre-commit run --files …`), as CI does, instead of the black installed here. That
+installs the hook's own pinned versions, and it would have caught this. The versions
+will drift apart again whenever black changes its style, and pre-commit is what keeps
+my checks in step with CI's.
+
+My lean: (a).
+
+**Response:** I agree with option (a).)
+
+**Q7.21 — `splineabs/fit_spectra` on Linux.** Three ways:
+- **(a) Skip its full refit on Linux CI only.** Add it to
+  `MINIMISATION_MACHINE_DEPENDENT` in `test_regression.py`, the documented set of
+  "mode (a) cases whose references only reproduce on the machine that generated them".
+  Give `test_bundle` the same marker, and pass `--skip-machine-dependent` in the Ubuntu
+  examples job alone.
+  - Here and on macOS CI nothing changes.
+  - On Linux, the two tests that refit this case are skipped. Its fixed-parameter test
+    and every other example's refit still run.
+  - The set's comment, which says CI stays strict, would say that Linux CI uses the
+    flag.
+- **(b) Make the example well-posed.** Fix (or remove) the knots that end at 0, and
+  regenerate its references here. Every platform would then test it, but this changes
+  a shipped example, and only the next Linux CI run would show whether it is enough.
+- **(c) A second reference, made on Linux.** Every regeneration of the references would
+  then need a Linux machine. Not recommended.
+
+Loosening `ERROR_RTOL` or the pixel limit would weaken the check for every case, so I
+do not propose it.
+
+My lean: (a), with (b) later if you want the example to show a fit that is stable
+everywhere.
+
+**Response:** I agree, let's go with (a) for now. We can consider (b) later if we want the example to show a fit that is stable everywhere.)
+
+**Q7.22 — The files the lint job will fail next.** Eleven files are not on the exclude
+lists in `pyproject.toml` and are not clean today. The lint job will fail the next
+change to any of them, as it did to three files under Q7.19. None was changed by this
+work.
+- **Not black-clean under either version (ten files):** `alis/bundle.py`,
+  `alis/outputs.py`, `alis/plotscript.py`, `tests/alisrun.py`, `tests/test_bundle.py`,
+  `tests/test_cli.py`, `tests/test_fit_report.py`, `tests/test_load_files.py`,
+  `tests/test_load_units.py` and `tests/test_outputs.py`. black would change 627 lines
+  in all, from 3 lines (`test_load_units.py`) to 389 (`bundle.py`).
+- **Not isort-clean:** `tests/test_outputs.py`, and `alis/dashboard/restarts.py`.
+
+Two ways:
+- **(a) Clean all eleven now,** in a commit of its own, so that the history keeps
+  formatting apart from real changes. black checks that the code it formats is
+  unchanged.
+- **(b) Leave them,** and clean each one when it is next changed, as under Q7.19.
+
+My lean: (a).
+
+**Response:** I agree with option (a).
+
+*Applied (2026-11-02), as RJC answered:*
+- *Q7.20 (a): `.pre-commit-config.yaml` pins black 26.5.1. Through pre-commit, which
+  installs the pinned versions as CI does, `test_dashboard_validate.py` and
+  `test_dashboard_model.py` pass unchanged.*
+- *Q7.21 (a): `examples/splineabs/model/fit_spectra` joins
+  `MINIMISATION_MACHINE_DEPENDENT`, with the diagnosis beside it. `test_bundle` now
+  takes that marker too. The Ubuntu examples job passes `--skip-machine-dependent`
+  (`${{ runner.os == 'Linux' && … }}`). With the flag, its `test_minimisation` and
+  `test_bundle` skip and its `test_fixed_param` passes. Without the flag, here and on
+  macOS CI, all three run.*
+- *Q7.22 (a): the eleven files are cleaned through pre-commit (430 lines added, 205
+  removed). black verified that the code is unchanged. isort merged two
+  `from alis import` lines in `restarts.py`, and in `test_outputs.py` moved
+  `import matplotlib.pyplot` ahead of the `alis` imports inside `_run`. That is safe: `alis/plot.py` chooses its
+  backend with `matplotlib.use`, which works after pyplot is imported. Across the
+  repo, black, isort and ruff now pass on every file outside the exclude lists. The
+  eleven files hold formatting changes only, and none of them is touched by
+  Q7.20–Q7.21, so RJC can commit them on their own, as Q7.22 proposed.*
+- *`CHANGELOG.md` notes the new black and the cleaned files.*
+- *Batches here (macOS): `unit` 2089 passed, 119 skipped, 1 failed (Q7.23, which
+  predates these changes; it passes on a rerun, and a fixed seed reproduces it);
+  `examples` 108 passed, 40 skipped (9.4 min), with splineabs refitted and passing,
+  since the flag is given only on Ubuntu; `gui` 212 passed (6.9 min). Lint: pre-commit
+  passes on every changed file. Linux is checked by the next CI run.*
+
+*Q7.23 was raised on 2026-11-02, from a failure found in the unit batch while applying
+Q7.20–Q7.22. They did not cause it: an untouched copy of HEAD (`git archive`) fails
+with the same seed (`--hypothesis-seed=10`). Nothing is changed until it is answered.*
+
+**Q7.23 — Deleting one hidden value in the model text.**
+`test_dashboard_livetext.py::test_any_typing_outside_the_masks_keeps_them`, a
+hypothesis test, fails here in about one run in three.
+- **Its smallest case:** select the four `▒▒▒▒` after `blindrange=` on the O I line
+  of `examples/blind` and press Delete. `LiveText.edit` (`alis/dashboard/livetext.py`,
+  at "An edit that cuts into a mask…") makes the edit. The hidden
+  `-1000000.0,1000000.0` is erased, the line is left with `blindrange=`, and no box
+  asks for a new value.
+- **Why:** the rule lets through an edit that replaces whole masks. It is meant for
+  deleting or retyping a whole hidden line, but a single whole mask on a visible line
+  passes it too. Nothing hidden is shown; a hidden value is lost without asking.
+- **Why CI never sees it:** on CI, hypothesis uses its `ci` profile
+  (`derandomize=True`), so every run draws the same examples, and none of them deletes
+  exactly one mask. Here each run draws new examples.
+
+Two ways:
+- **(a) Change the code.** An edit that removes a mask is made only when it removes
+  the whole line (or lines) the mask is on. Deleting or retyping a mask alone asks for
+  the new value, as cutting into one already does (QF.20(c)). The test then passes as
+  written. A new test would delete exactly one mask and expect the box.
+- **(b) Change the test.** Deleting whole masks stays allowed, as now, and the test
+  checks only that the masks left keep their values. A new test would pin that
+  deleting one mask is made.
+
+My lean: (a). Deleting a hidden value alone leaves a model ALIS cannot read
+(`blindrange=` with nothing after it), and the box is how a hidden value is changed.
+
+**Response:** I agree with option (a).
+
+*Applied (2026-11-02), as RJC answered:*
+- *`LiveText.edit` makes an edit that touches a mask only when, for each mask it
+  touches, it takes in the mask's whole line, with or without the line ending
+  (`_covers_line`). Anything else returns a `MaskEdit`, so the panel asks. That
+  includes deleting a mask, deleting it with its keyword, and selecting it and
+  typing or pasting. The two cases that asked before (typing inside a mask, and an
+  edit that cuts into one) still ask: the new check covers them.*
+- *One refinement, found by `test_deleting_a_whole_hidden_line_is_made`. When a line
+  is retyped, `diff` puts the edit's start as late as it can: after what the new line
+  has in common with the old (`    voigt `). Measured from there, the edit misses the
+  start of the line, and the retype would have asked. So for typed text, the edit may
+  also have replaced the start of its line, unless a mask lies between
+  (`_typed_from`). A deletion's start needs no such allowance: the cursor fixes it
+  exactly.*
+- *What that allows: typing over the only mask on a line, when the mask is the last
+  thing on that line (a lone `blindrange=▒▒▒▒`), counts as retyping the line, and is
+  made. The new value is typed in plain sight, as a retyped line's values are.
+  Nothing hidden is shown, and nothing is left without a value. In `examples/blind`
+  the blind seed comes before the blind range, so typing over the blind range asks.*
+- *A hidden value can no longer be blanked from the text alone. The box treats an
+  empty answer as Cancel, so `blindrange=▒▒▒▒` goes only with its whole line. That
+  follows from (a).*
+- *Tests: `test_an_edit_inside_a_mask_asks_for_the_value` now expects the box when a
+  whole mask is selected and a value pasted, with the value in the box, never in the
+  panel's text. A new test, `test_deleting_a_mask_alone_asks_for_the_value`, covers
+  deleting the blind range's mask (the Q7.23 case), deleting it with `blindrange=`,
+  typing over it, and deleting its whole line, which is made and takes its masks with
+  it. The property test passes with seeds 1–40, including seed 10, which failed
+  before.*
+- *`CHANGELOG.md` "Fixed" notes it.*
+- *Batches here (macOS): `unit` 2091 passed, 119 skipped; `gui` 212 passed
+  (7.1 min). Lint: pre-commit passes on both changed files.*
+
 ## Prompts
 
 1. Please read this document, with my current list of changes and bug fixes, and the work of Stages 0–6 (their documents and logs). I have written Task 1 based on a feature that would be good to include in the ALIS dashboard. Let's implement this first, and then I will draft a more complete list of bugs, improvements, and additions to the dashboard. If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please execute Task 7.1.

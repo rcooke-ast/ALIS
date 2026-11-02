@@ -113,8 +113,11 @@ class MemoryOutputs:
         """Hide every line of ``text`` that repeats a hidden model line."""
         if not self.secret_lines:
             return
-        lines = [num for num, line in enumerate(text.split("\n"))
-                 if any(secret in line for secret in self.secret_lines)]
+        lines = [
+            num
+            for num, line in enumerate(text.split("\n"))
+            if any(secret in line for secret in self.secret_lines)
+        ]
         if lines:
             self.hide(path, lines=lines)
 

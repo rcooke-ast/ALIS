@@ -471,9 +471,7 @@ def write_plotscript(slf, params):
         return None
     fname = script_name(slf)
     out = outputs.of(slf)
-    if out.exists(fname) and not (
-        cfg["overwrite"] or slf._argflag["out"]["overwrite"]
-    ):
+    if out.exists(fname) and not (cfg["overwrite"] or slf._argflag["out"]["overwrite"]):
         msgs.warn(
             "Plotting script already exists, not overwriting:" + msgs.newline() + fname,
             verbose=verbose,
@@ -486,7 +484,8 @@ def write_plotscript(slf, params):
         # The script places each component, so a project bundle stores it
         # hidden when anything is blinded (dashboard Stage 1.6)
         if slf._argflag["run"]["blind"] or any(
-                mkey.get("blind", False) for mkey in slf._modpass["mkey"]):
+            mkey.get("blind", False) for mkey in slf._modpass["mkey"]
+        ):
             out.hide(fname)
     except Exception as err:
         msgs.warn(

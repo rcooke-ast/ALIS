@@ -96,8 +96,9 @@ MINIMISATION_KNOWN_DIVERGENCE = {}
 
 # Mode (a) cases whose references only reproduce on the machine that generated
 # them (RJC's other machine). Skipped only when --skip-machine-dependent is
-# given, so the reference machine and CI stay strict; this is an opt-out for
-# working on a second machine, not a relaxation of the harness.
+# given, so the reference machine and macOS CI stay strict; this is an opt-out
+# for working on a second machine, not a relaxation of the harness. The Ubuntu
+# examples job gives it too (dashboard Stage 7, Q7.21), for splineabs below.
 #
 # Diagnosed 2026-07-30: NOT a regression. Extracting commit 182bc20 (end of
 # Stage 3.5, before any Stage 4 work) and running J0903p2628 against it gives
@@ -120,6 +121,13 @@ MINIMISATION_MACHINE_DEPENDENT = {
     "context/fitting_examples/DH/Q1243p307/model/Q1243p307_converge_newstart76",
     "context/fitting_examples/VMP_DLA/J0035m0918/model/J0035m0918_all_data",
     "context/fitting_examples/VMP_DLA/J0903p2628/model/J0903p2628",
+    # Diagnosed 2026-11-02 (Q7.21): degenerate, with spline knots at or beside
+    # their bound of 0. On Linux (x86-64) O I's knot 1 (0.0019 +/- 0.107)
+    # reaches the bound, which drops it from the covariance and shrinks the
+    # errors correlated with it (bturb's 6.43 -> 2.91). chi-squared, every value
+    # and the mode (b) evaluation still pass there. On macOS the refit is
+    # bit-identical to the reference whatever ncpus or start method.
+    "examples/splineabs/model/fit_spectra",
 }
 
 
@@ -140,8 +148,9 @@ def _params(cases, batch=None, overrides=None, machine_dependent=None):
         fixed-parameter eval out of the every-commit batch).
     machine_dependent : set[str] | None
         Case names to tag with the ``machine_dependent`` marker, which
-        ``--skip-machine-dependent`` skips. Passed only for the
-        minimisation call site; the fixed-parameter gate stays strict.
+        ``--skip-machine-dependent`` skips. Passed only for the mode (a)
+        call sites (minimisation and bundle); the fixed-parameter gate stays
+        strict.
 
     Returns
     -------
@@ -343,7 +352,8 @@ def _bundle_case(case):
             c
             for c in _FIT_CASES
             if _bundle_case(c) and c.name not in MINIMISATION_KNOWN_DIVERGENCE
-        ]
+        ],
+        machine_dependent=MINIMISATION_MACHINE_DEPENDENT,
     ),
 )
 def test_bundle(case, tmp_path):

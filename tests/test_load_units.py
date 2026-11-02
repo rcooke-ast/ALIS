@@ -56,8 +56,7 @@ def test_cpucheck_over_request_clamps(fixed_cpu_count):
 
 
 @pytest.mark.parametrize("asked", [-8, -20, 0])
-def test_cpucheck_a_count_that_leaves_no_cpu_uses_one(fixed_cpu_count, recorder,
-                                                      asked):
+def test_cpucheck_a_count_that_leaves_no_cpu_uses_one(fixed_cpu_count, recorder, asked):
     """-N counts back from the computer's CPUs, so it can leave none: the fit then
     runs on one, and says so, rather than stopping (dashboard Stage 6, Q6.24)."""
     assert load.cpucheck(asked, verbose=0) == 1

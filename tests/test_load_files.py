@@ -698,8 +698,15 @@ def test_badpix_is_read_from_memory_and_from_an_array(state, tmp_path):
     )
     load.load_data(state, [line], data={str(path): path.read_bytes()})
     assert state._wavefit[0].size == wave.size - 4
-    arr = np.vstack([wave, np.ones_like(wave), 0.1 * np.ones_like(wave),
-                     np.ones_like(wave), bad.astype(float)])
+    arr = np.vstack(
+        [
+            wave,
+            np.ones_like(wave),
+            0.1 * np.ones_like(wave),
+            np.ones_like(wave),
+            bad.astype(float),
+        ]
+    )
     other = _State(state._atomic)
     keywords = "  specid=0  fitrange=columns"
     keywords += "  columns=[wave:0,flux:1,error:2,fitrange:3,badpix:4]\n"

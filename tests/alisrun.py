@@ -342,7 +342,11 @@ def run_bundle(mod_file, workdir, runtime_hrs=None):
     env["MPLBACKEND"] = "Agg"
     proc = subprocess.run(
         [sys.executable, str(RUN_ALIS), "-f", "-p", "0", path.name],
-        cwd=rundir, env=env, capture_output=True, text=True, timeout=timeout,
+        cwd=rundir,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
     )
     if proc.returncode != 0:
         tail = (proc.stdout + proc.stderr)[-3000:]
@@ -356,7 +360,7 @@ def run_bundle(mod_file, workdir, runtime_hrs=None):
     outdir = workdir / "extracted"
     bundle.extract(bundle.read(str(path)), str(outdir))
     root = Path(mod_file)
-    for _ in made.model_member[len(bundle.TREE):].split("/"):
+    for _ in made.model_member[len(bundle.TREE) :].split("/"):
         root = root.parent
     return lambda staged_path: outdir / Path(staged_path).relative_to(root)
 

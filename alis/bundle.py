@@ -169,10 +169,10 @@ def hide_lines(text, numbers, store):
             continue
         line = lines[num]
         body = line.rstrip("\r\n")
-        ending = line[len(body):]
+        ending = line[len(body) :]
         if _PLACEHOLDER.match(body):
             continue
-        indent = body[:len(body) - len(body.lstrip())]
+        indent = body[: len(body) - len(body.lstrip())]
         store[str(nextnum)] = body
         lines[num] = placeholder(indent, nextnum) + ending
         nextnum += 1
@@ -209,10 +209,12 @@ def restore_lines(text, store, replace=None):
             continue
         real = store.get(match.group(2))
         if real is None:
-            raise BundleError("The bundle is damaged: hidden line {0:s} is missing"
-                              .format(match.group(2)))
-        out.append((real if replace is None else replace(real))
-                   + line[len(body):])
+            raise BundleError(
+                "The bundle is damaged: hidden line {0:s} is missing".format(
+                    match.group(2)
+                )
+            )
+        out.append((real if replace is None else replace(real)) + line[len(body) :])
     return "".join(out)
 
 
@@ -228,8 +230,11 @@ class _MaskHidden(logging.Filter):
 
     def __init__(self, store):
         super().__init__()
-        self._pairs = [(line.strip(), "<hidden:{0:s}>".format(num))
-                       for num, line in store.items() if line.strip()]
+        self._pairs = [
+            (line.strip(), "<hidden:{0:s}>".format(num))
+            for num, line in store.items()
+            if line.strip()
+        ]
 
     def filter(self, record):
         message = record.getMessage()
@@ -240,8 +245,10 @@ class _MaskHidden(logging.Filter):
                 masked = True
         if masked:
             parts = re.split(r"(<hidden:\d+>)", message)
-            message = "".join(part if part.startswith("<hidden:")
-                              else _NUMBER.sub("▒▒▒", part) for part in parts)
+            message = "".join(
+                part if part.startswith("<hidden:") else _NUMBER.sub("▒▒▒", part)
+                for part in parts
+            )
             record.msg, record.args = message, ()
         return True
 
@@ -288,7 +295,7 @@ class Bundle:
     @property
     def model_dir(self):
         """The model's directory within the files tree (may be '')."""
-        return posixpath.dirname(self.model_member[len(TREE):])
+        return posixpath.dirname(self.model_member[len(TREE) :])
 
     @property
     def model_name(self):
@@ -326,7 +333,7 @@ class Bundle:
         for member, content in self.members.items():
             if not member.startswith(TREE) or member == self.model_member:
                 continue
-            rel = posixpath.relpath(member[len(TREE):], self.model_dir or ".")
+            rel = posixpath.relpath(member[len(TREE) :], self.model_dir or ".")
             data[os.path.normpath(rel)] = content
         return data
 
@@ -371,7 +378,8 @@ def _split_model(text):
     reader._argflag = ArgFlag()
     reader._argflag["out"]["verbose"] = -1
     parlines, datlines, modlines, lnklines = load.load_input(
-        reader, textstr=text.splitlines(keepends=True))
+        reader, textstr=text.splitlines(keepends=True)
+    )
     return reader._argflag, parlines, datlines, modlines, lnklines
 
 
@@ -449,8 +457,11 @@ def _output_names(modname, argflag, datapaths):
     if modelname in ("", '""'):
         modelname = modname + ".out"
     names.append(modelname)
-    names.append(modelname[:-4] + ".report" if modelname.endswith(".out")
-                 else modelname + ".report")
+    names.append(
+        modelname[:-4] + ".report"
+        if modelname.endswith(".out")
+        else modelname + ".report"
+    )
     covar = argflag["out"]["covar"]
     if covar:
         names += [covar, os.path.splitext(covar)[0] + ".png"]
@@ -501,17 +512,25 @@ def pack(modfile, sources=(), embed=False, with_outputs=True):
     argflag, _, datlines, _, _ = _split_model(text)
     reasons = unsupported(argflag, datlines)
     if reasons:
-        raise BundleError("This model cannot be packed in a bundle, because:\n"
-                          + "\n".join("  - " + r for r in reasons))
+        raise BundleError(
+            "This model cannot be packed in a bundle, because:\n"
+            + "\n".join("  - " + r for r in reasons)
+        )
     datadirc = argflag["run"]["datadirc"]
     live = load.data_file_paths(datlines, datadirc)
-    commented = [p for p in _commented_data_paths(text, datadirc)
-                 if p not in live and not os.path.isabs(p)
-                 and os.path.isfile(os.path.join(moddir, p))]
+    commented = [
+        p
+        for p in _commented_data_paths(text, datadirc)
+        if p not in live
+        and not os.path.isabs(p)
+        and os.path.isfile(os.path.join(moddir, p))
+    ]
     for path in live:
         if os.path.isabs(path):
-            raise BundleError("Data files must be given by relative paths to be"
-                              " packed (Q1.1). This one is absolute:\n  " + path)
+            raise BundleError(
+                "Data files must be given by relative paths to be"
+                " packed (Q1.1). This one is absolute:\n  " + path
+            )
         if not os.path.isfile(os.path.join(moddir, path)):
             raise BundleError("A data file does not exist:\n  " + path)
     datapaths = list(dict.fromkeys(live + commented))
@@ -535,19 +554,27 @@ def pack(modfile, sources=(), embed=False, with_outputs=True):
     cwd = os.getcwd()
     try:
         os.chdir(moddir)
-        atomic_path = os.path.abspath(load.atomic_table_path(
-            argflag["run"]["atomic"], verbose=-1))
+        atomic_path = os.path.abspath(
+            load.atomic_table_path(argflag["run"]["atomic"], verbose=-1)
+        )
     finally:
         os.chdir(cwd)
     with open(atomic_path, "rb") as fil:
         atomic_member = ATOMIC + os.path.basename(atomic_path)
         bundle.members[atomic_member] = fil.read()
     created = now()
-    bundle.manifest.update({
-        "format": FORMAT, "version": FORMAT_VERSION,
-        "alis_version": alis.__version__, "created": created, "modified": created,
-        "model": model_member, "atomic": atomic_member, "unblinding": [],
-    })
+    bundle.manifest.update(
+        {
+            "format": FORMAT,
+            "version": FORMAT_VERSION,
+            "alis_version": alis.__version__,
+            "created": created,
+            "modified": created,
+            "model": model_member,
+            "atomic": atomic_member,
+            "unblinding": [],
+        }
+    )
     for item in sources:
         path, dataset = (item, "") if isinstance(item, str) else item
         add_source(bundle, path, dataset=dataset, embed=embed)
@@ -570,12 +597,24 @@ def _pack_outputs(bundle, moddir, modname, argflag, datapaths):
                 found[os.path.normpath(name)] = fil.read()
     if not found:
         return
-    inputs = {m: c for m, c in bundle.members.items()
-              if m.startswith(TREE) and m != bundle.model_member}
-    _set_latest(bundle, found, {}, {
-        "status": "imported", "imported": now(),
-        "note": "outputs found beside the model when it was packed",
-    }, bundle.members[bundle.model_member], bundle.hidden_model_lines(), inputs)
+    inputs = {
+        m: c
+        for m, c in bundle.members.items()
+        if m.startswith(TREE) and m != bundle.model_member
+    }
+    _set_latest(
+        bundle,
+        found,
+        {},
+        {
+            "status": "imported",
+            "imported": now(),
+            "note": "outputs found beside the model when it was packed",
+        },
+        bundle.members[bundle.model_member],
+        bundle.hidden_model_lines(),
+        inputs,
+    )
 
 
 # -- Reading and writing ----------------------------------------------------------
@@ -617,21 +656,26 @@ def read(path):
         if manifest.get("format") != FORMAT:
             raise BundleError("This zip file is not a project bundle: " + name)
         if int(manifest.get("version", 0)) > FORMAT_VERSION:
-            raise BundleError("This bundle was written by a newer version of ALIS"
-                              " (format {0}). Please update ALIS.".format(
-                                  manifest.get("version")))
+            raise BundleError(
+                "This bundle was written by a newer version of ALIS"
+                " (format {0}). Please update ALIS.".format(manifest.get("version"))
+            )
         checksums = manifest.pop("members", {})
         listed = set(checksums)
         present = set(names) - {MANIFEST}
         if listed != present:
-            raise BundleError("The bundle is damaged: its members do not match its"
-                              " manifest: " + name)
+            raise BundleError(
+                "The bundle is damaged: its members do not match its"
+                " manifest: " + name
+            )
         content = {}
         for name in present:
             data = zfil.read(name)
             if sha256(data) != checksums[name]:
-                raise BundleError("The bundle is damaged: {0:s} does not match its"
-                                  " checksum".format(name))
+                raise BundleError(
+                    "The bundle is damaged: {0:s} does not match its"
+                    " checksum".format(name)
+                )
             content[name] = data
     hidden = {"lines": {}, "files": {}}
     if HIDDEN in content:
@@ -650,8 +694,10 @@ def _serialise(bundle):
     """
     content = dict(bundle.members)
     content[SOURCES] = json.dumps(bundle.sources, indent=1).encode("utf-8")
-    hidden = {"lines": {k: v for k, v in bundle.hidden["lines"].items() if v},
-              "files": dict(bundle.hidden["files"])}
+    hidden = {
+        "lines": {k: v for k, v in bundle.hidden["lines"].items() if v},
+        "files": dict(bundle.hidden["files"]),
+    }
     if hidden["lines"] or hidden["files"]:
         content[HIDDEN] = zlib.compress(json.dumps(hidden).encode("utf-8"), 9)
     manifest = dict(bundle.manifest)
@@ -687,8 +733,10 @@ class _Lock:
                 except OSError:
                     continue
                 if time.time() - start > LOCK_WAIT:
-                    raise BundleError("The bundle is being written by another"
-                                      " program (lock file {0:s})".format(self.path))
+                    raise BundleError(
+                        "The bundle is being written by another"
+                        " program (lock file {0:s})".format(self.path)
+                    )
                 time.sleep(0.1)
 
     def __exit__(self, *exc):
@@ -794,8 +842,9 @@ def unblind(bundle, note=""):
 def _source_location(entry, bundle_path=None):
     """The path where a source spectrum is expected now."""
     if bundle_path is not None and entry.get("relpath"):
-        candidate = os.path.join(os.path.dirname(os.path.abspath(bundle_path)),
-                                 entry["relpath"])
+        candidate = os.path.join(
+            os.path.dirname(os.path.abspath(bundle_path)), entry["relpath"]
+        )
         if os.path.isfile(candidate):
             return candidate
     return entry["path"]
@@ -815,12 +864,19 @@ def add_source(bundle, path, dataset="", embed=False, bundle_path=None):
     with open(path, "rb") as fil:
         data = fil.read()
     num = 1 + max([int(e["id"][1:]) for e in bundle.sources] + [0])
-    entry = {"id": "s{0:d}".format(num), "dataset": dataset,
-             "path": os.path.abspath(path), "relpath": None,
-             "sha256": sha256(data), "size": len(data), "embedded": None}
+    entry = {
+        "id": "s{0:d}".format(num),
+        "dataset": dataset,
+        "path": os.path.abspath(path),
+        "relpath": None,
+        "sha256": sha256(data),
+        "size": len(data),
+        "embedded": None,
+    }
     if bundle_path is not None:
         entry["relpath"] = os.path.relpath(
-            os.path.abspath(path), os.path.dirname(os.path.abspath(bundle_path)))
+            os.path.abspath(path), os.path.dirname(os.path.abspath(bundle_path))
+        )
     bundle.sources.append(entry)
     if embed:
         _embed(bundle, entry, data)
@@ -865,12 +921,15 @@ def relink_source(bundle, ident, newpath, bundle_path=None):
     entry = bundle.source(ident)
     with open(newpath, "rb") as fil:
         if sha256(fil.read()) != entry["sha256"]:
-            raise BundleError("This file is not the same spectrum (its checksum"
-                              " differs):\n  " + newpath)
+            raise BundleError(
+                "This file is not the same spectrum (its checksum"
+                " differs):\n  " + newpath
+            )
     entry["path"] = os.path.abspath(newpath)
     if bundle_path is not None:
         entry["relpath"] = os.path.relpath(
-            os.path.abspath(newpath), os.path.dirname(os.path.abspath(bundle_path)))
+            os.path.abspath(newpath), os.path.dirname(os.path.abspath(bundle_path))
+        )
 
 
 def embed_source(bundle, ident, bundle_path=None):
@@ -884,8 +943,9 @@ def embed_source(bundle, ident, bundle_path=None):
     with open(where, "rb") as fil:
         data = fil.read()
     if sha256(data) != entry["sha256"]:
-        raise BundleError("The source spectrum has changed since it was added:\n  "
-                          + where)
+        raise BundleError(
+            "The source spectrum has changed since it was added:\n  " + where
+        )
     _embed(bundle, entry, data)
 
 
@@ -906,8 +966,10 @@ def unembed_source(bundle, ident):
 
 def _installed_atomic(name):
     """The bytes of the table the installed ALIS reads for ``name``, if any."""
-    for path in (os.path.join(load.atomic_datadir(), name),
-                 os.path.join(load.atomic_datadir(), load.DEFAULT_ATOMIC)):
+    for path in (
+        os.path.join(load.atomic_datadir(), name),
+        os.path.join(load.atomic_datadir(), load.DEFAULT_ATOMIC),
+    ):
         if os.path.isfile(path):
             with open(path, "rb") as fil:
                 return fil.read()
@@ -965,12 +1027,13 @@ def extract(bundle, outdir, overwrite=False, model_text=None, blind_comments=Fal
         if not member.startswith(TREE):
             continue
         if member == bundle.model_member and model_text is not None:
-            planned[member[len(TREE):]] = model_text.encode("utf-8")
+            planned[member[len(TREE) :]] = model_text.encode("utf-8")
         elif bundle.hidden["lines"].get(member):
-            planned[member[len(TREE):]] = bundle.text(
-                member, restore=True).encode("utf-8")
+            planned[member[len(TREE) :]] = bundle.text(member, restore=True).encode(
+                "utf-8"
+            )
         else:
-            planned[member[len(TREE):]] = bundle.members[member]
+            planned[member[len(TREE) :]] = bundle.members[member]
     if bundle.hidden_model_lines() and model_text is None:
         notes.append("The model's hidden starting values are written in plain text.")
     atomic = atomic_to_write(bundle)
@@ -978,31 +1041,39 @@ def extract(bundle, outdir, overwrite=False, model_text=None, blind_comments=Fal
         name, table = atomic
         target = posixpath.join(bundle.model_dir, name)
         planned[target] = table
-        notes.append("The atomic table packed in the bundle differs from the one"
-                     " installed with ALIS, so it is written beside the model: "
-                     + target)
+        notes.append(
+            "The atomic table packed in the bundle differs from the one"
+            " installed with ALIS, so it is written beside the model: " + target
+        )
     prefix = LATEST + "files/"
     for member in bundle.members:
         if member.startswith(prefix):
             store = bundle.hidden["lines"].get(member, {})
             if store:
                 text = restore_lines(
-                    bundle.members[member].decode("utf-8"), store,
+                    bundle.members[member].decode("utf-8"),
+                    store,
                     replace=lambda real: (
-                        "#" + BLIND_LINE if blind_comments else real)
-                    if real.lstrip().startswith("#") else BLIND_LINE)
-                planned[member[len(prefix):]] = text.encode("utf-8")
+                        ("#" + BLIND_LINE if blind_comments else real)
+                        if real.lstrip().startswith("#")
+                        else BLIND_LINE
+                    ),
+                )
+                planned[member[len(prefix) :]] = text.encode("utf-8")
             else:
-                planned[member[len(prefix):]] = bundle.members[member]
+                planned[member[len(prefix) :]] = bundle.members[member]
     for member in bundle.hidden["files"]:
         if member.startswith(prefix):
-            notes.append("Not written, because it holds blinded values: "
-                         + member[len(prefix):])
+            notes.append(
+                "Not written, because it holds blinded values: " + member[len(prefix) :]
+            )
     targets = {rel: os.path.join(outdir, *rel.split("/")) for rel in planned}
     existing = [t for t in targets.values() if os.path.exists(t)]
     if existing and not overwrite:
-        raise BundleError("These files exist already (use -w to overwrite them):\n"
-                          + "\n".join("  " + t for t in existing[:10]))
+        raise BundleError(
+            "These files exist already (use -w to overwrite them):\n"
+            + "\n".join("  " + t for t in existing[:10])
+        )
     written = []
     for rel, target in sorted(targets.items()):
         os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
@@ -1017,8 +1088,9 @@ def extract(bundle, outdir, overwrite=False, model_text=None, blind_comments=Fal
 
 def _tree_path(model_dir, key):
     """The path in the files tree of an output written at ``key``."""
-    path = posixpath.normpath(posixpath.join(model_dir or ".",
-                                             key.replace(os.sep, "/")))
+    path = posixpath.normpath(
+        posixpath.join(model_dir or ".", key.replace(os.sep, "/"))
+    )
     if path.startswith("../") or path == ".." or posixpath.isabs(path):
         return None
     return path
@@ -1050,12 +1122,20 @@ def prune_run_files(bundle):
     """
     used = run_inputs(bundle)
     for member in [m for m in bundle.members if m.startswith(RUN_FILES)]:
-        if member[len(RUN_FILES):] not in used:
+        if member[len(RUN_FILES) :] not in used:
             del bundle.members[member]
 
 
-def _set_latest(bundle, files, hidden_marks, info, model_bytes, model_hidden,
-                inputs=None, model_member=None):
+def _set_latest(
+    bundle,
+    files,
+    hidden_marks,
+    info,
+    model_bytes,
+    model_hidden,
+    inputs=None,
+    model_member=None,
+):
     """
     Replace the latest run with ``files`` (output path -> bytes).
 
@@ -1090,14 +1170,16 @@ def _set_latest(bundle, files, hidden_marks, info, model_bytes, model_hidden,
     for member in [m for m in bundle.hidden["files"] if m.startswith(LATEST)]:
         del bundle.hidden["files"][member]
     model_member = model_member or bundle.model_member
-    model_dir = posixpath.dirname(model_member[len(TREE):])
+    model_dir = posixpath.dirname(model_member[len(TREE) :])
     listing = {}
     for key, data in sorted(files.items()):
         tree = _tree_path(model_dir, key)
         if tree is None:
             tree = "outside/" + posixpath.basename(key.replace(os.sep, "/"))
-            msgs.warn("An output was written outside the bundle's files tree; it"
-                      " is kept as " + tree)
+            msgs.warn(
+                "An output was written outside the bundle's files tree; it"
+                " is kept as " + tree
+            )
         member = LATEST + "files/" + tree
         mark = hidden_marks.get(os.path.normpath(key), False)
         if mark is None:
@@ -1134,12 +1216,18 @@ def _run_info(inst, started, command, overrides, model_bytes, atomic):
     name, table = atomic
     installed = _installed_atomic(name)
     info = {
-        "started": started, "finished": now(), "host": platform.node(),
-        "alis_version": alis.__version__, "command": command,
+        "started": started,
+        "finished": now(),
+        "host": platform.node(),
+        "alis_version": alis.__version__,
+        "command": command,
         "settings": ["{0} {1} {2}".format(o[0], o[1], o[3]) for o in overrides],
         "model_sha256": sha256(model_bytes),
-        "atomic": {"name": name, "sha256": sha256(table),
-                   "installed_differs": installed is not None and installed != table},
+        "atomic": {
+            "name": name,
+            "sha256": sha256(table),
+            "installed_differs": installed is not None and installed != table,
+        },
         "status": "completed",
     }
     if inst is None:
@@ -1148,8 +1236,14 @@ def _run_info(inst, started, command, overrides, model_bytes, atomic):
         info["chi2_initial"] = float(inst._chisq_init)
     fit = getattr(inst, "_fitresults", None)
     if fit is not None:
-        info.update({"chi2_final": float(fit.fnorm), "dof": int(fit.dof),
-                     "iterations": int(fit.niter), "status_code": int(fit.status)})
+        info.update(
+            {
+                "chi2_final": float(fit.fnorm),
+                "dof": int(fit.dof),
+                "iterations": int(fit.niter),
+                "status_code": int(fit.status),
+            }
+        )
         if fit.status == -20:
             info["status"] = "interrupted"
         else:
@@ -1221,8 +1315,7 @@ class RunResult:
         return self.error is None and (self.exit is None or bool(self.files))
 
 
-def execute(bundle, argflag, overrides=(), command=None, iterhook=None,
-            started=None):
+def execute(bundle, argflag, overrides=(), command=None, iterhook=None, started=None):
     """
     Run a bundle held in memory, storing nothing (dashboard Stage 6, Q6.19(a)).
 
@@ -1259,10 +1352,16 @@ def execute(bundle, argflag, overrides=(), command=None, iterhook=None,
     model_bytes = bundle.members[bundle.model_member]
     store = bundle.hidden_model_lines()
     result = RunResult(
-        info={}, model_member=bundle.model_member, model_bytes=model_bytes,
+        info={},
+        model_member=bundle.model_member,
+        model_bytes=model_bytes,
         model_hidden=store,
-        inputs={m: c for m, c in bundle.members.items()
-                if m.startswith(TREE) and m != bundle.model_member})
+        inputs={
+            m: c
+            for m, c in bundle.members.items()
+            if m.startswith(TREE) and m != bundle.model_member
+        },
+    )
     mask = _MaskHidden(store)
     msgs.addFilter(mask)
     errors = _LastError()
@@ -1279,37 +1378,55 @@ def execute(bundle, argflag, overrides=(), command=None, iterhook=None,
         rd = _Reader()
         rd._argflag = reader
         parlines, datlines, modlines, lnklines = load.load_input(
-            rd, textstr=text.splitlines(keepends=True), updateself=False)
+            rd, textstr=text.splitlines(keepends=True), updateself=False
+        )
         settings = load.set_params(parlines, copy.deepcopy(argflag), verbose=-1)
         load.reapply_cli_overrides(settings, list(overrides), verbose=-1)
         reasons = unsupported(settings, datlines)
         if reasons:
-            msgs.error("This bundle cannot be run as it is, because:" + msgs.newline()
-                       + msgs.newline().join(reasons) + msgs.newline()
-                       + "Extract it first (run_alis --extract) and run the plain"
-                       " model.")
+            msgs.error(
+                "This bundle cannot be run as it is, because:"
+                + msgs.newline()
+                + msgs.newline().join(reasons)
+                + msgs.newline()
+                + "Extract it first (run_alis --extract) and run the plain"
+                " model."
+            )
         argflag["run"]["modname"] = bundle.model_name
-        inst = ClassMain(argflag, parlines=parlines, datlines=datlines,
-                         modlines=modlines, lnklines=lnklines,
-                         data=bundle.data_for_run(), cli_overrides=list(overrides),
-                         writer=writer, atomic=bundle.atomic_table(),
-                         iterhook=iterhook)
+        inst = ClassMain(
+            argflag,
+            parlines=parlines,
+            datlines=datlines,
+            modlines=modlines,
+            lnklines=lnklines,
+            data=bundle.data_for_run(),
+            cli_overrides=list(overrides),
+            writer=writer,
+            atomic=bundle.atomic_table(),
+            iterhook=iterhook,
+        )
     except SystemExit as stop:
         result.exit = stop
         if stop.code not in (0, None):
-            result.error = {"time": now(), "message": errors.message,
-                            "command": command, "model_sha256": sha256(model_bytes)}
+            result.error = {
+                "time": now(),
+                "message": errors.message,
+                "command": command,
+                "model_sha256": sha256(model_bytes),
+            }
             return result
-        result.info = _run_info(inst, started, command, overrides, model_bytes,
-                                bundle.atomic_table())
+        result.info = _run_info(
+            inst, started, command, overrides, model_bytes, bundle.atomic_table()
+        )
         result.info["status"] = "stopped"
         result.files, result.hidden = writer.files, writer.hidden
         return result
     finally:
         msgs.removeFilter(mask)
         msgs.removeHandler(errors)
-    result.info = _run_info(inst, started, command, overrides, model_bytes,
-                            bundle.atomic_table())
+    result.info = _run_info(
+        inst, started, command, overrides, model_bytes, bundle.atomic_table()
+    )
     result.files, result.hidden, result.inst = writer.files, writer.hidden, inst
     return result
 
@@ -1340,12 +1457,20 @@ def store(target, result):
 
     def change(bundle):
         if result.error is not None:
-            bundle.members[LAST_ERROR] = json.dumps(
-                result.error, indent=1).encode("utf-8")
+            bundle.members[LAST_ERROR] = json.dumps(result.error, indent=1).encode(
+                "utf-8"
+            )
             return
-        _set_latest(bundle, result.files, result.hidden, result.info,
-                    result.model_bytes, result.model_hidden, result.inputs,
-                    result.model_member)
+        _set_latest(
+            bundle,
+            result.files,
+            result.hidden,
+            result.info,
+            result.model_bytes,
+            result.model_hidden,
+            result.inputs,
+            result.model_member,
+        )
 
     if isinstance(target, Bundle):
         change(target)
@@ -1400,8 +1525,7 @@ def pack_to(modfile, path, overwrite=False, **kwargs):
     Generated by RJC and Claude.
     """
     if os.path.exists(path) and not overwrite:
-        raise BundleError("The bundle exists already (use -w to overwrite it): "
-                          + path)
+        raise BundleError("The bundle exists already (use -w to overwrite it): " + path)
     bundle = pack(modfile, **kwargs)
     write(bundle, path)
     return bundle
@@ -1419,9 +1543,30 @@ def default_extract_dir(path):
 
 
 __all__ = [
-    "Bundle", "BundleError", "pack", "pack_to", "read", "write", "update", "run",
-    "execute", "store", "RunResult", "to_bytes", "run_inputs", "prune_run_files",
-    "extract", "atomic_to_write", "unblind", "add_source", "check_sources", "relink_source",
-    "embed_source", "unembed_source", "hide_lines", "restore_lines",
-    "blind_line_numbers", "unsupported",
+    "Bundle",
+    "BundleError",
+    "pack",
+    "pack_to",
+    "read",
+    "write",
+    "update",
+    "run",
+    "execute",
+    "store",
+    "RunResult",
+    "to_bytes",
+    "run_inputs",
+    "prune_run_files",
+    "extract",
+    "atomic_to_write",
+    "unblind",
+    "add_source",
+    "check_sources",
+    "relink_source",
+    "embed_source",
+    "unembed_source",
+    "hide_lines",
+    "restore_lines",
+    "blind_line_numbers",
+    "unsupported",
 ]

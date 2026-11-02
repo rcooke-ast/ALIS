@@ -132,8 +132,13 @@ def test_report_chi2_self_consistent(tmp_path):
     # Remove the outputs of any earlier run left in the example (regenerating
     # the references writes reports beside the models), so that the report
     # read below can only have been written by this run.
-    for pattern in ("model/*.report", "model/*.mod.out", "model/*.pdf",
-                    "model/*.png", "data/*_fit.dat"):
+    for pattern in (
+        "model/*.report",
+        "model/*.mod.out",
+        "model/*.pdf",
+        "model/*.png",
+        "data/*_fit.dat",
+    ):
         for stale in ex.glob(pattern):
             stale.unlink()
     mod = "fit_spectra.mod"

@@ -4,7 +4,8 @@
 #   coverage report (no threshold gate yet) on Python 3.13, Ubuntu + macOS.
 # - test: runs the shipped-example regression batch (`pytest -m examples`)
 #   on Python 3.13, Ubuntu + macOS (Q1.2). context/ cases and the GPU
-#   stack are excluded from CI.
+#   stack are excluded from CI. Ubuntu also skips the machine_dependent
+#   refits (dashboard Stage 7, Q7.21).
 # - gui: runs the dashboard's window tests (`pytest -m gui`) off-screen, with
 #   the gui, gui-test and dev extras (dashboard Stage 3).
 # - Each job has a time limit (Q7.17, Q7.18): a test that hangs then fails the
@@ -67,7 +68,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
       - name: Run example regression tests
-        run: python -m pytest -m examples -v
+        # On Ubuntu the refits marked machine_dependent are skipped: their
+        # references, made on macOS, do not reproduce on Linux x86-64, though
+        # their fixed-parameter tests still run (dashboard Stage 7, Q7.21).
+        run: >-
+          python -m pytest -m examples -v
+          ${{ runner.os == 'Linux' && '--skip-machine-dependent' || '' }}
 
   gui:
     # The dashboard's windows (dashboard Stage 3): PySide6 through qtpy, driven

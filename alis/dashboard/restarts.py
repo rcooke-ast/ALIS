@@ -41,8 +41,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from alis import bundle as B
-from alis import convergence
-from alis import outputs
+from alis import convergence, outputs
 from alis.dashboard import blinding as BL
 from alis.dashboard import edit as E
 from alis.dashboard import model as M

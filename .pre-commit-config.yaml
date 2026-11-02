@@ -21,7 +21,9 @@ repos:
         # isort ignores extend_skip for explicitly-named files unless
         # --filter-files is given, which is exactly how pre-commit invokes it.
         args: [--filter-files]
+  # Kept at the black the dev extras install: 24.10.0 and 26.x lay out some code
+  # differently, so a file black-clean here failed CI (dashboard Stage 7, Q7.20).
   - repo: https://github.com/psf/black
-    rev: 24.10.0
+    rev: 26.5.1
     hooks:
       - id: black

@@ -198,6 +198,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The dashboard's Fit · Results: the Instrument group (FWHMs, shifts, zero levels)
   is open by default, and a closed group says how many rows it hides; shifts and
   FWHMs are named by their dataset and snip, as zero levels are.
+- The dashboard's model text: deleting a hidden value (`▒▒▒▒`) erased it without
+  asking, leaving, for example, `blindrange=` with nothing after it. Deleting or
+  retyping a hidden value alone now asks for the new value, as cutting into one
+  does; deleting or retyping its whole line is still made as typed.
 - `run ncpus` given on the command line (`--set "run ncpus -1"`) is counted as in
   a model file, so -1 is all CPUs bar one; it used to be set as written, and the
   fit stopped ("Number of processes must be at least 1"). A count that leaves no
@@ -215,6 +219,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `chisq miniter` is 5 by default (it was 0): a fit takes at least 5 iterations
   before it may stop because χ² or its parameters have stopped changing (`ftol`,
   `xtol`).
+- The pre-commit hook's black is 26.5.1 (it was 24.10.0), the version the `dev`
+  extra installs, and every file outside the formatting exclude lists is now
+  black- and isort-clean (formatting only).
 
 ### Removed
 - onefits (`out onefits`, `run_alis file.fits`): an experimental single-file
