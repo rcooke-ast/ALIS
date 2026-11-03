@@ -561,7 +561,9 @@ def test_a_limit_the_user_wrote_stays(metal):
     assert lim_lines(project) == ["lim param ta1 [100.0,100000.0]"]
 
 
-def test_a_b_turb_tied_across_components_gets_one_limit(metal):
+def test_a_b_turb_tied_across_components_is_split_by_pure_thermal(metal):
+    # Stage 7 gave the tie one limit; a mode now changes its component alone, and
+    # the other keeps the label (Stage 8, Q8.10)
     project, hist, _ = with_component(metal)
     step, _ = C.new_component(project, project.systems[0], 20.0 / C_KMS)
     hist.do(step)
@@ -569,10 +571,14 @@ def test_a_b_turb_tied_across_components_gets_one_limit(metal):
     pm = project.parsed
     a2 = project.component("a2")
     hist.do(project.step(E.tie(pm, a2.main.param("bturb"), "ba1")))
-    hist.do(C.temperature(project, project.component("a1"), "thermal"))
+    plan = C.temperature_plan(project, project.component("a1"), "thermal")
+    assert plan.notes[0].startswith("The b_turb of a2 keeps ba1, free at ")
+    hist.do(project.step(plan.change, plan.description))
     assert errors(project) == []
-    assert [ln for ln in lim_lines(project) if "BA1" in ln] == [
-        "lim param BA1 [0.0,None]"
+    assert project.component("a1").main.param("bturb").label == "BA3"
+    assert project.component("a2").main.param("bturb").label == "ba1"
+    assert [ln for ln in lim_lines(project) if "BA" in ln.upper()] == [
+        "lim param BA3 [0.0,None]"
     ]
 
 
@@ -605,6 +611,223 @@ def test_a_small_fixed_b_turb_with_t_free_reads_as_pure_thermal(
     project = P.Project.import_model(str(path), registry=registry)
     assert errors(project) == []
     assert project.components[0].temperature_mode == ("thermal", None)
+
+
+@pytest.mark.parametrize("mode", [("free",), ("preset", 0.0), ("fixed", 8000.0)])
+def test_leaving_pure_thermal_gives_back_the_limits_it_replaced(
+    registry, tmp_path, mode
+):
+    # Item 2 carried over (Q8.11): the user's own limits came back only by Undo
+    line = "voigt ion=1H_I 14.0 2.50360za1 10.0bx1 10000.0ta1 specid=0"
+    lims = ["lim param bx1 [0.01,None]", "lim param ta1 [0.0,100000.0]"]
+    project, hist = ratio_fit(registry, tmp_path, [line], lims)
+    before = state(project)
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    assert errors(project) == []
+    assert lim_lines(project) == [
+        "lim param BX1 [0.0,None]   # pure thermal; was [0.01,None]",
+        "lim param ta1 [1.0,100000.0]   # pure thermal; was [0.0,100000.0]",
+    ]
+    thermal = state(project)
+    hist.do(C.temperature(project, project.components[0], *mode))
+    assert errors(project) == []
+    lines = project.text.splitlines()
+    # As written; T's label is upper case when the mode fixes it
+    fixed = mode[0] != "free"
+    lims[1] = lims[1].replace("ta1", "TA1") if fixed else lims[1]
+    assert [ln for ln in lines if "lim param" in ln] == ["  " + ln for ln in lims]
+    # b_turb, free again, keeps its own lower limit
+    assert project.components[0].main.param("bturb").start >= 0.01
+    hist.undo()
+    assert state(project) == thermal
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_limit_line_pure_thermal_wrote_is_taken_out(registry, tmp_path):
+    line = "voigt ion=1H_I 14.0 2.50360za1 10.0bx1 10000.0ta1 specid=0"
+    project, hist = ratio_fit(registry, tmp_path, [line])
+    before = state(project)
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    assert lim_lines(project) == [
+        "lim param BX1 [0.0,None]",
+        "lim param ta1 [1.0,None]",
+    ]
+    hist.do(C.temperature(project, project.components[0], "free"))
+    assert lim_lines(project) == []
+    assert project.components[0].main.param("bturb").start >= 0.5
+    hist.undo()
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_limit_whose_comment_was_edited_away_is_taken_out(registry, tmp_path):
+    line = "voigt ion=1H_I 14.0 2.50360za1 10.0bx1 10000.0ta1 specid=0"
+    project, hist = ratio_fit(registry, tmp_path, [line], ["lim param bx1 [0.01,None]"])
+    hist.do(C.temperature(project, project.components[0], "thermal"))
+    text = project.text.replace("   # pure thermal; was [0.01,None]", "")
+    hist.do(project.step(T.Change((T.Patch(0, project.text, text),)), "edit"))
+    hist.do(C.temperature(project, project.components[0], "free"))
+    assert lim_lines(project) == []
+    assert errors(project) == []
+
+
+# J101155p294141_FIXDH.mod's shape (Stage 8, point 6): both components' T and a
+# forest line's share the label ZEROT, fixed at 0 K
+SHARED_T = [
+    "voigt ion=1H_I 14.0 2.50360 10.0 0.0ZEROT specid=0",
+    "voigt ion=1H_I 13.5 2.50420 10.0 0.0ZEROT specid=0",
+    "voigt ion=2H_I/1H_I -4.5974FIXDH specid=0",
+    "voigt ion=1Ly_a 13.0 2.50600 20.0 0.0ZEROT specid=0",
+]
+
+
+def written_lines(project, *marks):
+    """The model's lines that hold each mark, as they are written."""
+    lines = project.text.splitlines()
+    return [next(ln for ln in lines if mark in ln) for mark in marks]
+
+
+@pytest.mark.parametrize(
+    "mode, label",
+    [
+        (("thermal",), "ta1"),
+        (("free",), "ta1"),
+        (("preset", 100.0), "TA1"),
+        (("fixed", 8000.0), "TA1"),
+    ],
+)
+def test_a_mode_gives_a_shared_t_a_label_of_its_own(registry, tmp_path, mode, label):
+    # Point 6: pure thermal on a2 freed the forest's ZEROT
+    project, hist = ratio_fit(registry, tmp_path, SHARED_T)
+    before = state(project)
+    others = written_lines(project, "2.50360", "1Ly_a")
+    a2 = project.component("a2")
+    plan = C.temperature_plan(project, a2, *mode)
+    assert plan.notes == [
+        "The T of a1 and of 1 line of the Lyα forest keep ZEROT, fixed at 0 K."
+    ]
+    assert [e.line for e in plan.entries] == [a2.lines[0].line]
+    assert plan.entries[0].after.split()[5].endswith(label)
+    hist.do(project.step(plan.change, plan.description))
+    assert errors(project) == []
+    assert written_lines(project, "2.50360", "1Ly_a") == others
+    a2 = project.component("a2")
+    temp = a2.main.param("temperature")
+    assert temp.label == label and temp.fixed == (mode[0] in ("preset", "fixed"))
+    assert a2.temperature_mode[0] == mode[0]
+    if mode[0] == "thermal":
+        assert "lim param ta1 [1.0,None]" in lim_lines(project)
+    assert not [ln for ln in lim_lines(project) if "ZEROT" in ln]
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_shared_b_turb_keeps_its_limit_on_both_labels(registry, tmp_path):
+    lines = [ln.replace(" 10.0 0.0ZEROT", " 10.0bsh 0.0ZEROT") for ln in SHARED_T]
+    lines[3] = lines[3].replace(" 20.0 ", " 10.0bsh ")
+    project, hist = ratio_fit(registry, tmp_path, lines, ["lim param bsh [1.0,50.0]"])
+    before = state(project)
+    others = written_lines(project, "2.50360", "1Ly_a")
+    plan = C.temperature_plan(project, project.component("a2"), "thermal")
+    assert plan.notes == [
+        "The b_turb of a1 and of 1 line of the Lyα forest keep bsh, free at 10"
+        " km/s.",
+        "The T of a1 and of 1 line of the Lyα forest keep ZEROT, fixed at 0 K.",
+    ]
+    hist.do(project.step(plan.change, plan.description))
+    assert errors(project) == []
+    assert written_lines(project, "2.50360", "1Ly_a") == others
+    a2 = project.component("a2").main
+    assert a2.param("bturb").label == "BA1" and a2.param("bturb").start == 0.0
+    # The limit stays with bsh, and a2's own label keeps it, lowered to 0 km/s
+    assert sorted(lim_lines(project)) == [
+        "lim param BA1 [0.0,50.0]   # pure thermal; was [1.0,50.0]",
+        "lim param bsh [1.0,50.0]",
+        "lim param ta1 [1.0,None]",
+    ]
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_t_label_shared_by_the_component_s_own_ions_stays_one(registry, tmp_path):
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360za1 10.0ba1 10000.0ta1 specid=0",
+        "voigt ion=2H_I 9.4 2.50360za1 10.0ba1 10000.0ta1 specid=0",
+    ]
+    project, hist = ratio_fit(registry, tmp_path, lines)
+    plan = C.temperature_plan(project, project.component("a1"), "preset", 100.0)
+    assert plan.entries == [] and plan.notes == []
+    hist.do(project.step(plan.change, plan.description))
+    a1 = project.component("a1")
+    assert [ln.param("temperature").label for ln in a1.lines] == ["TA1", "TA1"]
+    assert errors(project) == []
+
+
+def test_an_excluded_ion_keeps_the_component_s_new_label(registry, tmp_path):
+    lines = list(SHARED_T[:2]) + [
+        "voigt ion=2H_I 9.0 2.50420 10.0 0.0ZEROT specid=0",
+        SHARED_T[3],
+    ]
+    project, hist = ratio_fit(registry, tmp_path, lines)
+    before = state(project)
+    a2 = project.component("a2")
+    hist.do(project.step(C.exclusion(project, a2, "2H_I").change))
+    plan = C.temperature_plan(project, project.component("a2"), "free")
+    assert len(plan.entries) == 2  # its H I line, and its D I line commented out
+    hist.do(project.step(plan.change, plan.description))
+    step, _ = C.include(project, project.component("a2"), "2H_I")
+    hist.do(step)
+    assert errors(project) == []
+    a2 = project.component("a2")
+    assert [ln.param("temperature").label for ln in a2.lines] == ["ta2", "ta2"]
+    assert written_lines(project, "2.50360", "1Ly_a")[0].endswith("0.0ZEROT specid=0")
+    for _ in range(3):
+        hist.undo()
+    assert state(project) == before
+
+
+J1011 = ROOT / (
+    "context/fitting_examples/Temperature/J101155p294141/model/J101155p294141.model"
+)
+
+
+@pytest.mark.parametrize("untie", [True, False])
+def test_rjc_j1011_pure_thermal_on_a2_leaves_the_others(registry, untie):
+    # Point 6: a2's T shares zerot with a1 and three lines of the Lyα forest
+    if not J1011.exists():
+        pytest.skip("J101155p294141 is not present")
+    project = P.Project.open(str(J1011), registry=registry)
+    hist = H.History(project)
+    before = state(project)
+    forest = [ln.line for ln in project.absorbers]
+    keep = [project.component("a1").lines[0].line] + forest
+    written = [project.text.splitlines()[n] for n in keep]
+    if untie:
+        temp = project.component("a2").main.param("temperature")
+        hist.do(project.step(E.untie(project.parsed, temp)))
+    hist.do(C.temperature(project, project.component("a2"), "thermal"))
+    assert errors(project) == []
+    # Each written as it was (the lim line written above them moves them down)
+    assert all(line in project.text.splitlines() for line in written)
+    assert project.component("a2").main.param("temperature").label == "ta3"
+    assert "lim param ta3 [1.0,None]" in [
+        " ".join(ln.split()) for ln in lim_lines(project)
+    ]
+    while hist.can_undo():
+        hist.undo()
+    assert state(project) == before
+
+
+def test_a_shared_t_that_a_link_uses_is_refused(registry, tmp_path):
+    from dashboard_synthetic import write_ratio_fit as write
+
+    lines = list(SHARED_T[:2]) + ["voigt ion=1Ly_a 13.0 2.50600 20.0 0.0tl specid=0"]
+    lines = [ln.replace("0.0ZEROT", "0.0zerot") for ln in lines]
+    path = write(tmp_path, lines, links=["tl(zerot) = zerot"])
+    project = P.Project.import_model(str(path), registry=registry)
+    with pytest.raises(C.ComponentError, match="a link uses"):
+        C.temperature_plan(project, project.component("a2"), "thermal")
 
 
 # -- Excluding and including (Q5.15, Q5.18) -------------------------------------------

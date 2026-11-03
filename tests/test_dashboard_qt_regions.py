@@ -525,6 +525,46 @@ def test_the_function_auto_first_guess_and_a_region_moved(window, qtbot, tmp_pat
     assert low == pytest.approx(1301.5, abs=0.02)
 
 
+def shading(view, kind="fit"):
+    """The spans a view shades, ``[(low, high)]``."""
+    return [tuple(sorted(item.getRegion())) for item in view._lists.get(kind, [])]
+
+
+def test_fit_regions_are_shaded_to_the_pixels_edges(window, qtbot, tmp_path):
+    # Point 3: the shading ended at the end pixels' centres
+    tab = snipped_with_region(window, tmp_path)
+    snip = window.session.project.snip("OI_1302")
+    wave = snip.pixels.wave
+    left, right = PL.pixel_edges(wave)
+
+    def fitted():
+        return np.flatnonzero(window.session.project.snip("OI_1302").pixels.mask)
+
+    idx = fitted()
+    ((low, high),) = shading(tab.strips[0].view)
+    assert abs(low - left[idx[0]]) < 1e-9 and abs(high - right[idx[-1]]) < 1e-9
+    # The pixel holding the drawn edge, its centre outside: neither fitted nor
+    # shaded
+    k = idx[0] - 1
+    assert left[k] < 1301.5 < right[k] and wave[k] < 1301.5
+    assert abs(low - right[k]) < 1e-9
+    # An edge dragged past the centre of a pixel: it is fitted, and the shading
+    # settles on its edge; short of the next centre, that pixel is not
+    tab.actions_["regions.draw"].trigger()
+    j = idx[0] - 3
+    edge = wave[j - 1] + 0.3 * (right[j - 1] - wave[j - 1])
+    tab.strips[0].view.regionMoved.emit(0, edge, high)
+    assert fitted()[0] == j and fitted()[-1] == idx[-1]
+    ((low, high),) = shading(tab.strips[0].view)
+    assert abs(low - left[j]) < 1e-9 and abs(high - right[idx[-1]]) < 1e-9
+    # Moved within the same pixels: no step, and the shading goes back to its edges
+    count = len(window.session.history.done)
+    tab.strips[0].view.regionMoved.emit(0, left[j] + 0.1 * (wave[j] - left[j]), high)
+    assert len(window.session.history.done) == count
+    ((low, _),) = shading(tab.strips[0].view)
+    assert abs(low - left[j]) < 1e-9
+
+
 def test_a_knot_added_moved_and_removed_is_one_step_each(window, qtbot, tmp_path):
     tab = snipped_with_region(window, tmp_path)
     history = window.session.history
@@ -695,6 +735,14 @@ def test_a_snip_s_own_shift_and_zero_level_in_the_snip_box(window, qtbot, tmp_pa
     assert (
         window.session.history.undo_description() == "Set the shift of snip SiII_1304"
     )
+    # A long shift shows its start (Stage 8, point 5)
+    tab.shift_value.setText("-12.3456789012")
+    tab.shift_value.editingFinished.emit()
+    tab.shift_value.setFixedWidth(40)
+    tab.shift_value.grab()
+    assert tab.shift_value.text() == "-12.345679"
+    assert tab.shift_value.cursorPosition() == 0
+    assert tab.shift_value.cursorRect().left() < 8
     # Its own zero level
     tab.zero_choice.setCurrentIndex(1)
     tab.zero_choice.activated.emit(1)

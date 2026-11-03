@@ -881,6 +881,10 @@ def load_data(slf, datlines, data=None):
     # with a single data line, or a mapping from each data file's path, as it is
     # resolved below (datadirc plus the name on the data line), to its bytes.
     datamap = data if isinstance(data, Mapping) else None
+    # An LSF file is read from them too (dashboard Stage 8, Q8.7), or from disk
+    lsffile = slf._funcarray[2].get('lsffile') if hasattr(slf, '_funcarray') else None
+    if lsffile is not None:
+        lsffile.set_files(datamap)
     if datamap is not None:
         if slf._argflag['generate']['data']:
             msgs.error("Data cannot be generated when the data are held in memory")

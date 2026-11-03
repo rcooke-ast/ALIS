@@ -244,7 +244,7 @@ class DataTab(W.Tab):
         self._z_row = row
         zline = QtWidgets.QHBoxLayout()
         zline.addWidget(QtWidgets.QLabel("<b>Primary</b> z ="))
-        self.z_edit = QtWidgets.QLineEdit()
+        self.z_edit = W.ValueField()
         self.z_edit.setPlaceholderText("type the redshift")
         self.z_edit.setToolTip("The primary system's redshift: Enter keeps it")
         self.z_edit.returnPressed.connect(self._z_typed)

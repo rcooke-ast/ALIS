@@ -466,7 +466,7 @@ def full(text, data, registry, pm=None):
             _, datlines, modlines, lnklines = load.load_input(
                 state, textstr=text.splitlines(keepends=True)
             )
-            for reason in B.unsupported(state._argflag, datlines):
+            for reason in B.unsupported(state._argflag, datlines, files=data):
                 problems.append(_problem(None, WARNING, UNSUPPORTED.format(reason)))
             # A new project has no data lines until its first snip; ALIS cannot
             # load such a model (load_par_influence needs a shift), so say so

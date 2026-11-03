@@ -1248,6 +1248,9 @@ def buffers(project, snip):
     wave = pix.wave[mask]
     span = [float(wave.min()), float(wave.max())]
     try:
+        if call.name == "lsffile":
+            # Its kernel, from the project's files (Stage 8, Q8.7)
+            inst.set_files(project.data_for_run())
         with M.alis_quietly():
             need = inst.getminmax([a.text for a in call.args], span)
     except Exception:

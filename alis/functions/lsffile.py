@@ -1,3 +1,4 @@
+import io
 import os
 import numpy as np
 from alis import logger
@@ -29,19 +30,50 @@ class LSFFile(base.Base) :
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
         ########################################################################
         self._lsf_wave, self._lsf_kernel = None, None
+        self._lsf_name = None
+        # The files of a bundle held in memory, by their path from the model, or
+        # None to read the LSF file from disk (dashboard Stage 8, Q8.7)
+        self._files = None
+        self._parsed = {}
         self._verbose = verbose
         # Set the atomic data
         self._atomic = atomic
         if getinst: return
 
+    def set_files(self, files):
+        """
+        The files of a bundle held in memory, as ``load_data`` is given them: a
+        mapping from each file's path from the model to its bytes. The LSF file is
+        then read from them; None reads it from disk (dashboard Stage 8, Q8.7).
+        """
+        self._files = files
+        self._parsed = {}
+
+    def _held(self, name):
+        """The key of an LSF file held in memory, or None."""
+        if self._files is None:
+            return None
+        for key in (name, os.path.normpath(name)):
+            if key in self._files:
+                return key
+        return None
+
     def loadlsf(self, name, index=-1):
         """
-        Load the LSF file
+        Load the LSF file: from the bundle's files held in memory when it is one of
+        them, otherwise from disk
         """
-        if not os.path.exists(name):
+        key = self._held(name)
+        if key is None and not os.path.exists(name):
             msgs.error("LSF file not found: {:s}".format(name))
         try:
-            data = np.loadtxt(name)
+            if key is not None:
+                # The bytes of a run do not change: read them once
+                if key not in self._parsed:
+                    self._parsed[key] = np.loadtxt(io.BytesIO(self._files[key]))
+                data = self._parsed[key]
+            else:
+                data = np.loadtxt(name)
             allkernels = data[:,1:]
             self._lsf_wave = data[:,0]
             if index == -1:
@@ -53,6 +85,14 @@ class LSFFile(base.Base) :
             msgs.error("LSF file not found or not in the correct format")
         # Print the details of the LSF file that was loaded
         msgs.info("Loading LSF file: {:s} with index: {:d}".format(name, index))
+
+    def fwhm(self):
+        """
+        The full width at half maximum of the kernel loaded, in the units of the
+        file's first column (Angstroms)
+        """
+        w = np.where(self._lsf_kernel >= 0.5 * np.max(self._lsf_kernel))
+        return np.max(self._lsf_wave[w]) - np.min(self._lsf_wave[w])
 
     def call_CPU(self, x, y, p, mkey=None, ncpus=1):
         """
@@ -96,21 +136,21 @@ class LSFFile(base.Base) :
         Nsig   : Width in number of sigma to extract either side of
                  fitrange
         """
-        if self._lsf_wave is None or self._lsf_kernel is None:
-            # Load the name and index of the input
-            name = None
-            index = -1
-            for pp in par:
-                if pp.split(":")[0] == 'name':
-                    name = pp.split(":")[1]
-                elif pp.split(":")[0] == 'index':
-                    index = int(pp.split(":")[1])
-            if name is None:
-                msgs.error("LSF file not found")
+        # Load the name and index of the input: each data line may name its own
+        # file (dashboard Stage 8), so a kernel loaded for another is not used
+        name = None
+        index = -1
+        for pp in par:
+            if pp.split(":")[0] == 'name':
+                name = pp.split(":")[1]
+            elif pp.split(":")[0] == 'index':
+                index = int(pp.split(":")[1])
+        if name is None:
+            msgs.error("LSF file not found")
+        if self._lsf_kernel is None or name != self._lsf_name:
             self.loadlsf(name, index=index)
         # Roughly estimate the FWHM
-        w = np.where(self._lsf_kernel >= 0.5 * np.max(self._lsf_kernel))
-        dwav = np.max(self._lsf_wave[w]) - np.min(self._lsf_wave[w])
+        dwav = self.fwhm()
         fwhmv = 299792.458 * dwav / 1309.0
         # Use the parameters to now calculate the sigma width
         sigd = fwhmv / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )

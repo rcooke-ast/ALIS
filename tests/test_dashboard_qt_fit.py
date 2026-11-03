@@ -356,6 +356,11 @@ def test_the_run_box_settings(window, qtbot, tmp_path):
     assert "run blind" not in rows
     original = project.text
     item, edit, clear = rows["chisq maxiter"]
+    # Its start shown, and its tooltip the value above the help (Stage 8, point 5)
+    assert edit.cursorPosition() == 0
+    assert edit.toolTip() == edit.text() + "\n" + item.setting.help + (
+        " ALIS's default: {0}.".format(item.setting.default_text)
+    )
     edit.setText("500")
     edit.editingFinished.emit()
     assert "chisq maxiter 500" in project.text
@@ -586,6 +591,19 @@ def test_a_run_from_the_tab(window, qtbot, tmp_path):
     current, _ = inspect.chart.drawn()
     assert [p[0] for p in current] == [p[0] for p in record.progress]
     assert "finished" in window.statusBar().currentMessage()
+    # Its fit regions and its residual strip's grey bands end at the pixels' step
+    # edges (Stage 8, point 3)
+    from alis.dashboard.qt import plots as PL
+
+    widget = inspect.panel_widgets[0]
+    x = widget.panel.x(widget.curve.wave)
+    left, right = PL.pixel_edges(x)
+    for low, high in [tuple(sorted(i.getRegion())) for i in widget.view._lists["fit"]]:
+        assert np.min(np.abs(left - low)) < 1e-9 and np.min(np.abs(right - high)) < 1e-9
+    bands = widget.resid.unfitted()
+    assert bands
+    for low, high in bands:
+        assert np.min(np.abs(left - low)) < 1e-9 and np.min(np.abs(right - high)) < 1e-9
     # The file holds the run; the model on disk is unchanged, and the edit unsaved
     disk = B.read(path)
     assert R.latest(disk).info["status"] == R.COMPLETED

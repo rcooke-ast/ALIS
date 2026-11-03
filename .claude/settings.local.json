@@ -77,7 +77,9 @@
       "Bash(python -m pytest -m examples -q -p no:cacheprovider)",
       "Bash(cd *)",
       "Bash(QT_QPA_PLATFORM=offscreen python -m pytest tests/_tmp_e2e_print_test.py -q -s -m fast)",
-      "Bash(python -m pytest tests/_tmp_dbg_cont_test.py -q -s)"
+      "Bash(python -m pytest tests/_tmp_dbg_cont_test.py -q -s)",
+      "Bash(python -)",
+      "Bash(python -m pytest -p no:cacheprovider -q tests/test_bundle.py -k \"lsf_file_the_bundle or without_its_lsf\")"
     ]
   }
 }

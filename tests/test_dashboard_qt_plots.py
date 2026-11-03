@@ -60,6 +60,35 @@ def test_steps_are_centred_and_break_at_gaps():
     assert np.isnan(bx).sum() == 1 and bx.size == wave.size + 1
 
 
+@pytest.mark.parametrize(
+    "wave",
+    [
+        np.arange(20, dtype=float),
+        # Non-uniform, with a gap after pixel 9
+        np.concatenate((np.cumsum(np.linspace(0.8, 1.2, 10)), 40.0 + np.arange(10.0))),
+    ],
+)
+def test_shaded_spans_end_at_the_step_edges(wave):
+    # Stage 8, point 3: the edges are step_curve's own
+    from alis.dashboard import project as P
+
+    x, _ = PL.step_curve(wave, np.zeros_like(wave))
+    left, right = x[np.isfinite(x)].reshape(-1, 2).T
+    assert np.array_equal((left, right), PL.pixel_edges(wave))
+    # Runs at the start and the end, of one pixel, and across the gap (two spans)
+    mask = np.zeros(wave.size, bool)
+    mask[[0, 1, 2, 5, 8, 9, 10, 11, 18, 19]] = True
+    spans = PL.pixel_spans(wave, P.mask_regions(wave, mask))
+    gap = PL.gaps(wave).size > 0
+    runs = [(0, 2), (5, 5)] + ([(8, 9), (10, 11)] if gap else [(8, 11)]) + [(18, 19)]
+    assert spans == [(left[a], right[b]) for a, b in runs]
+    # A range by the axis holds the pixels whose centres lie in it
+    assert PL.pixel_spans(wave, [(wave[3] - 1e-3, wave[4] + 1e-3)]) == [
+        (left[3], right[4])
+    ]
+    assert PL.pixel_spans(wave, [(wave[3] + 1e-3, wave[3] + 2e-3)]) == []
+
+
 def test_plus_and_minus_zoom_the_wavelength_axis_only(view, qtbot):
     widget, bar = view
     x0, x1 = xr(widget)

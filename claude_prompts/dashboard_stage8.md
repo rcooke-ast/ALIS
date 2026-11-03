@@ -227,6 +227,22 @@ work on one part of the window together:*
   - On CI, the `gui`, `unit` and `examples` jobs pass on both platforms. RJC pushes,
     and saves the logs in `context/misc/` if any job fails.
 
+*Paused on 2026-11-02 (Prompt 3): the crash does not reproduce here, even with CI's
+versions and order (Q8.12).*
+
+*Done on 2026-11-03 (Prompt 3), as Q8.12's response asks. RJC's next push passed the
+macOS `gui` job with no change, so the crash is set aside and watched for; if it comes
+back, the scratch environments of Q8.12 are the place to start. The same push failed
+the `lint` job (`context/misc/GitHub_lint.txt`), and that is fixed here. The first push
+of a new branch has an all-zeros `github.event.before`. The step checked its base with
+`git rev-parse --verify`, which accepts any well-formed 40-digit name without looking it
+up, so `git diff` then stopped with "bad object". The check is now
+`git rev-parse --verify --quiet "$BASE^{commit}"`, which looks the commit up, so a new
+branch skips lint as the step meant it to. Each later push lints its changed files as
+before. Checked by running the step's shell on four bases: all zeros and empty both
+skip; this branch's first commit finds no changed Python files; Stage 7's closing
+commit lists the files changed since.*
+
 **8.2 — A card's value shows its start (point 5, bug; `qt/components.py`,
 `qt/widgets.py`).**
 - **The bug.** A value longer than its field shows its last characters, so a long
@@ -384,6 +400,13 @@ D63, D81; Q8.9).**
   - The regression harness, with its `test_bundle` mode, since ALIS outside the
     dashboard changes.
 
+*Done on 2026-11-03 (Prompt 3); see the log. Two things were found in ALIS's
+`lsffile`, and neither was changed, since Q8.7 agreed to no more: it stops under
+`run bintype A`, so the tests fit `examples/lsf_file` with ALIS's default km/s bins;
+and `getminmax` turns the kernel's width into a velocity at a fixed 1309 Å, so at
+longer wavelengths it asks for more buffer than it needs. Both are for RJC at the
+close.*
+
 **8.8 — A snip's own resolution (point 1, new; `model.py`, `edit.py`, `project.py`,
 `datasets.py`, `snips.py`, `qt/regions.py`, `qt/data.py`; D14, D35, D83; Q8.6,
 Q8.8).**
@@ -460,6 +483,10 @@ Q8.8).**
     `examples/lsf_hst`'s model loaded with Load a .mod….
   - A hidden resolution value is masked in the box and in the cell
     (`test_dashboard_qt_blinding.py`).
+
+*Not begun on 2026-11-03: Prompt 3 stopped after Task 8.7, past half the context
+(CLAUDE.md). What was read for this task is noted at the end of the log, for the
+next thread.*
 
 **8.9 — A blind run's `.mod.out` (item 1 carried over, bug; `runs.py`, `model.py`).**
 - **The bug.** A `.mod.out` written by a plain ALIS run with blinded lines holds
@@ -780,6 +807,47 @@ the limit back, the dashboard has to keep it while the mode is on. Two ways:
 My lean: (a).
 
 **Response:** I agree with option (a).
+
+*Q8.12 was raised on 2026-11-02 (Prompt 3), during Task 8.1. Development is paused
+until it is answered.*
+
+**Q8.12 — The macOS crash, not reproduced here (point 4, Task 8.1).** What was
+tried, on this Mac (arm64, like `macos-latest`), with the tests in CI's order and the
+23 tests CI skipped left out (they need `context/`):
+- PySide6 6.12.0, as CI installed it, over this machine's other packages;
+- the same with numpy 2.5.4 (released on 10 October), which CI would also install;
+- an environment built as CI builds its own, from PyPI alone: Python 3.13.18, numpy
+  2.5.4, PySide6 6.12.0, pyqtgraph 0.14.0, pytest 9.2.0, pytest-qt 4.5.0.
+
+All 86 tests up to and including the crashing file pass each time. What was ruled
+out:
+- pyqtgraph builds its curves by writing into Qt's own memory, but 300 random paths,
+  some with gaps, were built correctly under 6.12.0;
+- the window's only worker thread (the `.mod` panel's full check) never touches Qt;
+- the restarts chart draws markers only, with no line, so the crashing curve is
+  another of the window's own.
+
+The crash came in the first event-processing pass after the test body, before any
+fixture teardown, so the window was alive and painting. PySide6 6.12.0 was released
+on 8 October, after the last stage that changed the `gui` job (Stage 3, 6 October).
+Whether the macOS job ever passed with 6.11 is not known here. Three ways:
+- **(a) One diagnostic push first.** The macOS `gui` job gains a second entry, the
+  same but with `PySide6==6.11.2`. You push, and send the logs if either fails:
+  - if 6.11.2 passes and 6.12.0 fails again at the same test, the trigger is
+    PySide6 6.12. The job then keeps the bound `PySide6<6.12` on macOS, with an
+    entry in `deferred_work.md` §7 to lift it and a check against each new PySide6;
+  - if both fail, the fault is ours. A second traceback narrows it, and Task 8.1
+    goes on from there;
+  - if both pass, it was intermittent, and the job runs each test file in its own
+    process, so that one fault cannot spread through the batch.
+- **(b) Bound PySide6 now,** `PySide6<6.12` for the macOS `gui` job only, with the
+  same entry in `deferred_work.md`. This is quicker, but the cause stays unknown.
+- **(c) One process per test file** on macOS, without the bound.
+
+My lean: (a). One push separates PySide6 from our code, and you keep the 6.12.0
+entry's result either way.
+
+**Response:** I pushed changes to this document (that shouldn't have affected the Mac os gui tests) and the latest results pass. So, maybe it ewas just a glitch on GitHub. For now, let's ignore it, and see if it shows up again at some point. If it does, we can investigate further. I did get a problem with the lint tests (I've put the output in `GitHub_lint.txt`), so we will need to investigate this before closing this stage.
 
 ## Prompts
 

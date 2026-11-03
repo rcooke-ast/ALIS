@@ -248,6 +248,13 @@ def test_a_starting_value_at_its_limit_and_a_low_b(project, prefs):
     assert "low_b" not in PF.check(project, prefs).codes()
 
 
+@pytest.mark.parametrize("label, noted", [("da", True), ("DA", False)])
+def test_a_low_b_is_noted_only_when_free(project, prefs, label, noted):
+    # Stage 8 (item 2 carried over): RJC's fixed b_turb of 0.01 km/s were noted
+    rewrite(project, "1.0da", "0.3" + label)  # both lines
+    assert ("low_b" in PF.check(project, prefs).codes()) == noted
+
+
 def test_a_snip_with_no_continuum(project, prefs):
     rewrite(project, LEGENDRE, "    gaussian 1.0 0.0 100.0 wave=1302.0 specid=0\n")
     report = PF.check(project, prefs)

@@ -124,8 +124,11 @@ jobs:
           # Lint only the files changed by this push / PR so the not-yet-
           # reformatted legacy code does not fail CI. A repo-wide reformat
           # is deferred to a dedicated task.
+          # The first push of a new branch has an all-zeros "before", which
+          # a plain --verify accepts as a well-formed name; ^{commit} makes
+          # git look the commit up (dashboard Stage 8, Task 8.1).
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
-          if [ -z "$BASE" ] || ! git rev-parse --verify "$BASE" >/dev/null 2>&1; then
+          if [ -z "$BASE" ] || ! git rev-parse --verify --quiet "$BASE^{commit}" >/dev/null; then
             echo "No valid base ref to diff against; skipping lint."
             exit 0
           fi

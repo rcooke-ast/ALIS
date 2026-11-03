@@ -1072,7 +1072,7 @@ class InspectTab(W.Tab):
             name = QtWidgets.QLabel(setting.name)
             tip = "{0} ALIS's default: {1}.".format(setting.help, setting.default_text)
             name.setToolTip(tip)
-            edit = QtWidgets.QLineEdit(item.value)
+            edit = W.ValueField(item.value)
             edit.setObjectName("setting_{0}_{1}".format(setting.section, setting.key))
             edit.setToolTip(tip)
             clear = QtWidgets.QToolButton()
