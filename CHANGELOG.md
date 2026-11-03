@@ -179,12 +179,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - Export's corrected wavelength scales `vshiftscale` and `polyshift` about the
     wavelength ALIS uses, and a snip whose file cannot be read stops Export with its
     name.
+  - Export ticks every column by default, and measures the velocities from the
+    primary system's component with the highest column density.
 
 ### Deprecated
 - `prepfit` (`alis/prepfit/specplot.py`): the dashboard (`alis`) now does what it
   does. It keeps working, and says so once when it starts.
 
 ### Fixed
+- `lsffile` asks for the kernel's width in Å either side of the fit range, at any
+  wavelength; it used to take the width as a velocity at a fixed 1309 Å, so its
+  buffer was too wide at longer wavelengths and too narrow at shorter.
 - `run_alis --extract`'s note about hidden starting values no longer ends with a
   reference to a design document.
 - A command-line setting that repeats the default (for example

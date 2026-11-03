@@ -186,6 +186,27 @@ def test_an_lsf_file_the_bundle_holds_is_supported():
     assert "reads a file from disk" in reason
 
 
+@UNIT
+def test_lsffile_asks_for_its_kernel_s_width_at_any_wavelength():
+    # Dashboard Stage 8 (Q8.13): the buffer is the kernel's width in Angstroms either
+    # side of the fit range, as call_CPU convolves in wavelength. It used to be a
+    # velocity taken at a fixed 1309 A, too wide above it and too narrow below
+    from alis.functions.lsffile import LSFFile
+
+    path = ROOT / "examples/lsf_file/model/test_lsf.dat"
+    inst = LSFFile()
+    inst.set_files({"test_lsf.dat": path.read_bytes()})
+    args = ["name:test_lsf.dat", "index:0"]
+    low, high = inst.getminmax(args, [1302.0, 1303.0])
+    sigma = inst.fwhm() / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    assert inst.fwhm() == pytest.approx(0.05, rel=0.01)
+    assert (1302.0 - low, high - 1303.0) == pytest.approx((30 * sigma, 30 * sigma))
+    for wave in (900.0, 5000.0):
+        low, high = inst.getminmax(args, [wave, wave + 1.0])
+        assert wave - low == pytest.approx(30 * sigma)
+        assert high - (wave + 1.0) == pytest.approx(30 * sigma)
+
+
 def _lsf_case(tmp_path, kernels=None, index=None):
     """
     ``examples/lsf_file`` fitted through its LSF file (``generate_spectra.mod``'s

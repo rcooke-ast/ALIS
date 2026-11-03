@@ -801,9 +801,9 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
   --extract` writes what Everything run_alis needs writes (RJC's Prompt 6); the
   dashboard itself keeps its grey masks.
 
-*Stage 8 decisions (users' feedback). Added by Claude on 2026-11-03 from Q8.1–Q8.12
-and the work of the stage; those from RJC's review of the stage are added once it is
-answered.*
+*Stage 8 decisions (users' feedback). Added by Claude on 2026-11-03 from Q8.1–Q8.13,
+the work of the stage and RJC's requests at its close (the review asked for no
+change).*
 - **D89. A resolution per dataset and per snip** (Q8.6, Q8.8; refines D14 and D83):
   the Data tab's Resolution sets a dataset's function, and the Snip box's Its own
   overrides it for one snip, with any of ALIS's functions of one parameter or one
@@ -855,6 +855,15 @@ answered.*
   Stage 9 is the Plot tab (`dashboard_stage9.md`, written in Task 8.13); feedback that
   arrived after the list closed is Stage 10. A user's files are referenced from the
   Feedback list, and each test that needs them is skipped where they are absent.
+- **D100. Export's defaults** (RJC, at Stage 8's close; refines D88): every column of
+  the snips' files is ticked by default (those that need a run greyed without one),
+  and the velocities are measured by default from the primary system's component
+  with the highest column density whose values are shown; the user can untick any
+  column, and choose another component.
+- **D101. `lsffile`'s buffer** (Q8.13): ALIS's `lsffile` asks for the kernel's width
+  in Å either side of the fit range, at any wavelength, rather than a velocity taken
+  at 1309 Å. `apod`'s buffer waits for example data in frequency (`deferred_work.md`
+  §7.7).
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

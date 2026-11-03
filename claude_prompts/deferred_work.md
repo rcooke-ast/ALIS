@@ -416,3 +416,22 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`.
   limits: `alis/dashboard/restarts.py`, `draw_starts`), fits each as an ordinary run,
   and assesses them with `convergence.assess_restarts`. Only `draw_starts` changes
   when the decision is made.
+
+### 7.7 `apod`: example data in frequency, and its buffer
+
+- **What:** ALIS's `apod` resolution function (an apodisation of the kind named, for
+  spectra in frequency) has no example in `examples/`, and nothing in the test suite
+  uses data in frequency. Its `getminmax` reads its value as a FWHM in Hz, so on a
+  spectrum in Å it asks for an extraction buffer of about 130 Å (metal_line_abs's
+  Si II snip), and the dashboard's Snip box marks that snip's buffer too narrow.
+  `apod` also needs `bintype=Hz` (the dashboard writes it on the snip's data line,
+  D92).
+- **Why deferred:** RJC, Q8.13 of `dashboard_stage8.md`: there are no frequency data
+  among the examples, so `apod` waits; `lsffile`'s buffer, which had a similar fault
+  (a velocity taken at a fixed 1309 Å), was fixed in Stage 8.
+- **Where:** `alis/functions/apod.py` (`getminmax`, `set_vars`'s bins);
+  `alis/dashboard/resolution.py` (`apod` offered with `kind:uniform`).
+- **To finish:** add an example fitted with `apod` on data in frequency (made with
+  `generate data`, §7.5, or from a Fourier-transform spectrometer), with its reference
+  outputs in the regression harness. Then check whether `apod`'s buffer is right for
+  such data, and correct `getminmax` if it is not.

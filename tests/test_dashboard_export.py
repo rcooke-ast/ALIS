@@ -123,7 +123,7 @@ def test_without_a_run_the_best_fit_columns_are_refused(tmp_path, registry):
 
 
 def test_a_zero_level_is_written_and_0_where_there_is_none(tmp_path, registry):
-    keys = [c.key for c in X.COLUMNS if c.default and c.key not in X.NEEDS_RUN]
+    keys = ["wave", "flux", "error", "fitrange", "zero", "continuum"]
     words = ["wave", "flux", "error", "fitrange", "zerolevel", "continuum"]
     session = imported(write_trough(tmp_path / "trough", -0.02), tmp_path, registry)
     (table,) = X.tables(session.project, "trough", keys)
@@ -285,7 +285,8 @@ def test_the_models_read_the_exported_snips(tmp_path, registry):
             ln for ln in text.splitlines() if "specid=0" in ln and "fit.dat" in ln
         ]
         assert data.split()[0] == "fit_spectra_OI_1302.17_zabs0.0000_fit.dat"
-        assert "columns=[wave:0,flux:1,error:2,fitrange:3]" in data
+        # Every column by default (RJC, Stage 8's close): Velocity follows Wavelength
+        assert "columns=[wave:0,flux:2,error:3,fitrange:4]" in data
         assert "fitrange=columns" in data
         assert "run datadirc ./" in text
     # Without the fit range, the models keep their own data lines
@@ -594,3 +595,32 @@ def test_a_snip_whose_file_cannot_be_read_stops_the_export_with_why(tmp_path, re
     choice = X.Choice(folder=str(tmp_path / "out"), columns=["wave", "flux", "error"])
     with pytest.raises(X.ExportError, match="relink or correct its file"):
         X.plan(session, choice)
+
+
+def test_the_velocity_is_from_the_primary_component_with_most_column(
+    tmp_path, registry
+):
+    # RJC, at Stage 8's close: by default, the primary system's component with the
+    # highest column density, among those whose values are shown
+    from alis.dashboard import blinding as BL
+
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360 10.0 0.0ZEROT specid=0",
+        "voigt ion=1H_I 15.2 2.50420 10.0 0.0ZEROT specid=0",
+        "voigt ion=1H_I 14.6 2.50480 10.0 0.0ZEROT specid=0",
+    ]
+    session = imported(write_ratio_fit(tmp_path / "fit", lines), tmp_path, registry)
+    project = session.project
+    gate = BL.Gate(project)
+    found = [cid for cid, _ in X.reference_components(project, gate)]
+    assert found[:3] == ["a1", "a2", "a3"]
+    assert X.default_component(project, None, gate) == "a2"
+    # The tables measure the velocities from it when none is chosen
+    keys = ["wave", "velocity"]
+    tables = X.tables(project, "fit", keys)
+    chosen = X.tables(project, "fit", keys, velocity_of="a2")
+    assert all(np.array_equal(a.data, b.data) for a, b in zip(tables, chosen))
+    assert "from a2" in " ".join(tables[0].header)
+    # A hidden column density is not compared
+    hidden = BL.Gate(project, hidden_lines={project.component("a2").main.line})
+    assert X.default_component(project, None, hidden) == "a3"

@@ -200,15 +200,18 @@ def test_the_export_dialog(window, qtbot, tmp_path):
     assert not dialog.boxes["best"].isEnabled()
     assert dialog.boxes["best"].toolTip().startswith(X.NO_RUN[:-1])
     assert dialog.order() == [c.key for c in X.COLUMNS]
-    assert dialog.keys() == ["wave", "flux", "error", "fitrange", "zero", "continuum"]
-    # The velocity's component (Prompt 8): offered once Velocity is ticked
-    assert dialog.velocity_of.count() == 1 and not dialog.velocity_of.isEnabled()
-    dialog.tick("velocity")
-    assert dialog.velocity_of.isEnabled() and dialog.choice().velocity_of == "a1"
+    # Every column ticked by default (RJC, Stage 8's close), but those that need a
+    # run, greyed without one
+    assert dialog.keys() == [c.key for c in X.COLUMNS if c.key not in X.NEEDS_RUN]
+    # The velocity's component (Prompt 8): offered while a velocity is ticked, the
+    # primary system's with the highest column density first
+    assert dialog.velocity_of.count() == 1 and dialog.velocity_of.isEnabled()
+    assert dialog.choice().velocity_of == "a1"
     dialog.tick("velocity", False)
+    dialog.tick("cvelocity", False)
+    assert not dialog.velocity_of.isEnabled()
     dialog.tick("cvelocity")
     assert dialog.velocity_of.isEnabled()
-    dialog.tick("cvelocity", False)
     # Velocity under Wavelength, Corrected velocity under Corrected wavelength
     order = dialog.order()
     assert order.index("velocity") == order.index("wave") + 1
@@ -250,7 +253,9 @@ def test_export_writes_the_snips_and_both_models(window, qtbot, tmp_path):
     assert window.answers.asked[-1][0] == "tell"
     assert "Wrote 3 files" in window.answers.asked[-1][2]
     header = (out / "project_OI_1302.17_zabs0.0000_fit.dat").read_text()
-    assert "# wave flux error fitrange zerolevel continuum model\n" in header
+    # Every column, by default (RJC, Stage 8's close)
+    words = " ".join(c.word for c in X.COLUMNS)
+    assert "# " + words + "\n" in header
 
 
 def test_a_hidden_resolution_is_masked_in_the_box_and_the_cell(

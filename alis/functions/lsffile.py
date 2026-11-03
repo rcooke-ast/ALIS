@@ -149,14 +149,14 @@ class LSFFile(base.Base) :
             msgs.error("LSF file not found")
         if self._lsf_kernel is None or name != self._lsf_name:
             self.loadlsf(name, index=index)
-        # Roughly estimate the FWHM
-        dwav = self.fwhm()
-        fwhmv = 299792.458 * dwav / 1309.0
-        # Use the parameters to now calculate the sigma width
-        sigd = fwhmv / ( 2.99792458E5 * ( 2.0*np.sqrt(2.0*np.log(2.0)) ) )
+        # The kernel's width is in the Angstroms of the file's first column, and
+        # call_CPU convolves in wavelength, so it is the same at every wavelength:
+        # the buffer is Nsig of its sigma either side of the fitrange (dashboard
+        # Stage 8, Q8.13; it used to be taken as a velocity at a fixed 1309 A)
+        sigw = self.fwhm() / (2.0*np.sqrt(2.0*np.log(2.0)))
         # Calculate the min and max extraction wavelengths
-        wmin = fitrng[0]*(1.0 - Nsig*sigd)
-        wmax = fitrng[1]*(1.0 + Nsig*sigd)
+        wmin = fitrng[0] - Nsig*sigw
+        wmax = fitrng[1] + Nsig*sigw
         return wmin, wmax
 
     def load(self, instr, cntr, mp, specid, forcefix=False):

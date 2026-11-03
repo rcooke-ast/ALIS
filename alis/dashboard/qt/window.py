@@ -1575,6 +1575,7 @@ class MainWindow(QtWidgets.QMainWindow):
             model_why,
             X.reference_components(project, BL.Gate(project)),
             self,
+            default=X.default_component(project, view, BL.Gate(project)),
         )
         if not self.run_dialog(dialog):
             return

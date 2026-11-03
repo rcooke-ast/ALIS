@@ -660,6 +660,11 @@ written. Batches under CI's pytest 9.2.0: `unit` 2128 passed, 120 skipped (2090 
 7's close), the regression harness and its `test_bundle` mode included. Waiting on
 your push (CI), your comments on the page, and Q8.13.*
 
+*2026-11-03, after Prompt 4: the review needs no change (RJC). Q8.13 applied, and
+Export's defaults changed as RJC asked (every column ticked; the velocities from the
+primary system's component with the highest column density): D100, D101. The stage
+closes once CI passes on the push of Tasks 8.9–8.14.*
+
 ## Skills to use for this stage
 
 - `gui-component`: any panel or widget changed or added. It documents the project
@@ -907,6 +912,12 @@ that each function needs its own bins, D92; the dashboard now writes them.) Two 
 
 My lean: (a), for `lsffile` at least, since the dashboard now offers it; `apod` is for
 spectra in frequency, so its buffer may be right for the data it was written for.
+
+**Response:** Let's fix `lsffile` now, since the dashboard supports this. Currently, there are no data in the examples test suite that use frequency, so we can leave `apod` for now, and address it in deferred work. Please add an entry in `deferred_work.md` to include new example data for `apod` and to address `apod`'s buffer issue, if it is still present when working with frequency data.
+
+*Applied on 2026-11-03: `lsffile`'s buffer is the kernel's width in Å either side of
+the fit range, at any wavelength (`functions/lsffile.py`, tested in `test_bundle.py`);
+`apod` is `deferred_work.md` §7.7.*
 
 ## Prompts
 

@@ -31,7 +31,7 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 5 | Components tab (step 4). | `alis/dashboard/` |
 | 6 | Fit tab (step 6). This completes v1. **Done 2026-10-20: v1 is complete** (`dashboard_stage6.md`). | `alis/dashboard/`, and `alis/` where its queries agreed |
 | 7 | RJC's changes and bug fixes from fitting real problems with v1 (`dashboard_stage7.md`), each a task with its check, and the changes from RJC's review of it (the Export dialog among them). **Done 2026-11-01.** | as each needs |
-| 8 | Feedback from users (`dashboard_stage8.md`): RJC collects the points in its Feedback section, and each becomes a task with its check, after its queries (Q8.1–Q8.12). **Built 2026-11-03 (D89–D99); RJC's review of it is pending.** | as each needs; ALIS's `lsffile` and `bundle.py` (Q8.7) |
+| 8 | Feedback from users (`dashboard_stage8.md`): RJC collects the points in its Feedback section, and each becomes a task with its check, after its queries (Q8.1–Q8.12). **Built 2026-11-03 (D89–D101); reviewed, closing once CI passes.** | as each needs; ALIS's `lsffile` and `bundle.py` (Q8.7) |
 | 9 | The Plot tab (step 8; D28, D42, S22): its design is `dashboard_stage9.md` (Task 8.13), with Q9.1–Q9.6 for RJC. | `alis/dashboard/`, and `alis/plotscript.py` if Q9.2 agrees |
 | 10 | Feedback from users that arrived after Stage 8's list closed (Q8.4). | as each needs |
 | Later | Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
@@ -43,8 +43,8 @@ dashboard. What follows, for RJC to order (Q6.13(a)):
 1. **Stage 7:** RJC's list of changes and bug fixes from real use (`dashboard_stage7.md`):
    done 2026-11-01 (D78–D88).
 2. **Stage 8:** feedback from users (`dashboard_stage8.md`), collected by RJC in its
-   Feedback section, with four items carried over from Stage 7 (Q8.2): built
-   2026-11-03 (D89–D99), its review pending.
+   Feedback section, with four items carried over from Stage 7 (Q8.2): built and
+   reviewed 2026-11-03 (D89–D101), closing once CI passes.
 3. **Stage 9, the Plot tab** (step 8, D28, D42, S22): the layout, the panels, the
    preview drawn by the plotting script, and the shipped style
    (`alis_publication.mplstyle`). Designed in `dashboard_stage9.md` (Task 8.13). The

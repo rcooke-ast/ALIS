@@ -637,3 +637,37 @@ be done in order in a new thread. For it:
 - **What remains:** RJC's push (the check of the `gui` fix on CI, both platforms),
   RJC's review of the page and its application, and the answer to Q8.13. The stage
   closes then.
+
+### 2026-11-03 (after Prompt 4: RJC's review, Q8.13's response and the Export defaults)
+
+- **RJC's message** (in the conversation): the push of Tasks 8.1–8.8 passed every CI
+  job, and the push of 8.9–8.14 is on its way; the review page needs no change; Q8.13
+  is answered; and Export's defaults are to change.
+- **Q8.13's response:** fix `lsffile` now; leave `apod`, with an entry in
+  `deferred_work.md`.
+  - `functions/lsffile.py`, `getminmax`: the buffer is now 30σ of the kernel either
+    side of the fit range, in Å (the kernel's file gives its offsets in Å, and
+    `call_CPU` convolves in wavelength), rather than a velocity taken at a fixed
+    1309 Å. At 1309 Å the two agree; above it the old buffer was too wide, below it
+    too narrow. Test: `test_bundle.py::
+    test_lsffile_asks_for_its_kernel_s_width_at_any_wavelength` (at 900, 1302 and
+    5000 Å the margins are 30σ; the old code fails at 900 and 5000).
+  - `deferred_work.md` §7.7: example data in frequency for `apod`, and its buffer.
+- **Export's defaults** (RJC's request):
+  - every column of the snips' files is ticked by default (`export.COLUMNS`); those
+    that need a run stay greyed and unticked without one;
+  - the velocities are measured by default from the primary system's component with
+    the highest column density (`export.default_component`: its main line's log N, the
+    shown run's best fit or else the starting value, in log or linear form; a hidden
+    column density is not compared). The dialog opens on it; the user can choose
+    another. `tables()` takes it when no component is given.
+  - Tests: `test_the_velocity_is_from_the_primary_component_with_most_column`
+    (three H I components, log N 14.0, 15.2, 14.6: a2; with a2's line hidden, a3;
+    the tables' velocities from it). Four tests that pinned the old defaults now
+    expect every column (`test_the_export_dialog`, `test_export_writes_the_snips_and_
+    both_models`, `test_the_models_read_the_exported_snips`, whose models' data lines
+    now read `columns=[wave:0,flux:2,error:3,fitrange:4]`, Velocity following
+    Wavelength; `test_a_zero_level_is_written_and_0_where_there_is_none` names its
+    columns).
+- The review needs no change, so its decisions are D100 (Export's defaults) and D101
+  (Q8.13).

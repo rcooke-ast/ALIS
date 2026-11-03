@@ -909,6 +909,9 @@ run_alis myfit.model     # fits the project from the command line, as before
   - **A plain ALIS blind run** (its `.mod.out` writing `BLIND MODEL`) is read: Fit ·
     Results shows it, the hidden lines masked; Inspect's Final says why it cannot draw
     it.
+  - **Export…** ticks every column of the snips' files by default, and measures the
+    velocities from the primary system's component with the highest column density;
+    untick what is not needed, or choose another component.
 
 #### Preparing a fit: the Data and Regions tabs
 
