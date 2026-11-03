@@ -202,12 +202,44 @@ def test_more_free_parameters_than_fitted_pixels(project, prefs):
     assert "too_many_free" in report.codes(PF.REFUSE)
 
 
-def test_no_component_to_fit(project, prefs):
-    # RJC's review of Stage 7: a continuum alone is not fitted, and Run is greyed
+def test_a_continuum_alone_is_fitted_while_it_is_free(project, prefs):
+    # Q8.3 (b), refining D85: a snip with a free Legendre and no absorption line
     rewrite(project, "  absorption\n" + OI + SIII, "")
+    report = PF.check(project, prefs)
+    assert report.refusals == []
+    # The continuum fixed: nothing is free to fit
+    rewrite(project, "legendre 1.0   0.01   0.01", "legendre 1.0CA 0.01CB 0.01CC")
     report = PF.check(project, prefs)
     (found,) = [f for f in report.refusals if f.code == "no_components"]
     assert found.message == PF.NO_COMPONENTS
+    assert found.message == (
+        "Nothing is free to fit: add a component, or free the continuum."
+    )
+    assert "no_snips" not in report.codes() and "no_fitted" not in report.codes()
+
+
+def test_a_project_whose_snips_have_no_fitted_pixel_is_refused(tmp_path, prefs):
+    from alis.dashboard import lines as L
+    from alis.dashboard import session as S
+    from alis.dashboard import snips as SN
+    from alis.dashboard import sources
+
+    spectrum = ROOT / "examples/metal_line_abs/data/OI_SiII.dat"
+    columns = {str(spectrum): {"wave": 0, "flux": 1, "error": 2}}
+    session, _ = S.Session.new(
+        str(tmp_path / "new.model"), [str(spectrum)], z=0.0, columns=columns
+    )
+    project = session.project
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    line = next(
+        ln
+        for ln in L.atomic(project.registry).ion_lines("16O_I")
+        if abs(ln.rest - 1302.16849) < 0.01
+    )
+    session.history.do(SN.snip_step(project, project.systems[0], line, spec))
+    report = PF.check(session.project, prefs)
+    (found,) = [f for f in report.refusals if f.code == "no_fitted"]
+    assert found.message == PF.NO_FITTED
     assert "no_snips" not in report.codes()
 
 

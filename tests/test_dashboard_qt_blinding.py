@@ -290,3 +290,64 @@ def test_a_hidden_resolution_is_masked_in_the_box_and_the_cell(
     for text in (tab.res_value.text(), tab.res_value.toolTip(), tab.res_note.text()):
         assert "6.4731" not in text
     assert "6.4731FWSN1" in project.text
+
+
+def test_a_plain_blind_run_shows_its_results(window, qtbot, tmp_path):
+    # Stage 8, Task 8.9: examples/blind opened with the .mod.out a plain ALIS run
+    # wrote, its Si II as BLIND MODEL; Si II given values no other text holds
+    import shutil
+
+    from dashboard_qt_helpers import ui_strings
+
+    from alis.dashboard import fitview as FV
+    from alis.dashboard import results as RES
+    from alis.dashboard import runs as R
+
+    folder = tmp_path / "blind"
+    shutil.copytree(str(BLIND.parent.parent), str(folder))
+    model = folder / "model" / BLIND.name
+    old, new = "13.0    0.0    1.0da", "13.4729 0.000173 1.0da"
+    model.write_text(model.read_text().replace(old, new))
+    out = (BLIND.parent / (BLIND.name + ".out.reference")).read_text()
+    (folder / "model" / (BLIND.name + ".out")).write_text(out.replace(old, new))
+    window.import_path(str(model))
+    wait_idle(qtbot, window)
+    project = window.session.project
+    record = R.latest(project.bundle)
+    assert record is not None and record.blind_model_lines() == 1
+    # Fit · Results shows the run, without an error
+    window.tabs.setCurrentIndex(3)
+    window.fit_tab.subtabs.setCurrentIndex(1)
+    qtbot.wait(50)
+    results = window.fit_tab.results
+    results.refresh(window.session)
+    assert results.view is not None and results.groups
+    assert not results.table_note.isVisible()
+    rows = {r.name: r for g in results.groups for r in g.rows}
+    # The continuum as fitted; O I's (offset by ALIS) and Si II's (not known) masked,
+    # with their errors
+    assert rows["0 c0"].value == "1.00006"
+    names = [n for n in rows if n.startswith(("O I", "Si II"))]
+    assert len([n for n in names if n.startswith("Si II")]) == 2
+    for name in names:
+        assert rows[name].value == BL.MASK, name
+        assert rows[name].error or name.endswith(" T"), name
+    # Inspect's Final draws nothing for the run, and says why
+    window.fit_tab.subtabs.setCurrentIndex(0)
+    inspect = window.fit_tab.inspect
+    inspect._model_chosen(FV.FINAL)
+    qtbot.wait(50)
+    assert inspect.mode == FV.FINAL
+    why = RES.BLIND_MODEL_WHY.format(inspect.shown.name.capitalize(), 1, "")
+    assert why in inspect.panel_note.text()
+    assert not any(w.curve is not None for w in inspect.panel_widgets)
+    # No hidden value, nor O I's best fit, in the window's text
+    texts = ui_strings(window)
+    texts += [
+        results.tree.topLevelItem(n).text(c)
+        for n in range(results.tree.topLevelItemCount())
+        for c in range(results.tree.columnCount())
+    ]
+    for value in ("13.4729", "0.000173", "13.9851", "13.985"):
+        for text in texts:
+            assert value not in text, (value, text)

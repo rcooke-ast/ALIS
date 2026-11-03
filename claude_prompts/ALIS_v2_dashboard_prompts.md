@@ -801,6 +801,61 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
   --extract` writes what Everything run_alis needs writes (RJC's Prompt 6); the
   dashboard itself keeps its grey masks.
 
+*Stage 8 decisions (users' feedback). Added by Claude on 2026-11-03 from Q8.1–Q8.12
+and the work of the stage; those from RJC's review of the stage are added once it is
+answered.*
+- **D89. A resolution per dataset and per snip** (Q8.6, Q8.8; refines D14 and D83):
+  the Data tab's Resolution sets a dataset's function, and the Snip box's Its own
+  overrides it for one snip, with any of ALIS's functions of one parameter or one
+  file: `vfwhm`, `Afwhm`, `vsigma` (a value with its unit, badged), `lsffile` (a file),
+  and `lsf` and `apod` (their keywords in one field, checked as ALIS reads them). The
+  functions of several parameters (`voigtconv`, `multivfwhm`, `lsfspline`) are greyed
+  and set in the `.mod` panel; a model that uses one keeps it as written, with a note.
+  A resolution on one data line that its dataset's other lines do not share is that
+  snip's own, whatever wrote it. SNIP gives a new snip its dataset's.
+- **D90. An LSF file is part of the project** (Q8.7; refines Q1.5's refusal of
+  `lsffile`): it is kept in the bundle (`files/lsf/<name>`), read by `lsffile` from
+  memory, packed and extracted with the snips, and written beside them by Export. A
+  file of several kernels is written with `index:` (the first by default), so that
+  every run uses the same kernel.
+- **D91. lsf and linetools** (Q8.8's response): where linetools is missing, `lsf` is
+  marked in the menu, choosing it asks first with the install line, and while it is
+  used the Snip box, the pre-flight check (which refuses Run), the panels and the
+  window's banner say so.
+- **D92. The bins follow the function** (found in Task 8.8): ALIS stops unless a data
+  line's bins suit its resolution (`Afwhm` Å, `apod` Hz, the others km/s), so a
+  function whose bins differ from the model's `run bintype` writes `bintype=` on its
+  data line, and SNIP copies it.
+- **D93. A temperature mode changes its own component** (Q8.10; refines D21 and D81):
+  a T or b_turb label that lines outside the component share is first replaced on the
+  component's lines by a new label of the scheme (its limit copied); the others keep
+  theirs, and the preview names them. A label shared only by the component's own ions
+  stays one; one that a link uses is refused.
+- **D94. A drag across narrows to the bound** (Q8.9; refines D63 and Q5.23): the side
+  is set where the drag begins; toward the tick narrows and away widens, at 1 km/s of
+  b per km/s, and past the tick the line keeps narrowing until b_turb or T reaches
+  its bound, which the readout names.
+- **D95. Pure thermal gives back the limit it replaced** (Q8.11; refines D81): an
+  existing `lim param` keeps its old limit as a comment (`# pure thermal; was
+  [0.01,None]`), given back when the mode is left; a line pure thermal wrote itself,
+  or whose comment was edited away, is taken out. The low-b note is for a free b_turb.
+- **D96. A continuum alone can be fitted** (Q8.3 (b); refines D85): Run is refused
+  for no snip, no fitted pixel, or no component with no free continuum parameter
+  ("Nothing is free to fit: add a component, or free the continuum.").
+- **D97. Fit regions shaded to the pixels' edges** (point 3): every shaded run of
+  pixels goes from its first pixel's left step edge to its last's right, so a pixel is
+  fitted exactly when its whole step is shaded; the model's regions are unchanged. A
+  value wider than its field shows its start (point 5).
+- **D98. A plain ALIS blind run is read** (item 1 carried over): each `BLIND MODEL`
+  line of a `.mod.out` is read as the hidden line it replaces, from the copy of the
+  input model; Results and Compare show the run with those lines masked, and Final
+  says why it draws nothing. Export scales `vshiftscale` and `polyshift` about the
+  wavelength ALIS uses (item 3).
+- **D99. The stages after Stage 8** (Q8.4, Q8.5, Q8.1): Stage 8 took a closed list;
+  Stage 9 is the Plot tab (`dashboard_stage9.md`, written in Task 8.13); feedback that
+  arrived after the list closed is Stage 10. A user's files are referenced from the
+  Feedback list, and each test that needs them is skipped where they are absent.
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

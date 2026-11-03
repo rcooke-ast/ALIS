@@ -519,6 +519,9 @@ other than the model's `run bintype`, and SNIP gives a new snip its dataset's.
     its `.mod.out`, shows the run in Fit · Results without an error, and no hidden
     value in the window's text.
 
+*Done on 2026-11-03 (Prompt 4); see the log. Results keeps such a run, its hidden rows
+masked with their errors, and Final says why it draws nothing.*
+
 **8.10 — A continuum alone can be fitted (Q8.3 (b), change; `preflight.py`,
 `qt/fit.py`; D85).**
 - **Now.** Run, Save and Run and Convergence check… are greyed while the model has
@@ -546,6 +549,10 @@ other than the model's `run bintype`, and SNIP gives a new snip its dataset's.
     χ²ν. `test_run_is_greyed_while_there_is_nothing_to_fit` and
     `test_run_waits_for_a_component` are rewritten to the new rule.
 
+*Done on 2026-11-03 (Prompt 4); see the log. Results, Inspect and Compare needed no
+change; Compare, which never lists a continuum (D41), shows the statistics and the
+FWHM.*
+
 **8.11 — Export's corrected wavelength on ALIS's own pixels (item 3 carried over,
 change; `export.py`).**
 - **Now.** `vshiftscale` and `polyshift` scale about the middle pixel of the array
@@ -564,6 +571,10 @@ change; `export.py`).**
   - Beyond them, it follows the same formula.
   - `vshift` and `Ashift`, which have no reference pixel, are unchanged.
 
+*Done on 2026-11-03 (Prompt 4); see the log. ALIS's reference is the middle of the
+sub-pixel grid it shifts; `export.scale_shift` computes the two functions about it,
+tested against `shift.py`.*
+
 **8.12 — The paths Stage 7 left untested (item 4 carried over, tests).**
 - **The tests,** for:
   - `components.label_owner` finding no component, and `_shared_ratios`' skipped
@@ -574,6 +585,10 @@ change; `export.py`).**
 - A fault that a test finds is fixed in the same task, and logged.
 - **Check.** `test-coverage` on `components.py` and `export.py`: those lines are
   covered, and `export.py` is above 90%. The figures go in the log.
+
+*Done on 2026-11-03 (Prompt 4); see the log. One fault found and fixed: Export skipped
+a snip whose file cannot be read without a word, and then stopped with "ALIS cannot
+evaluate the model"; it now stops first, naming the snip.*
 
 **8.13 — The Plot tab's design document (point 2, new; `dashboard_stage9.md`; D28,
 D42; Q8.4, Q8.5).**
@@ -601,6 +616,9 @@ D42; Q8.4, Q8.5).**
     a preset, or says why it needs none.
   - Every element of D28, D42 and S22 has its place in the document's tasks.
   - No code changes.
+
+*Done on 2026-11-03 (Prompt 4): `claude_prompts/dashboard_stage9.md`, with eight
+draft tasks and Q9.1–Q9.6 for RJC; see the log.*
 
 **8.14 — Close the stage.**
 - **The review.** Publish the screenshots of what changed for RJC's review, on a new
@@ -634,6 +652,13 @@ D42; Q8.4, Q8.5).**
   - The window's text has no design reference (D44).
   - Task 8.7 changes ALIS outside `alis/dashboard/` (Q8.7), so the regression
     harness runs again at the close, with its `test_bundle` mode.
+
+*Draft 1 of the review on 2026-11-03 (Prompt 4):
+https://claude.ai/artifact/Qkycw3e1TQR6oD8HGP5TY9. The documents and D89–D99 are
+written. Batches under CI's pytest 9.2.0: `unit` 2128 passed, 120 skipped (2090 and
+119 at the start of the stage); `gui` 229 passed (212); `fast` 149 passed (143 at Stage
+7's close), the regression harness and its `test_bundle` mode included. Waiting on
+your push (CI), your comments on the page, and Q8.13.*
 
 ## Skills to use for this stage
 
@@ -860,6 +885,28 @@ My lean: (a). One push separates PySide6 from our code, and you keep the 6.12.0
 entry's result either way.
 
 **Response:** I pushed changes to this document (that shouldn't have affected the Mac os gui tests) and the latest results pass. So, maybe it ewas just a glitch on GitHub. For now, let's ignore it, and see if it shows up again at some point. If it does, we can investigate further. I did get a problem with the lint tests (I've put the output in `GitHub_lint.txt`), so we will need to investigate this before closing this stage.
+
+*Q8.13 was raised on 2026-11-03 (Prompt 4), at the close (Task 8.14). The stage's
+review page waits on your comments as well.*
+
+**Q8.13 — Two things found in ALIS's resolution functions (Tasks 8.7, 8.8).** Neither
+was changed, since Q8.7 agreed to no more than an LSF file in a bundle:
+- **`lsffile`'s buffer.** `getminmax` turns the kernel's width into a velocity at a
+  fixed 1309 Å, so at longer wavelengths it asks for more buffer than a snip needs
+  (and at shorter, less). The dashboard's buffer marker and the validator follow it.
+- **`apod`'s buffer.** `getminmax` reads apod's value as a FWHM in Hz, so on a
+  spectrum in Å it asks for about 130 Å of buffer (metal_line_abs's Si II snip), and
+  the Snip box marks the buffer too narrow.
+
+(Task 8.7's other finding, that `lsffile` stops under `run bintype A`, is ALIS's rule
+that each function needs its own bins, D92; the dashboard now writes them.) Two ways:
+- **(a) Fix both in ALIS**, in Stage 10 or with the documentation: `lsffile` takes the
+  wavelength from the snip's data, and `apod` asks for a buffer in the bins it is given.
+  The regression harness runs.
+- **(b) Leave them**, with an entry in `deferred_work.md` §7.
+
+My lean: (a), for `lsffile` at least, since the dashboard now offers it; `apod` is for
+spectra in frequency, so its buffer may be right for the data it was written for.
 
 ## Prompts
 

@@ -210,6 +210,63 @@ def test_the_velocity_and_the_corrected_wavelength(tmp_path, registry):
     assert "the wavelength with its vshift taken out" in header
 
 
+def test_a_scaled_shift_is_taken_out_about_alis_s_reference(tmp_path, registry):
+    # Task 8.11: vshiftscale and polyshift scale about the middle of the pixels
+    # ALIS loads (its sub-pixel grid), not of the snip's whole file. Each snip is
+    # loaded in part: a fit range off the file's middle, with its buffer
+    from alis.dashboard import profile as PR
+
+    c = 299792.458
+    mod = write_shifted_fit(tmp_path / "fit")
+    shifts = {
+        "specid=0": ("shift=vshiftscale(2.0,1.0005)", 1215.6701),
+        "specid=1": ("shift=polyshift(2.0,1.0005,2.0e-4)", 1025.7223),
+    }
+    lines = []
+    for line in mod.read_text().splitlines():
+        found = [v for k, v in shifts.items() if k + " " in line]
+        if found:
+            word, rest = found[0]
+            centre = rest * (1.0 + Z)
+            low, high = centre * (1.0 - 20.0 / c), centre * (1.0 + 120.0 / c)
+            line = line.replace(
+                "fitrange=all", "fitrange=[{0:.4f},{1:.4f}]".format(low, high)
+            )
+            line += "  " + word
+        lines.append(line)
+    mod.write_text("\n".join(lines) + "\n")
+    session = imported(mod, tmp_path, registry)
+    project = session.project
+    prof = PR.of(project)
+    tables = {t.index: t for t in X.tables(project, "fit", ["wave", "cwave"])}
+    checked = 0
+    for snip in project.snips:
+        call = snip.data.shift
+        if call is None or call.name not in X.SCALED:
+            continue
+        numbers = np.array([p.start for p in snip.data.params if p.role == "shift"])
+        sp, sn = prof._where[snip.data.index]
+        state = prof.state
+        low, high = state._posnspx[sp][sn], state._posnspx[sp][sn + 1]
+        grid = np.asarray(state._wavespx[sp][low:high], dtype=float)
+        reference = prof.shift_reference(snip.data.index)
+        assert reference == grid[grid.size // 2]
+        wave, corrected = tables[snip.data.index].data.T
+        # The loaded pixels are part of the file, off its middle
+        assert grid.size and abs(reference - wave[wave.size // 2]) > 0.05
+        # On the pixels ALIS loads: its own shifted wavelengths, to 1e-10 Å
+        inst = registry.function(call.name)
+        alis = np.asarray(inst.call_CPU(grid, numbers), dtype=float)
+        ours = X.scale_shift(call.name, grid, numbers, reference)
+        assert np.max(np.abs(ours - alis)) < 1.0e-10
+        # Every pixel of the file: the same formula, about the same reference
+        expected = X.scale_shift(call.name, wave, numbers, reference)
+        assert np.max(np.abs(corrected - expected)) < 1.0e-10
+        assert np.max(np.abs(corrected - inst.call_CPU(wave, numbers))) > 1.0e-6
+        checked += 1
+    assert checked == 2
+
+
 def test_the_models_read_the_exported_snips(tmp_path, registry):
     session = imported(METAL, tmp_path, registry, run=True)
     view = RS.View.latest(session.project)
@@ -484,3 +541,56 @@ def test_an_lsf_file_is_named_where_it_is_written():
     assert X._lsf_named(line, {"../lsf/k.dat": ("k_2.dat", b"")}).endswith(
         "lsffile(name:k_2.dat)"
     )
+
+
+# -- The paths Stage 7 left untested (Task 8.12) --------------------------------------
+
+
+def test_a_run_in_progress_and_a_run_with_no_mod_out(tmp_path, registry):
+    from types import SimpleNamespace
+
+    session = imported(METAL, tmp_path, registry, run=True)
+    project = session.project
+    record = RS.View.latest(project)
+    # A fit in progress: its best fit is not written, and the user is told why
+    run = SimpleNamespace(
+        bundle=project.to_bundle(),
+        values=list(record.vector()),
+        chi2=360.0,
+        dof=360,
+        iteration=4,
+        elapsed=2.0,
+    )
+    going = RS.View(project, run=run)
+    assert X.run_reason(going) == X.IN_PROGRESS
+    assert X.best_fit_reason(project, going) == X.IN_PROGRESS
+    with pytest.raises(X.ExportError, match=X.IN_PROGRESS):
+        X.tables(project, "metal", ["wave", "model"], going)
+    # Columns that need no run are written from the starting values
+    (table,) = X.tables(project, "metal", ["wave", "flux", "continuum"], going)
+    assert table.words == ["wave", "flux", "continuum"]
+    # A run that wrote no .mod.out: its best-fitting model is not written
+    bare = SimpleNamespace(
+        in_progress=False, record=SimpleNamespace(mod_out=lambda: None)
+    )
+    assert (
+        X.best_fit_reason(project, bare) == "The shown run wrote no best-fitting model."
+    )
+    assert X.best_fit_reason(project, None) == X.NO_RUN
+
+
+def test_a_snip_whose_file_cannot_be_read_stops_the_export_with_why(tmp_path, registry):
+    from alis.dashboard import project as P
+
+    session = imported(METAL, tmp_path, registry)
+    project = session.project
+    snip = project.snips[0]
+    broken = P.Step("break", files={snip.member: (project.files[snip.member], b"x\n")})
+    project.apply(broken)
+    assert project.snips[0].pixels is None
+    why = "The file of snip 0 cannot be read, so ALIS cannot evaluate the model"
+    with pytest.raises(X.ExportError, match=why):
+        X.tables(project, "metal", ["wave", "flux"])
+    choice = X.Choice(folder=str(tmp_path / "out"), columns=["wave", "flux", "error"])
+    with pytest.raises(X.ExportError, match="relink or correct its file"):
+        X.plan(session, choice)

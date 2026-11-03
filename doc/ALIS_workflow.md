@@ -884,6 +884,31 @@ run_alis myfit.model     # fits the project from the command line, as before
   - **A snip's own shift and zero level** are set in the Regions tab's Snip box.
   - **Inspect** draws the data and the model with their continuum (View →
     Continuum), and Run is also on the toolbar.
+- **Since Stage 8** (2026-11-03), from users' feedback:
+  - **A snip's resolution.** The Snip box's Resolution is As the dataset or Its own,
+    with any of ALIS's functions of one parameter or one file: `vfwhm`, `Afwhm`,
+    `vsigma` (a value with its unit), `lsffile` (an LSF file, copied into the
+    project, with the kernel's FWHM shown and its column chosen), and `lsf` and
+    `apod` (their keywords, as ALIS writes them). `lsf` needs linetools
+    (`pip install linetools`); the dashboard says so before it is used. The functions
+    of several parameters (`voigtconv`, `multivfwhm`, `lsfspline`) are set in the
+    `.mod` panel. The Data tab's Resolution column sets a dataset's function. ALIS
+    needs bins that suit each function (`Afwhm` Å, `apod` Hz, the others km/s), so a
+    snip whose function needs other bins than the model's `run bintype` gets
+    `bintype=` on its data line.
+  - **LSF files in a project.** `lsffile`'s file is kept in the bundle, so the
+    project runs on any machine; Export writes it beside the snips.
+  - **A continuum alone** can be fitted: Run waits only while nothing is free.
+  - **Temperatures.** A temperature mode changes its own component: a T or b_turb
+    label that other lines share is first replaced on the component's lines, and the
+    preview says what stays. Pure thermal keeps the limit it replaces as a comment
+    (`# pure thermal; was [0.01,None]`) and gives it back when the mode is left. A
+    drag across a line narrows it toward and past its tick, down to its bound.
+  - **Fit regions** are shaded to the pixels' edges, so a pixel is fitted exactly
+    when its whole step is green. A long value shows its first digits.
+  - **A plain ALIS blind run** (its `.mod.out` writing `BLIND MODEL`) is read: Fit ·
+    Results shows it, the hidden lines masked; Inspect's Final says why it cannot draw
+    it.
 
 #### Preparing a fit: the Data and Regions tabs
 

@@ -724,3 +724,41 @@ def test_the_keywords_are_checked_as_alis_reads_them(registry):
         3.0 * RS.FWHM_SIGMA * 1302.0 / C_KMS
     )
     assert RS.convert("Afwhm", 0.03, "vfwhm", None) is None
+
+
+def test_what_a_resolution_shows_and_the_kernels_a_project_holds(registry, tmp_path):
+    # The cell's and the Snip box's text, and the kernels read back from the project
+    from alis.dashboard import blinding as BL
+    from alis.dashboard import resolution as RS
+
+    project, hist = two_snips(registry, tmp_path)
+    gate = BL.Gate(project)
+    row = project.rows[1]
+    words = [
+        ("Afwhm", 0.042, "", None, "0.042 Å"),
+        ("vsigma", 3.0, "", None, "σ 3 km/s"),
+        ("apod", None, "kind:uniform", None, "apod kind:uniform"),
+        ("lsffile", None, "", RS.read_kernels(str(LSF)), "file test_lsf.dat"),
+    ]
+    for name, value, keywords, kernels, shown in words:
+        hist.do(
+            D.resolution_step(
+                project, project.rows[1], name, value, keywords, kernels=kernels
+            )
+        )
+        row = project.rows[1]
+        assert RS.describe(row.resolution, gate, row.fwhm) == shown
+    # The file as the project holds it: one kernel, the first
+    kernels = RS.project_kernels(project, row.resolution)
+    assert kernels.count == 1 and kernels.name == "test_lsf.dat"
+    assert RS.kernel_index(row.resolution) == 0
+    assert RS.file_of(row.resolution) == "../lsf/test_lsf.dat"
+    assert RS.project_kernels(project, project.rows[0].resolution) is None
+    assert RS.describe(None, gate, None) == "—"
+    assert RS.kernel_kms(0.05, 1302.0) == pytest.approx(11.51, abs=0.01)
+    with pytest.raises(RS.ResolutionError, match="needs a value"):
+        RS.word("vfwhm")
+    assert RS.convert("Afwhm", 0.03, "vsigma", 1302.0) == pytest.approx(
+        C_KMS * 0.03 / 1302.0 / RS.FWHM_SIGMA
+    )
+    assert RS.convert("lsffile", 1.0, "vfwhm", 1302.0) is None

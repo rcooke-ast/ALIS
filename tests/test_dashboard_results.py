@@ -358,11 +358,21 @@ def test_what_a_set_of_specids_is_named(registry, tmp_path):
     first, second = project.rows
     assert (first.name, second.name) == ("A", "B")
     assert project.specids_name(second.specids) == "B"
-    assert project.specids_name(second.specids[1:]) == "B, B"
+    # Each snip of B is labelled B, as SNIP labels them: named by its specid
+    assert project.specids_name(second.specids[1:]) == "B, 3"
     assert project.specids_name(first.specids + second.specids) == "A; B"
-    assert project.specids_name(first.specids + second.specids[:1]) == "A; B, B"
+    assert project.specids_name(first.specids + second.specids[:1]) == "A; B, 2"
     assert project.specids_name(["nowhere"]) == "specid nowhere"
     assert project.specids_name([]) == "every snip"
+    # A label of its own names it (J193957m100241's Lyb)
+    lines = mod.read_text().splitlines(True)
+    num = next(n for n, ln in enumerate(lines) if "specid=3 " in ln)
+    lines[num] = lines[num].replace("label=B", "label=Lyb")
+    mod.write_text("".join(lines))
+    project = P.Project.import_model(str(mod), registry=registry)
+    rows = {r.name: r for r in project.rows}
+    named = {project.specids_name([sid]) for r in rows.values() for sid in r.specids}
+    assert any(n.endswith(", Lyb") for n in named), named
 
 
 def test_the_lya_forest_b_rows_are_unconstrained_not_at_limit(j1358):

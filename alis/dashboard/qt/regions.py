@@ -607,7 +607,10 @@ class RegionsTab(W.Tab):
         )
         self.res_choice.activated.connect(lambda n: self._own_chosen("resolution", n))
         grid.addWidget(self.res_choice, 2, 1)
-        grid.addWidget(self._build_resolution(), 2, 2, 1, 3)
+        holder = self._build_resolution()
+        # The dataset's resolution beside the choice; its own on a line of its own
+        grid.addWidget(self.res_dataset, 2, 2, 1, 3)
+        grid.addWidget(holder, 3, 0, 1, 5)
         grid.setColumnStretch(4, 1)
         return self.own_box
 
@@ -628,9 +631,12 @@ class RegionsTab(W.Tab):
         line.setSpacing(6)
         self.res_dataset = W.muted("")
         self.res_dataset.setObjectName("snip_resolution_dataset")
-        line.addWidget(self.res_dataset)
         self.res_function = QtWidgets.QComboBox()
         self.res_function.setObjectName("snip_resolution_function")
+        self.res_function.setMinimumContentsLength(12)
+        self.res_function.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
         self.res_function.setToolTip("ALIS's resolution function for this snip")
         self.res_function.activated.connect(self._res_function_chosen)
         line.addWidget(self.res_function)
@@ -652,8 +658,9 @@ class RegionsTab(W.Tab):
         menu.addAction("Fixed", lambda: self._res_state("fixed"))
         self.res_badge.setMenu(menu)
         line.addWidget(self.res_badge)
-        self.res_keywords = QtWidgets.QLineEdit()
+        self.res_keywords = W.ValueField()
         self.res_keywords.setObjectName("snip_resolution_keywords")
+        self.res_keywords.setMinimumWidth(150)
         self.res_keywords.setToolTip(
             "The function's keywords, as ALIS writes them (key:value, separated by"
             " commas)"

@@ -199,6 +199,25 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
 - **A dialog's third button:** `PlanDialog(..., other="…")` closes with
   `dialogs.OTHER`.
 
+## Stage 8 additions
+
+- **A row's resolution** is the dataset's (`Row.fwhm`, the parameter, and
+  `Row.resolution`, the `model.Call`); a snip's own are `Row.own_resolution`, and
+  `Row.resolution_snips` take the dataset's. ALIS's functions, their kinds, units
+  and bins, the words they write and the text shown are in `alis/dashboard/resolution.py`;
+  the steps are `datasets.resolution_step`, `snip_resolution_step` and
+  `snip_function_step`. A function's bins go on its data line (`bins_patches`).
+- **A value field** that may be wider than its box is a `widgets.ValueField`: it
+  shows its start, and its tooltip the whole value (masked while hidden).
+- **Shading pixels:** `SpectrumView.set_regions` and `ResidualView.set_unfitted`
+  snap spans to the pixels' step edges (`plots.pixel_spans`); give them spans by
+  pixel centres, as the model holds them.
+- **A run with values ALIS hid** (a plain blind run, `runs.readable`): a
+  `results.View` with `best_fit_hidden` is shown by Results, while its `vector()`
+  still refuses, with the reason, for Final.
+- **Tests compare flat lists with `pytest.approx`**: CI's pytest 9.2 refuses a list of
+  pairs (memory `ci-test-versions`).
+
 ## Notes
 
 - `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).

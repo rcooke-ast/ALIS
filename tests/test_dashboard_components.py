@@ -1420,3 +1420,32 @@ def test_no_step_names_a_hidden_value(registry):
     changes = C.drag(project, comp, "28Si_II", logn=13.4729, b=3.21)
     step = C.drag_step(project, comp, changes)
     assert "13.4729" not in step.description and "3.21" not in step.description
+
+
+# -- The paths Stage 7 left untested (Task 8.12) --------------------------------------
+
+
+def test_a_label_no_excluded_line_carries_has_no_owner(registry, tmp_path):
+    project, hist = linked_fit(registry, tmp_path)
+    exclude_both(project, hist)
+    assert C.label_owner(project, "doppa").id == "a1"
+    # A label of a live line, and one that no line carries
+    assert C.label_owner(project, "doppb") is None
+    assert C.label_owner(project, "nosuch") is None
+
+
+def test_shared_ratios_skips_what_does_not_give_the_ion(registry, tmp_path):
+    # A line excluded with a component that is not a ratio (a link) is skipped
+    project, hist = linked_fit(registry, tmp_path / "linked")
+    exclude_both(project, hist)
+    a1, a2 = project.component("a1"), project.component("a2")
+    assert [item.voigt for item in a1.excluded_with] == [False]
+    assert C._shared_ratios(project, a2, "2H_I") == []
+    # A ratio line that gives another ion is skipped; one that gives this ion,
+    # with its denominator in the component, is listed
+    project, hist = ratio_fit(registry, tmp_path / "ratio")
+    hist.do(C.exclude(project, project.components[0], "2H_I"))
+    a1, a2 = project.components
+    assert [item.ion for item in a1.excluded_with] == ["2H_I/1H_I"]
+    assert C._shared_ratios(project, a2, "1H_I") == []
+    assert [item.ion for item in C._shared_ratios(project, a2, "2H_I")] == ["2H_I/1H_I"]

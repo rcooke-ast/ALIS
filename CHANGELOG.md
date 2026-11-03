@@ -160,6 +160,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     ticked (the snips as ASCII files with the columns chosen, the starting model,
     the best-fitting model, or everything `run_alis` needs), hidden values written
     as `BLIND`.
+- `run_alis` runs a bundle whose `lsffile` resolution names an LSF file the
+  bundle holds (`bundle.unsupported` refuses it only when the file is missing;
+  `lsffile` reads it from memory, `functions/lsffile.set_files`); `--pack` packs the
+  file with the snips, and `--extract` writes it back.
+- The dashboard's Stage 8, from users' feedback:
+  - a snip's own resolution, and a dataset's, with any of ALIS's functions of one
+    parameter or one file (`vfwhm`, `Afwhm`, `vsigma`, `lsffile`, `lsf`, `apod`),
+    the bins each needs written as `bintype=` on its data line; the functions of
+    several parameters are set in the `.mod` panel; `lsf` says that it needs
+    linetools before it is used;
+  - an LSF file kept in the project, so that it runs anywhere;
+  - a continuum can be fitted alone, while one of its parameters is free;
+  - a temperature mode changes its own component only, pure thermal gives back the
+    limit it replaced, and a drag narrows a line down to its bound;
+  - fit regions shaded to the pixels' edges, long values showing their start;
+  - a plain ALIS blind run's `.mod.out` is read, its hidden lines masked;
+  - Export's corrected wavelength scales `vshiftscale` and `polyshift` about the
+    wavelength ALIS uses, and a snip whose file cannot be read stops Export with its
+    name.
 
 ### Deprecated
 - `prepfit` (`alis/prepfit/specplot.py`): the dashboard (`alis`) now does what it

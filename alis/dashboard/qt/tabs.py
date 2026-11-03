@@ -168,7 +168,7 @@ class FitTab(Tab):
                 self._views.clear()
             self._views[key] = view
         why = view.why_not()
-        if why:
+        if why and not view.best_fit_hidden:
             return None, gate.message(why)
         return view, ""
 

@@ -458,3 +458,182 @@ be done in order in a new thread. For it:
   function, the linetools note) and the Data tab's Resolution column, and the
   `bintype=` a function writes. The documents should say that a resolution function
   writes its bins.
+
+### 2026-11-03 (Prompt 4, continued: Task 8.9, a blind run's `.mod.out`)
+
+- RJC asked to continue in this thread, checking the context between tasks (an alert
+  past 75% after a task, or 90% during one), so the notes above for the next thread
+  are not needed yet.
+- **The fix** (`runs.py`). `readable(text)`: each `------ BLIND MODEL ------` line
+  of a `.mod.out` is read as the hidden line it replaces, taken in order from the
+  copy of the input model at the end of the `.mod.out` (its model lines with
+  `blind=True`, as `save.py` writes them). When the input does not give one hidden
+  line for each, the text is read as it was. `out_values` leaves out the values on a
+  line put back (they are the input's, not a best fit); a parameter tied to another
+  line (`da`, `TA`) takes that line's. `out_errors` reads the hidden line's errors
+  from the errors block, which ALIS writes in full. `Run.parsed` and `Run.texts` read
+  the same text; `Run.blind_model_lines()` counts the lines put back.
+- **Results and Final** (`results.py`, `qt/tabs.py`). `View.best_fit_hidden`: the
+  best fit is known but for hidden lines a plain run wrote as BLIND MODEL. Such a run
+  is shown in Fit · Results (the sub-tabs' view keeps it), its hidden rows masked
+  (`RunGate.best_fit` masks a hidden value that is not known, rather than leaving the
+  cell empty), with their errors. Inspect's Final draws nothing for it, and its note
+  says why (`BLIND_MODEL_WHY`: "… was written by ALIS with 1 blinded line as BLIND
+  MODEL, so its best fit is not known here and its model cannot be drawn.").
+- **Tests.** `test_dashboard_runs.py::test_a_blind_run_s_mod_out_is_read`: the
+  reference's Si II line put back; ALIS reads it; the continuum's values as written;
+  O I's, offset by ALIS, equal metal_line_abs's plain fit (to the eight digits ALIS
+  writes of an offset value); Si II's log N and z not known, its b and T those of
+  O I (tied), its errors read; a `.mod.out` without the hidden line, or without
+  BLIND MODEL, read as it was. `test_dashboard_qt_blinding.py::
+  test_a_plain_blind_run_shows_its_results`: `examples/blind` imported with that
+  `.mod.out` (Si II given values no other text holds): Fit · Results shows the run,
+  no note; the continuum's c0 is 1.00006; every O I and Si II row masked, with its
+  error; Final draws no curve and says why; no hidden value, nor O I's best fit, in
+  the window's text.
+- **Batches** (pytest 9.2.0): `unit` 2121 passed, 120 skipped; `gui` 228 passed.
+  pre-commit passed.
+
+### 2026-11-03 (Prompt 4, continued: Task 8.10, a continuum alone can be fitted)
+
+- **The change** (`preflight._nothing_to_fit`, refining D85 as Q8.3 (b) asks). Run is
+  refused for: no snip, as before; no snip with a fitted pixel (`NO_FITTED`, code
+  `no_fitted`; the validator also refuses each snip with no fit region, but this
+  says it for the project); and a model with no absorption line only when none of
+  the continuum's parameters (the emission section) is free: "Nothing is free to
+  fit: add a component, or free the continuum." (`NO_COMPONENTS`, its code kept).
+  The Fit tab's marker leaves `no_fitted` to the earlier tabs, as it does the other
+  two (`NOT_YET`).
+- **Results, Inspect and Compare** needed no change: a run of a continuum alone is
+  shown with the continuum's rows, the statistics, the marks and its Final model.
+  Compare lists the absorbers, the FWHM and the statistics (D41), never the
+  continuum's coefficients, so for such a run it shows χ²ν, the degrees of freedom,
+  the iterations and the FWHM.
+- **Tests.** `test_dashboard_preflight.py`: metal_line_abs without its absorption
+  lines goes ahead (its Legendre free); its continuum fixed, it is refused with the
+  message; a new project's snip with no fit region is refused with `NO_FITTED`
+  (`test_no_component_to_fit` became the first of these). `test_dashboard_qt_fit.py`:
+  `test_run_waits_for_a_component` became `test_run_waits_for_something_free_to_fit`
+  (Run enabled with the auto continuum; each coefficient fixed, refused with the
+  message; a component added, enabled; undo, refused);
+  `test_run_is_greyed_while_there_is_nothing_to_fit` passes unchanged under the new
+  rule; and `test_a_continuum_alone_is_fitted_from_the_window` (`fast`):
+  metal_line_abs with no component, run from the window, completes; Results lists
+  c0–c2 with values and errors and χ²ν; Final draws the model with its marks; a
+  second run, compared, shows χ²ν and the FWHM.
+- **Batches** (pytest 9.2.0): `unit` 2122 passed, 120 skipped; `gui` 229 passed.
+  pre-commit passed.
+
+### 2026-11-03 (Prompt 4, continued: Task 8.11, Export's corrected wavelength)
+
+- **Where ALIS takes the reference.** `model_eval.model_func` calls the shift
+  function on `wavespx[sp][ll:lu]`, the sub-pixel grid of the pixels ALIS loads for
+  the snip, and `vshiftscale` and `polyshift` scale about its middle element
+  (`shift.py`, `x[x.size//2]`), which their `call_CPU` cannot take from outside.
+- **The change.** `profile.Profile.shift_reference(index)` gives that element, from
+  the profile's own ALIS state (`_wavespx`, `_posnspx`), so it is the drawn model's
+  (D60). `export.scale_shift(name, wave, numbers, reference)` computes the two
+  functions as `shift.py` does about a given reference, in one place, and
+  `_shift_wave` uses it for them when the reference is known (the run's profile for
+  a best fit, the project's otherwise); without one it falls back to the file's
+  middle, as before. `vshift` and `Ashift`, which have no reference, are unchanged.
+- **Test** (`test_dashboard_export.py::
+  test_a_scaled_shift_is_taken_out_about_alis_s_reference`): `write_shifted_fit`'s
+  Lyα snip with `vshiftscale(2.0,1.0005)` and Lyβ with `polyshift(2.0,1.0005,2e-4)`,
+  each loaded in part (a fit range from −20 to +120 km/s, with its buffer). The
+  reference is the middle of the grid ALIS shifts, and lies more than 0.05 Å from the
+  file's middle pixel. On that grid, `scale_shift` equals ALIS's own `call_CPU` to
+  10⁻¹⁰ Å; the exported column equals the same formula on every pixel of the file;
+  and it differs from the old result (the file's middle) by more than 10⁻⁶ Å. Stage
+  7's test of `vshift`, `Ashift` and `polyshift` on whole files passes unchanged.
+- **Batches** (pytest 9.2.0): `unit` 2123 passed, 120 skipped; `gui` 229 passed.
+  pre-commit passed.
+
+### 2026-11-03 (Prompt 4, continued: Task 8.12, the paths Stage 7 left untested)
+
+- **Coverage before** (`pytest --cov`, the `unit` and `fast` tests of
+  `test_dashboard_components.py` and `test_dashboard_export.py`): `components.py`
+  88% (152 lines missed, among them 2295, 2319 and 2322: `label_owner` finding no
+  component and `_shared_ratios`' two skips); `export.py` 90% (48 missed, among them
+  188, 190 and 206: a run in progress and a run with no `.mod.out`).
+- **A fault found.** A snip whose file cannot be read was skipped by `tables()`
+  without a word, and ALIS then could not evaluate the model, so Export stopped with
+  "ALIS cannot evaluate the model as it is (AlisStop)": a message, but not its cause.
+  Export now stops first, naming the snip: "The file of snip 0 cannot be read, so ALIS
+  cannot evaluate the model: relink or correct its file, or remove the snip, then
+  export again." (`export.UNREAD`; the window tells an `ExportError` as a message, as
+  before).
+- **Tests.** `test_dashboard_export.py`: a fit in progress (`run_reason`,
+  `best_fit_reason`, `tables` refusing the best fit's columns and writing those that
+  need no run from the starting values), a run with no `.mod.out`, no run; a snip
+  whose file is unreadable stops `tables` and `plan` with the message.
+  `test_dashboard_components.py`: `label_owner` of a live line's label and of one no
+  line carries is None; `_shared_ratios` skips a link line excluded with a component
+  and a ratio that gives another ion, and lists the one that gives the ion.
+- **Coverage after:** `components.py` 88% (149 missed; the three lines covered);
+  `export.py` 91% (44 missed; 188, 190, 206 covered). Of the paths the task names,
+  none is left.
+- **Batches** (pytest 9.2.0): `unit` 2127 passed, 120 skipped; `gui` 229 passed.
+  pre-commit passed.
+
+### 2026-11-03 (Prompt 4, continued: Task 8.13, the Plot tab's design document)
+
+- **Read.** D24, D28, D42–D44, S22, QF.14, QF.27; `dashboard_stage0.md` (0.8, Q0.7,
+  Q0.10, "After v1"); the mockup `doc/dashboard/mockups/plot.html`;
+  `alis/plotscript.py`; the 21 scripts of `context/plotting_examples/` (their grids,
+  sizes, ranges, ticks, labels and residuals); `context/misc/matplotlibrc`.
+- **Written.** `claude_prompts/dashboard_stage9.md`: what exists; a table matching
+  every reference script to a preset (metals 3, DH 9, blends 4, helium 4), and
+  `DH_Lyseries.py`'s mixed grids to none, with the reason (Q9.4); the design (the tab
+  enabled once there is a run, the figure as project data, the presets, a script that
+  reads the snips' files Export writes, the shipped style and LaTeX, the preview run
+  as the script, blinding); eight draft tasks (9.1–9.8), each with its check; a table
+  placing every element of D28, D42 and S22 in a task; and Q9.1–Q9.6, each with a
+  lean. No code was changed.
+
+### 2026-11-03 (Prompt 4, continued: Task 8.14, the close, draft 1 of the review)
+
+- **The review page**, draft 1: https://claude.ai/artifact/Qkycw3e1TQR6oD8HGP5TY9
+  (`doc/dashboard/stage8/take_screenshots.py OUT [SCREEN ...]`, `build_review.py
+  SHOTS OUT.html`, published from the session scratchpad's `stage8_review.html`).
+  Ten sections and six smaller figures, every screen taken from real ALIS runs in the
+  window: the Snip box's Resolution with each kind of function and lsf without
+  linetools, `examples/lsf_file` fitted through its LSF file, the Data tab's
+  Resolution column, fit regions to the pixels' edges, a long value, a temperature
+  mode's plan on a shared label, a drag held at T's bound, the limit pure thermal
+  gives back, a plain blind run's results and Final, a continuum fitted alone, and the
+  Instrument group. RJC's comments are applied before the stage closes.
+- **Found while taking the screenshots, and fixed:**
+  - the Snip box's Resolution controls, on the row of its choice, squeezed the box's
+    other menus ("As the da…") and showed apod's keywords in a sliver. They are now on
+    a line of their own beneath, the dataset's resolution beside the choice, and the
+    keywords' field is a `ValueField` (its start shown) of a usable width;
+  - `project.specids_name` named a snip by its data line's `label=`, which SNIP sets to
+    the dataset's name for every snip, so a snip's own shift read "Shift · B, B". A
+    label that does not tell the snip from the dataset's others now gives way to its
+    specid ("Shift · B, 2"); RJC's J193957m100241 keeps "…, Lyb"
+    (`test_what_a_set_of_specids_is_named` extended).
+- **The documents:** `doc/ALIS_workflow.md` §4.3 ("Since Stage 8"), `CHANGELOG.md`
+  (ALIS's `lsffile` in a bundle, and the dashboard's Stage 8), `tests/README.md` (a
+  Stage 8 row), the `gui-component` skill ("Stage 8 additions").
+- **The decisions:** D89–D99 in `ALIS_v2_dashboard_prompts.md`, refining D14, D21,
+  D63, D81, D83, D85 and Q1.5's refusal of `lsffile`; those from the review are added
+  once it is answered. `dashboard_stage0.md`: Stage 8 built (its review pending),
+  Stage 9 the Plot tab, Stage 10 the later feedback, and the "After v1" list.
+- **Q8.13** raised: `lsffile`'s buffer taken at a fixed 1309 Å, and `apod`'s read as
+  Hz (ALIS outside the dashboard; lean (a), fix `lsffile`'s at least).
+- **Coverage of what changed** (unit tests): `resolution.py` 77% from the datasets
+  tests, 80% from the new display test alone, the rest (the linetools paths, the
+  Snip box's file and keywords) covered by the window tests; `preflight.py` 94%;
+  `datasets.py` 80%; `export.py` 91%. Added: `test_what_a_resolution_shows_and_the_
+  kernels_a_project_holds` (each function's cell text, the project's kernels,
+  `word`'s refusal, `convert`).
+- **Batches.** `fast` (pytest 9.2.0; the regression harness with its `test_bundle`
+  mode, and the dashboard's fits): 149 passed (1041 s), against Stage 7's close of
+  143. `unit` and `gui` below, against the start of the stage (2090 unit passed, 119
+  skipped; 212 `gui`).
+  `unit` 2128 passed, 120 skipped; `gui` 229 passed (both under pytest 9.2.0, after
+  the close's fixes). pre-commit passed on every changed file.
+- **What remains:** RJC's push (the check of the `gui` fix on CI, both platforms),
+  RJC's review of the page and its application, and the answer to Q8.13. The stage
+  closes then.

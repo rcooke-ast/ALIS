@@ -147,6 +147,42 @@ def test_alis_blind_offsets_are_taken_away():
     assert R.blind_offset({"blindrange": [], "blindseed": 3}) == 0.0
 
 
+def test_a_blind_run_s_mod_out_is_read(registry):
+    # Stage 8, Task 8.9: a plain ALIS run writes BLIND MODEL for its blinded Si II
+    blind = (ROOT / "examples/blind/model/fit_spectra.mod.out.reference").read_text()
+    plain = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
+    text, restored = R.readable(blind)
+    (num,) = restored
+    assert R.BLIND_MODEL in blind.splitlines()[num]
+    assert text.splitlines()[num].split()[:3] == ["voigt", "ion=28Si_II", "13.0"]
+    pm = M.ParsedModel(text, registry)
+    assert [p for p in pm.problems if p.severity == "error"] == []
+    values, errors = R.out_values(blind, registry), R.out_errors(blind, registry)
+    theirs = R.out_values(plain, registry)
+    lines = {ln.ion or ln.function: ln for ln in pm.lines}
+    # The continuum's values as written
+    for par in lines["legendre"].params:
+        written = par.value_token.text.replace("E", "e")
+        assert values[par.index] == pytest.approx(float(written), rel=1e-9)
+    # O I's, offset by ALIS, are the values fitted (those of the plain run, to
+    # the digits ALIS writes of the offset values)
+    oxygen = lines["16O_I"].params
+    for par in oxygen[:4]:
+        assert values[par.index] == pytest.approx(
+            theirs[par.index], rel=1.0e-6, abs=2.0e-6
+        )
+    # Si II's own are not known; b and T are O I's (tied); its errors are read
+    silicon = lines["28Si_II"].params
+    assert silicon[0].index not in values and silicon[1].index not in values
+    assert values[silicon[2].index] == values[oxygen[2].index]
+    assert errors[silicon[0].index] == pytest.approx(0.0501541)
+    assert R.out_values(blind, registry).keys() == values.keys()
+    # An input that does not give one hidden line for each: read as it was
+    bare = blind.replace("blind=True", "")
+    assert R.readable(bare) == (bare, frozenset())
+    assert R.readable(plain) == (plain, frozenset())
+
+
 def test_a_run_that_stopped_with_an_error_leaves_the_latest_run(path):
     bundle = B.read(path)
     B.store(path, result_for(bundle))

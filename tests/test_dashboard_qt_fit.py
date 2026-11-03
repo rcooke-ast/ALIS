@@ -293,15 +293,31 @@ def test_run_is_greyed_while_there_is_nothing_to_fit(window, qtbot, tmp_path):
     assert not run.isEnabled() and "no fit region" in run.toolTip()
 
 
-def test_run_waits_for_a_component(window, qtbot, tmp_path):
+def test_run_waits_for_something_free_to_fit(window, qtbot, tmp_path):
+    # Q8.3 (b), refining D85: a free continuum alone is fitted; fixed, Run waits
     from test_dashboard_qt_components import added, choose, fit_ready
 
     tab = fit_ready(window, tmp_path)
     run = window.qactions["fit.run"]
-    assert not run.isEnabled() and run.toolTip() == PC.NO_COMPONENTS
     button = window.toolbar.widgetForAction(run)
+    for name in RUN_ACTIONS:
+        action = window.qactions[name]
+        assert action.isEnabled() and action.toolTip() == action.property("tip")
+    # The continuum fixed: nothing is free to fit
+    session = window.session
+    fixed = 0
+    while True:
+        pm = session.project.parsed
+        (line,) = pm.function_lines(section="emission")
+        free = [p for p in pm.params if p.line == line.line and p.free]
+        if not free:
+            break
+        label = "CX{0}".format(fixed + 1)
+        session.history.do(session.project.step(E.fix(pm, free[0], label), "Fix"))
+        fixed += 1
+    window.refresh()
+    assert not run.isEnabled() and run.toolTip() == PC.NO_COMPONENTS
     assert not button.isEnabled()
-    # The Fit tab's marker says so too, before Inspect is shown
     # The Fit tab's marker leaves nothing to fit yet to the earlier tabs'
     assert window.markers["Fit"].state == MK.NONE
     choose(tab, "O I")
@@ -312,6 +328,67 @@ def test_run_waits_for_a_component(window, qtbot, tmp_path):
     assert "(" in run.toolTip() and button.isEnabled()
     window.qactions["edit.undo"].trigger()
     assert not run.isEnabled() and run.toolTip() == PC.NO_COMPONENTS
+
+
+@pytest.mark.fast
+def test_a_continuum_alone_is_fitted_from_the_window(window, qtbot, tmp_path):
+    # Task 8.10: metal_line_abs with no component, its Legendre free
+    import shutil
+
+    folder = tmp_path / "metal"
+    shutil.copytree(str(METAL.parent.parent), str(folder))
+    model = folder / "model" / METAL.name
+    text = model.read_text()
+    kept = [ln for ln in text.splitlines(True) if not ln.lstrip().startswith("voigt")]
+    model.write_text("".join(kept))
+    path = tmp_path / "continuum.model"
+    B.pack_to(str(model), str(path), with_outputs=False)
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    show_inspect(window, qtbot)
+    project = window.session.project
+    assert project.parsed.function_lines(section="absorption") == []
+    run = window.qactions["fit.run"]
+    assert run.isEnabled()
+    run.trigger()
+    wait_run(qtbot, window)
+    assert window.fit.job.status == R.COMPLETED
+    # Results: the continuum's coefficients and the fit statistics
+    window.fit_tab.subtabs.setCurrentIndex(1)
+    qtbot.wait(50)
+    results = window.fit_tab.results
+    results.refresh(window.session)
+    assert results.view is not None and not results.table_note.isVisible()
+    rows = {r.name: r for g in results.groups for r in g.rows}
+    assert {"0 c0", "0 c1", "0 c2"} <= set(rows)
+    assert all(rows[n].value and rows[n].error for n in ("0 c0", "0 c1", "0 c2"))
+    stats = {
+        results.stats.item(n, 0).text(): results.stats.item(n, 1).text()
+        for n in range(results.stats.rowCount())
+        if results.stats.item(n, 1) is not None
+    }
+    assert any("χ²" in k for k in stats), stats
+    # Inspect's Final draws the run's continuum, with its marks
+    window.fit_tab.subtabs.setCurrentIndex(0)
+    inspect = window.fit_tab.inspect
+    inspect._model_chosen(FV.FINAL)
+    qtbot.wait(50)
+    assert inspect.mode == FV.FINAL
+    assert model_drawn(inspect.panel_widgets[0]) is not None
+    assert inspect.chip_widgets[0].chip.quality is not None
+    # Compare: a second run against the first. Compare lists the absorbers, the
+    # FWHM and the fit statistics (D41), so here the statistics and the FWHM
+    R.commit(window.session.project.bundle, "first")
+    window.session.runs_changed()
+    window.qactions["fit.run"].trigger()
+    wait_run(qtbot, window)
+    window.fit_tab.subtabs.setCurrentIndex(2)
+    qtbot.wait(50)
+    compare = window.fit_tab.compare
+    window.refresh()
+    assert None not in compare.views
+    names = [r.name for r in compare.rows]
+    assert "χ²ν" in names and any(n.startswith("FWHM") for n in names)
 
 
 def test_final_waits_for_a_run(window, qtbot, tmp_path):
