@@ -320,8 +320,9 @@ def _row_words(project, row):
     """
     pm = project.parsed
     for snip in row.snips:
-        res = snip.data.keywords.get("resolution")
-        # The dataset's shift, not a snip's own (Q7.12)
+        # The dataset's resolution and shift, not a snip's own (Q7.12, Q8.6)
+        takes = row.resolution_snips
+        res = (takes[0] if takes else snip).data.keywords.get("resolution")
         shared = row.shared_snips
         shift = shared[0].data.keywords.get("shift") if shared else None
         return (
@@ -478,6 +479,11 @@ def add_snip_makers(
             if after is not None and change:
                 after = change.map_line(pm.text, after)
             words = ["label=" + re.sub(r"\s+", "_", row.name)]
+            # The bins the dataset's resolution needs (Afwhm's, Stage 8)
+            takes = row.resolution_snips
+            bins = takes[0].data.keyword("bintype") if takes else None
+            if bins:
+                words.append("bintype=" + bins)
             add = E.add_data_line(
                 pm2,
                 _file_word(proj, new.member),

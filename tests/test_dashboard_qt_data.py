@@ -362,3 +362,70 @@ def test_an_edit_keeps_the_mark_until_confirm(window, qtbot):
     tab.confirm.click()
     assert window.markers["Data"].state == "complete"
     assert not window.notice_banner.isVisible()
+
+
+# -- The dataset's Resolution (Stage 8, Task 8.8; Q8.6) -------------------------------
+
+LSF = SPECTRUM.parents[2] / "lsf_file/model/test_lsf.dat"
+
+
+def test_the_resolution_column_sets_the_dataset_s_function(window, qtbot, tmp_path):
+    tab = new_project(window, tmp_path, z=0.0)
+    project = window.session.project
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    atom = L.atomic(project.registry)
+
+    def snip(ion, rest):
+        line = next(ln for ln in atom.ion_lines(ion) if abs(ln.rest - rest) < 0.01)
+        session = window.session
+        session.history.do(
+            SN.snip_step(session.project, session.project.systems[0], line, spec)
+        )
+
+    snip("16O_I", 1302.16849)
+    window.refresh()
+    assert tab.table.horizontalHeaderItem(3).text() == "Resolution"
+    assert table_text(tab)[0][3] == "7 km/s ■"
+    row = window.session.project.rows[0]
+    # Each function, with its unit; the badge for a value alone
+    for args, cell in [
+        (("Afwhm", 0.042), "0.042 Å ■"),
+        (("vsigma", 3.0), "σ 3 km/s ■"),
+        (("apod", None, "kind:uniform"), "apod kind:uniform"),
+        (("lsffile", None, None, str(LSF)), "file test_lsf.dat"),
+        (("vfwhm", 6.285), "6.285 km/s ■ ↺"),
+    ]:
+        name, value, keywords, path = (args + (None, None))[:4]
+        done = len(window.session.history.done)
+        tab.set_function(
+            window.session.project.rows[0], name, value, keywords, path=path
+        )
+        assert len(window.session.history.done) == done + 1
+        assert table_text(tab)[0][3] == cell
+    # A value is asked for in its unit, from the present width
+    asked = []
+
+    def ask(dialog):
+        asked.append((dialog.windowTitle(), dialog.values()))
+        return 0
+
+    window.on_dialog = ask
+    tab.set_function(window.session.project.rows[0], "vsigma")
+    assert asked[-1][0] == "Resolution of OI_SiII"
+    assert asked[-1][1]["value"] == pytest.approx(6.285 / 2.35482, abs=1e-3)
+    # The badge's Free and Fixed, as before; Reset only for vfwhm
+    tab.badge_menu(window.session.project.rows[0], "resolution", "Free")
+    assert table_text(tab)[0][3] == "6.285 km/s ● ↺"
+    window.on_dialog = None
+    tab.set_function(window.session.project.rows[0], "Afwhm", 0.03)
+    assert tab.reset_text(window.session.project.rows[0]) == ""
+    # SNIP gives a new snip the dataset's function
+    snip("28Si_II", 1304.3702)
+    row = window.session.project.rows[0]
+    words = {s.data.keyword("resolution") for s in row.snips}
+    assert words == {"Afwhm(0.03fwhm1)"}
+    assert {s.data.keyword("bintype") for s in row.snips} == {"A"}
+    # A function of several parameters is not offered
+    done = len(window.session.history.done)
+    tab.set_function(row, "voigtconv", 7.0)
+    assert len(window.session.history.done) == done

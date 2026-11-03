@@ -341,3 +341,120 @@ for it, so that it need not be read again:
 - **Widths.** `components.fwhm_kms` (first guess) already reads each snip's own
   data line, `lsffile` included; `snips.buffers` likewise. The line IDs' joining
   of close lines is still to be checked (`lines.py`).
+
+### 2026-11-03 (Prompt 4: the `gui` jobs on CI, both platforms)
+
+- **The failure.** RJC's push of Tasks 8.1–8.7 failed the macOS and Ubuntu `gui`
+  jobs on one test, `test_a_panel_s_fit_regions_end_at_the_pixels_edges` (Task 8.6),
+  with `TypeError: pytest.approx() does not support nested data structures`
+  (`context/misc/GitHub_gui_*_py313.txt`). CI installs pytest 9.2.0; this machine has
+  9.0.2, which accepts a list of pairs. Not the Bus error of Q8.12.
+- **Reproduced** in a scratch venv (`--system-site-packages`, pytest 9.2.0, the conda
+  env's pytest-remotedata plugin left out): the test fails as on CI.
+- **The fix.** The test compares the spans' edges as one flat list. Under 9.2.0 the
+  whole `gui` batch found one more of the same kind, in
+  `test_the_residuals_of_pixels_not_fitted` (`test_dashboard_qt_fit.py`), which CI
+  skips (it needs `context/`); fixed the same way. No other test of the repository
+  passes a list of pairs to `approx`.
+- **Batch** under pytest 9.2.0, before Task 8.8: `gui` 220 passed and that one
+  failed; after the fix, see Task 8.8's batches.
+
+### 2026-11-03 (Prompt 4: Task 8.8, a snip's own resolution)
+
+- **Found first: each function needs its own bins.** ALIS stops when a data line's
+  bins (`run bintype`, or the line's own `bintype=`, `load.py`) do not suit its
+  resolution: `Afwhm` needs Å bins (`afwhm.py`), `apod` Hz (`apod.py`), and the
+  others km/s, `lsffile` and `lsf` included. So Task 8.7's finding that `lsffile`
+  stops under `run bintype A` is this rule, and `examples/lsf_file` (`run bintype A`,
+  `Afwhm`) is consistent. The dashboard writes the bins a function needs on its data
+  line, `bintype=A` or `bintype=Hz` (or `bintype=km/s` in a model whose
+  `run bintype` is A), and none where they are the model's own
+  (`resolution.bins_patches`). SNIP gives a new snip its dataset's `bintype=` with its
+  resolution.
+- **The functions** (`alis/dashboard/resolution.py`, new, no Qt): the nine of ALIS,
+  each with its kind (a value, a file, keywords, several parameters), unit and bins;
+  the word each writes; the text the Data tab's cell and the Snip box show ("0.042 Å",
+  "σ 3 km/s", "file test_lsf.dat", "apod kind:uniform", "voigtconv (in the .mod
+  panel)", values through the gate); `check_keywords` (each keyword one the function
+  takes, apod's kinds, and what lsf needs for COS and STIS); `read_kernels` (an LSF
+  file read and checked as `lsffile` reads it: a column of offsets that increases,
+  then kernels, each FWHM); `convert` (a starting value from one function to
+  another); the linetools note and mark.
+- **The project** (`project.py`). A row's resolution is read as Task 7.13 reads its
+  shift: `Row.own_resolution`, `Row.resolution_snips`, `Row.resolution` (the call),
+  and `Row.fwhm` now the dataset's (that of the snips without one of their own).
+  Snips share a resolution by its label, or by its words when its value is fixed or
+  not written; a snip set to Its own in the Snip box is recorded in
+  `ui/project.json` (`own: ["resolution"]`).
+- **The steps** (`datasets.py`): `resolution_step` (a dataset's function, on the lines
+  of its snips that take the dataset's; the label kept unless another dataset shares
+  it), `snip_resolution_step` (Its own: the dataset's function and value with a label
+  `fwsnN` of its own, fixed as the dataset's; back: the dataset's word and bins, byte
+  for byte), `snip_function_step`, and `lsf_member` (`files/lsf/<name>`, the member
+  already there kept when its bytes are the same, `_2` on a clash). A file of several
+  kernels is written with `index:`. Typing a value is refused for a function with none;
+  Reset FWHM and its ↺ are for `vfwhm` alone (the default is in km/s).
+- **The window.** The Snip box gains Resolution (As the dataset, with the dataset's
+  resolution shown, or Its own): the function menu (several parameters greyed, `lsf`
+  marked "needs linetools" where it is missing); a value with its unit and badge; the
+  keywords' field; Choose a file…, the kernel's FWHM in Å and km/s, and Column for a
+  file of several; and a note, with a link that selects the data line in the `.mod`
+  panel for a function of several parameters. The Data tab's FWHM column is
+  Resolution; the badge's menu has Free, Fixed, Tie and Reset for a value, and a
+  Function submenu; a value is asked for in its unit, from the present width.
+- **lsf without linetools** (Q8.8's response): choosing it asks first, with the
+  install line ("Choose it anyway" or Cancel); the Snip box shows the note; the
+  pre-flight check refuses Run (`preflight._linetools`); the panels show the note in
+  place of the model (`profile.Profile` raises it as a `ProfileError`); and a project
+  opened with `lsf` shows it in the window's notice banner.
+- **Also found.** `text.replace_token` keeps the next word's column only while a word
+  fits its gap. After a word longer than the gap (an `lsffile` path, say), going back
+  leaves the next column moved: the words are those before, the spaces not. The
+  `.mod` panel's Align columns tidies it. Direct round trips are byte for byte. The
+  line IDs' joining of close lines uses a fixed 7 km/s (`lines.GROUP_KMS`) and never
+  read a row's FWHM, so nothing there changes.
+- **Tests.**
+  - `test_dashboard_datasets.py` (8 new): a snip's own resolution in each function
+    (its word on that line alone, with its bins, ALIS's check clean, undo exact; the
+    LSF file in the project; back gives the words before); a direct round trip byte
+    for byte; `lsf` from ALIS's defaults (`linetools`); a dataset's function reaching
+    its snips and SNIP, with `bintype=A`; SNIP taking the dataset's and not a snip's
+    own; a file of two kernels (`index:1`), a second file of the same name (`_2`), and
+    four files that cannot be read; `voigtconv` on one snip read as its own and kept,
+    the functions of several parameters refused; the keywords' checks and `convert`.
+  - `test_dashboard_qt_regions.py`: the Snip box (Its own, each kind of function, the
+    greyed menu, value, badge, keywords refused and kept, a file refused, the Data
+    tab's count, back, every undo exact); `lsf` without linetools (the mark, the
+    question and Cancel, the note, the pre-flight refusal, the panels' note);
+    `examples/lsf_hst` loaded (`linetools`): `lsf` and its keywords read as the
+    dataset's, the banner and the box's note; and **`examples/lsf_file` fitted from
+    the window** (`fast`): the snip given `lsffile` with `test_lsf.dat` in the Snip
+    box (its line takes `bintype=km/s`, the model's `run bintype` being A), run: log N
+    of O I and the Si II/O I ratio within 3σ of `fit_spectra.mod.out.reference`
+    (13.948 ± 0.026, −0.982 ± 0.065); then given a free `Afwhm`, run again: the FWHM
+    of the kernel the data were made with, 0.05 Å, within 3σ.
+  - `test_dashboard_qt_data.py`: the Resolution column, each function's cell, the
+    value asked for in its unit, Free, Reset for `vfwhm` alone, SNIP giving `Afwhm`
+    and `bintype=A`, `voigtconv` not offered. `test_dashboard_qt_blinding.py`: a
+    hidden resolution masked in the cell and in the Snip box's value and tooltip.
+- **Batches** (Task 8.8 and the CI fix), run under CI's pytest 9.2.0 in the scratch
+  environment: `unit` 2120 passed, 120 skipped (one test of this task first failed
+  there: its new snips had no fit region; fixed, and the file passes under 9.0.2 and
+  9.2.0); `gui` 227 passed. The `examples/lsf_file` window test is in the `fast`
+  batch (13 s). pre-commit passed on every changed file.
+
+### 2026-11-03 (Prompt 4: notes for Tasks 8.9–8.14, for the next thread)
+
+Stopped after Task 8.8, past half the context (CLAUDE.md). Tasks 8.9–8.14 are to
+be done in order in a new thread. For it:
+- **CI.** RJC's next push is the check of the `gui` fix on both platforms. Run the
+  window tests under CI's pytest too (memory `ci-test-versions`: a venv with
+  `--system-site-packages` and `pytest==9.2.0`).
+- **Task 8.9** (a blind run's `.mod.out`): `runs.Run.parsed` / `out_values` /
+  `out_errors` (`runs.py` ≈ lines 240–380) read the `.mod.out` with the dashboard's
+  parser; `examples/blind`'s reference holds `------ BLIND MODEL ------` in place of
+  the Si II line.
+- **Task 8.14's review page** must also show Task 8.8's Snip box (each kind of
+  function, the linetools note) and the Data tab's Resolution column, and the
+  `bintype=` a function writes. The documents should say that a resolution function
+  writes its bins.

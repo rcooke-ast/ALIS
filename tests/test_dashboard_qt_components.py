@@ -408,10 +408,12 @@ def test_a_panel_s_fit_regions_end_at_the_pixels_edges(window, qtbot, tmp_path):
     x = widget.panel.velocity
     left, right = PL.pixel_edges(x)
     mask = widget.panel.snip.pixels.mask != 0
-    drawn = [tuple(sorted(i.getRegion())) for i in widget.view._lists["fit"]]
+    drawn = [e for i in widget.view._lists["fit"] for e in sorted(i.getRegion())]
     starts = np.flatnonzero(np.diff(np.r_[0, mask.astype(int)]) == 1)
     ends = np.flatnonzero(np.diff(np.r_[mask.astype(int), 0]) == -1)
-    assert drawn == pytest.approx([(left[a], right[b]) for a, b in zip(starts, ends)])
+    # flat, since pytest 9.2's approx refuses a list of pairs (CI, Stage 8)
+    expected = [e for a, b in zip(starts, ends) for e in (left[a], right[b])]
+    assert drawn == pytest.approx(expected)
 
 
 def drag(view, start, end, state="finish"):

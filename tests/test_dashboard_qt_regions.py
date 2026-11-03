@@ -1026,3 +1026,231 @@ def test_open_a_fit_of_another_spectrum_says_why(window, qtbot, tmp_path):
     window.close_session()
     window.launch(S.Target(S.IMPORT, str(mod)))
     assert window.answers.asked[-1][0] == "open_fit" and window.session is None
+
+
+# -- A snip's own resolution (Stage 8, Task 8.8; Q8.6, Q8.8) -------------------------
+
+LSF = SPECTRUM.parents[2] / "lsf_file/model/test_lsf.dat"
+LSF_HST = SPECTRUM.parents[2] / "lsf_hst/model/fit_spectra.mod"
+
+
+def two_snipped(window, tmp_path):
+    """O I 1302 and Si II 1304, each with a region, Si II's shown."""
+    tab = new_project(window, tmp_path, z=0.0)
+    for element, stage, name in (("O", "I", "O I 1302"), ("Si", "II", "Si II 1304")):
+        show(tab, element, stage, name)
+        tab.actions_["regions.snip"].trigger()
+        lo = tab.strips[0].snip.extent[0] + 0.5
+        tab._act(
+            "regions.draw", lambda lo=lo: tab.draw(tab.strips[0].row_id, lo, lo + 0.6)
+        )
+    return tab
+
+
+def resolution_word(window, specid):
+    return window.session.project.snip(specid).data.keyword("resolution")
+
+
+def test_a_snip_s_own_resolution_in_the_snip_box(window, qtbot, tmp_path):
+    from alis.dashboard import resolution as RN
+
+    tab = two_snipped(window, tmp_path)
+    hist = window.session.history
+    before = window.session.project.text
+    assert tab.res_choice.currentText() == "As the dataset"
+    assert tab.res_dataset.text() == "7 km/s" and tab.res_function.isHidden()
+    # Its own: one step; the dataset's function and value, with a label of its own
+    one = len(hist.done)
+    tab.res_choice.setCurrentIndex(1)
+    tab.res_choice.activated.emit(1)
+    assert len(hist.done) == one + 1
+    assert resolution_word(window, "SiII_1304") == "vfwhm(7.0FWSN1)"
+    assert resolution_word(window, "OI_1302") == "vfwhm(7.0FWHM1)"
+    assert tab.res_function.isVisible() and tab.res_function.currentData() == "vfwhm"
+    assert tab.res_value.text() == "7" and tab.res_unit.text() == "km/s"
+    assert tab.res_badge.text() == "■"
+    # The functions of several parameters are greyed (Q8.8)
+    model = tab.res_function.model()
+    greyed = [
+        tab.res_function.itemData(n)
+        for n in range(tab.res_function.count())
+        if not model.item(n).isEnabled()
+    ]
+    assert greyed == ["voigtconv", "multivfwhm", "lsfspline"]
+    # Afwhm starts from the same width in Å, with the bins ALIS needs
+    tab.choose_function("Afwhm")
+    word = resolution_word(window, "SiII_1304")
+    assert word.startswith("Afwhm(0.03") and word.endswith("FWSN1)")
+    assert window.session.project.snip("SiII_1304").data.keyword("bintype") == "A"
+    assert tab.res_unit.text() == "Å"
+    tab.res_value.setText("0.042")
+    tab.res_value.editingFinished.emit()
+    assert resolution_word(window, "SiII_1304") == "Afwhm(0.042FWSN1)"
+    assert hist.undo_description() == "Set the resolution of snip SiII_1304"
+    tab._res_state("free")
+    assert resolution_word(window, "SiII_1304") == "Afwhm(0.042fwsn1)"
+    assert tab.res_badge.text() == "●"
+    # apod: its keywords, typed and checked as ALIS reads them
+    warned = []
+    tab._warn = lambda title, text: warned.append(text)
+    tab.choose_function("apod")
+    assert tab.res_keywords.isVisible() and tab.res_keywords.text() == "kind:uniform"
+    tab.res_keywords.setText("kind:hanning")
+    tab.res_keywords.editingFinished.emit()
+    assert resolution_word(window, "SiII_1304") == "apod(kind:hanning)"
+    done = len(hist.done)
+    tab.res_keywords.setText("kind:foo")
+    tab.res_keywords.editingFinished.emit()
+    assert len(hist.done) == done and "one of uniform" in warned[-1]
+    assert tab.res_keywords.text() == "kind:hanning"
+    # lsffile: the file chosen is copied into the project, named with its FWHM
+    tab.choose_function("lsffile", path=str(LSF))
+    assert resolution_word(window, "SiII_1304") == "lsffile(name:../lsf/test_lsf.dat)"
+    assert "files/lsf/test_lsf.dat" in window.session.project.files
+    assert tab.res_file.isVisible() and tab.res_column.isHidden()
+    assert tab.res_note.text().startswith("test_lsf.dat · FWHM 0.04993 Å (11.")
+    bad = tmp_path / "bad.dat"
+    bad.write_text("not a kernel\n")
+    done = len(hist.done)
+    tab.choose_lsf_file(str(bad))
+    assert len(hist.done) == done and "cannot be read" in warned[-1]
+    # The Data tab counts it
+    data = window.tab_widgets[0]
+    data.refresh(window.session)
+    assert data.table.item(0, 3).text() == "7 km/s ■ · 1 snip its own"
+    # Back to As the dataset: the words before, the dataset's word restored
+    tab.res_choice.setCurrentIndex(0)
+    tab.res_choice.activated.emit(0)
+    assert resolution_word(window, "SiII_1304") == "vfwhm(7.0FWHM1)"
+    assert window.session.project.text.split() == before.split()
+    assert tab.res_function.isHidden()
+    # Every step is undone exactly
+    while hist.done and len(hist.done) > one:
+        hist.undo()
+    assert window.session.project.text == before
+    assert RN.LINETOOLS_NOTE not in tab.res_note.text()
+
+
+def test_lsf_without_linetools(window, qtbot, tmp_path, monkeypatch):
+    from alis.dashboard import preflight as PC
+    from alis.dashboard import profile as PR
+    from alis.dashboard import resolution as RN
+
+    monkeypatch.setattr(RN, "linetools_installed", lambda: False)
+    tab = two_snipped(window, tmp_path)
+    tab.res_choice.setCurrentIndex(1)
+    tab.res_choice.activated.emit(1)
+    # The menu marks it
+    names = [tab.res_function.itemText(n) for n in range(tab.res_function.count())]
+    assert "lsf · HST COS or STIS · needs linetools" in names
+    # Choosing it asks first, with the install line
+    asked = []
+
+    def answer(choice):
+        def ask(kind, title, text, choices, **kwargs):
+            asked.append((kind, text, choices))
+            return choice
+
+        return ask
+
+    monkeypatch.setattr(window, "ask", answer("Cancel"))
+    done = len(window.session.history.done)
+    tab.choose_function("lsf")
+    assert len(window.session.history.done) == done
+    assert asked[-1][0] == "lsf_linetools" and "pip install linetools" in asked[-1][1]
+    assert asked[-1][2] == ["Choose it anyway", "Cancel"]
+    monkeypatch.setattr(window, "ask", answer("Choose it anyway"))
+    tab.choose_function("lsf")
+    word = resolution_word(window, "SiII_1304")
+    assert word == "lsf(name:COS,grating:G130M,life_position:1,cen_wave:1309)"
+    # The Snip box, the pre-flight check and the panels say what it needs
+    assert RN.LINETOOLS_NOTE in tab.res_note.text()
+    project = window.session.project
+    refused = [f for f in PC.check(project).refusals if f.code == "linetools"]
+    assert len(refused) == 1 and "pip install linetools" in refused[0].message
+    with pytest.raises(PR.ProfileError, match="pip install linetools"):
+        PR.Profile(project)
+
+
+@pytest.mark.linetools
+def test_examples_lsf_hst_is_read_with_its_lsf(window, qtbot, monkeypatch):
+    from alis.dashboard import resolution as RN
+
+    monkeypatch.setattr(RN, "linetools_installed", lambda: False)
+    window.import_path(str(LSF_HST))
+    wait_idle(qtbot, window)
+    project = window.session.project
+    (row,) = project.rows
+    assert row.resolution.name == "lsf"
+    assert RN.keywords_of(row.resolution) == "name:STIS,grating:E140H,slit:0.2x0.09"
+    # The window says what lsf needs, once it is open
+    assert RN.LINETOOLS_NOTE in window.notice_banner.label.text()
+    tab = regions(window)
+    tab.refresh(window.session)
+    snip = project.snips[0]
+    tab._fill_own(project, snip)
+    assert tab.res_dataset.text() == "lsf name:STIS,grating:E140H,slit:0.2x0.09"
+    assert RN.LINETOOLS_NOTE in tab.res_note.text()
+
+
+@pytest.mark.fast
+def test_examples_lsf_file_fitted_through_its_lsf_file(window, qtbot, tmp_path):
+    # Task 8.8's check: the snip given lsffile in the Snip box, run from the window
+    import shutil
+
+    from alis import bundle as B
+    from alis.dashboard import model as M
+    from alis.dashboard import runs as R
+
+    folder = tmp_path / "lsf_file"
+    shutil.copytree(str(LSF.parents[1]), str(folder))
+    path = tmp_path / "lsf.model"
+    B.pack_to(str(folder / "model/fit_spectra.mod"), str(path), with_outputs=False)
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    tab.current_snip = lambda: window.session.project.snips[0]
+    tab._own_chosen("resolution", 1)
+    tab.choose_function("lsffile", path=str(LSF))
+    data = window.session.project.snips[0].data
+    assert data.keyword("resolution") == "lsffile(name:../lsf/test_lsf.dat)"
+    # The model's run bintype is A (for Afwhm): lsffile's line takes km/s bins
+    assert data.keyword("bintype") == "km/s"
+    window.qactions["fit.run"].trigger()
+    qtbot.waitUntil(lambda: not window.fit.active, timeout=600000)
+    project = window.session.project
+    record = R.latest(project.bundle)
+    assert record.status == R.COMPLETED
+
+    def coldens(text):
+        pm = M.ParsedModel(text, project.registry)
+        values = R.out_values(text, project.registry)
+        errors = R.out_errors(text, project.registry)
+        return {
+            ln.ion: (values[ln.params[0].index], errors[ln.params[0].index])
+            for ln in pm.function_lines(section="absorption")
+        }
+
+    ours = coldens(record.mod_out())
+    ref = coldens((LSF.parent / "fit_spectra.mod.out.reference").read_text())
+    assert set(ours) == set(ref) and len(ours) == 2
+    for ion, (value, error) in ours.items():
+        theirs, err = ref[ion]
+        assert abs(value - theirs) < 3.0 * np.hypot(error, err), (ion, value, theirs)
+    # The same snip given a free Afwhm in the Snip box: the data were made with a
+    # Gaussian kernel of 0.05 Å FWHM (make_lsf.py), which the fit gives back
+    tab.choose_function("Afwhm")
+    tab._res_state("free")
+    data = window.session.project.snips[0].data
+    assert data.keyword("resolution").startswith("Afwhm(0.0499")
+    assert data.keyword("bintype") is None
+    window.qactions["fit.run"].trigger()
+    qtbot.waitUntil(lambda: not window.fit.active, timeout=600000)
+    project = window.session.project
+    record = R.latest(project.bundle)
+    assert record.status == R.COMPLETED
+    par = project.snips[0].data.param("resolution")
+    best = record.values(project.registry)[par.index]
+    error = record.errors(project.registry)[par.index]
+    assert 0.0 < error < 0.01
+    assert abs(best - 0.05) < 3.0 * error, (best, error)

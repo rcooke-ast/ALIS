@@ -40,6 +40,7 @@ from alis.dashboard import markers as MK
 from alis.dashboard import modes as MO
 from alis.dashboard import preferences as PR
 from alis.dashboard import preflight as PC
+from alis.dashboard import resolution as RN
 from alis.dashboard import restarts as RT
 from alis.dashboard import results as RES
 from alis.dashboard import runs as R
@@ -748,13 +749,29 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         self.disk_banner.clear()
         self.notice_banner.clear()
+        messages, kind = [], "info"
         if session.project.inferred:
-            self.notice_banner.show_message(
+            messages.append(
                 "This fit was imported: the systems, components and datasets were"
                 " worked out from its labels and redshifts. Please check that they"
-                " were read correctly before changing anything.",
-                "info",
-                [("Hide", self.notice_banner.clear)],
+                " were read correctly before changing anything."
+            )
+        lsf = [
+            s.specid
+            for s in session.project.snips
+            if RN.needs_linetools(s.data.resolution)
+        ]
+        if lsf:
+            # A model that uses lsf, where linetools is missing (Stage 8, Q8.8)
+            messages.append(
+                "The resolution of snip{0} {1} is lsf. {2}".format(
+                    "s" if len(lsf) > 1 else "", ", ".join(lsf), RN.LINETOOLS_NOTE
+                )
+            )
+            kind = "warning"
+        if messages:
+            self.notice_banner.show_message(
+                " ".join(messages), kind, [("Hide", self.notice_banner.clear)]
             )
         if notes:
             self.tell("New project", "\n".join(notes))

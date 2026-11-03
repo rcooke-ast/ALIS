@@ -154,6 +154,8 @@ lean.*
   it runs, and with `index:-1` (its default) it picks one of the file's kernels at
   random. `examples/lsf_file/` generates its data with `lsffile(name:test_lsf.dat)`
   (a Gaussian of 0.05 Å FWHM) and fits them with `Afwhm`.
+  - *Found in Task 8.8:* each function needs its own bins (`run bintype`, or a data
+    line's `bintype=`): `Afwhm` Å, `apod` Hz, the others km/s.
 - **Point 2.** The Plot tab is shown but disabled, by design (`qt/tabs.py`,
   `PlotTab`; D42, D77): it was left for after v1, and is Stage 9 (Q8.4, Q8.5).
 - **Item 1 carried over.** `examples/blind`'s `.mod.out` holds
@@ -242,6 +244,13 @@ branch skips lint as the step meant it to. Each later push lints its changed fil
 before. Checked by running the step's shell on four bases: all zeros and empty both
 skip; this branch's first commit finds no changed Python files; Stage 7's closing
 commit lists the files changed since.*
+
+*Prompt 4 (2026-11-03): RJC's push of Tasks 8.1–8.7 failed the `gui` job on both
+platforms, at one test of Task 8.6. CI's pytest 9.2.0 refuses a list of pairs in
+`pytest.approx`, which this machine's 9.0.2 accepts. The test now compares a flat list,
+as does one more found by running the `gui` batch under 9.2.0 here (it needs
+`context/`, so CI skips it). The window tests are now run here under pytest 9.2.0, in
+a scratch environment, as well as under the conda env's.*
 
 **8.2 — A card's value shows its start (point 5, bug; `qt/components.py`,
 `qt/widgets.py`).**
@@ -484,9 +493,12 @@ Q8.8).**
   - A hidden resolution value is masked in the box and in the cell
     (`test_dashboard_qt_blinding.py`).
 
-*Not begun on 2026-11-03: Prompt 3 stopped after Task 8.7, past half the context
-(CLAUDE.md). What was read for this task is noted at the end of the log, for the
-next thread.*
+*Done on 2026-11-03 (Prompt 4); see the log. One thing the task did not foresee: ALIS
+needs bins that suit each function (`Afwhm` Å, `apod` Hz, the others km/s), and stops
+otherwise. The dashboard writes `bintype=` on a data line whose function needs bins
+other than the model's `run bintype`, and SNIP gives a new snip its dataset's.
+`examples/lsf_file` was fitted from the window through `lsffile`, and then with a free
+`Afwhm`, which gave back the kernel's 0.05 Å.*
 
 **8.9 — A blind run's `.mod.out` (item 1 carried over, bug; `runs.py`, `model.py`).**
 - **The bug.** A `.mod.out` written by a plain ALIS run with blinded lines holds
@@ -856,3 +868,5 @@ entry's result either way.
 2. I have responded to your queries. Please review my responses, and if you have any further queries, please ask them in the Queries section. When everything is clear, please write an ordered list of tasks. Each task should be numbered sequentially (8.1, 8.2, etc.), and should include a description of what it builds or fixes, and the check that will verify it. The final Task (currently labelled 8.N) should be to close the stage, and should include the checks that will verify that the stage is complete. Please note that we can continue this thread provided we are below 75% context usage. If we exceed that, we will need to start a new thread to continue the discussion.
 
 3. Please execute the tasks in order. There's no need to pause between tasks, unless you have queries that require my thoughts and responses. If you have queries during development, please pause the development and log the queries and responses in the Queries section.
+
+4. Please read this document, and the associated log (`dashboard_stage8_log.md`), together with the work of Stages 0–7 (their documents and logs) to understand the work that has been implemented so far. I have pushed recent changes to the code based on Tasks 8.1-8.7. The GitHub lint tests now pass. However, the Mac OS gui and Ubunutu gui tests fail (see the output as described in `GitHub_gui_macos-latest_py313.txt` and `GitHub_gui_Ubuntu-latest_py313.txt` respectively). It is the same error. Please look into these failures as part of Stage 8. Also, please continue with the development of Stage 8, starting with Task 8.8, and continue to execute all remaining tasks of this stage. Please ensure that all tasks are completed in order, and that all checks are performed to verify the completion of each task. If you encounter any issues or have any questions during development, please log them in the Queries section for my review and response.

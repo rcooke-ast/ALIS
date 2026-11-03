@@ -204,6 +204,12 @@ class Profile:
                 "The model does not read, so it cannot be drawn. Correct it in the"
                 " .mod panel."
             )
+        from alis.dashboard import resolution as RN
+
+        lsf = [s for s in project.snips if RN.needs_linetools(s.data.resolution)]
+        if lsf:
+            # Said in place of the model, never a traceback (Stage 8, Q8.8)
+            raise ProfileError(RN.LINETOOLS_NOTE)
         self.project = project
         try:
             with M.alis_quietly():

@@ -194,7 +194,10 @@ def test_the_residuals_of_pixels_not_fitted(window, qtbot):
     counted = RS.counted(curve)
     # Grey bands where the pixels are not fitted, every residual drawn
     x = widget.panel.x(curve.wave)
-    assert widget.resid.unfitted() == pytest.approx(FV.unfitted_spans(x, counted))
+    # flat, since pytest 9.2's approx refuses a list of pairs (CI, Stage 8)
+    drawn = [e for span in widget.resid.unfitted() for e in span]
+    spans = [e for span in FV.unfitted_spans(x, counted) for e in span]
+    assert drawn == pytest.approx(spans)
     assert len(widget.resid.unfitted()) > 10
     _, drawn = widget.resid._item.getData()
     every = np.count_nonzero(np.isfinite(drawn))

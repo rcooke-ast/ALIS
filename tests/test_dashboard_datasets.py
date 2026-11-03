@@ -478,3 +478,249 @@ def test_a_dataset_s_shift_and_zero_level_read_as_before(registry, tmp_path):
         assert row.own_shift == {} and row.own_zero == {}
     row = project.rows[1]
     assert row.zero.specids == row.specids and row.shift.label
+
+
+# -- Resolution (Stage 8, Task 8.8; Q8.6, Q8.7, Q8.8) ---------------------------------
+
+LSF = ROOT / "examples/lsf_file/model/test_lsf.dat"
+
+
+def data_words(project):
+    """Each data line's resolution word, by specid."""
+    return {d.specid: d.keyword("resolution") for d in project.parsed.data}
+
+
+def own_silicon(registry, tmp_path):
+    """two_snips, with the second dataset's Si II given a resolution of its own."""
+    from alis.dashboard import resolution as RS
+
+    project, hist = two_snips(registry, tmp_path)
+    before = everything(project)
+    row = project.rows[1]
+    silicon = row.snips[1]
+    check_undo(project, hist, D.snip_resolution_step(project, silicon, True))
+    return project, hist, before, silicon.specid, RS
+
+
+def test_a_snip_s_own_resolution_in_each_function(registry, tmp_path):
+    project, hist, before, sid, RS = own_silicon(registry, tmp_path)
+    row = project.rows[1]
+    dataset = row.fwhm
+    own = row.own_resolution[sid]
+    # Its dataset's function and value, with a label of its own, fixed as it is
+    assert dataset.label == "FWHM2" and own.label == "FWSN1"
+    assert own.start == dataset.start and D.own_count(row, "resolution") == 1
+    assert [s.specid for s in row.resolution_snips] == [row.snips[0].specid]
+    with pytest.raises(D.DatasetError, match="already"):
+        D.snip_resolution_step(project, row.snips[1], True)
+    others = {k: v for k, v in data_words(project).items() if k != sid}
+    kernels = RS.read_kernels(str(LSF))
+    cases = [
+        (("vfwhm", 7.5), "vfwhm(7.5FWSN1)"),
+        (("Afwhm", 0.03), "Afwhm(0.03FWSN1)"),
+        (("vsigma", 3.0), "vsigma(3.0FWSN1)"),
+        (("apod", None, "kind:hanning"), "apod(kind:hanning)"),
+        (("lsffile", None, "", kernels), "lsffile(name:../lsf/test_lsf.dat)"),
+    ]
+    for args, word in cases:
+        snip = project.rows[1].snips[1]
+        check_undo(project, hist, D.snip_function_step(project, snip, *args))
+        words = data_words(project)
+        # The word on that data line alone, with the bins ALIS needs for it
+        assert words[sid] == word
+        assert {k: v for k, v in words.items() if k != sid} == others
+        assert sid in project.rows[1].own_resolution
+        bins = {"Afwhm": "A", "apod": "Hz"}.get(args[0])
+        assert {d.specid: d.keyword("bintype") for d in project.parsed.data} == {
+            k: (bins if k == sid else None) for k in words
+        }
+    # The LSF file is in the project, beside the model's folder (Q8.7)
+    assert project.files["files/lsf/test_lsf.dat"] == LSF.read_bytes()
+    # Back to As the dataset: the words before. A word longer than its gap moved
+    # the next column (text.replace_token), so the spaces may differ
+    hist.do(D.snip_function_step(project, project.rows[1].snips[1], "Afwhm", 0.03))
+    hist.do(D.snip_resolution_step(project, project.rows[1].snips[1], False))
+    assert errors(project) == []
+    assert project.ui == before[2]
+    assert project.text.split() == before[0].split()
+
+
+def test_back_to_the_dataset_s_resolution_byte_for_byte(registry, tmp_path):
+    project, hist, before, sid, RS = own_silicon(registry, tmp_path)
+    # Words that fit their gap, and Afwhm's bintype=A put on and taken off
+    for args in [("Afwhm", 0.03), ("vsigma", 2.9), ("vfwhm", 6.5)]:
+        snip = project.rows[1].snips[1]
+        check_undo(project, hist, D.snip_function_step(project, snip, *args))
+    hist.do(D.snip_resolution_step(project, project.rows[1].snips[1], False))
+    assert errors(project) == []
+    assert (project.text, project.ui) == before[:3:2]
+
+
+@pytest.mark.linetools
+def test_a_snip_s_own_lsf_starts_from_alis_defaults(registry, tmp_path):
+    project, hist, before, sid, RS = own_silicon(registry, tmp_path)
+    snip = project.rows[1].snips[1]
+    check_undo(project, hist, D.snip_function_step(project, snip, "lsf"))
+    assert data_words(project)[sid] == (
+        "lsf(name:COS,grating:G130M,life_position:1,cen_wave:1309)"
+    )
+    with pytest.raises(D.DatasetError, match="needs slit"):
+        D.snip_function_step(
+            project, project.rows[1].snips[1], "lsf", keywords="name:STIS,grating:E140H"
+        )
+
+
+def test_a_dataset_s_resolution_reaches_its_snips_and_snip(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    words = data_words(project)
+    first = [s.specid for s in project.rows[0].snips]
+    row = project.rows[1]
+    for args, word in [
+        (("Afwhm", 0.03), "Afwhm(0.03FWHM2)"),
+        (("vsigma", 3.0), "vsigma(3.0FWHM2)"),
+        (("apod", None, "kind:uniform"), "apod(kind:uniform)"),
+        (("vfwhm", 6.0), "vfwhm(6.0FWHM3)"),
+    ]:
+        check_undo(project, hist, D.resolution_step(project, project.rows[1], *args))
+        now = data_words(project)
+        assert all(now[s.specid] == word for s in project.rows[1].snips)
+        assert all(now[s] == words[s] for s in first)
+    hist.do(D.resolution_step(project, project.rows[1], "Afwhm", 0.03))
+    # Typed and freed as before
+    hist.do(D.set_state_step(project, project.rows[1], "resolution", D.FREE))
+    hist.do(D.set_value_step(project, project.rows[1], "resolution", 0.04))
+    assert project.rows[1].fwhm.start == 0.04 and project.rows[1].fwhm.label == "fwhm3"
+    # SNIP gives a new snip the dataset's
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    hist.do(D.add_system_step(project, 0.0022))
+    system = next(s for s in project.systems if abs(s.z - 0.0022) < 1e-9)
+    hist.do(
+        S.snip_step(project, system, transition(registry, "16O_I", 1302.16849), spec)
+    )
+    new = project.rows[1].snips[-1]
+    assert new.data.keyword("resolution") == "Afwhm(0.04fwhm3)"
+    assert new.data.keyword("bintype") == "A"
+    for one in project.snips:
+        if not S.fitted(one).any():
+            hist.do(S.add_region_step(project, one, 1304.9, 1305.3))
+    assert errors(project) == []
+    # A function with no value cannot be typed
+    hist.do(D.resolution_step(project, project.rows[1], "apod", None, "kind:uniform"))
+    with pytest.raises(D.DatasetError, match="no value"):
+        D.set_value_step(project, project.rows[1], "resolution", 7.0)
+
+
+def test_snip_gives_the_dataset_s_resolution_not_a_snip_s_own(registry, tmp_path):
+    project, hist, before, sid, RS = own_silicon(registry, tmp_path)
+    snip = project.rows[1].snips[1]
+    hist.do(D.snip_function_step(project, snip, "vsigma", 2.0))
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    hist.do(D.add_system_step(project, 0.0022))
+    system = next(s for s in project.systems if abs(s.z - 0.0022) < 1e-9)
+    hist.do(
+        S.snip_step(project, system, transition(registry, "16O_I", 1302.16849), spec)
+    )
+    row = project.rows[1]
+    assert row.snips[-1].data.keyword("resolution") == row.snips[0].data.keyword(
+        "resolution"
+    )
+    assert list(row.own_resolution) == [sid]
+
+
+def test_an_lsf_file_of_several_kernels_and_one_that_cannot_be_read(registry, tmp_path):
+    from alis.dashboard import resolution as RS
+
+    data = RS.np.loadtxt(str(LSF))
+    wide = RS.np.exp(-0.5 * (data[:, 0] / 0.05) ** 2)
+    two = tmp_path / "two.dat"
+    RS.np.savetxt(two, RS.np.column_stack([data, wide]))
+    kernels = RS.read_kernels(str(two))
+    assert kernels.count == 2
+    assert kernels.fwhm[0] == pytest.approx(0.05, rel=0.05)
+    assert kernels.fwhm[1] == pytest.approx(0.05 * RS.FWHM_SIGMA, rel=0.05)
+    project, hist = two_snips(registry, tmp_path)
+    check_undo(
+        project,
+        hist,
+        D.resolution_step(
+            project, project.rows[1], "lsffile", kernels=kernels, index=1
+        ),
+    )
+    assert all(
+        s.data.keyword("resolution") == "lsffile(name:../lsf/two.dat,index:1)"
+        for s in project.rows[1].snips
+    )
+    with pytest.raises(D.DatasetError, match="columns 1 to 2"):
+        D.resolution_step(project, project.rows[1], "lsffile", kernels=kernels, index=2)
+    # Another file of the same name keeps both
+    other = tmp_path / "b" / "two.dat"
+    other.parent.mkdir()
+    RS.np.savetxt(other, data)
+    step = D.resolution_step(
+        project, project.rows[0], "lsffile", kernels=RS.read_kernels(str(other))
+    )
+    assert list(step.files) == ["files/lsf/two_2.dat"]
+    for bad, why in [
+        ("missing.dat", "cannot be read"),
+        ("words.dat", "cannot be read"),
+        ("one.dat", "at least one column"),
+        ("down.dat", "must increase"),
+    ]:
+        path = tmp_path / bad
+        if bad == "words.dat":
+            path.write_text("a b\nc d\ne f\n")
+        elif bad == "one.dat":
+            path.write_text("1\n2\n3\n")
+        elif bad == "down.dat":
+            path.write_text("3 0\n2 1\n1 0\n")
+        with pytest.raises(RS.ResolutionError, match=why):
+            RS.read_kernels(str(path))
+
+
+def test_a_resolution_of_several_parameters_is_kept_as_written(registry, tmp_path):
+    project, hist = two_snips(registry, tmp_path)
+    row = project.rows[1]
+    silicon = row.snips[1]
+    from alis.dashboard import edit as E
+    from alis.dashboard import resolution as RS
+
+    word = "voigtconv(7.0VC,4.0)"
+    hist.do(
+        project.step(E.set_keyword(project.parsed, silicon.data, "resolution", word))
+    )
+    assert errors(project) == []
+    row = project.rows[1]
+    # Read as the snip's own, whatever wrote it
+    assert list(row.own_resolution) == [silicon.specid]
+    assert RS.describe(row.snips[1].data.resolution, None, None) == (
+        "voigtconv (in the .mod panel)"
+    )
+    with pytest.raises(D.DatasetError, match="several parameters"):
+        D.snip_function_step(project, row.snips[1], "voigtconv", 7.0)
+    with pytest.raises(D.DatasetError, match="several parameters"):
+        D.resolution_step(project, row, "multivfwhm", 7.0)
+    assert not RS.function("lsfspline").offered and RS.function("lsf").offered
+
+
+def test_the_keywords_are_checked_as_alis_reads_them(registry):
+    from alis.dashboard import resolution as RS
+
+    assert RS.check_keywords(registry, "apod", " kind:welch ") == "kind:welch"
+    for name, text, why in [
+        ("apod", "kind:foo", "one of uniform"),
+        ("apod", "name:COS", "no keyword 'name'"),
+        ("lsf", "nme:COS", "no keyword 'nme'"),
+        ("lsf", "name:WFC3", "COS or STIS"),
+        ("lsf", "name:COS,grating:G130M", "needs life_position and cen_wave"),
+        ("lsf", "grating", "not a keyword"),
+        ("lsf", "", "needs its keywords"),
+    ]:
+        with pytest.raises(RS.ResolutionError, match=why):
+            RS.check_keywords(registry, name, text)
+    assert RS.convert("vfwhm", 7.0, "vsigma", None) == pytest.approx(
+        7.0 / 2.35482, rel=1e-5
+    )
+    assert RS.convert("vsigma", 3.0, "Afwhm", 1302.0) == pytest.approx(
+        3.0 * RS.FWHM_SIGMA * 1302.0 / C_KMS
+    )
+    assert RS.convert("Afwhm", 0.03, "vfwhm", None) is None

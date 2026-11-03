@@ -251,3 +251,42 @@ def test_export_writes_the_snips_and_both_models(window, qtbot, tmp_path):
     assert "Wrote 3 files" in window.answers.asked[-1][2]
     header = (out / "project_OI_1302.17_zabs0.0000_fit.dat").read_text()
     assert "# wave flux error fitrange zerolevel continuum model\n" in header
+
+
+def test_a_hidden_resolution_is_masked_in_the_box_and_the_cell(
+    window, qtbot, tmp_path, monkeypatch
+):
+    # Stage 8, Task 8.8: the Snip box's own resolution and the Data tab's cell
+    from alis.dashboard import project as P
+
+    folder = tmp_path / "metal"
+    import shutil
+
+    shutil.copytree(str(METAL.parent.parent), str(folder))
+    model = folder / "model" / METAL.name
+    model.write_text(model.read_text().replace("vfwhm(7.0VA)", "vfwhm(6.4731VA)"))
+    window.import_path(str(model))
+    wait_idle(qtbot, window)
+    line = window.session.project.parsed.data[0].line
+    plain = P.Project.hidden_lines
+    monkeypatch.setattr(
+        P.Project, "hidden_lines", lambda self: set(plain(self)) | {line}
+    )
+    window.refresh()
+    data = window.tab_widgets[0]
+    data.refresh(window.session)
+    cell = data.table.item(0, 3).text()
+    assert "6.4731" not in cell and "km/s" in cell
+    window.tabs.setCurrentIndex(1)
+    tab = window.tab_widgets[1]
+    snip = window.session.project.snips[0]
+    tab._fill_own(window.session.project, snip)
+    assert "6.4731" not in tab.res_dataset.text()
+    tab.current_snip = lambda: window.session.project.snips[0]
+    tab._own_chosen("resolution", 1)
+    project = window.session.project
+    tab._fill_own(project, project.snips[0])
+    assert tab.res_value.isVisible() or not tab.isVisible()
+    for text in (tab.res_value.text(), tab.res_value.toolTip(), tab.res_note.text()):
+        assert "6.4731" not in text
+    assert "6.4731FWSN1" in project.text
