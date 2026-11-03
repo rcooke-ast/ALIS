@@ -684,3 +684,15 @@ be done in order in a new thread. For it:
 - **Batches** after Q8.13's fix and Export's defaults (pytest 9.2.0): `unit` 2130
   passed, 120 skipped; `gui` 229 passed; `fast` 149 passed (the regression harness
   with its `test_bundle` mode, since `lsffile.py` changed). pre-commit passed.
+
+### 2026-11-03 (Stage 8 closed)
+
+- Closed at RJC's request. Every point of the Feedback list (1–6) and every item
+  carried over from Stage 7 (1–4) has its task logged as done with its check passing;
+  Q8.1–Q8.13 are answered; the review needed no change; the decisions are D89–D101.
+- Final batches (pytest 9.2.0): `unit` 2130 passed, 120 skipped (2090 and 119 at the
+  start of the stage); `gui` 229 passed (212); `fast` 149 passed (143 at Stage 7's
+  close). CI passed on macOS for the push of Tasks 8.9–8.14; Ubuntu's `gui` job was
+  cancelled by the next push. A failure on the last push goes to Stage 9 or 10 (RJC).
+- Next: Stage 9, the Plot tab (`dashboard_stage9.md`, Q9.1–Q9.6); Stage 10, the
+  feedback that arrived after Stage 8's list closed.

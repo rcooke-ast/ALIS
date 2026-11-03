@@ -665,6 +665,11 @@ Export's defaults changed as RJC asked (every column ticked; the velocities from
 primary system's component with the highest column density): D100, D101. The stage
 closes once CI passes on the push of Tasks 8.9–8.14.*
 
+*Stage 8 closed on 2026-11-03, at RJC's request. Every point of the Feedback list and
+every item carried over has its task logged as done with its check passing, and
+Q8.1–Q8.13 are answered. CI passed on macOS for the push of Tasks 8.9–8.14; a CI
+failure on the last push goes to Stage 9 or 10 (RJC).*
+
 ## Skills to use for this stage
 
 - `gui-component`: any panel or widget changed or added. It documents the project
