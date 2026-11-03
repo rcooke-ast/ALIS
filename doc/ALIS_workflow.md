@@ -859,13 +859,13 @@ run_alis myfit.model     # fits the project from the command line, as before
 - **Your preferences** are kept in `~/.alis/dashboard.json` (File → Preferences…),
   which holds only what differs from the defaults: the autosave interval, the delays
   of the `.mod` panel, the settings and FWHM of a new project, and the like.
-- **The tabs** (Data, Regions, Components, Fit, Plot) each show a marker: ✓ complete,
+- **The tabs** (Data, Regions, Components, Fit, Figure) each show a marker: ✓ complete,
   ↻ out of date, ! needs attention, ○ not started.
 - **Version 1** (dashboard Stage 6, 2026-10-19) takes a fit from a spectrum to a
   result without leaving the dashboard: prepare it on the Data, Regions and
   Components tabs, then run, inspect, keep, compare and check it on the Fit tab. The
-  Plot tab, for publication figures, comes after v1; until then the model's
-  `plotscript` settings write a plotting script, as they do for `run_alis`.
+  Figure tab, for publication figures, followed in Stage 9 (below); the model's
+  `plotscript` settings still write a plotting script for `run_alis`.
   `prepfit` (§0) keeps working, and says that the dashboard now covers it.
 - **Since version 1** (dashboard Stage 7, 2026-10-31), from real use:
   - **An earlier fit.** File → Open a fit (.mod)… loads a `.mod` and its snips into a
@@ -912,6 +912,40 @@ run_alis myfit.model     # fits the project from the command line, as before
   - **Export…** ticks every column of the snips' files by default, and measures the
     velocities from the primary system's component with the highest column density;
     untick what is not needed, or choose another component.
+- **The Figure tab** (dashboard Stage 9, 2026-11-03; it was called Plot) makes a
+  publication figure from a fit:
+  - **When.** It is enabled once the run the Fit tab shows (chosen in its run
+    history, the latest by default) has a best fit, and it draws that run. While
+    anything is hidden it is greyed: a figure shows the hidden lines' profiles, so
+    figures are made after Unblind…. Its tooltip says why it is greyed.
+  - **Figures.** A project holds any number of figures, saved with it: Create new
+    figure (the first from the preset that suits the project; the next with the
+    shown figure's layout and every cell empty), Rename… and Delete figure…. Every
+    change is a step that Undo takes back.
+  - **Layout.** A preset (metals, DH, blends, helium, or one of your own, saved with
+    Save as preset… for every project), the grid, the size in inches, the spacing,
+    the velocity range and the component it is measured from, the residuals (none, a
+    strip below the data, or inside each panel), colour-blind-safe or the published
+    colours, the style (ALIS's publication style, or another file), the shared
+    titles, signed velocities and the components' numbers above their ticks.
+  - **Panels.** Drag a transition from Not shown onto a cell; drag between cells to
+    swap two panels (with Ctrl or ⌥ held, to copy); drag a panel back to Not shown to
+    take it off. A transition shown in two panels, of one figure or two, is marked
+    with a !, naming the other panels. ⚙ opens a panel's options: it can span
+    several columns of its row; its x axis is Velocity, Observed wavelength or Rest
+    wavelength, with its own range; its flux range and ticks, its numbers and titles,
+    its label and corner, a title above it, and the ions and components it ticks.
+    Apply to all panels sets an option on every panel.
+  - **The preview.** Draw preview runs the figure's own script and shows what it
+    draws, so the preview is the figure, LaTeX included. Nothing redraws by itself;
+    after a change the preview is marked as out of date.
+  - **The script.** Export figure… (or File → Export…, the figure ticked) writes
+    `<project>_<figure>.py`, the snips' files it reads, the style
+    `alis_publication.mplstyle`, and `<project>_<figure>.pdf`, which the script draws
+    in the folder. The script needs only numpy and matplotlib, sets every colour,
+    size and range as a variable at its top, lists its panels in `PANELS`, and uses
+    LaTeX for its text where LaTeX is installed. Run it with `python3
+    <project>_<figure>.py` to write its PDF again.
 
 #### Preparing a fit: the Data and Regions tabs
 

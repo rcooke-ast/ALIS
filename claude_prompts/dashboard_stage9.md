@@ -27,6 +27,10 @@ be revised once these and Q9.2 are answered.*
 Tasks are revised from all the responses. Q9.12 (the further options that RJC's
 response to Q9.8 asked for) is the one query still open.*
 
+*2026-11-03 (Prompt 3): Q9.12 answered; Tasks 9.1–9.7 done, and Task 9.8's review
+published (draft 1): https://claude.ai/artifact/A3mGPjERKw8C2s52ecULv3. The stage
+closes once RJC has reviewed the page and CI has passed.*
+
 ## What exists
 
 - **The decisions.**
@@ -117,8 +121,9 @@ Results does. Otherwise the tab is greyed, and its tooltip gives the reason:
   the project, unchanged, and come back on unblinding.
 
 **The figures (Q9.6; no Qt, a new `alis/dashboard/figure.py`).** A project holds any
-number of figures, kept in its bundle in `ui/figures.json`. Each change is one step of
-the history, and undo is exact. A menu at the top of Layout chooses the figure shown,
+number of figures, kept in its bundle in `ui/project.json` (under `figures`, so the
+steps the history already makes carry them). Each change is one step of the history,
+and undo is exact. A menu at the top of Layout chooses the figure shown,
 and three buttons sit beside it:
 - **Create new figure** names the new figure Figure 2, Figure 3, and so on. It copies
   the shown figure's layout (grid, spans, axes, labels, size, spacing, ranges,
@@ -134,7 +139,8 @@ Each figure holds:
 - the residuals (none, a strip below the data, or inside each panel as in the helium
   figures); the colours (colour-blind safe by default, or the published red and
   green); the style (the shipped one, or a file chosen); the shared axis titles
-  (Q9.9);
+  (Q9.9); signed velocities (+100, on by default) and the components' numbers above
+  their ticks (off by default; Q9.12);
 - its cells (below), and the preset it came from.
 
 A layout can be saved as a preset of the user's own (S22). It is kept in
@@ -166,10 +172,13 @@ cells whose transitions that project has, and leaves the others empty.
   number it. A panel whose x axis differs from the figure's turns its own x title on.
 - **The options button (Q9.8's response).** Each cell of the Panels picture has an
   options button (⚙). It opens all that panel's options in one place: its x axis and x
-  range, its y range, its titles and tick numbers, and the further options of Q9.12.
+  range, its y range, its titles and tick numbers, and Q9.12's options: its label's
+  text and corner, a title above it, its y tick positions, its y numbers on the right,
+  and which components and ions are ticked (by default every component of every ion
+  of the system with a transition in its range, each ion in its own colour).
   Beside each option that can be shared, Apply to all panels sets it on every panel of
-  the figure, as one step. That covers the y range, the titles, the tick numbers and
-  the x axis. A velocity range is applied to every velocity panel: it becomes the
+  the figure, as one step. That covers the y range, the titles, the tick numbers,
+  the x axis, the label's corner, the y tick positions and the y numbers' side. A velocity range is applied to every velocity panel: it becomes the
   figure's velocity range, and the panels' own ranges are cleared. A wavelength range
   cannot be applied to all, since each wavelength panel covers its own lines.
 
@@ -215,7 +224,9 @@ script:
   which is not distributed) are written into it: the signed tick numbers of `plot_pm`,
   `replot_ticks` and `turnoff`;
 - sets every colour, line width, font size and range as a named variable at its top
-  (D42);
+  (D42), with the figure's details that are not in the window (Q9.12): the dashes of
+  the continuum and zero lines, the ticks' heights, the residuals' offset and scale,
+  and the spacing of the x ticks;
 - reads the snips' files that Export writes beside it (D88), finding their columns by
   the names in their headers, so it runs anywhere, without ALIS or the project;
 - uses the shipped style, `alis/data/alis_publication.mplstyle` (made from
@@ -239,8 +250,8 @@ name, with the shown figure ticked by default. For each figure ticked, it writes
   folder (S22);
 - the snips' files the figure draws, under Export's names, whether or not the snips
   are ticked. They hold the columns the script reads (Wavelength, Flux, Error, Fit
-  range, Zero level, Continuum, Best-fit model), which cannot be unticked while a
-  figure is ticked;
+  range, Zero level, Continuum, Best-fit model, and the Corrected wavelength that
+  Q9.8 (iii) needs), which cannot be unticked while a figure is ticked;
 - the style file, written once for all the figures.
 
 If a script fails, the files it needs stay written, no PDF is drawn, and the message is
@@ -251,7 +262,7 @@ or while the shown run has no best fit.
 **Blinding (D24, Q9.5 (a)).** While anything is hidden, the tab and The figures are
 greyed (above), so neither a figure nor its files can show a hidden line. A figure's
 description holds no parameter value: its velocity zero is a component, and its ranges
-are the user's. `ui/figures.json` therefore has nothing to hide.
+are the user's. The figures in `ui/project.json` therefore have nothing to hide.
 
 ## Tasks
 
@@ -261,8 +272,8 @@ are the user's. `ui/figures.json` therefore has nothing to hide.
 > the stage closes. A task that changes ALIS outside `alis/dashboard/` also runs the
 > regression harness.
 
-*Revised on 2026-11-03 (Prompt 2), with the design. The panel options of Q9.12 come
-into Tasks 9.2, 9.4 and 9.6 once it is answered.*
+*Revised on 2026-11-03 (Prompt 2), with the design. Q9.12's options are in Tasks 9.2,
+9.4 and 9.6 (Prompt 3); RJC will review them once the stage is built.*
 
 **9.1 — The Figure tab, enabled once there is a best fit (point 2 of Stage 8; Q9.1,
 Q9.5).**
@@ -279,14 +290,18 @@ Q9.5).**
   - the run chosen in Fit's history is the one the tab names;
   - the window's text no longer names a Plot tab.
 
+*Done on 2026-11-03 (Prompt 3): `qt/figure.py`, `figure.unavailable`, `FitTab.committed_view`; 8 window tests. See the log.*
+
 **9.2 — The figures, their cells and their steps (D28, D42, S22; Q9.6–Q9.10;
 `figure.py`).**
 - What this task builds:
-  - several figures in `ui/figures.json`, created (layout copied, cells empty),
+  - several figures in `ui/project.json`, created (layout copied, cells empty),
     renamed and deleted;
   - each figure's grid, spans, size, spacing, ranges, x axes, titles and numbers,
     residuals, colours and style;
-  - the cells' options and Apply to all panels;
+  - the cells' options (with Q9.12's label corner, title, y tick positions, y
+    numbers on the right, and ticked components and ions) and Apply to all panels;
+  - the figure's signed velocities and component numbers (Q9.12);
   - placing, swapping, removing and copying transitions;
   - the duplicates, and where else each transition is shown;
   - a saved preset, in `~/.alis/figures/`.
@@ -305,7 +320,10 @@ Q9.5).**
   - a wavelength panel's default range is the velocity range at its transition;
   - a preset saved, then loaded in another project, fills the cells it can;
   - a cell whose snip is removed is emptied, with a note;
-  - `examples/blind`'s `ui/figures.json` holds no hidden value.
+  - each of Q9.12's options is a step, and those marked ✱ apply to all panels;
+  - the figures in `examples/blind`'s `ui/project.json` hold no hidden value.
+
+*Done on 2026-11-03 (Prompt 3): `alis/dashboard/figure.py`; 15 tests in `test_dashboard_figure.py`. The figures are kept in `ui/project.json` (Prompt 3's log). See the log.*
 
 **9.3 — The presets from the examples (D28; QF.27; `figpresets.py`).**
 - metals, DH, blends and helium, filled from the project as the table says, with
@@ -317,6 +335,8 @@ Q9.5).**
   - a synthetic helium fit under helium gives a 2×2 grid with residuals in the panels;
   - a blends figure takes the system chosen, and titles each line with the line it
     blends.
+
+*Done on 2026-11-03 (Prompt 3): `alis/dashboard/figpresets.py`; 9 tests, on J1358p6522 and Q1243p307 too. See the log.*
 
 **9.4 — The script and the shipped style (D42, S22; Q9.2 (b); `figscript.py`,
 `alis/data/`).**
@@ -333,9 +353,14 @@ Q9.5).**
     panel's x axis, range, titles and numbers, read back from the figure;
   - `DH_Lyseries.py`'s layout is drawn: a span of three, holding the Lyman limit in
     rest wavelength over 913.15–915.2 Å, with a tick at each line;
+  - Q9.12's options are drawn: a title, a label's corner, y ticks at chosen positions
+    and numbered on the right, a second ion's ticks in its own colour, signed
+    velocities, and the components' numbers above their ticks;
   - the PDF's bytes are the same on a second run;
   - the style file is in the wheel's `alis/data/` and is read by `matplotlib.style.use`;
   - `test_plotscript.py` passes unchanged.
+
+*Done on 2026-11-03 (Prompt 3): `alis/dashboard/figscript.py`, `alis/data/alis_publication.mplstyle`, the comments of `plotscript.py` and `config.py`; 16 tests. Colours checked with the `dataviz` skill's validator: two ion colours, then grey. See the log.*
 
 **9.5 — The preview (S22, Q9.3).**
 - Draw preview runs the script in a separate process and shows its PNG. It also
@@ -348,6 +373,8 @@ Q9.5).**
   - A broken style file gives its message in place of the preview.
   - No traceback reaches the window.
 
+*Done on 2026-11-03 (Prompt 3): the Preview pane, run in a `QProcess`; 5 window tests. See the log.*
+
 **9.6 — The tab (D42, D43; `qt/figure.py`).**
 - **Layout, at the left:** the figure menu, with Create new figure, Rename… and Delete
   figure…; the preset, grid, figure size, spacing, velocity range, residuals, colours,
@@ -358,11 +385,13 @@ Q9.5).**
 - **Check.** `test_dashboard_qt_figure.py`:
   - each control is one step;
   - the drags work onto a cell, between cells, off the grid and with the copy key;
-  - the options popup sets each option, and Apply to all panels;
+  - the options popup sets each option, Q9.12's among them, and Apply to all panels;
   - a duplicate gives its message and its mark;
   - the figure menu switches figures;
   - the screenshots at 1440×900 match the mockup's arrangement;
   - the tab has no design reference (D44).
+
+*Done on 2026-11-03 (Prompt 3): the tab, its options dialog and its drags; 6 window tests. See the log.*
 
 **9.7 — Exporting figures (Q9.6, Q9.11; `export.py`).**
 - The figures in File → Export…: the script, its PDF, its snips' files (their columns
@@ -377,6 +406,8 @@ Q9.5).**
   - writing over a file asks first;
   - with `examples/blind` and a run, The figures is greyed with the reason, `plan`
     refuses a figure, and no file written holds a hidden value.
+
+*Done on 2026-11-03 (Prompt 3): `export.Choice.figures`, `figscript.plan`, the Export dialog's figures with their columns locked; 1 unit test and 3 window tests. See the log.*
 
 **9.8 — Close the stage.**
 - **The review.** The tab's screenshots beside the mockup, on a new page with the
@@ -401,6 +432,14 @@ Q9.5).**
     Stage 8's close it was 86% through at 42 minutes. If the new window tests bring it
     near the limit, the limit is raised or the window tests are split.
   - `test-coverage` runs on what changed.
+
+*Draft 1 of the review on 2026-11-03 (Prompt 3):
+https://claude.ai/artifact/A3mGPjERKw8C2s52ecULv3. The documents and D102–D109 are
+written; the `gui` job's CI limit is 90 minutes. Batches under CI's pytest 9.2.0:
+`unit` 2170 passed, 120 skipped (2130 and 120 at the start of the stage); `gui` 251
+passed (229); `fast` 149 passed (149), with the regression harness. Coverage of the
+new modules 91–94%. Waiting on your comments on the page, your push (CI), and your
+trial of the scripts (Q9.12).*
 
 ### Where each element goes
 

@@ -31,7 +31,7 @@ TAB_GROUPS = {
     FIT_TAB: "Fit",
 }
 GROUPS = MENUS + (PANEL, DATA_TAB, REGIONS_TAB, COMPONENTS_TAB, FIT_TAB)
-TABS = ("Data", "Regions", "Components", "Fit", "Plot")
+TABS = ("Data", "Regions", "Components", "Fit", "Figure")
 
 
 @dataclass(frozen=True)
@@ -193,14 +193,7 @@ ACTIONS = (
         "view.components", "Components", "View", "Ctrl+3", "Show the Components tab"
     ),
     Action("view.fit", "Fit", "View", "Ctrl+4", "Show the Fit tab"),
-    Action(
-        "view.plot",
-        "Plot",
-        "View",
-        "Ctrl+5",
-        "Show the Plot tab (not yet available)",
-        later=True,
-    ),
+    Action("view.figure", "Figure", "View", "Ctrl+5", "Show the Figure tab"),
     Action(
         "view.mod_panel",
         "Show the .mod panel",
@@ -618,7 +611,7 @@ TAB_ACTIONS = {
     "view.regions": 1,
     "view.components": 2,
     "view.fit": 3,
-    "view.plot": 4,
+    "view.figure": 4,
 }
 
 

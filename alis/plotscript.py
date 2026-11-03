@@ -2,12 +2,14 @@
 
 ALIS already draws its own PDF (``out plots``). This is different: it writes a
 *script*, so a publication figure can be edited -- panel order, labels, limits,
-colours -- without re-running the fit or working inside ALIS. Stage 6.6 will
-drive the same emitter from the GUI.
+colours -- without re-running the fit or working inside ALIS. The dashboard's
+Figure tab has an emitter of its own (``alis/dashboard/figscript.py``; Q9.2 of
+dashboard Stage 9), so this one serves ``run_alis``'s ``plotscript`` settings.
 
 The emitted script is **self-contained**. The reference figures in
-``context/plotting/`` all ``import plotting_routines as pr``, which is not
-distributed; the handful of helpers they take from it are inlined here instead.
+``context/plotting_examples/`` all ``import plotting_routines as pr``, which is
+not distributed; the handful of helpers they take from it are inlined here
+instead.
 They are also Python 2 (``xrange``); what is written out is Python 3.
 
 Layouts (RJC, Q5.7/Q5.9/Q5.11):
@@ -190,7 +192,7 @@ def _layout(fmt, panels, numcol, ndatasets):
         ordered = sorted(panels, key=lambda p: (p["ion"], p["restwave"]))
     elif fmt == "DH" and ndatasets == 2:
         # Columns are the datasets, rows the series: the same transition sits
-        # side by side across datasets (context/plotting/DH_Lya-Ly7.py).
+        # side by side across datasets (context/plotting_examples/DH_Lya-Ly7.py).
         specids = sorted({p["specid"] for p in panels})
         byline = {}
         for p in panels:

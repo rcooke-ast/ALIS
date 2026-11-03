@@ -180,8 +180,9 @@ class PlotScriptConfig(_DictLike):
     Controls the standalone matplotlib script ALIS can emit alongside the fit,
     so a publication figure can be tweaked outside ALIS. ``format`` selects the
     layout and defaults to ``none``, which emits nothing; every other setting
-    defaults to the convention of the reference figures in ``context/plotting``,
-    so an emitted script is unchanged unless it is asked for.
+    defaults to the convention of the reference figures in
+    ``context/plotting_examples``, so an emitted script is unchanged unless it is
+    asked for.
 
     Fields that must accept both a word and a number (``numcol``) or a word and
     a list (``velrange``, ``ylim``, ``figsize``) default to ``None``, because

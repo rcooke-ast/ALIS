@@ -15,6 +15,7 @@ pytest.importorskip("pyqtgraph")
 
 from alis import bundle as B  # noqa: E402
 from alis.dashboard import edit as E  # noqa: E402
+from alis.dashboard import figure as FG  # noqa: E402
 from alis.dashboard import markers as MK  # noqa: E402
 from alis.dashboard.qt import style as ST  # noqa: E402
 
@@ -59,11 +60,11 @@ def test_the_tabs_show_their_markers(window, qtbot):
     )
     assert shows(window, 3, MK.STALE)
     assert window.tabs.tabToolTip(3) == "The model has changed since the latest run."
-    # The other tabs, and Plot
+    # The other tabs, and Figure: this run kept no best fit
     assert shows(window, 0, MK.ATTENTION)
     assert shows(window, 2, MK.ATTENTION)
     assert shows(window, 4, MK.NONE)
-    assert window.tabs.tabToolTip(4) == "Not yet available"
+    assert window.tabs.tabToolTip(4) == FG.NO_FIT
     window.qactions["edit.undo"].trigger()
     assert shows(window, 3, MK.COMPLETE)
 

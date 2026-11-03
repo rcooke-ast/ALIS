@@ -17,6 +17,7 @@ import pytest
 
 from alis import bundle as B
 from alis.dashboard import edit as E
+from alis.dashboard import figure as FG
 from alis.dashboard import markers as MK
 from alis.dashboard import model as M
 from alis.dashboard import preferences as PR
@@ -77,7 +78,7 @@ def test_j1358p6522(registry):
     assert "not tied" in marks["Components"].tip or "share" in marks["Components"].tip
     assert marks["Fit"].state == MK.COMPLETE
     assert "imported" in marks["Fit"].tip
-    assert marks["Plot"] == MK.Marker(MK.NONE, "Not yet available")
+    assert marks["Figure"] == MK.Marker(MK.NONE, FG.NO_FIT)
 
 
 def test_q1243p307(registry):
@@ -89,7 +90,7 @@ def test_q1243p307(registry):
         "Regions": MK.ATTENTION,
         "Components": MK.ATTENTION,
         "Fit": MK.COMPLETE,
-        "Plot": MK.NONE,
+        "Figure": MK.NONE,
     }
     assert "fitted twice" in MK.regions_marker(project).tip
 
@@ -105,7 +106,7 @@ def test_a_new_project_is_not_started_but_for_its_data(home, tmp_path, registry)
         "Regions": MK.NONE,
         "Components": MK.NONE,
         "Fit": MK.NONE,
-        "Plot": MK.NONE,
+        "Figure": MK.NONE,
     }
     assert marks["Data"].tip == "1 file row, 0 snips."
     assert marks["Regions"].tip == "No snips yet."

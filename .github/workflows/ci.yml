@@ -79,7 +79,9 @@ jobs:
     # The dashboard's windows (dashboard Stage 3): PySide6 through qtpy, driven
     # off-screen by pytest-qt. The unit and examples jobs stay free of Qt.
     name: gui (${{ matrix.os }}, py${{ matrix.python-version }})
-    timeout-minutes: 60
+    # Ubuntu's job took 35 min for 221 tests (Stage 8) and was 86% through 229 at
+    # 42 min; Stage 9's window tests draw figures, so the limit leaves room
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:

@@ -32,7 +32,7 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 6 | Fit tab (step 6). This completes v1. **Done 2026-10-20: v1 is complete** (`dashboard_stage6.md`). | `alis/dashboard/`, and `alis/` where its queries agreed |
 | 7 | RJC's changes and bug fixes from fitting real problems with v1 (`dashboard_stage7.md`), each a task with its check, and the changes from RJC's review of it (the Export dialog among them). **Done 2026-11-01.** | as each needs |
 | 8 | Feedback from users (`dashboard_stage8.md`): RJC collects the points in its Feedback section, and each becomes a task with its check, after its queries (Q8.1–Q8.12). **Done 2026-11-03 (D89–D101).** | as each needs; ALIS's `lsffile` and `bundle.py` (Q8.7) |
-| 9 | The Plot tab (step 8; D28, D42, S22): its design is `dashboard_stage9.md` (Task 8.13), with Q9.1–Q9.6 for RJC. | `alis/dashboard/`, and `alis/plotscript.py` if Q9.2 agrees |
+| 9 | The Figure tab, until then the Plot tab (step 8; D28, D42, S22): designed in `dashboard_stage9.md` (Task 8.13; Q9.1–Q9.12). **Built 2026-11-03 (D102–D109); its review is pending.** | `alis/dashboard/`; `alis/data/alis_publication.mplstyle`; comments of `alis/plotscript.py` and `alis/config.py` (D28) |
 | 10 | Feedback from users that arrived after Stage 8's list closed (Q8.4). | as each needs |
 | Later | Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
 
@@ -45,14 +45,15 @@ dashboard. What follows, for RJC to order (Q6.13(a)):
 2. **Stage 8:** feedback from users (`dashboard_stage8.md`), collected by RJC in its
    Feedback section, with four items carried over from Stage 7 (Q8.2): done
    2026-11-03 (D89–D101).
-3. **Stage 9, the Plot tab** (step 8, D28, D42, S22): the layout, the panels, the
-   preview drawn by the plotting script, and the shipped style
-   (`alis_publication.mplstyle`). Designed in `dashboard_stage9.md` (Task 8.13). The
-   preview (S22) comes off the "Later" list with it.
+3. **Stage 9, the Figure tab** (step 8, D28, D42, S22): several figures per project,
+   the presets, the panels with spans and wavelength axes, the preview drawn by the
+   figure's script, the shipped style (`alis_publication.mplstyle`) and the figures
+   in Export: built 2026-11-03 (D102–D109), its review pending. The preview (S22)
+   came off the "Later" list with it.
 4. **Stage 10:** the users' feedback that arrived after Stage 8's list closed (Q8.4).
 5. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
-   (F6), command search (F10), the `link` editor and its templates (S15), the plot
-   preview (S22), reproducing an imported fit (S28); Orders mode, PypeIt spec1d input
+   (F6), command search (F10), the `link` editor and its templates (S15),
+   reproducing an imported fit (S28); Orders mode, PypeIt spec1d input
    and the stacked spectrum. Attaching a source spectrum to an imported fit (S23) came
    off at the close of Stage 7: Open a fit (.mod)… does it (D78, Q7.5).
 6. **The documentation** on readthedocs, ALIS's and the dashboard's: Documentation
@@ -86,7 +87,7 @@ first builds the logic and the second the interface.
 | F10 Command search | Later | S19 Results table, correlations | 6 |
 | F11 Modes as plug-ins | 2 | S20 Continue from best fit | 6 |
 | F12 Tab status markers | 2, 3 | S21 Convergence tools | 6 |
-| F13 Relink moved spectra | 1, 3 | S22 Plot preview (D28) | Later |
+| F13 Relink moved spectra | 1, 3 | S22 Plot preview (D28) | 9 |
 | F14 One launcher | 3 | S23 Attach a source spectrum | Stage 7 (D78) |
 | S2 Transition coverage | 4 | S24 "Set z here" | 4 |
 | S3 Column roles (D13) | 4 | S25 Dataset panel (D14) | 4 |

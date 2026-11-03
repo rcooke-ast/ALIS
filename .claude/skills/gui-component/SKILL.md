@@ -53,7 +53,7 @@ Create a new panel or widget for the ALIS dashboard. The windows live in
 ## Steps
 
 1. Ask the user for: the component's name and purpose; the tab it belongs to (Data,
-   Regions, Components, Fit, Plot, or the `.mod` panel, D34); the project concepts it
+   Regions, Components, Fit, Figure, or the `.mod` panel, D34); the project concepts it
    shows (rows, snips, systems, components, regions, notices); and its interactions
    (clicks, drags, keys).
 
@@ -217,6 +217,25 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
   still refuses, with the reason, for Final.
 - **Tests compare flat lists with `pytest.approx`**: CI's pytest 9.2 refuses a list of
   pairs (memory `ci-test-versions`).
+
+## Stage 9 additions (the Figure tab)
+
+- **The figures** live in `ui/project.json` under `figures`; `alis/dashboard/figure.py`
+  makes every change as a `Project.set_ui` step (`new_figure`, `rename`, `delete`,
+  `set_grid`, `set_span`, `place`, `move`, `remove`, `set_option`, `set_cell`). Make a
+  step from the project as it then is, just before `history.do`: a step replaces the
+  whole of `ui/project.json`, so a second step made beforehand undoes the first.
+- **What a cell can show** is `figure.transitions` (an `Entry` per snip, system and
+  ion); cells keep `Entry.key`, matched by `figure.same`.
+- **The script** is `figscript.files` (script, snips, style), run by `figscript.run`
+  or, in the window, a `QProcess` on `figscript.command`; a failure is its last line
+  (`figscript.last_line`), never a traceback.
+- **The tab is greyed** while `figure.unavailable(project, view)` gives a reason; the
+  view is `FitTab.committed_view()`, never the fit in progress.
+- **A widget taken out of a layout** to be rebuilt is hidden and unparented before
+  `deleteLater`, or it stays drawn on its parent until the event loop deletes it.
+- **A `QDropEvent` made in a test** does not own its `QMimeData`: keep the data in a
+  variable while the event is used.
 
 ## Notes
 

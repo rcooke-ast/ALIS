@@ -181,6 +181,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     name.
   - Export ticks every column by default, and measures the velocities from the
     primary system's component with the highest column density.
+- The dashboard's Stage 9, the Figure tab (it was the Plot tab, shown greyed since
+  Stage 3): publication figures from the best fit of the run the Fit tab shows,
+  greyed while anything is hidden. A project holds any number of figures, kept in
+  its `ui/project.json`, each change a step of the history:
+  - a grid of panels, filled by a preset (metals, DH, blends, helium) or by
+    dragging transitions onto it; a panel may span the columns of its row, draw
+    against velocity or observed or rest wavelength, and has its own ranges,
+    numbers, titles, label and ticks; layouts saved as presets of one's own;
+  - a transition shown in two panels is marked, naming the other panels;
+  - the preview is drawn by running the figure's own script (Draw preview);
+  - Export figure… (and File → Export…) writes the figure's standalone script
+    (numpy and matplotlib alone, every colour a variable at its top), the snips'
+    files it reads, the style, and the PDF the script draws.
+- `alis/data/alis_publication.mplstyle`: the publication style of the dashboard's
+  plotting scripts, from the matplotlibrc of RJC's published figures.
 
 ### Deprecated
 - `prepfit` (`alis/prepfit/specplot.py`): the dashboard (`alis`) now does what it

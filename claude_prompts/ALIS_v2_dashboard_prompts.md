@@ -865,6 +865,61 @@ change).*
   at 1309 Å. `apod`'s buffer waits for example data in frequency (`deferred_work.md`
   §7.7).
 
+*Stage 9 decisions (the Figure tab). Added by Claude on 2026-11-03 from Q9.1–Q9.12,
+the work of the stage and RJC's review (D110).*
+- **D102. The Figure tab** (Q9.1, Q9.5; refines D34, D42, D77): the Plot tab is called
+  Figure. It is enabled once the run the Fit tab shows (a committed run, never the
+  fit in progress) has a best fit, and draws that run. Before, and while anything is
+  hidden, it is greyed, with the reason as its tooltip.
+- **D103. Figures are project data** (Q9.6): any number per project, kept in
+  `ui/project.json` under `figures`, each change a step. Create new figure copies the
+  shown figure's layout with every cell empty (the first comes from the preset that
+  suits the project); Rename… takes a name that makes a file name; Delete figure…
+  asks first, and Undo takes it back. Saved presets are kept in `~/.alis/figures/`.
+- **D104. The dashboard's own emitter** (Q9.2 (b); refines D28, S22):
+  `alis/dashboard/figscript.py` writes the script. `alis/plotscript.py` stays for
+  `run_alis`, its references to `context/plotting/` now `context/plotting_examples/`
+  (comments only).
+- **D105. The preview on demand** (Q9.3; refines S22): Draw preview runs the figure's
+  script in a process of its own; nothing redraws by itself; a changed figure's
+  preview is marked out of date; Stop keeps the last; a failure is its last line.
+- **D106. A figure's cells** (Q9.7–Q9.9, Q9.12; refines D42): a panel spans one or
+  more columns of its row, never rows. Its x axis is Velocity, Observed or Rest
+  wavelength; a wavelength range is its own, in Å, by default the velocity range at
+  its transition; rest wavelengths are over 1 + z of the velocity zero; wavelengths
+  are corrected for the snip's shift; a velocity panel ticks the components, a
+  wavelength panel each transition of its ion. The figure has shared x and y titles,
+  and each panel its own titles and tick numbers, numbered by place by default. A
+  panel's options are in one dialog (⚙), with Apply to all panels beside those that
+  can be shared, among them Q9.12's label corner, title, y ticks, y numbers on the
+  right, and ticked ions and components. Signed velocities, the components' numbers
+  and the spacing are the figure's; the remaining details are the script's
+  variables.
+- **D107. The same transition twice** (Q9.10): the same transition of the same system
+  from the same snip may be shown in several panels, of one figure or several, and
+  is warned (the status bar, a ! naming the other panels, the tab's marker). A drag
+  between cells swaps them, and with Ctrl or ⌥ held copies; the tray marks entries
+  shown in other figures. The same line from another dataset's snip is not the same.
+- **D108. Exporting figures** (Q9.6, Q9.11; refines D88): File → Export… lists the
+  figures, the shown one ticked. Each writes `<project>_<figure>.py` (spaces as
+  underscores), the snips it draws (the columns its script reads locked while it is
+  ticked, Corrected wavelength among them), the style once, and
+  `<project>_<figure>.pdf`, drawn by running the script in the folder. Export
+  figure… opens the dialog with only that figure ticked.
+- **D109. A figure's colours and style** (D42, Q0.7, Q0.10): colour-blind safe by
+  default (the model vermillion; the first two ions' ticks bluish green and blue, as
+  the `dataviz` skill's validator allows for marks side by side; further ions grey;
+  data, levels and residuals neutral), or the reference scripts' published colours.
+  The style `alis/data/alis_publication.mplstyle` is RJC's matplotlibrc without its
+  backend, server and autolayout entries; LaTeX draws the text where `latex` and
+  `dvipng` are found.
+- **D110. The Figure tab takes the `.mod` panel's room** (RJC's review of Stage 9;
+  refines D50): selecting the tab hides the docked `.mod` panel to its strip, and
+  leaving it brings the panel back, unless the user opened it meanwhile; the hiding
+  is not kept as the user's choice. The review agreed two ion colours then grey
+  (D109), and the labels' place above the zero level, its corner set per panel or
+  for all.
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

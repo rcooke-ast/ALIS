@@ -34,6 +34,7 @@ from qtpy import QtWidgets  # noqa: E402
 
 from alis import bundle as B  # noqa: E402
 from alis.dashboard import actions as A  # noqa: E402
+from alis.dashboard import figure as FG  # noqa: E402
 from alis.dashboard import session as S  # noqa: E402
 
 
@@ -63,8 +64,11 @@ def check_workspace(window, name):
     assert window.stack.currentIndex() == 1
     assert window.windowTitle().startswith("ALIS dashboard — " + name)
     assert [window.tabs.tabText(n) for n in range(5)] == list(A.TABS)
-    assert not window.tabs.isTabEnabled(4)
-    assert window.tabs.tabToolTip(4) == "Not yet available"
+    # The Figure tab is greyed, saying why, until the shown run has a best fit
+    reason = window.figure_tab.reason
+    assert window.tabs.isTabEnabled(4) == (not reason)
+    if reason:
+        assert window.tabs.tabToolTip(4) == reason
     fit = window.tab_widgets[3].subtabs
     assert [fit.tabText(n) for n in range(3)] == ["Inspect", "Results", "Compare"]
     assert [m.title() for m in window.menus.values()] == list(A.MENUS)
@@ -189,8 +193,10 @@ def test_an_empty_project_opens(window, qtbot, tmp_path):
         "Regions": "none",
         "Components": "none",
         "Fit": "none",
-        "Plot": "none",
+        "Figure": "none",
     }
+    assert not window.tabs.isTabEnabled(4)
+    assert window.tabs.tabToolTip(4) == FG.NO_FIT
 
 
 def test_the_mod_panel_collapses_to_a_strip(window, qtbot, tmp_path):
