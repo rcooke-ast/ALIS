@@ -671,3 +671,16 @@ be done in order in a new thread. For it:
     columns).
 - The review needs no change, so its decisions are D100 (Export's defaults) and D101
   (Q8.13).
+- **CI on the push of Tasks 8.9–8.14** (RJC): every job passed on macOS (the `gui` job
+  in 27 min). Ubuntu's `gui` job stopped at 42 min with "The operation was canceled",
+  in `test_the_panel_in_its_own_window_and_back` (86%). Not a hang: the next push
+  (commits 4c86c4a at 14:07 and 1e3e3a3 at 14:49, 42 minutes apart) cancelled it,
+  under the workflow's `concurrency: cancel-in-progress` on the same branch; a timeout
+  would have run to the job's 60 minutes and said so. The later push's run is the
+  check. To watch: Ubuntu's `gui` job took 35 min for 221 tests at the start of the
+  stage, and had reached 86% of 229 at 42 min, so it is nearing its 60-minute limit
+  as window tests that fit are added; raising the limit, or running the `fast` window
+  tests in a job of their own, is for Stage 9's close if it grows further.
+- **Batches** after Q8.13's fix and Export's defaults (pytest 9.2.0): `unit` 2130
+  passed, 120 skipped; `gui` 229 passed; `fast` 149 passed (the regression harness
+  with its `test_bundle` mode, since `lsffile.py` changed). pre-commit passed.
