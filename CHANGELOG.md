@@ -190,6 +190,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
     against velocity or observed or rest wavelength, and has its own ranges,
     numbers, titles, label and ticks; layouts saved as presets of one's own;
   - a transition shown in two panels is marked, naming the other panels;
+  - the margins are worked out from the panels' numbers and titles, or set;
   - the preview is drawn by running the figure's own script (Draw preview);
   - Export figure… (and File → Export…) writes the figure's standalone script
     (numpy and matplotlib alone, every colour a variable at its top), the snips'

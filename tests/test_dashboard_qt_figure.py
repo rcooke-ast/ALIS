@@ -347,6 +347,9 @@ def test_the_drags(window, qtbot, tmp_path):
     ]
     data = tab.tray.mimeData([tab.tray.item(0)])
     tab.dropped(0, 2, data)
+    # The step is made once the drag has ended
+    assert FG.cell_at(tab.current(), 0, 2)[0]["show"] is None
+    qtbot.wait(20)
     assert FG.cell_at(tab.current(), 0, 2)[0]["show"] == o1
     # A real drop event on a cell: a swap
     cell = tab.cells[(0, 1)]
@@ -360,6 +363,7 @@ def test_the_drags(window, qtbot, tmp_path):
         QtCore.Qt.KeyboardModifier.NoModifier,
     )
     tab.cells[(0, 1)].dropEvent(event)
+    qtbot.wait(20)
     assert cell is not None and FG.cell_at(tab.current(), 0, 1)[0]["show"] == o1
     # With Ctrl held, a copy: warned, and marked (the event does not own its data)
     copied = data_of(0, 1)
@@ -371,6 +375,7 @@ def test_the_drags(window, qtbot, tmp_path):
         QtCore.Qt.KeyboardModifier.ControlModifier,
     )
     tab.cells[(0, 0)].dropEvent(event)
+    qtbot.wait(20)
     assert FG.cell_at(tab.current(), 0, 0)[0]["show"] == o1
     assert "O I 1302.2 is also shown in" in window.statusBar().currentMessage()
     assert tab.cells[(0, 0)].mark.text() == "!"
@@ -568,3 +573,93 @@ def test_the_figure_tab_hides_the_mod_panel(window, qtbot, tmp_path):
     window.tabs.setCurrentIndex(FIGURE)
     window.tabs.setCurrentIndex(3)
     assert not window.dock.isVisible()
+
+
+def test_a_panel_spans_its_row_from_its_options(window, qtbot, tmp_path):
+    # RJC's 3 × 2 grid, its bottom three panels made one (Q9.7)
+    tab = figure_tab(window, qtbot, tmp_path)
+    tab.rows.setValue(2)
+    project = window.session.project
+    o1 = FG.cell_at(tab.current(), 0, 0)[0]["show"]
+    tab.place(o1, 1, 2)
+    seen = {}
+
+    def options(dialog):
+        span = dialog.fields["span"]
+        seen["range"] = (span.minimum(), span.maximum())
+        span.setValue(3)
+        return 0
+
+    window.on_dialog = options
+    tab.cells[(1, 0)].options.click()
+    assert seen["range"] == (1, 3)
+    assert last_step(window) == "Span 3 columns"
+    fig = tab.current()
+    assert [[c["span"] for c in row] for row in fig["cells"]] == [[1, 1, 1], [3]]
+    # O I's second panel, which it covered, went back to Not shown: shown once now
+    assert len(FG.shown(fig)) == 2 and FG.duplicates(project) == []
+    assert FG.cell_at(fig, 1, 0)[0]["show"] is None
+    # The picture of the grid: one cell across the bottom row's three columns
+    at = tab.grid_layout.indexOf(tab.cells[(1, 0)])
+    assert tab.grid_layout.getItemPosition(at) == (1, 0, 1, 3)
+    # A cell in the middle can span only what is left of its row
+    window.qactions["edit.undo"].trigger()
+
+    def middle(dialog):
+        seen["middle"] = dialog.fields["span"].maximum()
+        return 0
+
+    window.on_dialog = middle
+    tab.cells[(1, 1)].options.click()
+    assert seen["middle"] == 2
+
+
+def test_a_drop_survives_the_cells_rebuilt_and_bad_data(window, qtbot, tmp_path):
+    # RJC's Prompt 4: a drop raised "not enough values to unpack", the drag's data
+    # gone with the cell the drag began on, which the drop's step had rebuilt
+    tab = figure_tab(window, qtbot, tmp_path)
+    tab.rows.setValue(2)
+    si = FG.cell_at(tab.current(), 0, 1)[0]["show"]
+    tab.place(si, 1, 0)
+    tab.set_span(1, 0, 3)
+    tab.set_cell(1, 0, "axis", FG.REST)
+    # The drag belongs to the tab, so a rebuilt cell does not take its data
+    source = tab.cells[(1, 0)]
+    drag = source.drag()
+    assert drag.parent() is tab
+    data = drag.mimeData()
+    window.refresh()
+    assert bytes(data.data(QF.CELL_MIME)) == b"1,0"
+    # Dropped on the velocity panel above: the panels swap, the rest-wavelength
+    # panel taking its axis with it, its span staying with the row
+    tab.dropped(0, 0, data)
+    qtbot.wait(20)
+    fig = tab.current()
+    top, bottom = FG.cell_at(fig, 0, 0)[0], FG.cell_at(fig, 1, 0)[0]
+    assert top["show"] == si and top["axis"] == FG.REST and top["span"] == 1
+    assert bottom["axis"] == FG.VELOCITY and bottom["span"] == 3
+    # Data that cannot be read: ignored, with a word, and no traceback
+    before = len(window.session.history.done)
+    empty = QtCore.QMimeData()
+    empty.setData(QF.CELL_MIME, b"")
+    tab.dropped(0, 1, empty)
+    qtbot.wait(20)
+    assert len(window.session.history.done) == before
+    assert "could not be read" in window.statusBar().currentMessage()
+
+
+def test_the_margins_control(window, qtbot, tmp_path):
+    tab = figure_tab(window, qtbot, tmp_path)
+    assert tab.margins_auto.isChecked()
+    assert not any(s.isEnabled() for s in tab.margins)
+    shown = [s.value() for s in tab.margins]
+    assert shown == FS.margins_of(window.session.project, tab.current_id())
+    # Unticked: the margins shown become the figure's own, and can be set
+    tab.margins_auto.setChecked(False)
+    assert tab.current()["margins"] == shown
+    tab.margins[2].setValue(1.2)
+    tab.margins[2].editingFinished.emit()
+    assert tab.current()["margins"][2] == 1.2
+    assert last_step(window) == "Change the figure's margins"
+    tab.margins_auto.setChecked(True)
+    assert tab.current()["margins"] is None

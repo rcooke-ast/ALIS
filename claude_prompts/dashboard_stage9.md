@@ -441,6 +441,16 @@ passed (229); `fast` 149 passed (149), with the regression harness. Coverage of 
 new modules 91–94%. Waiting on your comments on the page, your push (CI), and your
 trial of the scripts (Q9.12).*
 
+*2026-11-03, after Prompt 3: the review's comments are applied (version 2 of the page;
+the Figure tab hides the `.mod` panel, D110), and every CI job passes (RJC). The
+stage closes once RJC's feedback on the tab, in the next prompt, is answered.*
+
+*2026-11-06 (Prompt 4): RJC's four points are fixed (D111): drops made after the drag,
+which belongs to the tab, a dragged panel taking its axis and ranges; the margins
+worked out from the panels or set in Layout; a wavelength panel ticking and numbering
+every component. Also a panel's Span in its options (RJC's question of the same day).
+`unit` 2174 passed, `gui` 255 passed. RJC will give more feedback.*
+
 ### Where each element goes
 
 | Element | Task |
@@ -749,3 +759,26 @@ and each can still be changed in the written script.
 2. I have responded to your queries. Please review these responses, and if anything is unclear, ask further questions in the Queries section, and I will respond; when everything is clear, I will give the approval to implement the new features covered by this design document.
 
 3. I have responded to your new queries. Please review these responses, and if anything is unclear, ask further questions in the Queries section, and I will respond; when everything is clear, please implement the new features covered by this design document in the order of the tasks, and with the checks, until Stage 9 is complete. If it is beneficial to stop during the middle of this stage for a review, please ask for the review and I will provide feedback, as in the earlier stages of this development. There is no need to stop between tasks of this stage, unless you think it is useful. Please keep the design document open while you work, and refer to it for the details of each task. If you find any issues or have suggestions for improvements, please note them in the Queries section, and I will respond.
+
+4. I have some feedback for you based on my usage of the Plot tab. Overall, this is excellent work, but there are a few minor areas for improvement that I would like to suggest. Please consider making changes to fix the following issues, and I will provide additional feedback after these have been implemented. Thanks again, keep up the great work! Each suggestion is listed bellow:
+ - I encountered a bug when dragging one panel onto another panel. It was a problem when I dragged a panel that spanned three columns and was given as rest wavelength for the x-axis, and I dragged it onto a panel that was given as velocity for the x-axis. The following error message was reported:
+```
+Error calling Python override of QFrame::dropEvent(): Traceback (most recent call last):
+  File "/Users/rcooke/Software/ALIS/alis/dashboard/qt/figure.py", line 197, in dropEvent
+    self.tab.dropped(self.row, self.start, event.mimeData(), copy_it)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/rcooke/Software/ALIS/alis/dashboard/qt/figure.py", line 1145, in dropped
+    self.move((*_cell_of(data),), (row, start), copy_it)
+                ~~~~~~~~^^^^^^
+  File "/Users/rcooke/Software/ALIS/alis/dashboard/qt/figure.py", line 241, in _cell_of
+    row, start = bytes(data.data(CELL_MIME)).decode().split(",")
+    ^^^^^^^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
+```
+ - Sometimes, the x-axis label is cut off the bottom of the figure, so we might need a way to adjust the margins and/or label padding of the figure.
+ - When plotting on a rest-frame wavelength scale, not all components appear to be shown. It appears that the only tick marks shown are the ones that are specified by the "Zero" option listed in the main options menu.
+ - When plotting on a rest-frame wavelength scale, if I select "Number the ticks", none of the ticks are numbered in the rest-frame wavelength panels. However, the ticks are numbered in the velocity panels. I think this is a bug, and the ticks should be numbered in the rest-frame wavelength panels as well.
+
+5. Great, these fixes are all in, and work as expected! I have a few more points of feedback:
+ - The "Flux numbers' side" option allows three choices: "Automatic", "Left", and "Right", but we should offer a fourth option, "Both", which will number the y-axis on both sides of the panel. This is useful for panels that span the full set of columns. It would also be useful to have a fifth option, "None", which will not have Flux numbers on either side of the panel on the y-axis. This is useful for panels that are in the middle of a figure, and do not need to have any y-axis numbers.
+ - 

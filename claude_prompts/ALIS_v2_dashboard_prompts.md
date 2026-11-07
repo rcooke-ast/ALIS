@@ -866,7 +866,8 @@ change).*
   §7.7).
 
 *Stage 9 decisions (the Figure tab). Added by Claude on 2026-11-03 from Q9.1–Q9.12,
-the work of the stage and RJC's review (D110).*
+the work of the stage, RJC's review (D110) and RJC's use of the tab (D111, Prompt 4,
+2026-11-06).*
 - **D102. The Figure tab** (Q9.1, Q9.5; refines D34, D42, D77): the Plot tab is called
   Figure. It is enabled once the run the Fit tab shows (a committed run, never the
   fit in progress) has a best fit, and draws that run. Before, and while anything is
@@ -919,6 +920,19 @@ the work of the stage and RJC's review (D110).*
   is not kept as the user's choice. The review agreed two ion colours then grey
   (D109), and the labels' place above the zero level, its corner set per panel or
   for all.
+- **D111. Fixes from RJC's use of the tab** (Prompt 4; refines D106, D107):
+  - a wavelength panel ticks every component of every ion in its range, as a
+    velocity panel does (Ions and Components ticked thin them), and Number the ticks
+    numbers them; Q9.8 (iv)'s ticks of one ion at the velocity zero alone gave way;
+  - a panel dragged to another cell takes its own options with it (its transition,
+    words, ticks, x axis and ranges); its span and numbers stay with the cell;
+  - a drop is read at once and its step made once the drag has ended, and the drag
+    belongs to the tab: the step rebuilds the cells, and the cell the drag began on
+    had owned its data;
+  - the margins are worked out from the panels (the numbers, the shared titles, the
+    panels' own titles at the figure's edges, titles above the first row), or set in
+    Layout (Margins, in inches); the script holds them as `MARGINS`, with
+    `TITLE_PAD` for the panels' own titles.
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

@@ -66,6 +66,8 @@ for ax in fig.axes:
         "ylim": list(ax.get_ylim()),
         "yticks": [float(v) for v in ax.get_yticks()],
         "xlabel": ax.get_xlabel(),
+        "xlabel_bottom": ax.xaxis.label.get_window_extent().y0 if ax.get_xlabel()
+        else None,
         "title": ax.get_title(),
         "xnumbers": [t.get_text() for t in ax.get_xticklabels() if t.get_text()],
         "left": any(t.label1.get_visible() and t.label1.get_text() for t in ticks),
@@ -439,3 +441,59 @@ def test_another_system_s_panel_and_a_removed_snip(tmp_path, registry):
     # (the datasets are grouped again without it, so only the line is compared)
     assert [p["name"].split(" · ")[0] for p in data["panels"]] == ["Lyα 1215.7"]
     assert notes == ["Figure 1, row 1, column 2: its snip is no longer in the project."]
+
+
+def test_a_wavelength_panel_ticks_and_numbers_every_component(tmp_path, registry):
+    # RJC's Prompt 4: a rest-wavelength panel ticked only the velocity zero's
+    # component, and numbered none
+    project, view = project_with_run(write_thermal_fit(tmp_path / "fit"), registry)
+    fid = with_preset(project, view, FP.DH)
+    project.apply(FG.set_cell(project, fid, 0, 0, "axis", FG.REST))
+    project.apply(FG.set_option(project, fid, "numbered", True))
+    data, _, _ = FS.describe(project, view, fid, "test")
+    lya = data["panels"][0]
+    # H I and D I, each at both components (a1, and a2 85 km/s redward)
+    assert {ion: sorted({c for _, c in m}) for ion, m in lya["ticks"]} == {
+        "H I": ["a1", "a2"],
+        "D I": ["a1", "a2"],
+    }
+    script, _ = written(project, view, fid, tmp_path / "out")
+    drawn = read_back(script)["panels"][0]
+    colours = FS.COLOURS[FG.SAFE]["TICKS"]
+    ticks = [(c, x[0]) for c, x, y in drawn["lines"] if y[0] > 1.0]
+    assert len(ticks) == 4 and {c for c, _ in ticks} == set(colours[:2])
+    # Each in the rest frame of the velocity zero, and numbered
+    z1, z2 = data["components"]["a1"], data["components"]["a2"]
+    expect = sorted(1215.6701 * (1 + z) / (1 + lya["z"]) for z in (z1, z2))
+    assert sorted(x for c, x in ticks if c == colours[0]) == pytest.approx(expect)
+    assert sorted(t for t, _ in drawn["texts"] if t != "Lyα") == ["1", "1", "2", "2"]
+    # The panel's options thin them: a2 alone
+    project.apply(FG.set_cell(project, fid, 0, 0, "components", ["a2"]))
+    data, _, _ = FS.describe(project, view, fid, "test")
+    assert {c for _, m in data["panels"][0]["ticks"] for _, c in m} == {"a2"}
+
+
+def test_the_margins_keep_a_panel_s_own_title_inside(tmp_path, registry):
+    # RJC's Prompt 4: an x title was cut off the bottom of the figure
+    project, view = project_with_run(METAL, registry)
+    fid = with_preset(project, view, FP.METALS)
+    project.apply(FG.set_cell(project, fid, 0, 1, "axis", FG.OBSERVED))
+    data, _, _ = FS.describe(project, view, fid, "metal")
+    # No shared x title (the axes differ); the panel's own, in the bottom row
+    assert data["shared_x"] == ("", "")
+    assert data["margins"] == (0.75, 0.5, 0.7, 0.1)
+    script, _ = written(project, view, fid, tmp_path / "out")
+    assert "\nMARGINS = (0.75, 0.5, 0.7, 0.1)\n" in script.read_text()
+    titled = [p for p in read_back(script)["panels"] if p["xlabel"]]
+    assert titled and all(p["xlabel_bottom"] >= 0.0 for p in titled)
+    # Set by hand, they are the figure's own
+    project.apply(FG.set_option(project, fid, "margins", [1.0, 0.3, 0.9, 0.2]))
+    assert FS.describe(project, view, fid, "metal")[0]["margins"] == (
+        1.0,
+        0.3,
+        0.9,
+        0.2,
+    )
+    assert FS.margins_of(project, fid) == [1.0, 0.3, 0.9, 0.2]
+    project.apply(FG.set_option(project, fid, "margins", None))
+    assert FS.margins_of(project, fid) == [0.75, 0.5, 0.7, 0.1]

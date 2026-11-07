@@ -927,14 +927,16 @@ run_alis myfit.model     # fits the project from the command line, as before
     the velocity range and the component it is measured from, the residuals (none, a
     strip below the data, or inside each panel), colour-blind-safe or the published
     colours, the style (ALIS's publication style, or another file), the shared
-    titles, signed velocities and the components' numbers above their ticks.
+    titles, signed velocities, the components' numbers above their ticks, and the
+    margins (worked out from the panels, or set in inches).
   - **Panels.** Drag a transition from Not shown onto a cell; drag between cells to
-    swap two panels (with Ctrl or ⌥ held, to copy); drag a panel back to Not shown to
-    take it off. A transition shown in two panels, of one figure or two, is marked
+    swap two panels (with Ctrl or ⌥ held, to copy), each taking its own x axis and
+    ranges with it; drag a panel back to Not shown to take it off. A transition shown in two panels, of one figure or two, is marked
     with a !, naming the other panels. ⚙ opens a panel's options: it can span
     several columns of its row; its x axis is Velocity, Observed wavelength or Rest
     wavelength, with its own range; its flux range and ticks, its numbers and titles,
-    its label and corner, a title above it, and the ions and components it ticks.
+    its label and corner, a title above it, and the ions and components it ticks (on
+    any axis, every component of every ion in range by default).
     Apply to all panels sets an option on every panel.
   - **The preview.** Draw preview runs the figure's own script and shows what it
     draws, so the preview is the figure, LaTeX included. Nothing redraws by itself;

@@ -407,3 +407,42 @@ def test_the_figure_tab_s_marker(metal):
     do(metal, FG.place(metal, fid, 0, 1, o1))
     mark = MK.figure_marker(metal, "")
     assert mark.state == MK.ATTENTION and "is shown in 2 panels" in mark.tip
+
+
+def test_a_dragged_panel_takes_its_axis_and_ranges(metal):
+    # RJC's Prompt 4: a rest-wavelength panel spanning a row, dragged onto a velocity
+    # panel, stays a rest-wavelength panel; the span stays with the row
+    fid = made(metal)
+    found = entries(metal)
+    do(metal, FG.place(metal, fid, 0, 0, found["O I 1302.2"].key))
+    do(metal, FG.place(metal, fid, 1, 0, found["Si II 1304.4"].key))
+    do(metal, FG.set_span(metal, fid, 1, 0, 3))
+    do(metal, FG.set_cell(metal, fid, 1, 0, "axis", FG.REST))
+    do(metal, FG.set_cell(metal, fid, 1, 0, "xrange", [1304.0, 1304.8]))
+    do(metal, FG.set_cell(metal, fid, 1, 0, "yrange", [0.5, 1.2]))
+    do(metal, FG.move(metal, fid, (1, 0), (0, 0)))
+    fig = FG.figure(metal, fid)
+    top, bottom = FG.cell_at(fig, 0, 0)[0], FG.cell_at(fig, 1, 0)[0]
+    assert top["show"]["ion"] == "28Si_II" and top["axis"] == FG.REST
+    assert top["xrange"] == [1304.0, 1304.8] and top["yrange"] == [0.5, 1.2]
+    assert top["xtitle"] is True and top["span"] == 1
+    assert bottom["show"]["ion"] == "16O_I" and bottom["axis"] == FG.VELOCITY
+    assert bottom["xrange"] is None and bottom["span"] == 3
+    # A copy takes them too
+    do(metal, FG.move(metal, fid, (0, 0), (2, 1), copy_it=True))
+    assert FG.cell_at(FG.figure(metal, fid), 2, 1)[0]["axis"] == FG.REST
+
+
+def test_the_margins_and_a_figure_saved_before_them(metal):
+    fid = made(metal)
+    assert FG.figure(metal, fid)["margins"] is None
+    do(metal, FG.set_option(metal, fid, "margins", [0.8, 0.2, 0.9, 0.15]))
+    assert FG.figure(metal, fid)["margins"] == [0.8, 0.2, 0.9, 0.15]
+    with pytest.raises(FG.FigureError, match="four numbers of 0 to 3 inches"):
+        FG.set_option(metal, fid, "margins", [0.8, 0.2, 4.0, 0.1])
+    do(metal, FG.set_option(metal, fid, "margins", None))
+    # A figure written before an option existed reads with its default
+    del metal.ui[FG.FIGURES_KEY][0]["margins"]
+    del metal.ui[FG.FIGURES_KEY][0]["cells"][0][0]["corner"]
+    fig = FG.figure(metal, fid)
+    assert fig["margins"] is None and fig["cells"][0][0]["corner"] == "lower left"

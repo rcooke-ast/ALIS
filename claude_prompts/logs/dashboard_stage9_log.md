@@ -450,3 +450,87 @@ waits for RJC's approval to implement. No code was changed.
   test), in 9 min 4 s. `unit` is unaffected: 2170 passed, 120 skipped. RJC's fourth
   thread (the Q9.12 options, to be tried and commented on) was resolved with its
   auto-reply, and needed no change.
+
+### 2026-11-03 (RJC: CI passes)
+
+- RJC reports that every CI job passes on the push of Stage 9, so the `gui` job runs
+  within its new 90-minute limit on both platforms. RJC will try the Figure tab and
+  write feedback in the next prompt; the stage closes once that is answered.
+
+### 2026-11-06 (RJC's question: merging a 3 × 2 grid's bottom three panels)
+
+- **The question:** can the bottom three panels of a 3 × 2 grid be merged into one?
+- **The answer, and an omission found.** The logic has had spans since Task 9.2:
+  `figure.set_span`, tested, drawn by the picture of the grid and by the script.
+  But no control in the window set them. The options dialog lacked Span, although
+  Task 9.6's check ("the options popup sets each option") and the review page both
+  implied it. The `DH_Lyseries.py` screen was made by calling `set_span` directly.
+- **The fix** (`qt/figure.py`): Span is the first field of a panel's options, a spin
+  box from 1 to the columns left in the panel's row ("1 of 3 columns"). Each change
+  is one step (`FigureTab.set_span`); a refusal is said in the dialog. Test:
+  `test_a_panel_spans_its_row_from_its_options`. RJC's case is checked: the bottom
+  row of a 3 × 2 grid made one cell across three columns, the panel it covered sent
+  back to Not shown, and a middle cell offered at most 2. The tab's tests pass (24).
+- **The page:** version 3 has the options screenshot retaken with Span, and the
+  section's text names it.
+
+### 2026-11-06 (Prompt 4: RJC's feedback from using the tab)
+
+- **1. A drop that raised "not enough values to unpack"** (a three-column
+  rest-wavelength panel dragged onto a velocity panel).
+  - *Cause:* the drop made its step at once, inside the drag. The step refreshed
+    the window, and the refresh rebuilt every cell, deleting the cell the drag began
+    on. That cell owned the drag (`QDrag(self)`) and so its data, while `drag.exec`
+    was still running in it. The drop event then read empty data (on macOS it can be
+    delivered again after the first). The autosave timer's refresh, landing during a
+    drag, could do the same. The native drag cannot be run off-screen, so it was not
+    reproduced here.
+  - *Fix* (`qt/figure.py`): the drag belongs to the tab (`CellWidget.drag`) and is
+    deleted after it ends. A drop reads its data at once (`_cell_of` and `_entry_of`
+    return None for data that cannot be read) and makes its step with
+    `QTimer.singleShot(0, …)`, once the drag has ended; the tray's drop does the
+    same. Unreadable data are ignored, with "That drop could not be read: drag the
+    panel again." in the status bar. `move` looks the cell up inside the guarded
+    action.
+  - *And what the drag does:* a moved panel now takes its own options with it
+    (`figure.CARRIED`: transition, label, title, ticked ions and components, x axis,
+    x and flux ranges, flux ticks, own x title, label corner). The span and the
+    numbers, which follow the place, stay with the cell. So RJC's rest-wavelength
+    panel stays one where it is dropped, rather than becoming a ±125 km/s velocity
+    panel in the cell it lands in.
+- **2. An x title cut off the bottom.**
+  - *Cause:* the margins allowed for the numbers and the shared titles only. A
+    panel's own x title in the bottom row (as when the panels' axes differ and there
+    is no shared x title) fell below the figure.
+  - *Fix:* the emitter works the margins out (`figscript.auto_margins`): 0.3 in more
+    for an own x title in the bottom row, an own y title at either side, or a shared
+    title, and 0.25 in for titles above the first row. Layout gains Margins:
+    Automatic, or four values in inches (left, right, bottom, top), each change one
+    step. The automatic values are shown (`figscript.margins_of`), and unticking
+    Automatic keeps them as the figure's own. The script holds `MARGINS` and
+    `TITLE_PAD` (the panels' own titles' padding, in points) at its top. A figure
+    saved before `margins` reads with it as None (`figure._complete`).
+- **3 and 4. A rest-wavelength panel ticked the velocity zero's component alone,
+  and numbered none.** Both came from Q9.8 (iv) as written: a wavelength panel
+  ticked each transition of its own ion at the zero's redshift, with no component,
+  so Number the ticks had nothing to number. Now every panel, on any axis, ticks
+  every component of every ion of its system with a transition in range, thinned
+  by the panel's Ions and Components ticked options, and the ticks are numbered.
+- **Decision:** D111 (refining D106 and D107). `doc/ALIS_workflow.md` §4.3 and
+  `CHANGELOG.md` follow.
+- **Tests:**
+  - `test_dashboard_figure.py`: a dragged rest-wavelength panel spanning a row
+    keeps its axis and ranges while its span stays (and a copy takes them); the
+    margins option and its refusal; a figure saved without `margins`.
+  - `test_dashboard_figscript.py`: a rest-wavelength panel ticks H I and D I at
+    both components, at their places, numbered, and thinned to one component by its
+    options. The margins keep a bottom panel's own x title inside the figure (read
+    back from matplotlib), and set by hand they are the figure's.
+  - `test_dashboard_qt_figure.py`: drops are made after the drag; the drag belongs
+    to the tab and its data survive the cells being rebuilt; RJC's drop swaps the
+    panels; unreadable data are ignored with a word; the Margins control.
+  - The stage's tests pass: 17, 9, 18 and 26.
+- **Batches** (pytest 9.2.0): `unit` 2174 passed, 120 skipped (2170 before Prompt 4,
+  plus 4); `gui` 255 passed (252, plus 3 new, among them the span test of
+  2026-11-06), in 8 min 56 s. Pre-commit passed. Not yet pushed: RJC's next push is
+  CI's check.
