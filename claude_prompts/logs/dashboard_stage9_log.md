@@ -534,3 +534,34 @@ waits for RJC's approval to implement. No code was changed.
   plus 4); `gui` 255 passed (252, plus 3 new, among them the span test of
   2026-11-06), in 8 min 56 s. Pre-commit passed. Not yet pushed: RJC's next push is
   CI's check.
+
+### 2026-11-08 (Prompt 5: the flux numbers' side)
+
+- **RJC's point:** "Flux numbers' side" (Automatic, Left, Right) should also offer
+  Both (for a panel across all the columns) and None (for a panel in the middle).
+- **The change.** The flux numbers' two options, Flux numbers (Automatic, Shown,
+  Hidden) and their side (Automatic, Left, Right), become one: Flux numbers' side,
+  Automatic, Left, Right, Both or None. None does what Hidden did, and Left, Right
+  or Both what Shown did, so two controls would have allowed contradictions such as
+  Hidden with Both.
+  - `figure.py`: a cell's `yside` (None, or one of `YSIDES`) replaces `ynumbers`
+    and `yright`, and is among the options Apply to all panels sets. `numbers()`
+    returns `(x, side)`; Automatic is left on a row's first drawn panel, right on its
+    last and none between, as before. `_complete` reads a figure saved with the two
+    options as the side they meant (shown False → none; yright → right or left).
+  - `figscript.py`: each panel's `yside` numbers the left, the right, both or
+    neither side (`labelleft` and `labelright`). The margins leave room on the right
+    for Right or Both.
+  - `qt/figure.py`: the options dialog has one Flux numbers' side menu, with its
+    Apply to all panels.
+- **Decision:** D112 (refining D106).
+- **Tests:**
+  - `test_dashboard_figure.py`: the automatic sides, and Both and None set and
+    refused; a figure saved with the two options;
+  - `test_dashboard_figscript.py`: none, right and both read back from the drawn
+    figure, with room on the right;
+  - `test_dashboard_qt_figure.py`: the menu's five choices, the old two gone, one
+    Apply to all panels.
+  - The stage's tests pass (18, 19, 27). Pre-commit passed.
+- **Batches** (pytest 9.2.0): `unit` 2176 passed, 120 skipped (2174, plus 2); `gui`
+  256 passed (255, plus 1), in 9 min 1 s. Not yet pushed.

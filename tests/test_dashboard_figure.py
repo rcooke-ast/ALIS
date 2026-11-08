@@ -285,7 +285,7 @@ def test_q9_12_s_options_are_steps(metal):
         ("corner", "upper right"),
         ("title", "UVES data"),
         ("yticks", [1.0, 0.6, 0.8]),
-        ("yright", True),
+        ("yside", FG.RIGHT),
         ("ions", ["16O_I"]),
         ("components", ["a1"]),
         ("label", "O I"),
@@ -314,25 +314,36 @@ def test_q9_12_s_options_are_steps(metal):
 def test_the_numbers_follow_a_panel_s_place(metal):
     fid = made(metal)
     fig = FG.figure(metal, fid)
-    # 3 × 3: x on the bottom row; y on the left and, on its right, the right column
+    # 3 × 3: x on the bottom row; the flux axis on the left of the first panel and on
+    # the right of the last
     got = {(r, s): FG.numbers(fig, r, s) for r, s, _ in FG.places(fig)}
-    assert got[(0, 0)] == (True, True, False)  # nothing below shows a transition
+    assert got[(0, 0)] == (True, FG.LEFT)  # nothing below shows a transition
     o1 = entries(metal)["O I 1302.2"].key
     for row in range(3):
         do(metal, FG.place(metal, fid, row, 1, o1))
     fig = FG.figure(metal, fid)
     assert [FG.numbers(fig, r, 1)[0] for r in range(3)] == [False, False, True]
     # Alone in its row, a panel is numbered on the left
-    assert FG.numbers(fig, 0, 1)[1:] == (True, False)
+    assert FG.numbers(fig, 0, 1)[1] == FG.LEFT
     for col in (0, 2):
         do(metal, FG.place(metal, fid, 0, col, o1))
     fig = FG.figure(metal, fid)
-    assert FG.numbers(fig, 0, 0)[1:] == (True, False)
-    assert FG.numbers(fig, 0, 1)[1:] == (False, False)
-    assert FG.numbers(fig, 0, 2)[1:] == (True, True)
+    assert [FG.numbers(fig, 0, s)[1] for s in range(3)] == [
+        FG.LEFT,
+        FG.NO_SIDE,
+        FG.RIGHT,
+    ]
+    # Both sides, or none, are the cell's choice (RJC's Prompt 5)
+    do(metal, FG.set_cell(metal, fid, 0, 0, "yside", FG.BOTH))
+    do(metal, FG.set_cell(metal, fid, 0, 2, "yside", FG.NO_SIDE))
+    fig = FG.figure(metal, fid)
+    assert [FG.numbers(fig, 0, s)[1] for s in (0, 2)] == [FG.BOTH, FG.NO_SIDE]
+    with pytest.raises(FG.FigureError, match="numbered left, right"):
+        FG.set_cell(metal, fid, 0, 0, "yside", "middle")
+    do(metal, FG.set_cell(metal, fid, 0, 2, "yside", None))
     # An empty cell after a panel counts as no panel: it is the row's last
     do(metal, FG.remove(metal, fid, 0, 2))
-    assert FG.numbers(FG.figure(metal, fid), 0, 1)[1:] == (True, True)
+    assert FG.numbers(FG.figure(metal, fid), 0, 1)[1] == FG.RIGHT
     # A panel below with another x axis numbers the one above
     do(metal, FG.set_cell(metal, fid, 1, 1, "axis", FG.REST))
     fig = FG.figure(metal, fid)
@@ -446,3 +457,16 @@ def test_the_margins_and_a_figure_saved_before_them(metal):
     del metal.ui[FG.FIGURES_KEY][0]["cells"][0][0]["corner"]
     fig = FG.figure(metal, fid)
     assert fig["margins"] is None and fig["cells"][0][0]["corner"] == "lower left"
+
+
+def test_a_figure_saved_with_the_flux_numbers_two_options(metal):
+    # Before Prompt 5, a cell kept "ynumbers" (shown or not) and "yright" (the side)
+    fid = made(metal)
+    cells = metal.ui[FG.FIGURES_KEY][0]["cells"][0]
+    for cell, old in zip(cells, ((False, None), (True, True), (None, False))):
+        del cell["yside"]
+        cell["ynumbers"], cell["yright"] = old
+    fig = FG.figure(metal, fid)
+    assert [c["yside"] for c in fig["cells"][0]] == [FG.NO_SIDE, FG.RIGHT, FG.LEFT]
+    assert "ynumbers" not in fig["cells"][0][0] and "yright" not in fig["cells"][0][0]
+    assert fig["cells"][1][0]["yside"] is None

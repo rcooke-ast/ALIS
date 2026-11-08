@@ -867,7 +867,7 @@ change).*
 
 *Stage 9 decisions (the Figure tab). Added by Claude on 2026-11-03 from Q9.1–Q9.12,
 the work of the stage, RJC's review (D110) and RJC's use of the tab (D111, Prompt 4,
-2026-11-06).*
+2026-11-06; D112, Prompt 5, 2026-11-08).*
 - **D102. The Figure tab** (Q9.1, Q9.5; refines D34, D42, D77): the Plot tab is called
   Figure. It is enabled once the run the Fit tab shows (a committed run, never the
   fit in progress) has a best fit, and draws that run. Before, and while anything is
@@ -933,6 +933,11 @@ the work of the stage, RJC's review (D110) and RJC's use of the tab (D111, Promp
     panels' own titles at the figure's edges, titles above the first row), or set in
     Layout (Margins, in inches); the script holds them as `MARGINS`, with
     `TITLE_PAD` for the panels' own titles.
+- **D112. The flux numbers' side** (Prompt 5; refines D106's y numbers): a panel's
+  flux axis is numbered Automatic (left on a row's first panel, right on its last,
+  none between), Left, Right, Both or None, one choice that Apply to all panels can
+  set; it replaces the separate Shown/Hidden choice and the left/right side, and a
+  figure saved with those reads as the side they meant.
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

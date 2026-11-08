@@ -56,6 +56,8 @@ SHIPPED_STYLE = "ALIS publication"
 OTHER_STYLE = "Other file…"
 # A cell's numbers: follow its place, or shown, or not
 AUTO, SHOWN, HIDDEN = "Automatic", "Shown", "Hidden"
+# The flux numbers' side, as the options' menu lists it: Automatic first
+YSIDE_CHOICES = (None,) + FG.YSIDES
 BEFORE = "Draw preview runs the figure's script and shows what it draws."
 STALE = "The figure has changed since this preview was drawn."
 DRAWING = "Drawing the preview…"
@@ -388,24 +390,23 @@ class OptionsDialog(QtWidgets.QDialog):
             lambda: self.change("yticks", lambda: _parse_numbers(yticks.text()))
         )
         add("yticks", "Flux ticks at", yticks, shared=True)
-        for key, title_ in (("xnumbers", "x numbers"), ("ynumbers", "Flux numbers")):
-            box = QtWidgets.QComboBox()
-            box.addItems([AUTO, SHOWN, HIDDEN])
-            value = cell[key]
-            box.setCurrentIndex(0 if value is None else (1 if value else 2))
-            box.currentIndexChanged.connect(
-                lambda n, k=key: self.change(k, (None, True, False)[n])
-            )
-            add(key, title_, box, shared=True)
+        xnumbers = QtWidgets.QComboBox()
+        xnumbers.addItems([AUTO, SHOWN, HIDDEN])
+        value = cell["xnumbers"]
+        xnumbers.setCurrentIndex(0 if value is None else (1 if value else 2))
+        xnumbers.currentIndexChanged.connect(
+            lambda n: self.change("xnumbers", (None, True, False)[n])
+        )
+        add("xnumbers", "x numbers", xnumbers, shared=True)
+        # The flux numbers' side (RJC's Prompt 5): both, for a panel across the row;
+        # none, for a panel in the middle of the figure
         side = QtWidgets.QComboBox()
-        side.addItems([AUTO, "Left", "Right"])
-        side.setCurrentIndex(
-            0 if cell["yright"] is None else (2 if cell["yright"] else 1)
-        )
+        side.addItems([AUTO] + [s.capitalize() for s in FG.YSIDES])
+        side.setCurrentIndex(YSIDE_CHOICES.index(cell["yside"]))
         side.currentIndexChanged.connect(
-            lambda n: self.change("yright", (None, False, True)[n])
+            lambda n: self.change("yside", YSIDE_CHOICES[n])
         )
-        add("yright", "Flux numbers' side", side, shared=True)
+        add("yside", "Flux numbers' side", side, shared=True)
         for key, title_ in (
             ("xtitle", "Its own x title"),
             ("ytitle", "Its own y title"),
@@ -479,10 +480,10 @@ class OptionsDialog(QtWidgets.QDialog):
             return _parse_range(widget.text())
         if key == "yticks":
             return _parse_numbers(widget.text())
-        if key in ("xnumbers", "ynumbers"):
+        if key == "xnumbers":
             return (None, True, False)[widget.currentIndex()]
-        if key == "yright":
-            return (None, False, True)[widget.currentIndex()]
+        if key == "yside":
+            return YSIDE_CHOICES[widget.currentIndex()]
         if key in ("xtitle", "ytitle"):
             return widget.isChecked()
         return widget.text()

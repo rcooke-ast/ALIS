@@ -311,7 +311,7 @@ def describe(project, view, fid, name):
                 ticks.append([P.ion_name(ion), marks])
                 if ion not in ions:
                     ions.append(ion)
-        xnum, ynum, right = FG.numbers(fig, row, start)
+        xnum, side = FG.numbers(fig, row, start)
         label = cell["label"] or label_text(entry.ion, entry.rest)
         files[snip.data.index] = names[snip.data.index]
         panels.append(
@@ -334,8 +334,7 @@ def describe(project, view, fid, name):
                 "xtitle": axis_title(axis, zref) if cell["xtitle"] else ("", ""),
                 "ytitle": Y_TITLE if cell["ytitle"] else ("", ""),
                 "xnumbers": xnum,
-                "ynumbers": ynum,
-                "yright": right,
+                "yside": side,
                 "ticks": ticks,
             }
         )
@@ -393,11 +392,13 @@ def auto_margins(panels, shared_x, shared_y, rows):
     right = 0.1
     bottom = 0.4 + (title if shared_x[0] else 0.0)
     top = 0.1
-    if any(p["ynumbers"] and p["yright"] for p in panels):
+    if any(p["yside"] in (FG.RIGHT, FG.BOTH) for p in panels):
         right += 0.4
-    if any(p["ytitle"][0] and not p["yright"] and p["column"] == 0 for p in panels):
+    if any(
+        p["ytitle"][0] and p["yside"] != FG.RIGHT and p["column"] == 0 for p in panels
+    ):
         left += title
-    if any(p["ytitle"][0] and p["yright"] for p in panels):
+    if any(p["ytitle"][0] and p["yside"] == FG.RIGHT for p in panels):
         right += title
     if any(p["xtitle"][0] and p["row"] == rows - 1 for p in panels):
         bottom += title
@@ -420,7 +421,7 @@ def margins_of(project, fid):
     for row, start, cell in FG.places(fig):
         if not cell["show"]:
             continue
-        xnum, ynum, right = FG.numbers(fig, row, start)
+        xnum, side = FG.numbers(fig, row, start)
         panels.append(
             {
                 "row": row,
@@ -428,8 +429,7 @@ def margins_of(project, fid):
                 "xtitle": ("x",) if cell["xtitle"] else ("",),
                 "ytitle": ("y",) if cell["ytitle"] else ("",),
                 "title": (cell["title"],),
-                "ynumbers": ynum,
-                "yright": right,
+                "yside": side,
             }
         )
     axes = {c["axis"] for _, _, c in FG.places(fig) if c["show"]}
@@ -562,7 +562,8 @@ def script(project, view, fid, name, style=STYLE_NAME):
         "COMPONENTS = {0}".format(_literal(data["components"])),
         "# The panels: each its snip's file, its transition (rest wavelength, Å) at",
         "# redshift z, its x axis (velocity, observed or rest wavelength) and ranges,",
-        "# its words (plain, LaTeX), its numbers, and its ticks: (rest, component)",
+        "# its words (plain, LaTeX), its numbers (yside: the flux axis numbered left,",
+        "# right, both or none), and its ticks: (rest, component)",
         "# for each ion",
         "PANELS = {0}".format(_literal(data["panels"])),
         "",
@@ -705,11 +706,11 @@ def draw_panel(ax, panel):
     ax.tick_params(axis="y", which="both", left=True, right=True)
     ax.tick_params(
         axis="y",
-        labelleft=panel["ynumbers"] and not panel["yright"],
-        labelright=panel["ynumbers"] and panel["yright"],
+        labelleft=panel["yside"] in ("left", "both"),
+        labelright=panel["yside"] in ("right", "both"),
     )
     ax.tick_params(axis="both", labelsize=NUMBER_SIZE)
-    if panel["yright"]:
+    if panel["yside"] == "right":
         ax.yaxis.set_label_position("right")
     xa, ya, ha, va = CORNERS[panel["corner"]]
     lower = panel["corner"].startswith("lower")

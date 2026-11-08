@@ -663,3 +663,27 @@ def test_the_margins_control(window, qtbot, tmp_path):
     assert last_step(window) == "Change the figure's margins"
     tab.margins_auto.setChecked(True)
     assert tab.current()["margins"] is None
+
+
+def test_the_flux_numbers_side_has_five_choices(window, qtbot, tmp_path):
+    # RJC's Prompt 5: Both and None join Automatic, Left and Right, and the separate
+    # Shown/Hidden choice they cover is gone
+    tab = figure_tab(window, qtbot, tmp_path)
+    seen = {}
+
+    def options(dialog):
+        side = dialog.fields["yside"]
+        seen["choices"] = [side.itemText(n) for n in range(side.count())]
+        seen["keys"] = sorted(dialog.fields)
+        side.setCurrentIndex(seen["choices"].index("Both"))
+        dialog.apply_all("yside")
+        side.setCurrentIndex(seen["choices"].index("None"))
+        return 0
+
+    window.on_dialog = options
+    tab.cells[(0, 0)].options.click()
+    assert seen["choices"] == ["Automatic", "Left", "Right", "Both", "None"]
+    assert "ynumbers" not in seen["keys"] and "yright" not in seen["keys"]
+    fig = tab.current()
+    assert FG.cell_at(fig, 0, 0)[0]["yside"] == FG.NO_SIDE
+    assert [c["yside"] for _, s, c in FG.places(fig) if s > 0][:2] == [FG.BOTH] * 2

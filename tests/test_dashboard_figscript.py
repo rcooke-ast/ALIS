@@ -322,8 +322,7 @@ def test_q9_12_s_options_are_drawn(tmp_path, registry):
         ("title", "HIRES data"),
         ("corner", "upper right"),
         ("yticks", [0.6, 0.8, 1.0]),
-        ("ynumbers", True),
-        ("yright", True),
+        ("yside", FG.RIGHT),
     ):
         project.apply(FG.set_cell(project, fid, 0, 0, key, value))
     project.apply(FG.set_option(project, fid, "numbered", True))
@@ -497,3 +496,24 @@ def test_the_margins_keep_a_panel_s_own_title_inside(tmp_path, registry):
     assert FS.margins_of(project, fid) == [1.0, 0.3, 0.9, 0.2]
     project.apply(FG.set_option(project, fid, "margins", None))
     assert FS.margins_of(project, fid) == [0.75, 0.5, 0.7, 0.1]
+
+
+def test_the_flux_axis_numbered_on_both_sides_or_none(tmp_path, registry):
+    # RJC's Prompt 5: Both, for a panel across its row; None, for one in the middle
+    project, view = project_with_run(METAL, registry)
+    fid = with_preset(project, view, FP.METALS)
+    project.apply(FG.set_grid(project, fid, 3, 2))
+    o1 = next(e for e in FG.transitions(project) if e.ion == "16O_I")
+    project.apply(FG.place(project, fid, 1, 0, o1.key))
+    project.apply(FG.set_span(project, fid, 1, 0, 3))
+    project.apply(FG.set_cell(project, fid, 1, 0, "yside", FG.BOTH))
+    project.apply(FG.set_cell(project, fid, 0, 0, "yside", FG.NO_SIDE))
+    data, _, _ = FS.describe(project, view, fid, "metal")
+    assert [p["yside"] for p in data["panels"]] == [FG.NO_SIDE, FG.RIGHT, FG.BOTH]
+    # Room on the right for the numbers there
+    assert data["margins"][1] == 0.5
+    script, _ = written(project, view, fid, tmp_path / "out")
+    top_left, top_right, wide = read_back(script)["panels"]
+    assert (top_left["left"], top_left["right"]) == (False, False)
+    assert (top_right["left"], top_right["right"]) == (False, True)
+    assert (wide["left"], wide["right"]) == (True, True)
