@@ -96,6 +96,18 @@ STRONG = -2.0
 # Lines of one ion closer than this, in km/s, share one row of the list (D36): the
 # resolution, when the rows do not give their own
 GROUP_KMS = 7.0
+# The order of the transition list (Stage 10, point 9): by wavelength, the shortest
+# first (the default), or by f λ, the strongest first (D36)
+WAVELENGTH, STRENGTH = "wavelength", "strength"
+# What the Regions tab's line IDs label (Stage 10, point 4): the transition shown,
+# the ion shown, the model's ions and strong lines (D59, the default), every line
+TRANSITION, ION, MODEL, EVERY = "transition", "ion", "model", "every"
+LABELLED = (
+    (TRANSITION, "This transition"),
+    (ION, "This ion"),
+    (MODEL, "The model's ions and strong lines"),
+    (EVERY, "Every line"),
+)
 # A step between good pixels of this many times the median step splits the data
 SPLIT = 5.0
 # A transition named in a snip's file name: ``_H_I_923.2_``, or ``_O_I_988_``
@@ -531,10 +543,12 @@ def transitions(
     system="",
     group_kms=GROUP_KMS,
     half_width=HALF_WIDTH,
+    order=WAVELENGTH,
 ):
     """
     The transition list of one ion (S2, D36): its transitions that fall on the data,
-    and any that has a snip, ranked by f λ.
+    and any that has a snip, in order of rest wavelength (a row of near-coincident
+    lines by its first), or ranked by f λ (``order`` :data:`STRENGTH`).
 
     Parameters
     ----------
@@ -547,6 +561,8 @@ def transitions(
         Rest wavelengths of this ion that have a snip, for this system.
     system : str
     group_kms, half_width : float
+    order : str
+        :data:`WAVELENGTH` or :data:`STRENGTH`.
 
     Returns
     -------
@@ -575,6 +591,8 @@ def transitions(
         if on_data or row.snipped:
             out.append(row)
     out.sort(key=lambda r: -r.flam)
+    if order == WAVELENGTH:
+        out.sort(key=lambda r: min(r.members or (r.rest,)))
     return out
 
 
@@ -684,14 +702,20 @@ def line_ids(
     strong=STRONG,
     group_kms=GROUP_KMS,
     systems=None,
+    shown=None,
+    which=MODEL,
+    rest=None,
 ):
     """
     The line IDs between two observed wavelengths (S5, Q4.4).
 
     Every system labels the transitions of its ions (in the model, or named as its
-    line IDs) and its strong lines; with ``show_all``, every line. Generic absorbers
-    label their own lines. The lines left unlabelled are counted, so that the user can
-    see that there are more ("+ 23 lines not labelled").
+    line IDs) and its strong lines; with ``show_all``, every line. The isotopes of
+    the ion ``shown`` are labelled as its own lines are (D I with H I: Stage 10,
+    point 7), but one closer than ``group_kms`` to its main isotope's line shares
+    that line's label. Generic absorbers label their own lines. The lines left
+    unlabelled are counted, so that the user can see that there are more ("+ 23
+    lines not labelled").
 
     Parameters
     ----------
@@ -708,6 +732,16 @@ def line_ids(
         Lines of one ion closer than this share one label.
     systems : list of System, optional
         The systems to label; every system of the project by default.
+    shown : str, optional
+        The ion the Regions tab shows (``1H_I``), whose isotopes are labelled.
+    which : str
+        What is labelled (Stage 10, point 4): :data:`MODEL`, as above (the
+        default); :data:`EVERY`, every line (as ``show_all``); :data:`ION`, the
+        lines of the ion ``shown`` and of its isotopes, of the ``reference``
+        system; :data:`TRANSITION`, its transition at ``rest`` alone, with each
+        isotope's nearest line. Every other line in the range is counted.
+    rest : float, optional
+        The rest wavelength of the transition shown, for :data:`TRANSITION`.
 
     Returns
     -------
@@ -721,20 +755,36 @@ def line_ids(
     systems = project.systems if systems is None else systems
     if reference is None:
         reference = next((s.id for s in systems if s.primary), None)
+    if which in (TRANSITION, ION):
+        every, _ = line_ids(
+            project, low, high, reference, True, strong, group_kms, systems, shown
+        )
+        keep = _shown_only(
+            every, atom, reference, shown, rest, which == TRANSITION, group_kms
+        )
+        return keep, len(every) - len(keep)
+    show_all = show_all or which == EVERY
+    isotopes = isotopes_of(atom, shown) if shown else set()
+    mains = [ln.rest for ln in atom.lines if ln.main and ln.ion in isotopes]
     ids, hidden = [], 0
     for system in systems:
         named = set(system_ions(system))
         own = system.id == reference
         factor = 1.0 + system.z
-        for ion, lines in _labelled_ions(atom, named).items():
+        twins = isotopes if named & isotopes else set()
+        for ion, lines in _labelled_ions(atom, named | isotopes).items():
+            isotope = ion in isotopes and not lines[0].main
             for group in group_lines(lines, group_kms):
                 top = max(group, key=lambda ln: ln.fval)
                 obs = top.rest * factor
                 if not low <= obs <= high:
                     continue
-                main = top.main
+                if isotope and _near(top.rest, mains, group_kms):
+                    # It shares its main isotope's line's label (¹³C II 1334)
+                    continue
+                main = top.main or isotope
                 strong_enough = main and (top.strength or -99.0) >= strong
-                if show_all or ion in named or strong_enough:
+                if show_all or ion in named or ion in twins or strong_enough:
                     kind = (
                         (HYDROGEN if top.element in ("H", "D") else METAL)
                         if own
@@ -776,6 +826,54 @@ def _labelled_ions(atom, named):
         if line.main or line.ion in named:
             out.setdefault(line.ion, []).append(line)
     return out
+
+
+def isotopes_of(atom, ion):
+    """
+    Every ion of an ion's element and stage, of any isotope: ``1H_I`` gives ``1H_I``
+    and ``2H_I`` (Stage 10, point 7).
+
+    Generated by RJC and Claude.
+    """
+    _, element, stage = P.split_ion(ion)
+    return {
+        other for other in atom.by_ion if P.split_ion(other)[1:] == (element, stage)
+    }
+
+
+def _shown_only(ids, atom, reference, shown, rest, transition, group_kms=GROUP_KMS):
+    """
+    The line IDs of the reference system's ion ``shown`` and its isotopes; with
+    ``transition``, only the one at ``rest`` (within ``group_kms``) and each
+    isotope's nearest to it, within :data:`HALF_WIDTH` km/s (D I's Lyβ beside
+    H I's).
+
+    Generated by RJC and Claude.
+    """
+    if not shown:
+        return []
+    isotopes = isotopes_of(atom, shown)
+    mine = [i for i in ids if i.system == reference and i.ion in isotopes]
+    if not transition:
+        return mine
+    if rest is None:
+        return []
+    out = []
+    for ion in sorted(isotopes):
+        theirs = [i for i in mine if i.ion == ion]
+        if not theirs:
+            continue
+        best = min(theirs, key=lambda i: abs(i.rest - rest))
+        limit = group_kms if ion == shown else HALF_WIDTH
+        if abs(C_KMS * (best.rest - rest) / rest) < limit:
+            out.append(best)
+    out.sort(key=lambda i: i.observed)
+    return out
+
+
+def _near(rest, others, group_kms):
+    """Whether a rest wavelength is closer than ``group_kms`` to one of others."""
+    return any(abs(C_KMS * (rest - other) / rest) < group_kms for other in others)
 
 
 # -- Identify a feature (S24, D35) ---------------------------------------------------

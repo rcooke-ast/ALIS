@@ -939,6 +939,43 @@ the work of the stage, RJC's review (D110) and RJC's use of the tab (D111, Promp
   set; it replaces the separate Shown/Hidden choice and the left/right side, and a
   figure saved with those reads as the side they meant.
 
+*Stage 10 decisions (users' feedback). Added by Claude on 2026-11-08 from Q10.1–Q10.10
+and the work of the stage; RJC's review of the stage's page may add more.*
+- **D113. SNIP over unusable data** (point 8; refines D53): a dataset covers a
+  transition when it falls on its source and at least 10 of the source's pixels
+  within the window can be fitted; SNIP cuts those, names the others with why
+  (errors zero or negative, marked bad, not finite), and is refused only when none
+  is left. A first guess that cannot be fitted starts as a constant through the
+  median of the good pixels. The Regions tab still shows such a dataset, "no usable
+  data here".
+- **D114. The Regions tab's view and lists** (points 4, 5, 7, 9, 10; Q10.4 (b),
+  Q10.5 (b); refines D36, D59, D78): each spectrum keeps its ranges through every
+  action, only ⌂, ← and → changing them; the list is by wavelength (the default) or
+  by strength, the strongest still chosen first; Snips of this system lists every
+  snipped transition of the system, of any ion; Line IDs labels this transition,
+  this ion, the model's ions and strong lines (D59, the default) or every line,
+  counting the rest, and always the isotopes of the ion shown (one within 7 km/s of
+  its main line shares its label); Load snips… is in the File menu. The order and
+  the line IDs' choice are view settings, kept in `ui/view.json`.
+- **D115. Fit regions and snip edges** (points 1, 2, 3, 6; Q10.6 (a), Q10.7 (b);
+  refines D54, D55): Adjust fit regions ▾ is all spectra, one spectrum or off; a
+  region's edge is drawn, 3 px and darker green, only within 6 px of the cursor; a
+  snip's edge has a top grip that moves that edge of every snip to the same
+  velocity, shifted per dataset, stopping where a dataset's data end; the faint
+  spectrum is the whole source, drawn for the view, and drawing never cuts data.
+- **D116. T's value on a card** (point 11; Q10.10 (c); refines D21, D93): under a
+  fixed mode it is Fixed at… (the component alone); under T free or pure thermal it
+  is the starting value, in every place of its label, so that a tie stays one value;
+  its limits (ALIS's own, and pure thermal's 1 K) are kept. A fixed mode labels an
+  unlabelled T first.
+- **D117. Figures** (points 12, 13; items 1, 2 carried over; Q10.8 (b), Q10.9 (b);
+  refines D106, D110, D111): a label rounds its rest wavelength down, in the Figure
+  tab and in `plotscript.py`; the residuals, a label in a lower corner and the ticks
+  sit at fractions of a panel, the same as before at the default range; a panel's
+  own flux range stands; the spacing between rows is worked out from the panels
+  unless set (Automatic, as the margins); the DH preset can start from a chosen
+  Lyman member, kept with the figure.
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

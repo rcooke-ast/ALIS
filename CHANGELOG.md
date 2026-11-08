@@ -262,6 +262,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The pre-commit hook's black is 26.5.1 (it was 24.10.0), the version the `dev`
   extra installs, and every file outside the formatting exclude lists is now
   black- and isort-clean (formatting only).
+- `plotscript`'s panel labels round a rest wavelength down, as the field names a
+  transition (C II 1334 for 1334.5323, H I 1025 for Lyβ), where they rounded to the
+  nearest whole number; the dashboard's figures do the same (dashboard Stage 10).
 
 ### Removed
 - onefits (`out onefits`, `run_alis file.fits`): an experimental single-file

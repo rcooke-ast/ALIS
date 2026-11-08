@@ -51,6 +51,8 @@ def test_the_menus_of_the_design():
         "New project…",
         "Open…",
         "Open a fit (.mod)…",
+        # Moved from under the Regions tab's list (Stage 10, point 5)
+        "Load snips…",
         "Save",
         "Save as…",
         "Export…",

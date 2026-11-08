@@ -723,6 +723,68 @@ def test_a_mode_gives_a_shared_t_a_label_of_its_own(registry, tmp_path, mode, la
     assert state(project) == before
 
 
+def test_a_t_typed_on_a_card(registry, tmp_path):
+    # Stage 10, point 11: J101155p294141's shape, each T free at 10⁴ K
+    project, hist = ratio_fit(registry, tmp_path)
+    before = state(project)
+    assert project.component("a1").temperature_mode[0] == "free"
+    plan = C.temperature_value_plan(project, project.component("a1"), "12000")
+    assert plan.description == "Set T of a1" and plan.notes == []
+    hist.do(project.step(plan.change, plan.description))
+    temp = project.component("a1").main.param("temperature")
+    assert temp.start == 12000.0 and not temp.fixed
+    assert project.component("a2").main.param("temperature").start == 10000.0
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+    with pytest.raises(C.ComponentError, match="type a number"):
+        C.temperature_value_plan(project, project.component("a1"), "warm")
+    with pytest.raises(C.ComponentError, match="cannot be below 0 K"):
+        C.temperature_value_plan(project, project.component("a1"), -5.0)
+    # Pure thermal: its limit of 1 K holds, and the mode stays
+    hist.do(C.temperature(project, project.component("a1"), "thermal"))
+    with pytest.raises(C.ComponentError, match="below 1 K under pure thermal"):
+        C.temperature_value_plan(project, project.component("a1"), 0.5)
+    plan = C.temperature_value_plan(project, project.component("a1"), 8000)
+    hist.do(project.step(plan.change, plan.description))
+    a1 = project.component("a1")
+    assert a1.main.param("temperature").start == 8000.0
+    assert a1.temperature_mode[0] == "thermal"
+    # 100 K fixed: 250 typed is a fixed 250, as Fixed at… sets it
+    hist.do(C.temperature(project, project.component("a2"), "preset", 100.0))
+    plan = C.temperature_value_plan(project, project.component("a2"), "250")
+    hist.do(project.step(plan.change, plan.description))
+    assert project.component("a2").temperature_mode == ("fixed", 250.0)
+    assert errors(project) == []
+
+
+def test_a_t_typed_on_a_shared_label(registry, tmp_path):
+    # Q10.10 (c): fixed, as Fixed at… (D93): a2 alone, ZEROT kept by a1 and the
+    # forest line, byte for byte
+    project, hist = ratio_fit(registry, tmp_path, SHARED_T)
+    others = written_lines(project, "2.50360", "1Ly_a")
+    plan = C.temperature_value_plan(project, project.component("a2"), 250)
+    assert plan.notes == [
+        "The T of a1 and of 1 line of the Lyα forest keep ZEROT, fixed at 0 K."
+    ]
+    hist.do(project.step(plan.change, plan.description))
+    assert written_lines(project, "2.50360", "1Ly_a") == others
+    assert project.component("a2").temperature_mode == ("fixed", 250.0)
+    assert errors(project) == []
+    # Free and tied: the tie stays one value, and the other is named
+    from dashboard_synthetic import RATIO_LINES
+
+    tied = [ln.replace(" 10000.0 ", " 10000.0tsh ") for ln in RATIO_LINES]
+    project, hist = ratio_fit(registry, tmp_path / "tied", tied)
+    plan = C.temperature_value_plan(project, project.component("a1"), 9000)
+    assert plan.description == "Set T of a1 (and of a2, on its label tsh)"
+    hist.do(project.step(plan.change, plan.description))
+    for ident in ("a1", "a2"):
+        temp = project.component(ident).main.param("temperature")
+        assert (temp.start, temp.label, temp.fixed) == (9000.0, "tsh", False)
+    assert errors(project) == []
+
+
 def test_a_shared_b_turb_keeps_its_limit_on_both_labels(registry, tmp_path):
     lines = [ln.replace(" 10.0 0.0ZEROT", " 10.0bsh 0.0ZEROT") for ln in SHARED_T]
     lines[3] = lines[3].replace(" 20.0 ", " 10.0bsh ")

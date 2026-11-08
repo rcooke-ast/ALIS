@@ -166,7 +166,9 @@ class CellWidget(QtWidgets.QFrame):
     def mouseMoveEvent(self, event):
         if self._pressed is None or not self.filled:
             return
-        if (event.position().toPoint() - self._pressed).manhattanLength() < 8:
+        # Qt's own start distance, the platform's and the user's setting (Stage 10)
+        moved = (event.position().toPoint() - self._pressed).manhattanLength()
+        if moved < QtWidgets.QApplication.startDragDistance():
             return
         self._pressed = None
         drag = self.drag()
@@ -595,6 +597,14 @@ class FigureTab(W.Tab):
         self.system_menu.setToolTip(
             "The interloper whose lines the blends preset shows"
         )
+        # The DH preset's first member (Stage 10): shown with DH alone
+        self.from_menu = QtWidgets.QComboBox()
+        self.from_menu.setObjectName("figure_dh_from")
+        self.from_menu.setToolTip(
+            "The Lyman member the DH preset starts from, up the series: Lyα, or a"
+            " higher one for a figure of the higher members"
+        )
+        self.preset_menu.currentIndexChanged.connect(self._show_from_menu)
         self.apply_button = QtWidgets.QPushButton("Apply")
         self.apply_button.clicked.connect(self.apply_preset)
         self.save_preset_button = QtWidgets.QPushButton("Save as preset…")
@@ -602,6 +612,7 @@ class FigureTab(W.Tab):
         preset = QtWidgets.QHBoxLayout()
         preset.addWidget(self.preset_menu, 1)
         preset.addWidget(self.system_menu)
+        preset.addWidget(self.from_menu)
         preset.addWidget(self.apply_button)
         form.addRow("Preset", preset)
         form.addRow("", self.save_preset_button)
@@ -626,6 +637,16 @@ class FigureTab(W.Tab):
         )
         self.space_x.setToolTip("Between the columns")
         self.space_y.setToolTip("Between the rows")
+        # Worked out from the panels, as the margins are (Stage 10): the values
+        # shown, and kept as the figure's own once unticked
+        self.spacing_auto = QtWidgets.QCheckBox("Automatic")
+        self.spacing_auto.setToolTip(
+            "The spacing worked out from the panels: more between rows where a"
+            " panel's own x numbers or title would meet the panel below; untick to"
+            " set it"
+        )
+        self.spacing_auto.toggled.connect(self._spacing_auto_changed)
+        form.addRow("", self.spacing_auto)
         # The room around the panels (RJC's Prompt 4): worked out from the panels,
         # or set in inches
         self.margins_auto = QtWidgets.QCheckBox("Automatic")
@@ -890,6 +911,9 @@ class FigureTab(W.Tab):
             if not system.primary:
                 self.system_menu.addItem(system.name, system.id)
         self.system_menu.setVisible(self.system_menu.count() > 0)
+        self.from_menu.clear()
+        for rest, name in FP.dh_members(project):
+            self.from_menu.addItem("from " + name, rest)
         self.zero_menu.clear()
         gate = BL.Gate(project)
         default = X.default_component(project, self.view, gate)
@@ -902,12 +926,21 @@ class FigureTab(W.Tab):
             at = self.preset_menu.findData(fig["preset"])
             if at >= 0:
                 self.preset_menu.setCurrentIndex(at)
+        if fig["dh_from"] is not None:
+            for num in range(self.from_menu.count()):
+                if abs(self.from_menu.itemData(num) - fig["dh_from"]) < 0.01:
+                    self.from_menu.setCurrentIndex(num)
+        self._show_from_menu()
         self.columns.setValue(fig["columns"])
         self.rows.setValue(fig["rows"])
         self.size_w.setValue(fig["size"][0])
         self.size_h.setValue(fig["size"][1])
-        self.space_x.setValue(fig["spacing"][0])
-        self.space_y.setValue(fig["spacing"][1])
+        auto = fig["spacing"] is None
+        self.spacing_auto.setChecked(auto)
+        spacing = FS.spacing_of(self.session.project, fig["id"])
+        for spin, value in zip((self.space_x, self.space_y), spacing):
+            spin.setValue(value)
+            spin.setEnabled(not auto)
         auto = fig["margins"] is None
         self.margins_auto.setChecked(auto)
         for spin, value in zip(
@@ -1043,9 +1076,19 @@ class FigureTab(W.Tab):
             "vrange": (self.v_low, self.v_high),
         }[key]
         value = [spins[0].value(), spins[1].value()]
-        if value == list(self.current()[key]):
+        if key == "spacing" and self.spacing_auto.isChecked():
+            return
+        if value == list(self.current()[key] or []):
             return
         self._option(key, value)
+
+    def _spacing_auto_changed(self, auto):
+        """Automatic spacing, or the present one kept as the figure's own."""
+        if self._building or self.current_id() is None:
+            return
+        self._option(
+            "spacing", None if auto else [self.space_x.value(), self.space_y.value()]
+        )
 
     def _margins_auto_changed(self, auto):
         """Automatic margins, or the present ones kept as the figure's own."""
@@ -1154,9 +1197,19 @@ class FigureTab(W.Tab):
                 "delete", lambda: self._do(FG.delete(self.session.project, fig["id"]))
             )
 
+    def _show_from_menu(self, *_):
+        """The DH preset's From menu: shown while DH is the preset chosen."""
+        self.from_menu.setVisible(
+            self.preset_menu.currentData() == FP.DH and self.from_menu.count() > 0
+        )
+
     def apply_preset(self):
         name = self.preset_menu.currentData()
         system = self.system_menu.currentData() if name == FP.BLENDS else None
+        start = None
+        if name == FP.DH and self.from_menu.currentIndex() > 0:
+            # Lyα, the first, is the preset as it has always been
+            start = self.from_menu.currentData()
         self._act(
             "preset",
             lambda: self._do(
@@ -1167,6 +1220,7 @@ class FigureTab(W.Tab):
                     system=system,
                     view=self.view,
                     home=self.home(),
+                    start=start,
                 )
             ),
         )

@@ -749,14 +749,16 @@ def test_j1358_cards_as_in_the_mockup(window, qtbot):
     a1, a2 = tab.card_widgets["a1"], tab.card_widgets["a2"]
     assert a1.title.text() == "<b>a1</b> · v = -7.2 km/s"
     assert a2.title.text() == "<b>a2</b> · v = +0.0 km/s"
+    # T's value too, beside its mode (Stage 10, point 11)
     assert set(a2.values) == {
         "redshift",
         "bturb",
+        "temperature",
         "ColDens:1H_I",
         "ColDens:2H_I",
         "ColDens:16O_I",
     }
-    assert set(a1.values) == {"redshift", "bturb", "ColDens:1H_I"}
+    assert set(a1.values) == {"redshift", "bturb", "temperature", "ColDens:1H_I"}
     assert a2.temp.text() == "0 K · fixed ▾"
     # a1 is in H I alone: the system's other ions are under Excluded ions (RJC's
     # review of Stage 7)
@@ -1062,6 +1064,91 @@ def test_a_long_value_shows_its_start(window, qtbot, tmp_path):
     data.z_edit.setFixedWidth(40)
     assert data.z_edit.text().startswith("2.50078") and shows_start(data.z_edit)
     assert data.z_edit.toolTip().startswith(data.z_edit.text() + "\n")
+
+
+def test_t_s_value_on_a_card(window, qtbot, tmp_path):
+    # Stage 10, point 11: J101155p294141's shape, each T free at 10⁴ K
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit"))
+    choose(tab, "H I")
+    card = tab.card_widgets["a1"]
+    edit = card.values["temperature"]
+    assert float(edit.text()) == 10000.0 and not edit.isReadOnly()
+    assert "temperature" in card.badges
+    # The badge offers no Free or Fixed: the mode button sets them
+    entries = [a.text() for a in card.badges["temperature"].menu().actions()]
+    assert "Free" not in entries and "Fixed" not in entries
+    before = window.session.project.text
+    edit.setText("12000")
+    assert one_step(window, edit.editingFinished.emit) == "Set T of a1"
+    project = window.session.project
+    temp = project.component("a1").main.param("temperature")
+    assert temp.start == 12000.0 and not temp.fixed
+    window.qactions["edit.undo"].trigger()
+    assert window.session.project.text == before
+    # Pure thermal: 0.5 refused with its limit, and nothing changes
+    tab = components(window)
+    menu = tab.card_widgets["a1"].temp.menu()
+    next(a for a in menu.actions() if a.text().startswith("Pure thermal")).trigger()
+    thermal = window.session.project.text
+    edit = components(window).card_widgets["a1"].values["temperature"]
+    edit.setText("0.5")
+    edit.editingFinished.emit()
+    kind, title, text = window.answers.asked[-1]
+    assert title == "Temperature of a1" and "1 K under pure thermal" in text
+    assert window.session.project.text == thermal
+    # 100 K fixed: 250 typed writes a fixed 250
+    menu = components(window).card_widgets["a2"].temp.menu()
+    next(a for a in menu.actions() if a.text() == "100 K · fixed").trigger()
+    edit = components(window).card_widgets["a2"].values["temperature"]
+    edit.setText("250")
+    one_step(window, edit.editingFinished.emit)
+    assert window.session.project.component("a2").temperature_mode == ("fixed", 250.0)
+    # Hidden (Blind…): masked, and its badge's tooltip too; it may be typed over
+    tab = components(window)
+    window.answers.answers["blind_component"] = "Blind"
+    one_step(window, tab.card_widgets["a2"].blind.click)
+    card = components(window).card_widgets["a2"]
+    assert card.values["temperature"].text() == "▒▒▒▒"
+    assert "250" not in card.badges["temperature"].toolTip()
+    card.values["temperature"].setText("300")
+    assert one_step(window, card.values["temperature"].editingFinished.emit) == (
+        "Temperature of a2: fixed"
+    )
+
+
+def test_a_t_a_link_computes_is_read_only(window, qtbot, tmp_path):
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360 10.0 10000.0tempa specid=0",
+        "voigt ion=1H_I 13.5 2.50420 10.0 10000.0tempb specid=0",
+    ]
+    path = write_ratio_fit(tmp_path / "fit", lines, links=["tempb(tempa) = tempa"])
+    tab = imported(window, qtbot, path)
+    choose(tab, "H I")
+    assert not tab.card_widgets["a1"].values["temperature"].isReadOnly()
+    assert tab.card_widgets["a2"].values["temperature"].isReadOnly()
+    assert not tab.card_widgets["a2"].temp.isEnabled()
+
+
+def test_t_typed_on_a_shared_fixed_label_asks_first(window, qtbot, tmp_path):
+    # Q10.10 (c): a2, a1 and a forest line on ZEROT, fixed at 0 K
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360 10.0 0.0ZEROT specid=0",
+        "voigt ion=1H_I 13.5 2.50420 10.0 0.0ZEROT specid=0",
+        "voigt ion=1Ly_a 13.0 2.50600 20.0 0.0ZEROT specid=0",
+    ]
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit", lines))
+    choose(tab, "H I")
+    others = [ln for ln in window.session.project.text.splitlines() if "2.50360" in ln]
+    window.on_dialog = lambda dialog: 1
+    edit = tab.card_widgets["a2"].values["temperature"]
+    edit.setText("250")
+    one_step(window, edit.editingFinished.emit)
+    notes = [w.text() for w in window.dialogs[-1].findChildren(QtWidgets.QLabel)]
+    assert any("keep ZEROT, fixed at 0 K" in n for n in notes)
+    project = window.session.project
+    assert [ln for ln in project.text.splitlines() if "2.50360" in ln] == others
+    assert "0.0ZEROT" in next(ln for ln in project.text.splitlines() if "1Ly_a" in ln)
+    assert project.component("a2").temperature_mode == ("fixed", 250.0)
 
 
 def test_a_mode_on_a_shared_t_asks_first(window, qtbot, tmp_path):

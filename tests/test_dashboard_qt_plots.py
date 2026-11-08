@@ -50,14 +50,34 @@ def test_steps_are_centred_and_break_at_gaps():
     wave = np.array([1.0, 2.0, 3.0, 10.0, 11.0])
     flux = np.array([5.0, 6.0, 7.0, 8.0, 9.0])
     x, y = PL.step_curve(wave, flux)
-    # Two points per pixel, and one break at the gap
-    assert x.size == 2 * wave.size + 1 and np.isnan(x).sum() == 1
+    # Two points per pixel, and one break at the gap: in the flux alone, so that x
+    # stays finite and in order for pyqtgraph's clipping (Stage 10, point 2)
+    assert x.size == 2 * wave.size + 1 and np.isnan(y).sum() == 1
+    assert np.all(np.isfinite(x)) and np.all(np.diff(x) >= 0)
     assert list(x[:6]) == [0.5, 1.5, 1.5, 2.5, 2.5, 3.5]
     assert list(y[:6]) == [5.0, 5.0, 6.0, 6.0, 7.0, 7.0]
     # Either side of the gap, the pixels keep their own half widths
+    assert x[6] == 3.5 and np.isnan(y[6])
     assert x[7] == 9.5 and x[8] == 10.5
     bx, by = PL.broken_line(wave, flux)
-    assert np.isnan(bx).sum() == 1 and bx.size == wave.size + 1
+    assert np.isnan(by).sum() == 1 and by.size == wave.size + 1
+    assert np.all(np.isfinite(bx)) and np.all(np.diff(bx) >= 0)
+
+
+def test_a_curve_with_a_gap_is_drawn_to_the_view_s_edges(view, qtbot):
+    # Stage 10, point 2: 500 pixels, a gap, 500 more. The break sits in the middle
+    # of the steps, where pyqtgraph's clipping first bisects; a NaN in x there made
+    # it stop at the gap
+    widget, _ = view
+    wave = np.concatenate((np.arange(500.0), 600.0 + np.arange(500.0)))
+    x, _ = PL.step_curve(wave, np.ones_like(wave))
+    assert x.size == 2001
+    widget.set_context(wave, np.ones_like(wave))
+    widget.box.setXRange(300.0, 900.0, padding=0)
+    qtbot.wait(10)
+    shown, _ = widget._items["context"].getData()
+    assert np.all(np.isfinite(shown))
+    assert shown.min() <= 300.0 and shown.max() >= 900.0
 
 
 @pytest.mark.parametrize(
@@ -72,8 +92,8 @@ def test_shaded_spans_end_at_the_step_edges(wave):
     # Stage 8, point 3: the edges are step_curve's own
     from alis.dashboard import project as P
 
-    x, _ = PL.step_curve(wave, np.zeros_like(wave))
-    left, right = x[np.isfinite(x)].reshape(-1, 2).T
+    x, y = PL.step_curve(wave, np.zeros_like(wave))
+    left, right = x[np.isfinite(y)].reshape(-1, 2).T
     assert np.array_equal((left, right), PL.pixel_edges(wave))
     # Runs at the start and the end, of one pixel, and across the gap (two spans)
     mask = np.zeros(wave.size, bool)
@@ -177,7 +197,7 @@ def test_j1358_draws_in_under_half_a_second(qtbot):
     assert took < 0.5, took
     # The gap of its source (4535-5593 Å) is not bridged
     item = widget._items["data"]
-    assert np.isnan(item.xData).sum() >= 1
+    assert np.isnan(item.yData).sum() >= 1
 
 
 def test_the_velocity_axis_is_signed(view):
@@ -242,6 +262,153 @@ def test_overlays_and_their_signals(view, qtbot):
     assert len(widget._lists["knots"]) == 2
     widget.set_edges()
     assert "edges" not in widget._lists or not widget._lists["edges"]
+
+
+class FakeLineDrag:
+    """A left drag of a line, begun ``offset`` pixels from it, moved ``by`` Å."""
+
+    def __init__(self, line, offset, by, start=True, finish=True):
+        from qtpy import QtCore
+
+        box = line.getViewBox()
+        here = box.mapViewToScene(QtCore.QPointF(line.value(), 1.0))
+        down = here + QtCore.QPointF(offset, 0.0)
+        self._down = line.mapFromScene(down)
+        there = box.mapViewToScene(QtCore.QPointF(line.value() + by, 1.0))
+        self._pos = line.mapFromScene(there + QtCore.QPointF(offset, 0.0))
+        self._start, self._finish = start, finish
+
+    def button(self):
+        from qtpy import QtCore
+
+        return QtCore.Qt.MouseButton.LeftButton
+
+    def buttonDownPos(self):
+        return self._down
+
+    def pos(self):
+        return self._pos
+
+    def isStart(self):
+        return self._start
+
+    def isFinish(self):
+        return self._finish
+
+    def accept(self):
+        pass
+
+
+def picked(widget, line, offset):
+    """Whether the scene puts the line under a point ``offset`` pixels from it."""
+    from qtpy import QtCore
+
+    box = widget.box
+    y = 0.5 * sum(box.viewRange()[1])
+    point = box.mapViewToScene(QtCore.QPointF(line.value(), y))
+    point += QtCore.QPointF(offset, 0.0)
+    return line in widget.scene().items(point)
+
+
+def test_a_fit_region_s_edge_is_shown_near_the_cursor(view, qtbot):
+    # Stage 10, point 6
+    from qtpy import QtCore
+
+    widget, _ = view
+    widget.box.setXRange(4000.0, 4100.0, padding=0)
+    widget.set_regions("fit", [(4040.0, 4050.0)], movable=True)
+    item = widget._lists["fit"][0]
+    moved = []
+    widget.regionMoved.connect(lambda n, lo, hi: moved.append((round(lo), round(hi))))
+    low, high = item.lines
+    for line in (low, high):
+        # Not drawn until the cursor is near; then 3 px, darker than the regions
+        assert line.pen.style() == QtCore.Qt.PenStyle.NoPen
+        assert line.hoverPen.width() == 3
+        assert line.hoverPen.color().name() == PL.COLOURS["fit_edge"]
+        assert line.cursor().shape() == QtCore.Qt.CursorShape.SizeHorCursor
+        # Picked within 6 px either side, and not 10 px away
+        assert picked(widget, line, 4.0) and picked(widget, line, -5.5)
+        assert not picked(widget, line, 10.0) and not picked(widget, line, -10.0)
+    low.setMouseHover(True)
+    assert low.currentPen.width() == 3
+    low.setMouseHover(False)
+    assert low.currentPen.style() == QtCore.Qt.PenStyle.NoPen
+    # A drag begun 5 px from the edge moves it, and it stays drawn while dragged
+    low.mouseDragEvent(FakeLineDrag(low, 5.0, -5.0, finish=False))
+    assert low.currentPen.width() == 3
+    low.mouseDragEvent(FakeLineDrag(low, 5.0, 0.0, start=False))
+    assert moved[-1] == (4035, 4050)
+    # With the menu off, an edge is neither drawn nor moved
+    widget.set_regions("fit", [(4040.0, 4050.0)], movable=False)
+    edge = widget._lists["fit"][0].lines[0]
+    assert not edge.movable and edge.pen.style() == QtCore.Qt.PenStyle.NoPen
+    edge.mouseDragEvent(FakeLineDrag(edge, 0.0, -5.0))
+    assert edge.value() == pytest.approx(4040.0, abs=0.06)
+
+
+class FakeEdgeDrag:
+    """A left drag of a snip's edge, begun ``along`` its length, moved ``dx`` Å."""
+
+    def __init__(self, line, along, dx, start=True, finish=True):
+        from qtpy import QtCore
+
+        left, right = line._endPoints
+        self._down = QtCore.QPointF(left + along * (right - left), 0.0)
+        there = line.mapToParent(self._down) + QtCore.QPointF(dx, 0.0)
+        self._pos = line.mapFromParent(there)
+        self._start, self._finish = start, finish
+
+    def button(self):
+        from qtpy import QtCore
+
+        return QtCore.Qt.MouseButton.LeftButton
+
+    def buttonDownPos(self):
+        return self._down
+
+    def pos(self):
+        return self._pos
+
+    def isStart(self):
+        return self._start
+
+    def isFinish(self):
+        return self._finish
+
+    def accept(self):
+        pass
+
+
+def test_a_snip_s_edge_has_a_grip_for_every_snip(view, qtbot):
+    # Stage 10, point 1
+    widget, _ = view
+    widget.set_edges(4005.0, 4095.0)
+    assert all(len(line.markers) == 1 for line in widget._lists["edges"])
+    widget.set_edges(4005.0, 4095.0, every=True)
+    lines = widget._lists["edges"]
+    assert all(len(line.markers) == 2 for line in lines)
+    assert "every snip" in lines[0].toolTip()
+    widget.grab()
+    one, every = [], []
+    widget.edgeMoved.connect(lambda s, x, d: one.append((s, round(x), d)))
+    widget.edgesMoved.connect(lambda s, x, d: every.append((s, round(x), d)))
+    low = lines[0]
+    # Begun at the middle grip, or low on the line: this snip's edge
+    low.mouseDragEvent(FakeEdgeDrag(low, 0.5, 3.0))
+    low.mouseDragEvent(FakeEdgeDrag(low, 0.2, 2.0))
+    assert one[-1] == ("low", 4010, True) and every == []
+    # Begun at the top grip: every snip's
+    low.mouseDragEvent(FakeEdgeDrag(low, 0.95, -4.0, finish=False))
+    assert every[-1] == ("low", 4006, False)
+    low.mouseDragEvent(FakeEdgeDrag(low, 0.95, 0.0, start=False))
+    assert every[-1] == ("low", 4006, True)
+    assert not low.every
+    # Another spectrum's edge follows without a signal
+    count = len(one) + len(every)
+    widget.move_edge_quietly("high", 4090.0)
+    assert lines[1].value() == pytest.approx(4090.0)
+    assert len(one) + len(every) == count
 
 
 def test_clicks_and_spans_report_data_coordinates(view, qtbot):

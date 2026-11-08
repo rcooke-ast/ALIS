@@ -54,6 +54,15 @@ def _keyword_ion(mkey):
 _LYMAN = {"a": r"$\alpha$", "b": r"$\beta$", "c": r"$\gamma$", "d": r"$\delta$"}
 
 
+def whole_angstroms(restwave):
+    """
+    A rest wavelength as a transition is named: its integer part, as the field
+    writes it (C II 1334 for 1334.5323), with a guard of 10⁻⁶ Å so that 1239.9999999
+    is 1240.
+    """
+    return int(np.floor(float(restwave) + 1.0e-6))
+
+
 def _pretty_ion(ion, restwave):
     """'16O_I', 1302.1685 -> 'O I 1302' for a panel label.
 
@@ -72,8 +81,8 @@ def _pretty_ion(ion, restwave):
             member = "{0:d}".format(ord(low) - ord("a") + 1)
         else:
             member = stage
-        return "Ly{0:s} {1:.0f}".format(member, restwave)
-    return "{0:s} {1:s} {2:.0f}".format(element, stage, restwave).strip()
+        return "Ly{0:s} {1:d}".format(member, whole_angstroms(restwave))
+    return "{0:s} {1:s} {2:d}".format(element, stage, whole_angstroms(restwave)).strip()
 
 
 def collect_panels(slf, params, vwindow=125.0):

@@ -237,6 +237,27 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
 - **A `QDropEvent` made in a test** does not own its `QMimeData`: keep the data in a
   variable while the event is used.
 
+## Stage 10 additions
+
+- **A tab's view settings** go in its state and `ui/view.json` (the Regions tab's
+  `SETTINGS`: Model's Start/Best fit, Line IDs, Order). Keep them when the state is
+  replaced (`show_transition`, a system chosen), and never make them a step.
+- **Every action redraws the tab**: keep anything expensive (a source's step curve,
+  `RegionsTab._context_of`) and the view's ranges (`_fill_strips` keeps each
+  spectrum's, by dataset; `ZoomBar.attach(keep_history=True)` keeps ← →).
+- **pyqtgraph clips a curve by bisecting its x**: a NaN in x stops it short, so
+  break a curve with a NaN in y at a finite x (`step_curve`, `broken_line`).
+- **A line's reach** is (marker size + half its widest pen + 1) px; with no marker,
+  set `_maxMarkerSize` (`plots._show_near_cursor`). One line with two grips decides
+  the grip where the drag begins (`plots.EdgeLine`).
+- **A combo standing for checkable actions** (Adjust fit regions ▾) triggers them,
+  and follows them (`_sync_regions_menu`), so keys and menus stay in step.
+- **A figure's positions inside a panel** use `ax.get_xaxis_transform()` (x in
+  data, y a fraction of the panel); set `yticks` before `ylim`, which matplotlib
+  otherwise widens to the ticks.
+- **`QDrag.exec` in a test**: replace `QtGui.QDrag` with a subclass whose `exec`
+  records the drag (`test_a_drag_begun_on_a_cell`).
+
 ## Notes
 
 - `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).

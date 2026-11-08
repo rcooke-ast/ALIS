@@ -103,6 +103,14 @@ ACTIONS = (
         " (recommended) or without",
     ),
     Action(
+        "file.load_snips",
+        "Load snips…",
+        "File",
+        "",
+        "Load snips saved earlier (by prepfit, for example), each checked against the"
+        " spectrum it was cut from",
+    ),
+    Action(
         "file.save",
         "Save",
         "File",
@@ -434,18 +442,8 @@ ACTIONS += (
         section=1,
     ),
     Action(
-        "regions.load_snips",
-        "Load snips…",
-        REGIONS_TAB,
-        "",
-        "Load snips saved earlier (by prepfit, for example), each checked against the"
-        " spectrum it was cut from",
-        scope="Regions",
-        section=1,
-    ),
-    Action(
         "regions.draw",
-        "Add regions to all",
+        "Adjust fit regions: all spectra",
         REGIONS_TAB,
         "",
         "Drag to add a fit region, right-drag to leave pixels out, in every dataset"
@@ -456,7 +454,7 @@ ACTIONS += (
     ),
     Action(
         "regions.tweak",
-        "Tweak dataset regions",
+        "Adjust fit regions: one spectrum",
         REGIONS_TAB,
         "",
         "Drag to add a fit region, right-drag to leave pixels out, in the selected"
@@ -482,7 +480,7 @@ ACTIONS += (
         REGIONS_TAB,
         "Delete",
         "Remove the fit region last clicked: from every dataset, or from the selected"
-        " dataset alone while tweaking its regions",
+        " dataset alone while Adjust fit regions is on one spectrum",
         scope="Regions",
         section=2,
     ),

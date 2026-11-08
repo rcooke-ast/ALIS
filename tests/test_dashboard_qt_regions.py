@@ -45,6 +45,7 @@ from alis.dashboard.qt import plots as PL  # noqa: E402
 Z_J1358 = 3.067258
 C_KMS = 299792.458
 J1358_SOURCE = J1358.parent.parent / "data/J1358p6522_fluxcal.dat"
+J0035 = J1358.parents[4] / "feedback01/J0035m0918.model"
 
 
 @pytest.fixture
@@ -114,6 +115,8 @@ def test_j1358_hydrogen_list(window, qtbot, tmp_path):
     need(J1358_SOURCE)
     tab = new_project(window, tmp_path, z=Z_J1358, spectra=(J1358_SOURCE,))
     assert tab.state["element"] == "H" and tab.state["stage"] == "I"
+    # Read in fλ order, as the mockup shows it (by wavelength is the default)
+    tab.order_menu.setCurrentIndex(tab.order_menu.findData(L.STRENGTH))
     rows = listed(tab)
     names = [r[1].split()[0] for r in rows[:9]]
     # Lyα is in the source's gap, and has no snip, so it is not listed
@@ -139,9 +142,11 @@ def test_keys_only_while_the_tab_has_the_focus(window, qtbot, tmp_path):
     tab = new_project(window, tmp_path, z=Z_J1358, spectra=(J1358_SOURCE,))
     tab.listing.setFocus()
     qtbot.waitUntil(tab.listing.hasFocus)
-    qtbot.keyClick(tab.listing, QtCore.Qt.Key.Key_Down)
-    assert tab.current_line().name == "Lyγ 972.5"
+    # By wavelength (Stage 10, point 9), Lyβ, chosen first as the strongest, is the
+    # last row: Lyγ is above it
     qtbot.keyClick(tab.listing, QtCore.Qt.Key.Key_Up)
+    assert tab.current_line().name == "Lyγ 972.5"
+    qtbot.keyClick(tab.listing, QtCore.Qt.Key.Key_Down)
     assert tab.current_line().name == "Lyβ 1025.7"
     elements = [tab.element_box.itemText(n) for n in range(tab.element_box.count())]
     qtbot.keyClick(tab.listing, QtCore.Qt.Key.Key_BracketRight)
@@ -166,12 +171,26 @@ def test_without_a_source_only_snipped_transitions(window, qtbot):
     window.import_path(str(J1358))
     wait_idle(qtbot, window)
     tab = regions(window)
+    tab.order_menu.setCurrentIndex(tab.order_menu.findData(L.STRENGTH))
     rows = listed(tab)
     assert rows and all(r[0] == "●" for r in rows)
     assert [r[1].split()[0] for r in rows[:2]] == ["Lyα", "Lyβ"]
     assert not tab.actions_["regions.snip"].isEnabled()
     # Loaded snips are checked against a source spectrum, so there is nothing to load
-    assert not tab.actions_["regions.load_snips"].isEnabled()
+    assert not window.qactions["file.load_snips"].isEnabled()
+    # Snips of this system (Stage 10, point 5): each snipped transition of the
+    # primary once, in order of rest wavelength, with its one dataset
+    project = window.session.project
+    snipped = {
+        (t.ion, round(t.rest, 3))
+        for t in L.snip_transitions(project).values()
+        if t is not None and t.system == tab._system().id
+    }
+    entries = menu_entries(tab.snips_menu)
+    assert len(entries) == len(snipped)
+    assert all(e.endswith("· 1 dataset") for e in entries)
+    rests = [tab.snips_menu.itemData(n)[1] for n in range(tab.snips_menu.count())]
+    assert rests == sorted(rests)
     assert "No source spectrum" in tab.list_note.text()
     # Its snip is drawn, with the continuum
     strip = tab.strips[0]
@@ -180,8 +199,16 @@ def test_without_a_source_only_snipped_transitions(window, qtbot):
 
 def test_the_key_and_the_tools(window, qtbot, tmp_path):
     tab = new_project(window, tmp_path, z=0.0)
-    assert tab.key.body.layout().count() == 2 * 9
+    # Nine entries, and the Line IDs menu (Stage 10, point 4)
+    assert tab.key.body.layout().count() == 2 * 9 + 1
     names = [b.defaultAction().objectName() for b in tab.tab_buttons]
+    # The fit regions' tools are a menu (Stage 10, point 3), not buttons by SNIP
+    shown = [
+        b.defaultAction().objectName()
+        for b in tab.tool_row.findChildren(QtWidgets.QToolButton)
+        if b.defaultAction() is not None
+    ]
+    assert shown == ["regions.snip", "regions.clear"]
     for name in (
         "regions.normalised",
         "regions.draw",
@@ -195,6 +222,64 @@ def test_the_key_and_the_tools(window, qtbot, tmp_path):
         "regions.order_up",
     ):
         assert name in names
+
+
+def adjust(tab, entry):
+    """Choose an entry of Adjust fit regions ▾, as a click does."""
+    menu = tab.regions_menu
+    menu.setCurrentIndex(menu.findText(entry))
+    menu.activated.emit(menu.currentIndex())
+
+
+def test_adjust_fit_regions(window, qtbot, tmp_path):
+    # Stage 10, point 3: one menu, after "Adjust fit regions:"
+    second = tmp_path / "second.dat"
+    second.write_bytes(SPECTRUM.read_bytes())
+    tab = new_project(window, tmp_path, z=0.0, spectra=(SPECTRUM, second))
+    show(tab, "O", "I", "O I 1302")
+    labels = [w.text() for w in tab.tool_row.findChildren(QtWidgets.QLabel)]
+    assert "Adjust fit regions:" in labels and "Fit regions:" not in labels
+    menu = tab.regions_menu
+    assert menu_entries(menu) == ["all spectra", "one spectrum", "off"]
+    assert menu.currentText() == "off" and tab._mode is None
+    # One spectrum is greyed while the selected dataset has no snip
+    assert not menu.model().item(1).isEnabled()
+    tab.actions_["regions.snip"].trigger()
+    assert menu.model().item(1).isEnabled()
+    first, other = (s.row_id for s in tab.strips)
+    adjust(tab, "all spectra")
+    assert tab._mode == "regions.draw"
+    tab.strips[0].view.spanned.emit(PL.DRAW, 1301.5, 1301.9)
+    got = regions_by_row(tab)
+    assert len(got["OI_SiII"]) == len(got["second"]) == 1
+    adjust(tab, "one spectrum")
+    tab.strips[1].view.spanned.emit(PL.DRAW, 1302.5, 1302.8)
+    got = regions_by_row(tab)
+    assert len(got["OI_SiII"]) == 1 and len(got["second"]) == 2
+    # Delete on one spectrum: the selected dataset alone
+    tab._last_click = (other, 1302.6)
+    tab.do_remove_region()
+    got = regions_by_row(tab)
+    assert len(got["OI_SiII"]) == 1 and len(got["second"]) == 1
+    # Off: drags pan
+    adjust(tab, "off")
+    assert tab._mode is None
+    assert all(s.view.box.mode == PL.PAN for s in tab.strips)
+    # Delete off: every dataset
+    tab.select_row(first)
+    tab._last_click = (first, 1301.7)
+    tab.do_remove_region()
+    got = regions_by_row(tab)
+    assert got["OI_SiII"] == [] and got["second"] == []
+    # Add knot sets the menu to off, and all spectra turns Add knot off
+    tab.actions_["regions.knot"].trigger()
+    assert menu.currentText() == "off"
+    adjust(tab, "all spectra")
+    assert not tab.actions_["regions.knot"].isChecked()
+    assert menu.currentText() == "all spectra"
+    # The old names are in no text of the window
+    texts = " ".join(ui_strings(window))
+    assert "Tweak dataset regions" not in texts and "Add regions to all" not in texts
 
 
 def test_no_design_reference_in_the_tab(window, qtbot, tmp_path):
@@ -223,7 +308,7 @@ def test_a_drawn_region_reaches_the_mask_column(window, qtbot, tmp_path):
     project = window.session.project
     member = project.snip("OI_1302").member
     before = project.files[member]
-    tab.actions_["regions.draw"].trigger()
+    adjust(tab, "all spectra")
     assert tab._mode == "regions.draw"
     tab.strips[0].view.spanned.emit(PL.DRAW, 1301.5, 1302.8)
     project = window.session.project
@@ -234,7 +319,7 @@ def test_a_drawn_region_reaches_the_mask_column(window, qtbot, tmp_path):
     assert np.all(table[inside, 3] == 1) and np.all(table[~inside, 3] == 0)
     assert tab.fitted_label.text().startswith("Fitted: {0} pixels".format(inside.sum()))
     # A right-drag leaves pixels out, splitting the region in two
-    tab.actions_["regions.tweak"].trigger()
+    adjust(tab, "one spectrum")
     assert tab._mode == "regions.tweak" and not tab.actions_["regions.draw"].isChecked()
     tab.strips[0].view.spanned.emit(PL.MASK, 1302.0, 1302.1)
     assert len(SN.regions_of(window.session.project.snip("OI_1302"))) == 2
@@ -269,6 +354,188 @@ def test_snip_then_clear_leaves_the_project_as_it_was(window, qtbot, tmp_path):
     assert listed(tab)[0][0] == "" and tab.strips[0].snip is None
 
 
+def unusable_copy(tmp_path):
+    """The spectrum with every error ≤ 0 within ±350 km/s of O I 1302 (point 8)."""
+    table = np.loadtxt(str(SPECTRUM))[:, :3]
+    low, high = SN.window(1302.16849, 0.0, half_width=350.0)
+    gap = (table[:, 0] >= low) & (table[:, 0] <= high)
+    table[gap, 1], table[gap, 2] = 1.0, -1.0e32
+    path = tmp_path / "second.dat"
+    np.savetxt(str(path), table)
+    return path
+
+
+def test_snip_passes_over_a_dataset_with_no_usable_data(window, qtbot, tmp_path):
+    tab = new_project(
+        window, tmp_path, z=0.0, spectra=(SPECTRUM, unusable_copy(tmp_path))
+    )
+    show(tab, "O", "I", "O I 1302")
+    assert [s.title.text() for s in tab.strips] == [
+        "OI_SiII · no snip",
+        "second · no usable data here",
+    ]
+    tab.actions_["regions.snip"].trigger()
+    told = [a for a in window.answers.asked if a[0] == "tell"]
+    assert [t[1] for t in told] == ["SNIP"]
+    assert told[0][2].startswith("second has no usable pixels within ±300 km/s")
+    assert [s.snip is not None for s in tab.strips] == [True, False]
+    assert tab.strips[1].title.text() == "second · no usable data here"
+    # A region drawn on the dataset passed over goes to the others
+    window.answers.asked.clear()
+    window.session.history.undo()
+    window.refresh()
+    tab.draw("r2", 1301.5, 1302.8)
+    assert [t[1] for t in window.answers.asked if t[0] == "tell"] == ["SNIP"]
+    snip = window.session.project.snips[0]
+    assert snip.row.id == "r1" and SN.regions_of(snip)
+
+
+def drawn_ids(strip):
+    """The labels a spectrum's line IDs draw."""
+    return [text.toPlainText() for _, _, text in strip.view._ids]
+
+
+def test_the_isotopes_of_the_ion_shown_are_labelled(window, qtbot, tmp_path):
+    # Stage 10, point 7: Lyβ on metal_line_abs's spectrum at z = 0.2695
+    tab = new_project(window, tmp_path, z=0.2695)
+    show(tab, "H", "I", "Lyβ")
+    ids = drawn_ids(tab.strips[0])
+    assert "Lyβ 1025.7" in ids and "D Lyβ 1025.4" in ids
+
+
+def test_the_line_ids_menu(window, qtbot, tmp_path):
+    # Stage 10, point 4: two datasets, O I 1302 shown (Si II 1304 beside it)
+    second = tmp_path / "second.dat"
+    second.write_bytes(SPECTRUM.read_bytes())
+    tab = new_project(window, tmp_path, z=0.0, spectra=(SPECTRUM, second))
+    show(tab, "O", "I", "O I 1302")
+    menu = tab.line_ids_menu
+    assert [menu.itemText(n) for n in range(menu.count())] == [
+        "This transition",
+        "This ion",
+        "The model's ions and strong lines",
+        "Every line",
+    ]
+    assert menu.currentData() == L.MODEL
+    default = [drawn_ids(s) for s in tab.strips]
+    menu.setCurrentIndex(menu.findData(L.TRANSITION))
+    assert all(drawn_ids(s) == ["O I 1302.2"] for s in tab.strips)
+    assert all(s.view.hidden_note > 0 for s in tab.strips)
+    menu.setCurrentIndex(menu.findData(L.EVERY))
+    assert all(s.view.hidden_note == 0 for s in tab.strips)
+    assert all(len(drawn_ids(s)) > len(d) for s, d in zip(tab.strips, default))
+    # A view setting: no step, and kept with the project's view
+    assert not window.session.history.can_undo()
+    menu.setCurrentIndex(menu.findData(L.ION))
+    path = window.session.path
+    window.do_file_close()
+    window.open_path(path)
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    assert tab.line_ids_menu.currentData() == L.ION
+    assert all(drawn_ids(s) == ["O I 1302.2"] for s in tab.strips)
+
+
+def test_the_list_by_wavelength_or_by_strength(window, qtbot, tmp_path):
+    # Stage 10, point 9: a flat source covering Si II 1190, 1193, 1260 and 1304
+    wave = np.arange(1180.0, 1310.0, 0.02)
+    flat = tmp_path / "flat.dat"
+    np.savetxt(str(flat), np.column_stack([wave, np.ones_like(wave), 0.05 + 0 * wave]))
+    tab = new_project(window, tmp_path, z=0.0, spectra=(flat,))
+    show(tab, "Si", "II", "Si II 1260")
+    assert tab.order_menu.currentData() == L.WAVELENGTH
+    observed = [float(r[2]) for r in listed(tab)]
+    assert observed == sorted(observed)
+    assert "by wavelength" in tab.list_note.text()
+    # The transition shown stays selected, and ↓ follows the order shown
+    tab.order_menu.setCurrentIndex(tab.order_menu.findData(L.STRENGTH))
+    rows = listed(tab)
+    assert tab.listing.currentItem().text(1).startswith("Si II 1260")
+    assert "by strength" in tab.list_note.text()
+    assert observed != [float(r[2]) for r in rows]
+    at = [r[1] for r in rows].index(tab.listing.currentItem().text(1))
+    tab.do_next()
+    assert tab.listing.currentItem().text(1) == rows[at + 1][1]
+    assert tab.state["rest"] == pytest.approx(
+        tab.listing.currentItem().data(0, QtCore.Qt.ItemDataRole.UserRole)[1]
+    )
+    # Kept with the project's view
+    path = window.session.path
+    window.do_file_close()
+    window.open_path(path)
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    assert tab.order_menu.currentData() == L.STRENGTH
+    assert [r[1] for r in listed(tab)] == [r[1] for r in rows]
+
+
+def menu_entries(menu):
+    return [menu.itemText(n) for n in range(menu.count())]
+
+
+def test_the_snips_of_this_system(window, qtbot, tmp_path):
+    # Stage 10, point 5: two datasets, two systems
+    from alis.dashboard import datasets as DS
+
+    second = tmp_path / "second.dat"
+    second.write_bytes(SPECTRUM.read_bytes())
+    tab = new_project(window, tmp_path, z=0.0, spectra=(SPECTRUM, second))
+    menu = tab.snips_menu
+    show(tab, "O", "I", "O I 1302")
+    assert menu_entries(menu) == ["No snips yet"] and not menu.isEnabled()
+    tab.actions_["regions.snip"].trigger()
+    assert menu_entries(menu) == ["O I 1302.2 · 2 datasets"] and menu.isEnabled()
+    show(tab, "Si", "II", "Si II 1304")
+    tab.actions_["regions.snip"].trigger()
+    assert menu_entries(menu) == [
+        "O I 1302.2 · 2 datasets",
+        "Si II 1304.4 · 2 datasets",
+    ]
+    assert menu.currentIndex() == 1
+    # Choosing an entry shows its transition: the Element, the Ion and the list follow
+    menu.activated.emit(0)
+    assert tab.current_line().name == "O I 1302.2"
+    assert tab.element_box.currentText() == "O" and tab.ion_box.currentText() == "I"
+    assert tab.listing.currentItem().text(1).startswith("O I 1302")
+    assert tab.strips[0].snip is not None
+    # CLEAR of its last snip takes the entry out, and undo brings it back
+    window.on_dialog = lambda dialog: 1
+    for row in ("r1", "r2"):
+        tab.select_row(row)
+        tab.actions_["regions.clear"].trigger()
+    assert menu_entries(menu) == ["— choose a snip (1) —", "Si II 1304.4 · 2 datasets"]
+    window.session.history.undo()
+    window.refresh()
+    assert menu_entries(menu)[-2:] == [
+        "O I 1302.2 · 1 dataset",
+        "Si II 1304.4 · 2 datasets",
+    ]
+    # Another system lists its own snips
+    project = window.session.project
+    window.session.history.do(DS.add_system_step(project, 0.0338))
+    window.refresh()
+    tab.system_box.setCurrentIndex(tab.system_box.findData("b"))
+    assert menu_entries(menu) == ["No snips yet"]
+    show(tab, "Si", "II", "Si II 1260")
+    tab.actions_["regions.snip"].trigger()
+    assert menu_entries(menu) == ["Si II 1260.4 · 2 datasets"]
+    tab.system_box.setCurrentIndex(tab.system_box.findData("a"))
+    assert "Si II 1260.4 · 2 datasets" not in menu_entries(menu)
+
+
+def test_j0035_d_i_is_labelled_beside_the_lyman_lines(window, qtbot):
+    bundle = J0035
+    need(bundle)
+    window.open_path(str(bundle))
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    if not tab._spectra:
+        pytest.skip("J0035m0918's source spectra are not present")
+    for name, deuterium in (("Lyα", "D Lyα 1215.3"), ("Lyβ", "D Lyβ 1025.4")):
+        show(tab, "H", "I", name)
+        assert all(deuterium in drawn_ids(s) for s in tab.strips)
+
+
 def test_normalised_divides_by_the_continuum(window, qtbot, tmp_path):
     tab = new_project(window, tmp_path, z=0.0)
     show(tab, "O", "I", "O I 1302")
@@ -295,6 +562,61 @@ def test_the_zoom_is_kept_across_a_step(window, qtbot, tmp_path):
     assert x0 == pytest.approx(1301.8, abs=0.01) and x1 == pytest.approx(
         1302.6, abs=0.01
     )
+
+
+def ranges(tab):
+    return [np.ravel(s.view.view_range()) for s in tab.strips]
+
+
+def assert_same_ranges(tab, kept):
+    for now, then in zip(ranges(tab), kept, strict=True):
+        assert np.allclose(now, then, rtol=0, atol=1e-9)
+
+
+@pytest.mark.parametrize("count", [3, 1])
+def test_the_view_stays_where_the_user_put_it(window, qtbot, tmp_path, count):
+    # Stage 10, point 10: every action redraws the tab, and kept each spectrum's y
+    # range only when there was one dataset
+    spectra = [SPECTRUM]
+    for num in range(1, count):
+        copy = tmp_path / "copy{0}.dat".format(num)
+        copy.write_bytes(SPECTRUM.read_bytes())
+        spectra.append(copy)
+    tab = new_project(window, tmp_path, z=0.0, spectra=spectra)
+    show(tab, "O", "I", "O I 1302")
+    tab.actions_["regions.snip"].trigger()
+    tab.zoom.home()
+    home = ranges(tab)
+    # The zoom box on the last spectrum: its x (linked) and its own y
+    tab.strips[-1].view.box.setXRange(1301.8, 1302.6, padding=0)
+    tab.strips[-1].view.box.setYRange(0.4, 1.1, padding=0)
+    kept = ranges(tab)
+    for name in ("regions.draw", "regions.tweak", "regions.draw", "regions.knot"):
+        tab.actions_[name].trigger()
+        assert_same_ranges(tab, kept)
+    tab.actions_["regions.knot"].trigger()
+    tab.draw(tab.strips[0].row_id, 1301.9, 1302.4)
+    window.refresh()
+    assert_same_ranges(tab, kept)
+    tab.knot_at(tab.strips[0], 1302.5, 1.0)
+    window.refresh()
+    assert_same_ranges(tab, kept)
+    window.session.history.undo()
+    window.refresh()
+    assert_same_ranges(tab, kept)
+    # ← and → keep their history across the redraws
+    tab.zoom.back()
+    assert_same_ranges(tab, home)
+    tab.zoom.forward()
+    assert_same_ranges(tab, kept)
+    # ⌂ takes each spectrum home
+    tab.zoom.home()
+    assert_same_ranges(tab, home)
+    # A new transition opens at home
+    tab.strips[-1].view.box.setYRange(0.4, 1.1, padding=0)
+    show(tab, "Si", "II", "Si II 1304")
+    show(tab, "O", "I", "O I 1302")
+    assert_same_ranges(tab, home)
 
 
 def test_two_datasets_and_regions_copied_on_drawing(window, qtbot, tmp_path):
@@ -394,16 +716,16 @@ def test_add_regions_to_all_and_tweak_one_dataset(window, qtbot, tmp_path):
     show(tab, "O", "I", "O I 1302")
     tab.actions_["regions.snip"].trigger()
     first, other = (s.row_id for s in tab.strips)
-    tab.actions_["regions.draw"].trigger()
+    adjust(tab, "all spectra")
     tab.strips[0].view.spanned.emit(PL.DRAW, 1301.5, 1302.8)
     got = regions_by_row(tab)
     assert got["OI_SiII"] == got["second"] and len(got["second"]) == 1
-    # A right-drag with Add regions to all leaves the pixels out of both
+    # A right-drag on all spectra leaves the pixels out of both
     tab.strips[1].view.spanned.emit(PL.MASK, 1302.6, 1302.8)
     got = regions_by_row(tab)
     assert got["OI_SiII"] == got["second"] and got["second"][0][1] < 1302.6
-    # Tweak dataset regions: the selected dataset alone
-    tab.actions_["regions.tweak"].trigger()
+    # One spectrum: the selected dataset alone
+    adjust(tab, "one spectrum")
     assert not tab.actions_["regions.draw"].isChecked()
     tab.strips[1].view.spanned.emit(PL.DRAW, 1303.0, 1303.2)
     tab.strips[1].view.spanned.emit(PL.MASK, 1302.0, 1302.1)
@@ -419,6 +741,100 @@ def test_add_regions_to_all_and_tweak_one_dataset(window, qtbot, tmp_path):
     got = regions_by_row(tab)
     assert len(got["second"]) == 2 and len(got["OI_SiII"]) == 1
     assert first != other
+
+
+def test_the_whole_source_is_drawn_for_the_view(window, qtbot, tmp_path):
+    # Stage 10, point 2 (Q10.7 (b)): a long source, 1250-1360 Å, with O I 1302
+    wave = np.arange(1250.0, 1360.0, 0.01)
+    flux = 1.0 - 0.6 * np.exp(-0.5 * ((wave - 1302.16849) / 0.05) ** 2)
+    source = tmp_path / "long.dat"
+    np.savetxt(str(source), np.column_stack([wave, flux, 0.02 + 0 * wave]))
+    tab = new_project(window, tmp_path, z=0.0, spectra=(source,))
+    show(tab, "O", "I", "O I 1302")
+    tab.actions_["regions.snip"].trigger()
+    view = tab.strips[0].view
+    item = view._items["context"]
+    # The faint curve holds the whole source, drawn clipped and reduced by peaks
+    x, _ = item.getOriginalDataset()
+    assert x.min() < 1250.01 and x.max() > 1359.98
+    assert item.opts["clipToView"] and item.opts["autoDownsample"]
+    assert item.opts["downsampleMethod"] == "peak"
+    snip = tab.current_snip()
+    low, high = snip.extent
+    width = high - low
+    middle = 0.5 * (low + high)
+    # Zoomed out to ten snips' widths: drawn to both ends, about ten points a pixel
+    view.box.setXRange(middle - 5 * width, middle + 5 * width, padding=0)
+    qtbot.wait(10)
+    shown, _ = item.getData()
+    assert shown.min() <= middle - 5 * width and shown.max() >= middle + 5 * width
+    assert shown.size <= 12 * view.box.width()
+    # Zoomed in to 50 pixels: every pixel in view is drawn, and nothing is cut
+    project = window.session.project
+    before = (project.files[snip.member], SN.regions_of(snip))
+    view.box.setXRange(middle - 0.25, middle + 0.25, padding=0)
+    qtbot.wait(10)
+    shown, _ = item.getData()
+    inside = (wave > middle - 0.25) & (wave < middle + 0.25)
+    assert shown.size >= 2 * inside.sum()
+    snip = tab.current_snip()
+    assert (project.files[snip.member], SN.regions_of(snip)) == before
+    # A region drawn, and an undo, reuse the faint curve
+    made = tab._context[tab.strips[0].row_id]
+    tab.draw(tab.strips[0].row_id, middle - 0.3, middle + 0.3)
+    window.refresh()
+    window.session.history.undo()
+    window.refresh()
+    assert tab._context[tab.strips[0].row_id] is made
+    # An edge dragged five widths out extends the snip there, over the source
+    tab.strips[0].view.edgeMoved.emit("high", high + 5 * width, True)
+    snip = tab.current_snip()
+    assert snip.extent[1] == pytest.approx(high + 5 * width, abs=0.01)
+
+
+def test_the_top_grip_moves_every_snip_s_edge(window, qtbot, tmp_path):
+    # Stage 10, point 1 (Q10.6 (a)): three datasets
+    spectra = [SPECTRUM]
+    for num in (2, 3):
+        copy = tmp_path / "copy{0}.dat".format(num)
+        copy.write_bytes(SPECTRUM.read_bytes())
+        spectra.append(copy)
+    tab = new_project(window, tmp_path, z=0.0, spectra=spectra)
+    show(tab, "O", "I", "O I 1302")
+    tab.actions_["regions.snip"].trigger()
+    assert all(
+        len(line.markers) == 2 for s in tab.strips for line in s.view._lists["edges"]
+    )
+    project = window.session.project
+    before = {s.row_id: s.snip.extent for s in tab.strips}
+    x = 1302.16849 * (1.0 - 400.0 / C_KMS)
+    # While the top grip is dragged, the other spectra's edges follow it
+    tab.strips[0].view.edgesMoved.emit("low", x, False)
+    for strip in tab.strips[1:]:
+        assert strip.view._lists["edges"][0].value() == pytest.approx(x)
+    assert {s.row_id: tab._snip_of_row(s.row_id).extent for s in tab.strips} == before
+    # On release, one step moves them all
+    tab.strips[0].view.edgesMoved.emit("low", x, True)
+    project = window.session.project
+    lows = [tab._snip_of_row(r).extent[0] for r in before]
+    assert all(abs(lo - x) < 0.011 for lo in lows)
+    assert window.session.history.undo_description().startswith(
+        "Move the low edge of O I 1302.2 in 3 datasets"
+    )
+    window.qactions["edit.undo"].trigger()
+    assert {s.row_id: tab._snip_of_row(s.row_id).extent for s in tab.strips} == before
+    # The middle grip moves one snip, as before
+    tab.strips[1].view.edgeMoved.emit("low", x, True)
+    assert tab._snip_of_row(tab.strips[1].row_id).extent[0] < before["r2"][0]
+    assert tab._snip_of_row("r1").extent == before["r1"]
+    # With one dataset, one grip
+    window.session.discard_recovery()
+    one = tmp_path / "one"
+    one.mkdir()
+    tab = new_project(window, one, z=0.0)
+    show(tab, "O", "I", "O I 1302")
+    tab.actions_["regions.snip"].trigger()
+    assert all(len(line.markers) == 1 for line in tab.strips[0].view._lists["edges"])
 
 
 def test_an_edge_dragged_outwards_recuts_from_the_source(window, qtbot, tmp_path):
@@ -827,8 +1243,16 @@ def saved_snip(window, folder, ion_word, rest, half=150.0, fit=40.0, name=None):
 def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
     tab = new_project(window, tmp_path, z=0.0)
     project = window.session.project
-    load = tab.actions_["regions.load_snips"]
+    # In the File menu after Open a fit (.mod)…, no longer on the tab (Stage 10,
+    # point 5)
+    load = window.qactions["file.load_snips"]
     assert load.isEnabled()
+    entries = [a.objectName() for a in window.menus["File"].actions()]
+    assert entries[entries.index("file.import") + 1] == "file.load_snips"
+    assert "regions.load_snips" not in tab.actions_
+    assert not [
+        b for b in tab.findChildren(QtWidgets.QToolButton) if "Load" in b.text()
+    ]
     one = saved_snip(window, tmp_path / "data", "16O_I", 1302.16849)
     two = saved_snip(window, tmp_path / "data", "28Si_II", 1304.3702)
     before = state(project)
@@ -842,9 +1266,12 @@ def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
     assert title == "Load snips" and text.startswith("x.dat: its file name names")
     assert "Nothing was loaded." in text
     assert state(project) == before
-    # Both snips: loaded with their fit ranges, the first one shown
+    # Both snips, loaded from another tab: with their fit ranges, the first one
+    # shown on the Regions tab
+    window.tabs.setCurrentIndex(0)
     window.chosen["open_many"] = [str(one), str(two)]
     load.trigger()
+    assert window.tabs.currentWidget() is tab
     project = window.session.project
     assert sorted(s.specid for s in project.snips) == ["OI_1302", "SiII_1304"]
     assert tab.current_line().name == "O I 1302.2"

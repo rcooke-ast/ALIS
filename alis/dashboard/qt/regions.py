@@ -5,19 +5,22 @@ spectrum per dataset that covers the transition, with the tools above, and the
 **Continuum** and **Snip** boxes of the selected dataset below.
 
 - **Transitions** (S2, D36): System ▾ (the primary by default), Element ▾ and Ion ▾,
-  each with ‹ ›; the ion's transitions on the data, strongest first, each with its
-  observed wavelength, fλ and flags (gap, edge), ● for one with a snip. Without a
-  source spectrum only the transitions with a snip are listed, and SNIP needs one.
+  each with ‹ ›; the ion's transitions on the data, by wavelength or by strength
+  (Order ▾, Stage 10), each with its observed wavelength, fλ and flags (gap, edge),
+  ● for one with a snip. Without a source spectrum only the transitions with a snip
+  are listed, and SNIP needs one. The Key's Line IDs ▾ says what the line IDs
+  label: the transition shown, its ion, the model's ions and strong lines, or every
+  line (Stage 10).
   Keys, while the tab has the focus: ↑ ↓ the transition, [ ] the element, − + the
   continuum's order, Delete the region last clicked.
 - **The spectra** (D36): one per dataset, stacked, scrolling beyond a number (a
   preference), with a velocity axis above (D43). Clicking one selects its dataset.
-  Above them, what acts on the spectra (Q4.19): SNIP, CLEAR, and the fit regions'
-  two tools, Add regions to all and Tweak dataset regions: in both, as in prepfit, a
+  Above them, what acts on the spectra (Q4.19): SNIP, CLEAR, and Adjust fit regions
+  ▾ (Stage 10): all spectra, one spectrum or off. In the first two, as in prepfit, a
   drag adds a region and a right-drag leaves pixels out, in every dataset of the
   transition or in the selected dataset alone (on a transition with no snip, a drag
   SNIPs first, Q4.2(c)); then the zoom bar. The snip's edges are orange handles; a
-  fit region's edges move while either tool is on; a right-click removes a region
+  fit region's edges move while the menu is not off; a right-click removes a region
   (from every dataset, or from this one alone).
 - **Continuum** (S8, D17, S10): the function, the order (− n +), and what acts on the
   continuum: Auto first guess, Add knot (a click adds a knot, a click on one removes
@@ -70,7 +73,7 @@ KEY_ITEMS = (
     ("fit", "fitted pixels"),
     ("other", "fitted by another snip"),
     ("shared", "fitted twice"),
-    ("edge", "snip edges: drag the handles"),
+    ("edge", "snip edges: ◀▶ this snip, ▼ every snip"),
     ("continuum", "continuum"),
     ("knot", "continuum knots"),
     ("hydrogen", "line IDs: H I and D I"),
@@ -78,13 +81,22 @@ KEY_ITEMS = (
     ("ids_other", "line IDs: other systems"),
 )
 TOOLS = ("regions.draw", "regions.tweak", "regions.knot")
+# The tab's view settings, kept with the project's view, and kept when another
+# system or transition is shown (Stage 10)
+SETTINGS = ("model_from", "line_ids", "order")
 # What acts on the spectra (above them), and on the continuum (in its box): RJC's
 # review, Q4.19
 # The two ways of editing the fit regions (RJC's review of draft 2): in every dataset
 # at once, or in the selected dataset alone; in both a drag adds a region and a
 # right-drag leaves pixels out, as in prepfit
 REGION_TOOLS = ("regions.draw", "regions.tweak")
-TOOL_BUTTONS = ("regions.snip", "regions.clear", "regions.draw", "regions.tweak")
+TOOL_BUTTONS = ("regions.snip", "regions.clear")
+# Adjust fit regions ▾ (Stage 10, point 3): its entries, and the tool each chooses
+REGION_ENTRIES = (
+    ("all spectra", "regions.draw"),
+    ("one spectrum", "regions.tweak"),
+    ("off", None),
+)
 CONTINUUM_BUTTONS = (
     "regions.auto",
     "regions.knot",
@@ -249,6 +261,7 @@ class RegionsTab(W.Tab):
         self.state = {}
         self.selected = None
         self._mode = None
+        self._context = {}
         self._rows = []
         self._list = []
         self._spectra = {}
@@ -342,14 +355,41 @@ class RegionsTab(W.Tab):
         header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         header.setStretchLastSection(True)
         box.addWidget(self.listing, 1)
+        # The list's order (Stage 10, point 9): a view setting, kept with the view
+        order = QtWidgets.QHBoxLayout()
+        order.addWidget(QtWidgets.QLabel("Order:"))
+        self.order_menu = QtWidgets.QComboBox()
+        self.order_menu.setObjectName("regions_order")
+        self.order_menu.addItem("by wavelength", L.WAVELENGTH)
+        self.order_menu.addItem("by strength", L.STRENGTH)
+        self.order_menu.setToolTip(
+            "The transitions in order of rest wavelength, the shortest first, or of"
+            " fλ, the strongest first"
+        )
+        self.order_menu.currentIndexChanged.connect(self._order_chosen)
+        order.addWidget(self.order_menu)
+        order.addStretch(1)
+        box.addLayout(order)
         self.list_note = W.muted("")
         self.list_note.setWordWrap(True)
         box.addWidget(self.list_note)
-        # Load snips… (Task 7.1), under the list it adds to: the tools above the
-        # spectra have no room left at 1440 px with the .mod panel open
-        self.load_row = QtWidgets.QHBoxLayout()
-        self.load_row.addStretch(1)
-        box.addLayout(self.load_row)
+        # Every transition of the system with a snip, of any ion (Stage 10, point
+        # 5), where Load snips… was (it is in the File menu)
+        row = QtWidgets.QHBoxLayout()
+        row.addWidget(QtWidgets.QLabel("Snips of this system:"))
+        self.snips_menu = QtWidgets.QComboBox()
+        self.snips_menu.setObjectName("regions_snips")
+        self.snips_menu.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.snips_menu.setMinimumContentsLength(14)
+        self.snips_menu.setToolTip(
+            "Every transition of this system with a snip, of any ion, and the number"
+            " of datasets it is cut from: choose one to show it"
+        )
+        self.snips_menu.activated.connect(self._snip_chosen)
+        row.addWidget(self.snips_menu, 1)
+        box.addLayout(row)
         self.transitions = W.Pane("Transitions", body)
 
     def _build_key(self):
@@ -364,6 +404,28 @@ class RegionsTab(W.Tab):
             label = QtWidgets.QLabel(text)
             label.setWordWrap(True)
             grid.addWidget(label, num, 1)
+        # What the line IDs label (Stage 10, point 4): a view setting, kept with the
+        # project's view, not a step
+        row = QtWidgets.QHBoxLayout()
+        row.setContentsMargins(0, 2, 0, 0)
+        row.addWidget(QtWidgets.QLabel("Line IDs:"))
+        self.line_ids_menu = QtWidgets.QComboBox()
+        self.line_ids_menu.setObjectName("regions_line_ids")
+        self.line_ids_menu.setSizeAdjustPolicy(
+            QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
+        )
+        self.line_ids_menu.setMinimumContentsLength(12)
+        for key, text in L.LABELLED:
+            self.line_ids_menu.addItem(text, key)
+        self.line_ids_menu.setCurrentIndex(self.line_ids_menu.findData(L.MODEL))
+        self.line_ids_menu.setToolTip(
+            "What the line IDs label: the transition shown, the lines of its ion, the"
+            " model's ions and strong lines, or every line; the other lines in view"
+            " are counted"
+        )
+        self.line_ids_menu.currentIndexChanged.connect(self._line_ids_chosen)
+        row.addWidget(self.line_ids_menu, 1)
+        grid.addLayout(row, len(KEY_ITEMS), 0, 1, 2)
         grid.setColumnStretch(1, 1)
         self.key = W.Pane("Key", body)
 
@@ -373,6 +435,18 @@ class RegionsTab(W.Tab):
         self.tool_layout = QtWidgets.QHBoxLayout(self.tool_row)
         self.tool_layout.setContentsMargins(0, 0, 0, 0)
         self.tool_layout.setSpacing(2)
+        # Adjust fit regions ▾ (Stage 10, point 3): placed after CLEAR
+        self.regions_menu = QtWidgets.QComboBox()
+        self.regions_menu.setObjectName("regions_adjust")
+        for text, name in REGION_ENTRIES:
+            self.regions_menu.addItem(text, name)
+        self.regions_menu.setCurrentIndex(len(REGION_ENTRIES) - 1)
+        self.regions_menu.setToolTip(
+            "Adjust the fit regions of all spectra at once, or of the selected one"
+            " alone: a drag adds a region and a right-drag leaves pixels out, as in"
+            " prepfit; off, a drag pans or zooms"
+        )
+        self.regions_menu.activated.connect(self._regions_chosen)
         self.scroll = QtWidgets.QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
@@ -1082,20 +1156,15 @@ class RegionsTab(W.Tab):
             button.setObjectName(name.replace(".", "_"))
             if name == "regions.snip":
                 button.setStyleSheet("font-weight: 600;")
-            if name == "regions.draw":
+            self.tool_layout.addWidget(button)
+            self.tab_buttons.append(button)
+            if name == "regions.clear":
                 line = QtWidgets.QFrame()
                 line.setFrameShape(QtWidgets.QFrame.Shape.VLine)
                 line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
                 self.tool_layout.addWidget(line)
-                self.tool_layout.addWidget(QtWidgets.QLabel("Fit regions:"))
-            self.tool_layout.addWidget(button)
-            self.tab_buttons.append(button)
-        elif name == "regions.load_snips":
-            button = QtWidgets.QToolButton()
-            button.setDefaultAction(action)
-            button.setObjectName(name.replace(".", "_"))
-            self.load_row.insertWidget(0, button)
-            self.tab_buttons.append(button)
+                self.tool_layout.addWidget(QtWidgets.QLabel("Adjust fit regions:"))
+                self.tool_layout.addWidget(self.regions_menu)
         elif name in CONTINUUM_BUTTONS:
             button = QtWidgets.QToolButton()
             button.setDefaultAction(action)
@@ -1187,8 +1256,9 @@ class RegionsTab(W.Tab):
                 k: self.state[k] for k in ("system", "ion", "rest") if k in self.state
             }
             data["row"] = self.selected
-            if self.state.get("model_from"):
-                data["model_from"] = self.state["model_from"]
+            for key in SETTINGS:
+                if self.state.get(key):
+                    data[key] = self.state[key]
             self._seen_view = data
             self.session.set_view("regions", data)
 
@@ -1241,6 +1311,7 @@ class RegionsTab(W.Tab):
         """
         if session is not self.session:
             self.state, self.selected, self._seen_view = {}, None, None
+            self._context = {}
             self._shown_key = None
             self._compared = set()
         self.session = session
@@ -1255,7 +1326,7 @@ class RegionsTab(W.Tab):
             # Set elsewhere (the Data tab's coverage grid, a project opened)
             self.state = {
                 k: stored[k]
-                for k in ("system", "ion", "rest", "model_from")
+                for k in ("system", "ion", "rest") + SETTINGS
                 if k in stored
             }
             self.selected = stored.get("row")
@@ -1268,16 +1339,104 @@ class RegionsTab(W.Tab):
                 self._spectra[row.id] = spec
         self._snip_map = L.snip_transitions(project)
         self._shown = self.main.shown_run() if self.main is not None else (None, "")
+        self.order_menu.blockSignals(True)
+        self.order_menu.setCurrentIndex(
+            max(self.order_menu.findData(self._list_order()), 0)
+        )
+        self.order_menu.blockSignals(False)
         self._filling = True
         try:
             self._fill_systems()
             self._fill_elements()
             self._fill_list()
+            self._fill_snips_menu()
         finally:
             self._filling = False
         self._fill_model_from()
+        self.line_ids_menu.blockSignals(True)
+        found = self.line_ids_menu.findData(self.state.get("line_ids", L.MODEL))
+        self.line_ids_menu.setCurrentIndex(max(found, 0))
+        self.line_ids_menu.blockSignals(False)
         self._fill_strips()
         self._fill_boxes()
+
+    def _fill_snips_menu(self):
+        """
+        Snips of this system: each transition of the system with a snip, of any ion,
+        in order of rest wavelength, with the number of datasets it is cut from
+        (Stage 10, point 5); the transition shown when it has one.
+
+        Generated by RJC and Claude.
+        """
+        menu = self.snips_menu
+        menu.clear()
+        system = self._system()
+        found = {}
+        for snip in self.session.project.snips if system is not None else ():
+            trans = self._snip_map.get(snip.specid)
+            if trans is None or trans.system != system.id:
+                continue
+            key = (trans.ion, round(trans.rest, 3))
+            entry = found.setdefault(key, [trans, set()])
+            entry[1].add(snip.row.id if snip.row is not None else snip.specid)
+        if not found:
+            menu.addItem("No snips yet", None)
+            menu.setEnabled(False)
+            return
+        menu.setEnabled(True)
+        current = None
+        for key in sorted(found, key=lambda k: k[1]):
+            trans, rows = found[key]
+            menu.addItem(
+                "{0} · {1} dataset{2}".format(
+                    SN.transition_name(trans), len(rows), "" if len(rows) == 1 else "s"
+                ),
+                (trans.ion, trans.rest),
+            )
+            if (
+                trans.ion == self.state.get("ion")
+                and abs(trans.rest - self.state.get("rest", -1.0)) < 0.01
+            ):
+                current = menu.count() - 1
+        if current is None:
+            menu.insertItem(0, "— choose a snip ({0}) —".format(len(found)), None)
+            current = 0
+        menu.setCurrentIndex(current)
+
+    def _snip_chosen(self, index):
+        """A snip chosen: its transition shown, as the coverage grid shows one."""
+        data = self.snips_menu.itemData(index)
+        system = self._system()
+        if data is None or system is None or self._filling:
+            return
+        self.show_transition(system.id, data[0], data[1])
+
+    def _settings(self):
+        """The view settings of the tab's state (:data:`SETTINGS`)."""
+        return {k: self.state[k] for k in SETTINGS if k in self.state}
+
+    def _list_order(self):
+        """The list's order: by wavelength (the default), or by strength."""
+        return self.state.get("order", L.WAVELENGTH)
+
+    def _order_chosen(self, index):
+        if self.session is None:
+            return
+        self.state["order"] = self.order_menu.itemData(index)
+        self._remember()
+        # The transition shown stays selected
+        self._filling = True
+        try:
+            self._fill_list()
+        finally:
+            self._filling = False
+
+    def _line_ids_chosen(self, index):
+        if self.session is None:
+            return
+        self.state["line_ids"] = self.line_ids_menu.itemData(index)
+        self._remember()
+        self._draw_ids()
 
     def _tab_shown(self, index):
         if self.main.tabs.widget(index) is self and self._stale:
@@ -1382,10 +1541,15 @@ class RegionsTab(W.Tab):
             snipped.get(ion, []),
             system.id,
             half_width=self._pref("regions.half_width", L.HALF_WIDTH),
+            order=self._list_order(),
         )
         if self._spectra:
             self.list_note.setText(
-                "The transitions on the data, strongest first. ● has a snip."
+                "The transitions on the data, {0}. ● has a snip.".format(
+                    "by wavelength"
+                    if self._list_order() == L.WAVELENGTH
+                    else "by strength"
+                )
             )
         else:
             rows = [t for t in rows if t.snipped]
@@ -1413,7 +1577,9 @@ class RegionsTab(W.Tab):
             ):
                 current = item
         if current is None and rows:
-            current = self.listing.topLevelItem(0)
+            # The strongest first, whatever the order shown
+            strongest = max(range(len(rows)), key=lambda n: rows[n].flam)
+            current = self.listing.topLevelItem(strongest)
         if current is not None:
             ion, rest = current.data(0, QtCore.Qt.ItemDataRole.UserRole)
             if not (
@@ -1453,9 +1619,11 @@ class RegionsTab(W.Tab):
         return action is not None and action.isChecked()
 
     def _fill_strips(self):
+        # Every spectrum's ranges, by dataset, kept while the same transition is
+        # redrawn: only ⌂, ← and → change them (Stage 10, point 10)
         kept = None
         if self.strips and self._shown_key == self._key():
-            kept = self.strips[0].view.view_range()
+            kept = {s.row_id: s.view.view_range() for s in self.strips}
         self._clear_strips()
         project = self.session.project
         line = self.current_line()
@@ -1483,10 +1651,22 @@ class RegionsTab(W.Tab):
         self.plot.title.setText(title)
         shown = max(1, min(len(found), self._pref("regions.spectra", 3)))
         height = max(150, (self.scroll.viewport().height() - 4) // shown)
+        half_width = self._pref("regions.half_width", L.HALF_WIDTH)
         for row, snip in found:
             strip = Strip(row.id)
             strip.snip = snip
-            strip.title.setText(row.name + ("" if snip is not None else " · no snip"))
+            title = row.name
+            if snip is None:
+                spec = self._spectra.get(row.id)
+                good = SN.usable_pixels(row, spec, system, line, half_width)[1]
+                # SNIP passes over a dataset with too few pixels it can fit there
+                # (Stage 10, point 8)
+                title += (
+                    " · no snip"
+                    if np.count_nonzero(good) >= SN.MIN_PIXELS
+                    else " · no usable data here"
+                )
+            strip.title.setText(title)
             if len(found) > shown:
                 strip.setFixedHeight(height)
             self._draw_strip(strip, row, snip, line, system)
@@ -1498,12 +1678,16 @@ class RegionsTab(W.Tab):
             self.stack.addWidget(strip, 1)
             self.strips.append(strip)
         if self.strips:
-            self.zoom.attach(*[s.view for s in self.strips])
+            same = kept is not None and [s.row_id for s in self.strips] == list(kept)
+            self.zoom.attach(*[s.view for s in self.strips], keep_history=same)
             if kept is not None:
-                (x0, x1), (y0, y1) = kept
+                (x0, x1), _ = next(iter(kept.values()))
                 for strip in self.strips:
                     strip.view.box.setXRange(x0, x1, padding=0)
-                    if len(self.strips) == 1:
+                    if strip.row_id in kept:
+                        # A spectrum that appears (SNIP on a dataset not shown
+                        # before) keeps its own home y range
+                        y0, y1 = kept[strip.row_id][1]
                         strip.view.box.setYRange(y0, y1, padding=0)
             self.zoom.remember()
         self._shown_key = self._key()
@@ -1536,17 +1720,16 @@ class RegionsTab(W.Tab):
                 view.set_run_continuum(found.wave, found.run)
             low, high = snip.extent
             if spec is not None and not normalised:
-                width = high - low
-                sel = (spec.wave >= low - 0.6 * width) & (
-                    spec.wave <= high + 0.6 * width
-                )
-                view.set_context(spec.wave[sel], spec.flux[sel])
+                # The whole source, drawn for the view (Stage 10, point 2)
+                view.set_context(steps=self._context_of(row.id, spec))
             view.set_regions(
                 "fit", SN.regions_of(snip), movable=self._mode in REGION_TOOLS
             )
             view.set_regions("other", self._other_regions(row, snip, low, high))
             view.set_regions("shared", self._shared_spans(snip))
-            view.set_edges(low, high)
+            # The top grip moves every snip's edge (Stage 10, point 1)
+            several = sum(1 for _, each in self._rows if each is not None) > 1
+            view.set_edges(low, high, every=several)
             knots = CO.knots_of(project, snip)
             if normalised:
                 knots = [(x, y / strip.continuum_at(x)) for x, y in knots]
@@ -1563,8 +1746,24 @@ class RegionsTab(W.Tab):
             width = high - low
             sel = (spec.wave >= low - 0.5 * width) & (spec.wave <= high + 0.5 * width)
             view.set_data(spec.wave[sel], spec.flux[sel], spec.error[sel])
+            view.set_context(steps=self._context_of(row.id, spec))
             view.set_home((low, high))
         view.home()
+
+    def _context_of(self, row_id, spec):
+        """
+        A source's faint curve, as steps, made once while the source is the same:
+        every action redraws the tab (Stage 10, points 2 and 10). pyqtgraph draws
+        only the part in view, reduced to the screen's pixels; the data are never
+        cut.
+
+        Generated by RJC and Claude.
+        """
+        found = self._context.get(row_id)
+        if found is None or found[0] is not spec:
+            found = (spec, PL.step_curve(spec.wave, PL.tame(spec.flux)))
+            self._context[row_id] = found
+        return found[1]
 
     def _model_of(self, snip):
         """
@@ -1648,6 +1847,9 @@ class RegionsTab(W.Tab):
         view.edgeMoved.connect(
             lambda side, x, done, s=strip: self._edge(s, side, x, done)
         )
+        view.edgesMoved.connect(
+            lambda side, x, done, s=strip: self._edges(s, side, x, done)
+        )
         view.regionMoved.connect(
             lambda n, a, b, s=strip: self._region_moved(s, n, a, b)
         )
@@ -1663,10 +1865,20 @@ class RegionsTab(W.Tab):
         if system is None:
             return
         strong = self._pref("lines.strength", L.STRONG)
+        line = self.current_line()
         for strip in self.strips:
             (x0, x1), _ = strip.view.view_range()
+            # The isotopes of the ion shown are labelled (D I with H I: point 7), and
+            # the menu says what else (point 4)
             ids, hidden = L.line_ids(
-                self.session.project, x0, x1, reference=system.id, strong=strong
+                self.session.project,
+                x0,
+                x1,
+                reference=system.id,
+                strong=strong,
+                shown=line.ion if line is not None else None,
+                which=self.state.get("line_ids", L.MODEL),
+                rest=line.rest if line is not None else None,
             )
             strip.view.set_line_ids(
                 [(i.observed, i.label, i.kind) for i in ids], hidden
@@ -1914,7 +2126,7 @@ class RegionsTab(W.Tab):
             )
         else:
             self.fitted_label.setText(
-                "No fit region yet: Add regions to all draws one."
+                "No fit region yet: Adjust fit regions ▾ draws one."
             )
         self.buffer_label.setText(self._buffer_text(snip, facts["buffers"]))
         pairs = SN.shared_pixels(project, snip)
@@ -1991,19 +2203,7 @@ class RegionsTab(W.Tab):
                 self.datasets.selectRow(num)
 
     def _update_snip(self, found=()):
-        """
-        SNIP: while a dataset whose source covers the transition has no snip. Load
-        snips…: while the project has a source spectrum to check the snips against.
-        """
-        load = self.actions_.get("regions.load_snips")
-        if load is not None:
-            load.setEnabled(bool(self._spectra))
-            load.setToolTip(
-                A.get("regions.load_snips").tip
-                if self._spectra
-                else "Loading snips needs a source spectrum, which this project does"
-                " not have"
-            )
+        """SNIP: while a dataset whose source covers the transition has no snip."""
         action = self.actions_.get("regions.snip")
         if action is None:
             return
@@ -2032,6 +2232,14 @@ class RegionsTab(W.Tab):
             action = self.actions_.get(name)
             if action is not None:
                 action.setEnabled(on)
+        # The menu's entries follow their tools: one spectrum is greyed while the
+        # selected dataset has no snip
+        model = self.regions_menu.model()
+        for num, (_, name) in enumerate(REGION_ENTRIES):
+            action = self.actions_.get(name)
+            model.item(num).setEnabled(action is None or action.isEnabled())
+        self.regions_menu.setEnabled(line is not None and bool(self.strips))
+        self._sync_regions_menu()
 
     # -- cross-highlighting (S16) -------------------------------------------------------
 
@@ -2071,7 +2279,7 @@ class RegionsTab(W.Tab):
         )
         if same and (row is None or row == self.selected):
             return
-        self.state = {"system": system, "ion": ion, "rest": rest}
+        self.state = {"system": system, "ion": ion, "rest": rest, **self._settings()}
         if row is not None:
             self.selected = row
         self._remember()
@@ -2082,7 +2290,7 @@ class RegionsTab(W.Tab):
     def _system_chosen(self, index):
         if self._filling or index < 0:
             return
-        self.state = {"system": self.system_box.itemData(index)}
+        self.state = {"system": self.system_box.itemData(index), **self._settings()}
         self._remember()
         self.refresh(self.session)
 
@@ -2170,7 +2378,7 @@ class RegionsTab(W.Tab):
                 )
 
     def _linked(self):
-        """Whether an edit of the regions reaches every dataset (not while tweaking)."""
+        """Whether an edit of the regions reaches every dataset (not on one spectrum)."""
         return self._mode != "regions.tweak"
 
     def _tool(self, name):
@@ -2184,18 +2392,41 @@ class RegionsTab(W.Tab):
             self.zoom.set_mode(PL.PAN)
             self.zoom.buttons["pan"].setChecked(True)
         self._apply_mode()
+        self._sync_regions_menu()
+
+    def _regions_chosen(self, index):
+        """Adjust fit regions ▾: all spectra, one spectrum, or off (point 3)."""
+        name = self.regions_menu.itemData(index)
+        if name is None:
+            # Off: the region tool that is on is turned off
+            if self._mode in REGION_TOOLS:
+                self.actions_[self._mode].trigger()
+        elif self._mode != name:
+            self.actions_[name].trigger()
+        self._sync_regions_menu()
+
+    def _sync_regions_menu(self):
+        """The menu shows the region tool that is on, or off (Add knot, say)."""
+        menu = self.regions_menu
+        menu.blockSignals(True)
+        menu.setCurrentIndex(
+            menu.findData(self._mode)
+            if self._mode in REGION_TOOLS
+            else menu.count() - 1
+        )
+        menu.blockSignals(False)
 
     def do_draw(self):
         """
-        Add regions to all: a drag adds a fit region, and a right-drag leaves pixels
-        out, in every dataset of the transition.
+        Adjust fit regions: all spectra: a drag adds a fit region, and a right-drag
+        leaves pixels out, in every dataset of the transition.
         """
         self._tool("regions.draw")
 
     def do_tweak(self):
         """
-        Tweak dataset regions: a drag adds a fit region, and a right-drag leaves
-        pixels out, in the selected dataset alone (as in prepfit).
+        Adjust fit regions: one spectrum: a drag adds a fit region, and a right-drag
+        leaves pixels out, in the selected dataset alone (as in prepfit).
         """
         self._tool("regions.tweak")
 
@@ -2224,6 +2455,7 @@ class RegionsTab(W.Tab):
         system = self._system()
         if line is None or system is None:
             return
+        report = {}
         try:
             step = SN.snip_step(
                 self.session.project,
@@ -2232,12 +2464,17 @@ class RegionsTab(W.Tab):
                 self._spectra,
                 half_width=self._pref("regions.half_width", L.HALF_WIDTH),
                 max_order=self._max_order(),
+                report=report,
                 **self._options(),
             )
-        except SN.SnipError as error:
+        except (SN.SnipError, CO.ContinuumError) as error:
             self._warn("SNIP", str(error))
             return
         self._do(step)
+        if report.get("message"):
+            # The datasets passed over, and the continua that start as a constant
+            # (Stage 10, point 8)
+            self._warn("SNIP", report["message"])
 
     def do_clear(self):
         """
@@ -2491,7 +2728,7 @@ class RegionsTab(W.Tab):
         A region added on a dataset's spectrum, as one step: on a transition that is
         not a snip there yet, SNIP first (Q4.2(c)); the region is then added in every
         dataset of the transition (Q4.19), or in this one alone (``linked`` False:
-        Tweak dataset regions).
+        Adjust fit regions: one spectrum).
 
         Generated by RJC and Claude.
         """
@@ -2499,6 +2736,7 @@ class RegionsTab(W.Tab):
         if line is None:
             return
         history = self.session.history
+        report = {}
         with history.group("Add a fit region to {0}".format(line.name)):
             if self._snip_of_row(row_id) is None:
                 try:
@@ -2509,16 +2747,26 @@ class RegionsTab(W.Tab):
                         self._spectra,
                         half_width=self._pref("regions.half_width", L.HALF_WIDTH),
                         max_order=self._max_order(),
+                        report=report,
                         **self._options(),
                     )
-                except SN.SnipError as error:
+                except (SN.SnipError, CO.ContinuumError) as error:
                     self._warn("Add region", str(error))
                     return
                 history.do(step)
             snip = self._snip_of_row(row_id)
-            if snip is None:
-                return
-            self.edit_regions(snip, [("add", low, high)], "Add a fit region to", linked)
+            if snip is None and linked:
+                # Drawn on a dataset SNIP passed over: the others take the region
+                found = SN.snips_of(
+                    self.session.project, self._system().id, line.ion, line.rest
+                )
+                snip = next(iter(found.values()), None)
+            if snip is not None:
+                self.edit_regions(
+                    snip, [("add", low, high)], "Add a fit region to", linked
+                )
+        if report.get("message"):
+            self._warn("SNIP", report["message"])
 
     def edit_regions(self, snip, edits, what, linked=True):
         """
@@ -2561,6 +2809,57 @@ class RegionsTab(W.Tab):
         low, high = (x, high) if side == "low" else (low, x)
         low, high = min(low, high), max(low, high)
         self._act("regions.edges", lambda: self.move_edges(strip.row_id, low, high))
+
+    def _edges(self, strip, side, x, done):
+        """
+        A snip edge dragged by its top grip: while it moves, the other spectra's
+        edges follow it, at the same velocity in their own frames; on release, one
+        step moves them all (Stage 10, point 1, Q10.6 (a)).
+
+        Generated by RJC and Claude.
+        """
+        if strip.snip is None:
+            return
+        line = self.current_line()
+        system = self._system()
+        if line is None or system is None:
+            return
+        row = self.session.project.row(strip.row_id)
+        kms = C_KMS * (
+            x / SN.window(line.rest, system.z, SN.row_shift(row), 0.0)[0] - 1
+        )
+        if not done:
+            for other in self.strips:
+                if other is strip or other.snip is None:
+                    continue
+                theirs = self.session.project.row(other.row_id)
+                centre = SN.window(line.rest, system.z, SN.row_shift(theirs), 0.0)[0]
+                other.view.move_edge_quietly(side, centre * (1.0 + kms / C_KMS))
+            return
+        self._act("regions.edges", lambda: self.move_all_edges(strip.row_id, side, x))
+
+    def move_all_edges(self, row_id, side, x):
+        """
+        Move one edge of every snip of the transition to the velocity of ``x`` in
+        this dataset's frame (Stage 10, point 1); those that stop where their data
+        end, or are left as they are, are named.
+
+        Generated by RJC and Claude.
+        """
+        snip = self._snip_of_row(row_id)
+        if snip is None:
+            return
+        report = {}
+        try:
+            step = SN.edges_all_step(
+                self.session.project, snip, side, x, self._spectra, report=report
+            )
+        except SN.SnipError as error:
+            self._warn("The snips' edges", str(error))
+            return
+        self._do(step)
+        if report.get("message"):
+            self._warn("The snips' edges", report["message"])
 
     def move_edges(self, row_id, low, high):
         """
@@ -2645,7 +2944,7 @@ class RegionsTab(W.Tab):
         """
         What a right-click on a spectrum offers: ``[(text, handler), ...]``. With
         several datasets, a region is removed from every dataset or from this one
-        alone; while tweaking, the pixel clicked can be left out of this dataset.
+        alone; on one spectrum, the pixel clicked can be left out of this dataset.
 
         Generated by RJC and Claude.
         """

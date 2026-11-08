@@ -2310,8 +2310,9 @@ def outliers(curves, project, threshold=None, prefs=None):
 
 def outliers_step(project, chosen):
     """
-    Apply: the step that leaves the chosen pixels out of the fit, as Tweak dataset
-    regions leaves pixels out (the snip's fit mask, Stage 4), as one step.
+    Apply: the step that leaves the chosen pixels out of the fit, as Adjust fit
+    regions: one spectrum leaves pixels out (the snip's fit mask, Stage 4), as one
+    step.
 
     Parameters
     ----------

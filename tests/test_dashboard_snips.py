@@ -156,6 +156,121 @@ def test_snip_refuses_without_a_source(registry):
         S.snip_step(project, project.systems[0], transition(registry, *OI), {})
 
 
+# -- A dataset with no usable data (Stage 10, point 8) --------------------------------
+
+
+def unusable_copy(tmp_path, name="second.dat", keep=None):
+    """
+    ``metal_line_abs``'s spectrum with every error ≤ 0 (flux 1, error −10³², as
+    RJC's UVES2010 has in its gap) within ±350 km/s of O I 1302, but for the pixels
+    ``keep`` picks there.
+    """
+    table = np.loadtxt(str(SPECTRUM))[:, :3]
+    low, high = S.window(OI[1], 0.0, half_width=350.0)
+    gap = (table[:, 0] >= low) & (table[:, 0] <= high)
+    if keep is not None:
+        gap &= ~keep(table[:, 0])
+    table[gap, 1] = 1.0
+    table[gap, 2] = -1.0e32
+    path = tmp_path / name
+    np.savetxt(str(path), table)
+    return path
+
+
+def test_snip_passes_over_a_dataset_with_no_usable_data(registry, tmp_path):
+    project = new_project(registry, tmp_path, [SPECTRUM, unusable_copy(tmp_path)])
+    found = spectra(project)
+    line = transition(registry, *OI)
+    system = project.systems[0]
+    assert [r.id for r in S.covering(project, system, line, found)] == ["r1"]
+    assert [r.id for r in S.unusable(project, system, line, found)] == ["r2"]
+    # The Regions tab still shows the second dataset, so that the user sees why
+    assert [r.id for r, _ in S.strips(project, system, line, found)] == ["r1", "r2"]
+    hist = H.History(project)
+    before = state(project)
+    report = {}
+    step = S.snip_step(project, system, line, found, report=report)
+    assert step.description == "SNIP O I 1302.2 in 1 dataset"
+    assert report["skipped"] == ["second"]
+    assert report["message"] == (
+        "second has no usable pixels within ±300 km/s of O I 1302.2 (their errors"
+        " are zero or negative), so it was not cut. Check its data."
+    )
+    hist.do(step)
+    assert [s.row.id for s in project.snips] == ["r1"]
+    hist.do(S.add_region_step(project, project.snips[0], 1301.5, 1302.8))
+    assert errors(project) == []
+    hist.undo()
+    hist.undo()
+    assert state(project) == before
+
+
+def test_snip_is_refused_when_no_dataset_has_usable_data(registry, tmp_path):
+    first = unusable_copy(tmp_path, "first.dat")
+    project = new_project(registry, tmp_path, [first, unusable_copy(tmp_path)])
+    with pytest.raises(S.SnipError) as caught:
+        snip_one(project, registry, *OI)
+    assert str(caught.value) == (
+        "first has no usable pixels within ±300 km/s of O I 1302.2 (their errors are"
+        " zero or negative), so it was not cut. second has no usable pixels within"
+        " ±300 km/s of O I 1302.2 (their errors are zero or negative), so it was not"
+        " cut. Check their data."
+    )
+
+
+def test_a_first_guess_that_cannot_be_fitted_is_a_constant(registry, tmp_path):
+    # Good pixels in O I's core (12), and two beside it: too few outside the core
+    # for the first guess's passes of rising order
+    def keep(wave):
+        core = np.abs(wave - OI[1]) <= OI[1] * CO.LINE_KMS / 299792.458
+        return core | (np.abs(wave - 1301.2) < 0.006) | (np.abs(wave - 1303.2) < 0.006)
+
+    second = unusable_copy(tmp_path, keep=keep)
+    project = new_project(registry, tmp_path, [SPECTRUM, second])
+    report = {}
+    step = S.snip_step(
+        project,
+        project.systems[0],
+        transition(registry, *OI),
+        spectra(project),
+        report=report,
+    )
+    assert step.description == "SNIP O I 1302.2 in 2 datasets"
+    assert report["constant"] == ["second"]
+    assert report["message"] == (
+        "second has too few good pixels outside the lines' cores for a first guess"
+        " of its continuum, so its continuum starts as a constant, through the"
+        " median of its good pixels."
+    )
+    hist = H.History(project)
+    hist.do(step)
+    snip = project.snip("OI_1302_r2")
+    assert CO.order_of(snip.continuum) == 0
+    pix = snip.pixels
+    good = L.good_pixels(pix.wave, pix.flux, pix.error)
+    assert np.allclose(CO.evaluate(project, snip), np.median(pix.flux[good]))
+    assert errors(project) == [] or all("fit region" in m for m in errors(project))
+
+
+def test_j0035_snip_passes_over_uves2010(registry):
+    bundle = ROOT / "context/feedback01/J0035m0918.model"
+    if not bundle.exists():
+        pytest.skip("J0035m0918 is not present")
+    project = P.Project.open(str(bundle), registry=registry)
+    found = {r.id: sources.spectrum(project, r, str(bundle)) for r in project.rows}
+    if any(v is None for v in found.values()):
+        pytest.skip("J0035m0918's source spectra are not present")
+    system = project.systems[0]
+    for ion, rest in (("27Al_II", 1670.7886), ("28Si_II", 1526.70698)):
+        report = {}
+        step = S.snip_step(
+            project, system, transition(registry, ion, rest), found, report=report
+        )
+        assert step.description.endswith("in 2 datasets")
+        assert report["skipped"] == ["J0035m0918_UVES2010"]
+        assert "errors are zero or negative" in report["message"]
+
+
 def test_clear_removes_the_snip_and_its_records(project, registry):
     hist = H.History(project)
     before = state(project)
@@ -390,6 +505,59 @@ def test_regions_are_the_same_in_every_dataset(registry, tmp_path):
     assert not S.fitted(project.snip("OI_1302_r2")).any()
     for _ in range(4):
         hist.undo()
+    assert state(project) == before
+
+
+def test_an_edge_moved_in_every_dataset_goes_to_one_velocity(registry, tmp_path):
+    # Stage 10, point 1 (Q10.6 (a)): three datasets, shifted by 0, +10 and −15 km/s
+    from alis.dashboard import edit as E
+
+    copies = []
+    for num in (2, 3):
+        copy = tmp_path / "copy{0}.dat".format(num)
+        copy.write_bytes(SPECTRUM.read_bytes())
+        copies.append(copy)
+    project = new_project(registry, tmp_path, [SPECTRUM] + copies)
+    hist = H.History(project)
+    hist.do(snip_one(project, registry, *OI))
+    for label, value in (("vs2", 10.0), ("vs3", -15.0)):
+        par = next(p for p in project.parsed.params if p.label == label)
+        hist.do(project.step(E.set_value(project.parsed, par, value), "shift"))
+    first = project.snips[0]
+    hist.do(S.add_region_step(project, first, 1301.6, 1302.6))
+    hist.do(S.copy_regions_step(project, project.snips[0], project.snips))
+    before = state(project)
+    found = spectra(project)
+    pixel = 0.0109 / OI[1] * S.C_KMS
+
+    def kms_of(snip, side):
+        centre = S.window(OI[1], 0.0, S.row_shift(snip.row), 0.0)[0]
+        edge = snip.extent[0] if side == "low" else snip.extent[1]
+        return S.C_KMS * (edge / centre - 1.0)
+
+    # Out to −400 km/s, from the first dataset: each edge at the same velocity
+    report = {}
+    x = OI[1] * (1.0 - 400.0 / S.C_KMS)
+    step = S.edges_all_step(project, first, "low", x, found, report=report)
+    assert step.description == "Move the low edge of O I 1302.2 in 3 datasets"
+    assert report["stopped"] == [] and report["message"] == ""
+    highs = [s.extent[1] for s in project.snips]
+    hist.do(step)
+    for snip in project.snips:
+        assert abs(kms_of(snip, "low") + 400.0) <= pixel
+    assert [s.extent[1] for s in project.snips] == highs
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+    # Out to −490 km/s: the third dataset's source (from 1300.0 Å) ends first
+    x = OI[1] * (1.0 - 490.0 / S.C_KMS)
+    step = S.edges_all_step(project, first, "low", x, found, report=report)
+    assert report["stopped"] == ["copy3"]
+    assert report["message"] == "copy3 stopped where its data end."
+    hist.do(step)
+    assert [round(s.extent[0], 3) for s in project.snips][2] == 1300.0
+    assert abs(kms_of(project.snips[1], "low") + 490.0) <= pixel
+    hist.undo()
     assert state(project) == before
 
 

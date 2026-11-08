@@ -151,6 +151,44 @@ def test_dh_with_two_datasets_has_one_per_column(tmp_path, registry):
     assert [datasets[c["show"]["specid"]] for c in fig["cells"][1]] == ["A", "B"]
 
 
+def test_dh_from_a_chosen_member(tmp_path, registry):
+    # Stage 10 (item 1 carried over): the members with a snip, Lyα first
+    project = imported(write_thermal_fit(tmp_path / "one"), registry)
+    assert [name for _, name in FP.dh_members(project)] == ["Lyα", "Lyβ"]
+    lyb = FP.dh_members(project)[1][0]
+    fig = figure_of(project, FP.DH, start=lyb)
+    assert [c for row in grid_lines(fig) for c in row if c] == ["Lyβ 1025.7"]
+    assert fig["dh_from"] == lyb
+    # From Lyα: today's layout
+    fig = figure_of(project, FP.DH, start=FP.dh_members(project)[0][0])
+    assert grid_lines(fig) == [["Lyα 1215.7", "Lyβ 1025.7"]]
+    # Two datasets: one column each, from Lyβ
+    project = imported(write_shifted_fit(tmp_path / "two"), registry)
+    fig = figure_of(project, FP.DH, start=lyb)
+    assert grid_lines(fig) == [["Lyβ 1025.7", "Lyβ 1025.7"]]
+    # Below every member with a snip: refused
+    with pytest.raises(FP.PresetError, match="from that one up"):
+        figure_of(project, FP.DH, start=900.0)
+    # A figure saved before reads as Lyα
+    step, fid = FG.new_figure(project)
+    project.apply(step)
+    assert FG.figure(project, fid)["dh_from"] is None
+    with pytest.raises(FG.FigureError):
+        FG.set_option(project, fid, "dh_from", 1025.7)
+
+
+def test_j1358p6522_from_ly8(registry):
+    # As DH_Ly8-Ly14*.py place them: Ly8 and up, with no lower member
+    project = imported(J1358, registry)
+    names = [name for _, name in FP.dh_members(project)]
+    assert names[0] == "Lyα" and "Ly8" in names
+    ly8 = dict((n, r) for r, n in FP.dh_members(project))["Ly8"]
+    fig = figure_of(project, FP.DH, start=ly8)
+    shown = [c["show"]["rest"] for _, _, c in FG.places(fig) if c["show"]]
+    assert max(shown) == pytest.approx(ly8, abs=0.01)
+    assert grid_lines(fig)[0][0].startswith("Ly8")
+
+
 def test_j1358p6522_s_lyman_series_in_two_columns(registry):
     project = imported(J1358, registry)
     fig = figure_of(project, FP.DH)

@@ -871,8 +871,8 @@ run_alis myfit.model     # fits the project from the command line, as before
   - **An earlier fit.** File → Open a fit (.mod)… loads a `.mod` and its snips into a
     project of their spectrum, after a preview. With no such project open, it asks
     whether to open the fit with its full spectrum (recommended: the snips are
-    checked against it and new snips can be cut from it) or without. The Regions
-    tab's Load snips… places `prepfit`'s snips one by one.
+    checked against it and new snips can be cut from it) or without. File → Load
+    snips… places `prepfit`'s snips one by one.
   - **Excluding.** Each ion of a card's row (H I, and D I with it) has its own
     Exclude/Include. A component excluded from every ion stays, greyed, until it is
     included again or removed with ✕, and its labels stay its own. An ion given by a
@@ -948,6 +948,26 @@ run_alis myfit.model     # fits the project from the command line, as before
     size and range as a variable at its top, lists its panels in `PANELS`, and uses
     LaTeX for its text where LaTeX is installed. Run it with `python3
     <project>_<figure>.py` to write its PDF again.
+- **Since Stage 10** (2026-11-08), from users' feedback:
+  - **SNIP** passes over a dataset with fewer than 10 usable pixels at the
+    transition (errors of 0 or less, say), names it, and cuts the others; its
+    spectrum reads "no usable data here". A first guess that cannot be fitted starts
+    as a constant.
+  - **The Regions tab** keeps each spectrum's zoom through every action; only ⌂, ←
+    and → change it. The list is in order of wavelength (Order ▾: or of strength).
+    Snips of this system ▾ lists every transition of the system with a snip, of any
+    ion. Line IDs ▾, in the Key, labels this transition, this ion, the model's ions
+    and strong lines (the default), or every line; the isotopes of the ion shown (D I
+    with H I) are always labelled. Zooming out shows the whole spectrum behind a
+    snip. A fit region's edge shows near the cursor; a snip's edge has a second grip
+    (▼, at its top) that moves that edge in every dataset, to the same velocity.
+  - **A card's T** can be typed, free or fixed: fixed, as Fixed at… sets it; free,
+    in every place of its label, so that a tie stays one value.
+  - **Figures.** A label rounds its wavelength down (C II λ1334). The residuals, a
+    label in a lower corner and the ticks keep their places in a panel with its own
+    flux range, and that range stands. The spacing between rows is worked out (more
+    room under a panel's own x numbers or title), unless set. The DH preset can start
+    from a higher member (From ▾).
 
 #### Preparing a fit: the Data and Regions tabs
 
@@ -964,14 +984,17 @@ new project.
   file has its datasets and systems worked out from its labels and redshifts: check
   them, then press *Confirm*.
 - **Regions.** Choose the system, the element (‹ › or the [ ] keys) and the ion
-  (‹ ›); the ion's transitions on the data are listed strongest first (↑ ↓), ● for
-  those with a snip. **SNIP** cuts the transition from every spectrum that covers it,
+  (‹ ›); the ion's transitions on the data are listed by wavelength, or by strength
+  (Order ▾; ↑ ↓ step through them), ● for those with a snip, and Snips of this
+  system ▾ lists every snipped transition of the system. **SNIP** cuts the transition from every spectrum that covers it,
   ±300 km/s (a preference), with the source's pixels at full precision and a
   first-guess continuum; drag the orange handles to move its edges (outwards, more
-  pixels are cut from the source). As in `prepfit`, a drag adds a fit region and a
-  right-drag leaves pixels out: with **Add regions to all**, in every spectrum of the
-  transition (moving or removing a region does the same); with **Tweak dataset
-  regions**, in the selected spectrum alone (a cosmic ray, a bad pixel). Delete or a
+  pixels are cut from the source), or the ▼ at a handle's top to move that edge in
+  every dataset. With **Adjust fit regions ▾**, as in `prepfit`, a drag adds a fit
+  region and a right-drag leaves pixels out: on **all spectra**, in every spectrum
+  of the transition (moving or removing a region does the same); on **one
+  spectrum**, in the selected spectrum alone (a cosmic ray, a bad pixel); **off**,
+  drags pan. A region's edge shows when the cursor is near it. Delete or a
   right-click removes a region. **CLEAR** removes the snip,
   after listing what changes. A spectrum's bad pixels (a NaN, an error of 0 or less,
   or a bad-pixel mask) are kept in the snip, in a `badpix` column, and never fitted.
@@ -1023,8 +1046,8 @@ snips and continua to a model ready to fit, without typing in the `.mod` panel.
   the panels; the wheel zooms.
 - **Cards.** One per component: z and b_turb with their state (● free, ■ fixed, ⛓
   tied, ƒ computed by a link) and a menu to change it or set limits; the
-  temperature (0, 100 or 10⁴ K fixed, *Fixed at…*, free, or pure thermal); each
-  ion's log N. Any value can be typed. *Exclude from O I* comments the component's
+  temperature, typed, beside its mode (0, 100 or 10⁴ K fixed, *Fixed at…*, free, or
+  pure thermal); each ion's log N. Any value can be typed. *Exclude from O I* comments the component's
   O I line out of the `.mod` (with the lines that depend on it), *Include* brings it
   back; the ions it is not in are listed on one line ("Excluded: D I, O I"), and a
   click includes one. ✕ removes the component after listing every line it deletes.

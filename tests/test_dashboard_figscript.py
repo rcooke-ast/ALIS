@@ -53,12 +53,20 @@ import json, runpy, sys
 ns = runpy.run_path(sys.argv[1], run_name="figure")
 fig = ns["draw"]()
 fig.canvas.draw()
+renderer = fig.canvas.get_renderer()
 out = []
+def data_of(ax, artist, points):
+    return ax.transData.inverted().transform(artist.get_transform().transform(points))
+def up(ax, display):
+    return [float(v) for v in ax.transAxes.inverted().transform(display)[:, 1]]
 for ax in fig.axes:
     if not ax.get_gid():
         continue
     box = ax.get_position()
     ticks = ax.yaxis.get_major_ticks()
+    # The residuals: many points, placed up the panel rather than in flux
+    resid = [l for l in ax.lines if len(l.get_xdata()) > 2
+             and l.get_transform() is not ax.transData]
     out.append({
         "name": ax.get_gid(),
         "box": [box.x0, box.x1, box.y0, box.y1],
@@ -68,14 +76,26 @@ for ax in fig.axes:
         "xlabel": ax.get_xlabel(),
         "xlabel_bottom": ax.xaxis.label.get_window_extent().y0 if ax.get_xlabel()
         else None,
+        "top_px": ax.get_window_extent().y1,
         "title": ax.get_title(),
         "xnumbers": [t.get_text() for t in ax.get_xticklabels() if t.get_text()],
         "left": any(t.label1.get_visible() and t.label1.get_text() for t in ticks),
         "right": any(t.label2.get_visible() and t.label2.get_text() for t in ticks),
         "texts": [[t.get_text(), list(t.xy)] for t in ax.texts],
-        "lines": [[l.get_color(), [float(v) for v in l.get_xdata()],
-                   [float(v) for v in l.get_ydata()]] for l in ax.lines
+        # Each text's bottom and top, as fractions of the panel
+        "texts_up": [[t.get_text(), up(ax, t.get_window_extent(renderer).get_points())]
+                     for t in ax.texts],
+        # Two-point lines (the ticks), in data coordinates whatever their transform
+        "lines": [[l.get_color()] + [[float(v) for v in c] for c in
+                   data_of(ax, l, l.get_xydata()).T] for l in ax.lines
                   if len(l.get_xdata()) == 2],
+        # The residuals' points and bands, in flux and as fractions of the panel
+        "residuals": [float(v) for l in resid for v in data_of(ax, l, l.get_xydata())[:, 1]
+                      if v == v],
+        "residuals_up": [v for l in resid for v in
+                         up(ax, l.get_transform().transform(l.get_xydata())) if v == v],
+        "bands_up": [v for c in ax.collections for p in c.get_paths()
+                     for v in up(ax, c.get_transform().transform(p.vertices))],
     })
 print(json.dumps({"panels": out, "shared": [fig.get_supxlabel(), fig.get_supylabel()]}))
 """
@@ -308,7 +328,7 @@ def test_dh_lyseries_s_layout(tmp_path, registry):
         for ln in L.atomic(project.registry).ion_lines("1H_I")
         if 913.15 <= ln.rest <= 915.2
     ]
-    ticks = sorted(x[0] for _, x, y in limit_panel["lines"] if y[0] > 1.0)
+    ticks = sorted(x[0] for _, x, y in limit_panel["lines"] if y[0] > 1.01)
     assert len(rests) > 5 and ticks == pytest.approx(sorted(rests))
     assert [t for t, _ in limit_panel["texts"]] == ["Lyman limit"]
     assert top["xlim"] == pytest.approx([-125.0, 125.0])
@@ -335,7 +355,7 @@ def test_q9_12_s_options_are_drawn(tmp_path, registry):
     assert label == pytest.approx([0.96, 0.95])
     # H I's and D I's ticks, each in its own colour, numbered by component
     colours = FS.COLOURS[FG.SAFE]["TICKS"]
-    ticks = [c for c, _, y in lya["lines"] if y[0] > 1.0]
+    ticks = [c for c, _, y in lya["lines"] if y[0] > 1.01]
     assert set(ticks) == {colours[0], colours[1]}
     numbers = [t for t, xy in lya["texts"] if t != "Lyα"]
     assert sorted(set(numbers)) == ["1", "2"]
@@ -383,6 +403,70 @@ def test_labels_in_latex():
     assert FS.label_text("28Si_II", 1260.4221) == "Si II λ1260"
     assert FS.label_text("1H_I", 1025.7223) == "Lyβ"
     assert FS.label_text("2H_I", 1025.4433) == "D I Lyβ"
+
+
+@pytest.mark.parametrize(
+    "ion, rest, label",
+    [
+        ("12C_II", 1334.5323, "C II λ1334"),
+        ("32S_II", 1259.519, "S II λ1259"),
+        ("14N_III", 989.799, "N III λ989"),
+        ("27Al_II", 1670.7886, "Al II λ1670"),
+        ("28Si_II", 1260.4221, "Si II λ1260"),
+        ("16O_I", 1000.0, "O I λ1000"),
+        # A rest wavelength a hair below a whole number is that number
+        ("16O_I", 1239.9999999, "O I λ1240"),
+    ],
+)
+def test_a_label_rounds_its_wavelength_down(ion, rest, label):
+    # Stage 10, point 12: the field's convention, and RJC's scripts'
+    assert FS.label_text(ion, rest) == label
+
+
+@pytest.mark.parametrize("residuals", [FG.NO_RESIDUALS, FG.STRIP, FG.INSIDE])
+def test_the_residuals_and_a_label_stay_in_a_panel(tmp_path, registry, residuals):
+    # Stage 10, point 13: at a flux of −0.3 (or −0.2) and 0.07, the strip and a
+    # lower label were out of view in a panel ranged (0.5, 1.2)
+    project, view = project_with_run(METAL, registry)
+    fid = with_preset(project, view, FP.METALS)
+    project.apply(FG.set_option(project, fid, "residuals", residuals))
+    project.apply(FG.set_cell(project, fid, 0, 0, "corner", "lower left"))
+    low, high = FS.FLUX_RANGES[residuals]
+    fractions = FS.panel_fractions(residuals)
+    # At the default range, where they were, in flux
+    script, _ = written(project, view, fid, tmp_path / "default")
+    panel = read_back(script)["panels"][0]
+    label = panel["texts"][0]
+    assert low + label[1][1] * (high - low) == pytest.approx(0.07, abs=1e-9)
+    ticks = [y for _, _, y in panel["lines"] if y[0] > 1.01]
+    assert ticks and all(y == pytest.approx([1.03, 1.15], abs=1e-9) for y in ticks)
+    if residuals != FG.NO_RESIDUALS:
+        flux = np.array(panel["residuals"])
+        sigma = (np.array(panel["residuals_up"]) - fractions["residual_offset"]) / (
+            fractions["residual_scale"]
+        )
+        assert flux.size and np.allclose(
+            flux, FS.RESIDUAL_OFFSETS[residuals] + 0.05 * sigma, rtol=0, atol=1e-9
+        )
+    # Ranged (0.5, 1.2): every one inside the panel, at the same place in it
+    project.apply(FG.set_cell(project, fid, 0, 0, "yrange", [0.5, 1.2]))
+    script, _ = written(project, view, fid, tmp_path / "ranged")
+    ranged = read_back(script)["panels"][0]
+    assert ranged["ylim"] == pytest.approx([0.5, 1.2])
+    bottom, top = ranged["texts_up"][0][1]
+    assert 0.0 < bottom < top < 1.0
+    assert ranged["texts_up"][0][1] == pytest.approx(panel["texts_up"][0][1], abs=1e-6)
+    if residuals != FG.NO_RESIDUALS:
+        # The bands inside the panel, and every point where it was in the panel
+        assert ranged["bands_up"]
+        assert all(0.0 <= v <= 1.0 for v in ranged["bands_up"])
+        assert ranged["residuals_up"] == pytest.approx(panel["residuals_up"])
+    # Ranged (−0.1, 1.1): the ticks, which reached 1.15, are inside too
+    project.apply(FG.set_cell(project, fid, 0, 0, "yrange", [-0.1, 1.1]))
+    script, _ = written(project, view, fid, tmp_path / "ticks")
+    top_cut = read_back(script)["panels"][0]
+    ticks = [y for _, _, y in top_cut["lines"] if y[1] > y[0] > 0.5]
+    assert ticks and all(-0.1 < y[0] < y[1] < 1.1 for y in ticks)
 
 
 def test_exporting_two_figures(tmp_path, registry):
@@ -459,7 +543,7 @@ def test_a_wavelength_panel_ticks_and_numbers_every_component(tmp_path, registry
     script, _ = written(project, view, fid, tmp_path / "out")
     drawn = read_back(script)["panels"][0]
     colours = FS.COLOURS[FG.SAFE]["TICKS"]
-    ticks = [(c, x[0]) for c, x, y in drawn["lines"] if y[0] > 1.0]
+    ticks = [(c, x[0]) for c, x, y in drawn["lines"] if y[0] > 1.01]
     assert len(ticks) == 4 and {c for c, _ in ticks} == set(colours[:2])
     # Each in the rest frame of the velocity zero, and numbered
     z1, z2 = data["components"]["a1"], data["components"]["a2"]
@@ -496,6 +580,49 @@ def test_the_margins_keep_a_panel_s_own_title_inside(tmp_path, registry):
     assert FS.margins_of(project, fid) == [1.0, 0.3, 0.9, 0.2]
     project.apply(FG.set_option(project, fid, "margins", None))
     assert FS.margins_of(project, fid) == [0.75, 0.5, 0.7, 0.1]
+
+
+def test_room_below_a_middle_row_s_own_x_title(tmp_path, registry):
+    # Stage 10 (item 2 carried over): a wavelength panel above velocity ones, as
+    # DH_Lyseries.py has, with its own x numbers and title
+    project, view = project_with_run(METAL, registry)
+    fid = with_preset(project, view, FP.METALS)
+    project.apply(FG.set_grid(project, fid, 3, 2))
+    project.apply(FG.set_option(project, fid, "size", [7.0, 3.0]))
+    found = {e.ion: e for e in FG.transitions(project)}
+    project.apply(FG.place(project, fid, 1, 0, found["16O_I"].key))
+    project.apply(FG.place(project, fid, 1, 1, found["28Si_II"].key))
+    project.apply(FG.set_cell(project, fid, 0, 1, "axis", FG.OBSERVED))
+
+    def gap(folder):
+        script, _ = written(project, view, fid, tmp_path / folder)
+        panels = read_back(script)["panels"]
+        upper = next(p for p in panels if p["xlabel"])
+        below = [
+            p
+            for p in panels
+            if p["box"][3] < upper["box"][2]
+            and p["box"][0] < upper["box"][1]
+            and upper["box"][0] < p["box"][1]
+        ]
+        return upper["xlabel_bottom"] - max(p["top_px"] for p in below)
+
+    # At the old spacing, set by hand, the title meets the panel below
+    project.apply(FG.set_option(project, fid, "spacing", list(FG.SPACING)))
+    assert gap("by_hand") < 0.0
+    # Worked out, it has its room
+    project.apply(FG.set_option(project, fid, "spacing", None))
+    spacing = FS.describe(project, view, fid, "metal")[0]["spacing"]
+    assert spacing[0] == FG.SPACING[0] and spacing[1] > FG.SPACING[1]
+    assert FS.spacing_of(project, fid) == list(spacing)
+    assert gap("auto") > 0.0
+    # No own x title or numbers above a panel: today's spacing
+    project.apply(FG.set_cell(project, fid, 0, 1, "axis", FG.VELOCITY))
+    project.apply(FG.set_cell(project, fid, 0, 1, "xtitle", False))
+    assert FS.describe(project, view, fid, "metal")[0]["spacing"] == tuple(FG.SPACING)
+    # Set by hand, it is the figure's
+    project.apply(FG.set_option(project, fid, "spacing", [0.2, 0.4]))
+    assert FS.describe(project, view, fid, "metal")[0]["spacing"] == (0.2, 0.4)
 
 
 def test_the_flux_axis_numbered_on_both_sides_or_none(tmp_path, registry):

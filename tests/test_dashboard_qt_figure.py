@@ -452,6 +452,128 @@ def test_a_preset_applied_and_saved(window, qtbot, tmp_path):
     assert told[-1] == "The DH preset needs the Lyman series of H I in the snips."
 
 
+def test_the_dh_preset_from_a_member(window, qtbot, tmp_path):
+    # Stage 10 (item 1 carried over): Lyα and Lyβ of H I and D I, with a run
+    from dashboard_synthetic import write_thermal_fit
+
+    model = write_thermal_fit(tmp_path / "fit")
+    window.import_path(str(model))
+    wait_idle(qtbot, window)
+    store_run(window.session.project, model, mod_out=model.read_text(), covar=False)
+    window.session.runs_changed()
+    window.refresh()
+    window.tabs.setCurrentIndex(FIGURE)
+    qtbot.wait(50)
+    tab = window.figure_tab
+    tab.create_button.click()
+    menu = tab.from_menu
+    tab.preset_menu.setCurrentIndex(tab.preset_menu.findData("DH"))
+    assert menu.isVisibleTo(tab)
+    assert [menu.itemText(n) for n in range(menu.count())] == ["from Lyα", "from Lyβ"]
+    tab.preset_menu.setCurrentIndex(tab.preset_menu.findData("metals"))
+    assert not menu.isVisibleTo(tab)
+    tab.preset_menu.setCurrentIndex(tab.preset_menu.findData("DH"))
+    before = window.session.project.ui
+    menu.setCurrentIndex(1)
+    tab.apply_button.click()
+    assert last_step(window) == "Apply the DH preset"
+    shown = FG.shown(tab.current())
+    assert [round(kept["rest"], 1) for _, _, kept in shown] == [1025.7]
+    # The figure keeps its first member: the menu shows it again
+    window.refresh()
+    assert tab.from_menu.currentText() == "from Lyβ"
+    window.qactions["edit.undo"].trigger()
+    assert window.session.project.ui == before
+
+
+def test_the_spacing_is_worked_out_unless_set(window, qtbot, tmp_path):
+    # Stage 10 (item 2 carried over): Automatic, as the margins have
+    tab = figure_tab(window, qtbot, tmp_path)
+    assert tab.spacing_auto.isChecked()
+    assert [tab.space_x.value(), tab.space_y.value()] == FG.SPACING
+    assert not tab.space_x.isEnabled() and not tab.space_y.isEnabled()
+    # Unticked, the values shown become the figure's own
+    tab.spacing_auto.setChecked(False)
+    assert last_step(window) == "Change the figure's spacing"
+    assert tab.current()["spacing"] == FG.SPACING
+    assert tab.space_y.isEnabled()
+    tab.space_y.setValue(0.4)
+    tab.space_y.editingFinished.emit()
+    assert tab.current()["spacing"] == [0.05, 0.4]
+    # Ticked again, worked out
+    tab.spacing_auto.setChecked(True)
+    assert tab.current()["spacing"] is None
+    assert tab.space_y.value() == pytest.approx(0.1)
+
+
+def send_mouse(widget, kind, pos, buttons):
+    """A mouse press or move on a widget, at ``pos``, with these buttons down."""
+    left = QtCore.Qt.MouseButton.LeftButton
+    event = QtGui.QMouseEvent(
+        kind,
+        QtCore.QPointF(pos),
+        QtCore.QPointF(widget.mapToGlobal(pos)),
+        (
+            left
+            if kind == QtCore.QEvent.Type.MouseButtonPress
+            else QtCore.Qt.MouseButton.NoButton
+        ),
+        buttons,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    )
+    QtWidgets.QApplication.sendEvent(widget, event)
+
+
+def test_a_drag_begun_on_a_cell(window, qtbot, tmp_path, monkeypatch):
+    # Stage 10 (item 3 carried over): QDrag.exec blocks off-screen, so a drag
+    # records what it would carry instead
+    made = []
+
+    class Recorded(QtGui.QDrag):
+        def exec(self, *args):
+            made.append((self.parent(), bytes(self.mimeData().data(QF.CELL_MIME))))
+            return QtCore.Qt.DropAction.IgnoreAction
+
+    monkeypatch.setattr(QF.QtGui, "QDrag", Recorded)
+    tab = figure_tab(window, qtbot, tmp_path)
+    cell = tab.cells[(0, 1)]
+    left = QtCore.Qt.MouseButton.LeftButton
+    far = QtWidgets.QApplication.startDragDistance()
+    press, move = QtCore.QEvent.Type.MouseButtonPress, QtCore.QEvent.Type.MouseMove
+    start = QtCore.QPoint(10, 10)
+    # A move shorter than Qt's start distance makes none
+    send_mouse(cell, press, start, left)
+    send_mouse(cell, move, start + QtCore.QPoint(far - 2, 0), left)
+    assert made == []
+    # Past it: a drag that belongs to the tab, with the cell's place
+    send_mouse(cell, move, start + QtCore.QPoint(far + 2, 0), left)
+    assert made == [(tab, b"0,1")]
+    # A press on an empty cell makes none
+    empty = tab.cells[(0, 2)]
+    assert not empty.filled
+    send_mouse(empty, press, start, left)
+    send_mouse(empty, move, start + QtCore.QPoint(far + 5, 0), left)
+    assert len(made) == 1
+
+
+def test_a_size_or_spacing_out_of_range_is_refused(window, qtbot, tmp_path):
+    # Stage 10 (item 3 carried over): the Layout pane says why, and nothing changes
+    tab = figure_tab(window, qtbot, tmp_path)
+    before = window.session.project.ui
+    count = len(window.session.history.done)
+    for key, value, words in (
+        ("size", [40.0, 3.0], "A figure is 0.5 to 30 inches across and down."),
+        ("size", [7.0, 0.2], "A figure is 0.5 to 30 inches across and down."),
+        ("spacing", [0.05, 2.5], "The spacing between panels is 0 to 2."),
+        ("spacing", [-0.1, 0.1], "The spacing between panels is 0 to 2."),
+    ):
+        tab._option(key, value)
+        told = [t for k, _, t in window.answers.asked if k == "tell"]
+        assert told[-1] == words
+    assert window.session.project.ui == before
+    assert len(window.session.history.done) == count
+
+
 def test_the_tab_s_arrangement_and_words(window, qtbot, tmp_path):
     tab = figure_tab(window, qtbot, tmp_path)
     qtbot.wait(50)

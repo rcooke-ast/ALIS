@@ -107,7 +107,9 @@ def test_j1358_hydrogen_list_matches_the_mockup(atom, j1358):
     project, cov = j1358
     snips = L.snip_transitions(project)
     snipped = L.snipped_by_ion(snips, "a")["1H_I"]
-    rows = L.ion_transitions(atom, "H", "I", Z_J1358, [cov], snipped, "a")
+    rows = L.ion_transitions(
+        atom, "H", "I", Z_J1358, [cov], snipped, "a", order=L.STRENGTH
+    )
     names = [r.name.split()[0] for r in rows[:10]]
     assert names == ["Lyα", "Lyβ", "Lyγ", "Lyδ", "Lyε"] + [
         "Ly{0}".format(n) for n in range(6, 11)
@@ -121,6 +123,20 @@ def test_j1358_hydrogen_list_matches_the_mockup(atom, j1358):
     # Ranked by f lambda, whatever its strength (Q4.4): the series to its limit
     assert [r.flam for r in rows] == sorted((r.flam for r in rows), reverse=True)
     assert len(rows) == len(atom.ion_lines("1H_I")) - 4  # the Balmer lines are off
+
+
+def test_the_list_by_wavelength_or_by_strength(atom):
+    # Stage 10, point 9: a source covering Si II 1190, 1193, 1260 and 1304
+    cov = synthetic(1180.0, 1310.0, 0.05)
+    by_wavelength = L.ion_transitions(atom, "Si", "II", 0.0, [cov])
+    rests = [round(r.rest, 1) for r in by_wavelength]
+    assert {1190.4, 1193.3, 1260.4, 1304.4} <= set(rests)
+    assert rests == sorted(rests)
+    by_strength = L.ion_transitions(atom, "Si", "II", 0.0, [cov], order=L.STRENGTH)
+    assert [r.flam for r in by_strength] == sorted(
+        (r.flam for r in by_strength), reverse=True
+    )
+    assert sorted(r.rest for r in by_strength) == sorted(r.rest for r in by_wavelength)
 
 
 def test_near_coincident_lines_share_one_row(atom, j1358):
@@ -306,6 +322,86 @@ def test_a_line_id_named_for_a_system_is_labelled(registry, j1358):
         assert any(i.ion == "56Fe_II" and i.kind == L.METAL for i in after)
     finally:
         system.lines = []
+
+
+def named_project(registry, *ions):
+    """metal_line_abs's project at z = 0, its system naming ``ions`` alone."""
+    project, _ = modes.get().empty_project(
+        [str(ROOT / "examples/metal_line_abs/data/OI_SiII.dat")],
+        "test",
+        z=0.0,
+        registry=registry,
+    )
+    project.systems[0].lines = [{"ion": ion} for ion in ions]
+    return project
+
+
+def labels(ids, low, high):
+    return sorted((i.ion, round(i.rest, 3)) for i in ids if low <= i.observed <= high)
+
+
+def test_the_isotopes_of_the_ion_shown_are_labelled(registry):
+    # Stage 10, point 7: D I beside H I, though the system names H I alone
+    project = named_project(registry, "1H_I")
+    for low, high, rest in ((1210.0, 1220.0, 1215.6701), (1020.0, 1030.0, 1025.7223)):
+        ids, hidden = L.line_ids(project, low, high, shown="1H_I")
+        hydrogen = next(i for i in ids if i.ion == "1H_I" and abs(i.rest - rest) < 0.01)
+        deuterium = [i for i in ids if i.ion == "2H_I"]
+        assert len(deuterium) == 1
+        assert deuterium[0].kind == L.HYDROGEN
+        assert deuterium[0].label.startswith("D Ly")
+        kms = 299792.458 * (deuterium[0].observed / hydrogen.observed - 1.0)
+        assert kms == pytest.approx(-81.6, abs=0.5)
+        # Another ion shown, and the other tabs: as before, D I neither labelled
+        # nor counted
+        for shown in ("16O_I", None):
+            others, left = L.line_ids(project, low, high, shown=shown)
+            assert not any(i.ion == "2H_I" for i in others)
+            assert len(others) == len(ids) - 1 and left == hidden
+
+
+@pytest.mark.parametrize(
+    "ion, low, high", [("12C_II", 1330.0, 1340.0), ("24Mg_II", 2790.0, 2810.0)]
+)
+def test_an_isotope_within_a_few_km_s_shares_its_line_s_label(registry, ion, low, high):
+    # ¹³C II 1334 is 3 km/s from ¹²C II's; Mg II's isotopes within about 1 km/s
+    project = named_project(registry, ion)
+    before = L.line_ids(project, low, high)
+    after = L.line_ids(project, low, high, shown=ion)
+    assert labels(after[0], low, high) == labels(before[0], low, high)
+    assert after[1] == before[1]
+
+
+def test_what_the_line_ids_label(registry):
+    # Stage 10, point 4: O I 1302 shown, Si II 1304 beside it
+    project = named_project(registry, "16O_I")
+    low, high, oi = 1300.0, 1306.0, 1302.16849
+    kw = {"shown": "16O_I", "rest": oi}
+    every, none_left = L.line_ids(project, low, high, which=L.EVERY, **kw)
+    assert none_left == 0
+    assert ("28Si_II", 1304.37) in labels(every, low, high)
+    transition, left = L.line_ids(project, low, high, which=L.TRANSITION, **kw)
+    assert labels(transition, low, high) == [("16O_I", 1302.168)]
+    assert left == len(every) - 1
+    ion, left = L.line_ids(project, low, high, which=L.ION, **kw)
+    assert labels(ion, low, high) == [
+        (i.ion, round(i.rest, 3)) for i in every if i.ion == "16O_I"
+    ]
+    assert left == len(every) - len(ion)
+    # The default is as before
+    model = L.line_ids(project, low, high, which=L.MODEL, **kw)
+    assert model == L.line_ids(project, low, high, shown="16O_I")
+    # Out of view, the transition shown is counted with the rest
+    gone, left = L.line_ids(project, 1303.0, high, which=L.TRANSITION, **kw)
+    assert gone == [] and left == len(
+        L.line_ids(project, 1303.0, high, show_all=True)[0]
+    )
+    # With H I shown, This transition labels D I's Lyβ beside H I's
+    hydrogen = named_project(registry, "1H_I")
+    lyb, _ = L.line_ids(
+        hydrogen, 1020.0, 1030.0, which=L.TRANSITION, shown="1H_I", rest=1025.7223
+    )
+    assert labels(lyb, 1020.0, 1030.0) == [("1H_I", 1025.722), ("2H_I", 1025.443)]
 
 
 def test_strong_lines_of_other_systems_are_other(registry, j1358):

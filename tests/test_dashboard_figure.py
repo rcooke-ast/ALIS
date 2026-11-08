@@ -459,6 +459,41 @@ def test_the_margins_and_a_figure_saved_before_them(metal):
     assert fig["margins"] is None and fig["cells"][0][0]["corner"] == "lower left"
 
 
+def test_the_spacing_worked_out_or_set(metal):
+    # Stage 10 (item 2 carried over): None is worked out from the panels
+    fid = made(metal)
+    assert FG.figure(metal, fid)["spacing"] is None
+    do(metal, FG.set_option(metal, fid, "spacing", [0.2, 0.4]))
+    assert FG.figure(metal, fid)["spacing"] == [0.2, 0.4]
+    for bad in ([0.2, 2.5], [-0.1, 0.1], [0.1]):
+        with pytest.raises(FG.FigureError, match="0 to 2"):
+            FG.set_option(metal, fid, "spacing", bad)
+    do(metal, FG.set_option(metal, fid, "spacing", None))
+    # Saved before Stage 10: with the old default, Automatic; with its own, kept
+    for old, read in (([0.05, 0.1], None), ([0.05, 0.3], [0.05, 0.3])):
+        saved = metal.ui[FG.FIGURES_KEY][0]
+        saved.pop("dh_from", None)
+        saved["spacing"] = list(old)
+        assert FG.figure(metal, fid)["spacing"] == read
+    # The old default set by hand since is the figure's own
+    do(metal, FG.set_option(metal, fid, "spacing", [0.05, 0.1]))
+    assert FG.figure(metal, fid)["spacing"] == [0.05, 0.1]
+    assert FG.figure(metal, fid)["spacing"] == [0.05, 0.1]
+
+
+def test_a_size_out_of_range_is_refused(metal):
+    # Stage 10 (item 3 carried over): each bound, with its message
+    fid = made(metal)
+    for size in ([0.4, 3.0], [7.0, 0.49], [30.5, 3.0], [7.0, 31.0]):
+        with pytest.raises(FG.FigureError, match="0.5 to 30 inches across and down"):
+            FG.set_option(metal, fid, "size", size)
+    do(metal, FG.set_option(metal, fid, "size", [0.5, 30.0]))
+    assert FG.figure(metal, fid)["size"] == [0.5, 30.0]
+    for spacing in ([0.0, 2.0], [2.0, 0.0]):
+        do(metal, FG.set_option(metal, fid, "spacing", spacing))
+        assert FG.figure(metal, fid)["spacing"] == spacing
+
+
 def test_a_figure_saved_with_the_flux_numbers_two_options(metal):
     # Before Prompt 5, a cell kept "ynumbers" (shown or not) and "yright" (the side)
     fid = made(metal)

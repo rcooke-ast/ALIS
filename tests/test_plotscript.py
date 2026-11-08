@@ -192,6 +192,21 @@ def test_both_transitions_in_one_snip_get_their_own_panel(tmp_path):
     assert "Si II 1304" in text
 
 
+@pytest.mark.parametrize(
+    "ion, rest, label",
+    [
+        ("12C_II", 1334.5323, "C II 1334"),
+        ("1H_I", 1025.7223, "H I 1025"),
+        ("32S_II", 1259.519, "S II 1259"),
+        ("16O_I", 1239.9999999, "O I 1240"),
+        ("1Ly_b", 1025.7223, r"Ly$\beta$ 1025"),
+    ],
+)
+def test_a_panel_label_rounds_its_wavelength_down(ion, rest, label):
+    # Dashboard Stage 10, point 12 (Q10.8 (b)): as the Figure tab writes them
+    assert plotscript._pretty_ion(ion, rest) == label
+
+
 def _run_example(tmp_path, extra):
     """Run examples/metal_line_abs in tmp_path, optionally adding a setting."""
     ex = tmp_path / "metal_line_abs"
