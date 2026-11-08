@@ -24,10 +24,11 @@ correctness first, then what users need next, then effort; RJC orders the work.
 "D*n*", "F*n*" and "S*n*" are in `ALIS_v2_dashboard_prompts.md`.*
 
 ### High priority
-1. **The Plot tab** (dashboard step 8; D28, D42, S22). It is next in the agreed
-   plan, and the part that writes the plotting script already exists
-   (`alis/plotscript.py`). Two of that script's D/H layouts (for one and two
-   datasets) have never run on real data (§1.1, §5).
+1. **The Plot tab** (dashboard step 8; D28, D42, S22): **done** as the Figure tab,
+   dashboard Stage 9 (2026-11-08, D102–D112), with an emitter of its own
+   (`alis/dashboard/figscript.py`), whose presets were tried on RJC's D/H projects.
+   `alis/plotscript.py`'s two D/H layouts, which serve `run_alis`, have still never
+   run on real data (§1.1, §5).
 2. **How ALIS draws `sim perturb` and `sim random`** (§7.6). This is a correctness
    question in ALIS itself. `simulate.perturb` ignores the best fit it is given and
    draws about the starting values, so the two ways of reaching it draw about
@@ -86,8 +87,8 @@ correctness first, then what users need next, then effort; RJC orders the work.
 - **Pausing a run**: declined by RJC (Q6.15(c) of `dashboard_stage6.md`).
 - **The onefits menu** (§2.5): onefits has been removed and its code is gone, so
   the entry can be closed.
-- **The GUI** (§1.1): built as the dashboard. Only the Plot tab remains, so the entry
-  needs updating.
+- **The GUI** (§1.1): built as the dashboard, the Plot tab (as the Figure tab)
+  included since dashboard Stage 9 (2026-11-08); the entry can be closed.
 - **`1e4`** (§3.3): a permanent limit of the model-file format, which now reports an
   error.
 

@@ -451,6 +451,16 @@ worked out from the panels or set in Layout; a wavelength panel ticking and numb
 every component. Also a panel's Span in its options (RJC's question of the same day).
 `unit` 2174 passed, `gui` 255 passed. RJC will give more feedback.*
 
+*2026-11-08 (Prompt 5): the flux numbers' side offers Both and None (D112). `unit` 2176
+passed, `gui` 256 passed.*
+
+*Stage 9 closed on 2026-11-08, at RJC's request (Prompt 6), after RJC committed every
+file. Every element of D28, D42 and S22, every response to Q9.1–Q9.12, the review's
+comments and RJC's feedback in Prompts 4 and 5 have their changes logged as done with
+their checks passing; the decisions are D102–D112. Final batches (pytest 9.2.0):
+`unit` 2176 passed, 120 skipped; `gui` 256 passed; `fast` 149 passed. Stage 10's
+document is `dashboard_stage10.md`.*
+
 ### Where each element goes
 
 | Element | Task |

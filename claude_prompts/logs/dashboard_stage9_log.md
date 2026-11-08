@@ -565,3 +565,28 @@ waits for RJC's approval to implement. No code was changed.
   - The stage's tests pass (18, 19, 27). Pre-commit passed.
 - **Batches** (pytest 9.2.0): `unit` 2176 passed, 120 skipped (2174, plus 2); `gui`
   256 passed (255, plus 1), in 9 min 1 s. Not yet pushed.
+
+### 2026-11-08 (Prompt 6: Stage 9 closed, and Stage 10's document)
+
+- **Closed** at RJC's request, after RJC committed every file. Every element of D28,
+  D42 and S22, every response to Q9.1–Q9.12, the review's comments (D110) and RJC's
+  feedback in Prompts 4 and 5 (D111, D112) have their changes logged as done, with
+  their checks passing. The decisions are D102–D112.
+- **Final batches** (pytest 9.2.0), against the start of the stage (Stage 8's
+  close): `unit` 2176 passed, 120 skipped (2130 and 120); `gui` 256 passed (229);
+  `fast` 149 passed (149). CI passed on both platforms for the stage's push (RJC,
+  2026-11-03); the pushes since are RJC's.
+- **Written:** `claude_prompts/dashboard_stage10.md`, modelled on Stage 8's document
+  (itself modelled on Stage 7's), as Prompt 6 asks:
+  - the Feedback section, empty, for RJC to fill in, with how each point is written
+    (its kind, its tab, where it can be reproduced, D99's rule for users' files);
+  - three items carried over from Stage 9: the DH preset's start member, the
+    spacing below a middle row's own x title, and the untested paths;
+  - how the feedback becomes tasks, and the closing task 10.N with its checks
+    against Stage 9's close;
+  - Q10.1–Q10.3 (the carried items; RJC's own feedback on the Figure tab in the
+    list; a closed list, and what follows the stage), each with a lean.
+- **Updated:** `dashboard_stage0.md` (Stage 9 done; Stage 10's document; "After v1"),
+  and `deferred_work.md` (the Plot tab done; the GUI entry can be closed).
+  `dashboard_stage9.md` records the close.
+- Awaiting RJC's review and approval of Stage 10's document. No code was changed.
