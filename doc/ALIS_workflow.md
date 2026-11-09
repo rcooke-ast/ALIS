@@ -963,6 +963,12 @@ run_alis myfit.model     # fits the project from the command line, as before
     (▼, at its top) that moves that edge in every dataset, to the same velocity.
   - **A card's T** can be typed, free or fixed: fixed, as Fixed at… sets it; free,
     in every place of its label, so that a tie stays one value.
+  - **The Lyα forest's lines** (Generic absorbers → Lyα forest) are adjusted as a
+    system's components are: each is a card (`ly1`, `ly2`, … in order of redshift)
+    with its z, b_turb, T and log N, their badges and menus, Use best fit, Blind… and
+    ✕; in its panels a click selects a line, and a drag moves its z above the
+    continuum and its log N and b below it. On a system's panels the forest's lines
+    stay locked.
   - **Figures.** A label rounds its wavelength down (C II λ1334). A panel's flux is
     set by its lowest value (Flux from): the highest is worked out, so that the
     continuum, the ticks, the residuals and a label in a lower corner sit at the same
@@ -1133,7 +1139,8 @@ sub-tabs: Inspect, Results and Compare.
 - **Convergence check…** runs the fit with ALIS's own check (§6); Fit statistics
   then says whether it converged. **Random restarts…** fits the model again from
   starts drawn about the shown run's best fit, as `sim perturb` draws them after
-  `sim beginfrom` (§6), one after another, and assesses them as ALIS does; one set
+  `sim beginfrom` (§6), one after another (*Set the number of restarts to run:*,
+  then **Go!**), and assesses them as ALIS does; one set
   is kept with the run (new restarts replace it, after a question), and *Export
   restarts…* writes them in the form of `sim perturb`'s own file, which
   `numpy.loadtxt` reads.

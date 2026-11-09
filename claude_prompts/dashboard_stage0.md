@@ -33,7 +33,7 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 7 | RJC's changes and bug fixes from fitting real problems with v1 (`dashboard_stage7.md`), each a task with its check, and the changes from RJC's review of it (the Export dialog among them). **Done 2026-11-01.** | as each needs |
 | 8 | Feedback from users (`dashboard_stage8.md`): RJC collects the points in its Feedback section, and each becomes a task with its check, after its queries (Q8.1–Q8.12). **Done 2026-11-03 (D89–D101).** | as each needs; ALIS's `lsffile` and `bundle.py` (Q8.7) |
 | 9 | The Figure tab, until then the Plot tab (step 8; D28, D42, S22): designed in `dashboard_stage9.md` (Task 8.13; Q9.1–Q9.12). **Done 2026-11-08 (D102–D112).** | `alis/dashboard/`; `alis/data/alis_publication.mplstyle`; comments of `alis/plotscript.py` and `alis/config.py` (D28) |
-| 10 | Feedback from users that arrived after Stage 8's list closed (Q8.4, D99), and on the Figure tab: `dashboard_stage10.md` (Stage 9's Prompt 6), 13 points and three items carried over from Stage 9, each a task with its check (Q10.1–Q10.10). **Built 2026-11-08 (D113–D118, D118 from RJC's Prompt 5); it closes once RJC's review of its page is applied.** | as each needs; `alis/plotscript.py`'s labels (Q10.8) |
+| 10 | Feedback from users that arrived after Stage 8's list closed (Q8.4, D99), and on the Figure tab: `dashboard_stage10.md` (Stage 9's Prompt 6), 13 points and three items carried over from Stage 9, each a task with its check (Q10.1–Q10.10). **Done 2026-11-09 (D113–D119, D118 and D119 from RJC's Prompts 5 and 6).** | as each needs; `alis/plotscript.py`'s labels (Q10.8) |
 | 11 | Feedback from users that arrives after Stage 10's list closed (Q10.3): `dashboard_stage11.md` (Task 10.17), its Feedback section for RJC to fill. | as each needs |
 | Later | Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
 
@@ -53,8 +53,7 @@ dashboard. What follows, for RJC to order (Q6.13(a)):
    list with it.
 4. **Stage 10:** the users' feedback that arrived after Stage 8's list closed (Q8.4),
    and RJC's on the Figure tab, with the three items Stage 9 carried over
-   (`dashboard_stage10.md`): built 2026-11-08 (D113–D118), closing after RJC's
-   review of its page.
+   (`dashboard_stage10.md`): done 2026-11-09 (D113–D119).
 5. **Stage 11:** the feedback that arrives after Stage 10's list closed (Q10.3 (a)):
    `dashboard_stage11.md`, its Feedback section for RJC to fill in, unless RJC names
    another item below to come first.

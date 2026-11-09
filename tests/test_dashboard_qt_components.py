@@ -1302,9 +1302,11 @@ def test_the_mod_cursor_and_the_tab_highlight_each_other(window, qtbot):
     widget.view.clicked.emit(150.0, 0.5)
     project = window.session.project
     assert panel._selected == project.lines_of(project.component("a2"))
-    # The forest's line: the forest's group
-    panel.go_to_line(window.session.project.absorbers[0].line)
+    # The forest's line: the forest's group, that line selected (Stage 10)
+    line = window.session.project.absorbers[0]
+    panel.go_to_line(line.line)
     assert tab.current() == (None, "forest")
+    assert tab.selected_component().main.line == line.line
 
 
 def test_a_link_line_selects_what_it_computes(window, qtbot):
@@ -1371,3 +1373,130 @@ def test_a_click_in_the_forest_adds_a_line_of_the_forest(window, qtbot):
     count = len(window.session.project.absorbers)
     assert one_step(window, lambda: added(window, tab, 40.0)) == "Add an interloper"
     assert len(window.session.project.absorbers) == count + 1
+
+
+# -- RJC's Prompt 6 of Stage 10: the forest's lines and other systems, adjusted ------
+
+# H I (system a), a line of the Lyα forest and an H I blend (every Lyman line), and
+# C IV of another system (b), all in write_ratio_fit's snip
+SECOND_LINES = [
+    "voigt ion=1H_I 14.0 2.50360 10.0 10000.0 specid=0",
+    "voigt ion=1H_I 13.5 2.50420 10.0 10000.0 specid=0",
+    "voigt ion=1Ly_a 13.2 2.50480 20.0 0.0ZEROT specid=0",
+    "voigt ion=1H_IB 12.8 2.50250 25.0 0.0ZEROT specid=0",
+    "voigt ion=12C_IV 13.5 1.75030 8.0 0.0 specid=0",
+]
+
+
+def test_another_system_is_adjusted_as_the_primary_is(window, qtbot, tmp_path):
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit", SECOND_LINES))
+    groups = dict(tree(tab))
+    assert [name for name, _ in groups["z = 1.75030"]] == ["C IV"]
+    choose(tab, "C IV")
+    system, ion = tab.current()
+    assert not system.primary and ion == "12C_IV"
+    widget = tab.panel_widgets[0]
+    view = widget.view
+    # Above the continuum: its z, by the drag's movement
+    assert one_step(window, lambda: drag(view, (2.0, 1.2), (7.0, 1.25))) == (
+        "Drag component b1"
+    )
+    # (an inferred system's redshift is its component's: the z written is checked)
+    comp = window.session.project.component("b1")
+    assert P.velocity(comp.z, 1.7503) == pytest.approx(5.0, abs=1e-3)
+    # Below it: log N and b
+    widget = tab.panel_widgets[0]
+    (_, _), (vy0, vy1) = widget.view.view_range()
+    one_step(window, lambda: drag(widget.view, (10.0, 0.5), (13.0, 0.3)))
+    line = window.session.project.component("b1").lines_of("12C_IV")[0]
+    assert line.param("ColDens").start == pytest.approx(
+        13.5 + 2.0 * 0.2 / (vy1 - vy0), abs=2e-4
+    )
+    assert line.param("bturb").start == pytest.approx(8.0 + 3.0, abs=2e-3)
+    # Its card: a value typed, and a badge's menu
+    edit = tab.card_widgets["b1"].values["ColDens:12C_IV"]
+    edit.setText("13.9")
+    assert one_step(window, edit.editingFinished.emit) == "Set log N of C IV in b1"
+    # Fixed asks for a label first (the line has none): the one suggested
+    window.on_dialog = lambda dialog: 1
+    card = tab.card_widgets["b1"]
+    assert one_step(window, card_menu(card, "bturb", "Fixed").trigger) == (
+        "Fix b_turb of b1"
+    )
+    assert window.session.project.component("b1").main.param("bturb").fixed
+
+
+def test_a_line_of_the_forest_is_adjusted_as_a_component_is(window, qtbot, tmp_path):
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path / "fit", SECOND_LINES))
+    choose(tab, "Lyα forest")
+    assert tab.current() == (None, "forest")
+    # A card for each line, as a component's: its values, badges and buttons
+    assert list(tab.card_widgets) == ["ly1", "ly2"]
+    card = tab.card_widgets["ly2"]
+    assert plain(card.title) == "ly2 · Lyα 4260.681 Å"
+    assert plain(tab.card_widgets["ly1"].title).startswith("ly1 · H I blend ")
+    assert set(card.values) == {"redshift", "bturb", "temperature", "ColDens:1Ly_a"}
+    assert card.values["ColDens:1Ly_a"].text() == "13.2"
+    assert card.badges["temperature"].text() == BADGES[C.TIED]
+    assert card.temp.text() == "0 K · fixed ▾"
+    assert not card.best.isEnabled() and card.blind.isEnabled()
+    # Its ticks are its own; a click selects the line nearest
+    widget = tab.panel_widgets[0]
+    view = widget.view
+    own = {t.key: t for t in view.ticks() if t.key[0] == "component"}
+    assert set(own) == {("component", "ly1"), ("component", "ly2")}
+    at = own[("component", "ly2")].value()
+    view.clicked.emit(at + 3.0, 0.5)
+    assert tab.selected_component().id == "ly2"
+    # Its card is highlighted
+    assert "2px solid" in tab.card_widgets["ly2"].styleSheet()
+    assert "1px solid" in tab.card_widgets["ly1"].styleSheet()
+    # Above the continuum: its z, by the drag's movement, in the panel's frame
+    z0 = window.session.project.component("ly2").z
+    assert one_step(window, lambda: drag(view, (at, 1.2), (at + 5.0, 1.25))) == (
+        "Drag component ly2"
+    )
+    z = window.session.project.component("ly2").z
+    frame = (1.0 + z0) / (1.0 + at / C.C_KMS) - 1.0
+    assert P.velocity(z, frame) - P.velocity(z0, frame) == pytest.approx(5.0, abs=1e-3)
+    # Below it: log N and b_turb (its T is fixed at 0 K)
+    widget = tab.panel_widgets[0]
+    at = next(t for t in widget.view.ticks() if t.key == ("component", "ly2")).value()
+    (_, _), (vy0, vy1) = widget.view.view_range()
+    drag(widget.view, (at + 10.0, 0.5), (at + 13.0, 0.3), state="move")
+    assert "log N" in widget.readout.text() and "b_turb" in widget.readout.text()
+    one_step(
+        window,
+        lambda: widget.view.dragged.emit(at + 10.0, 0.5, at + 13.0, 0.3, "finish"),
+    )
+    line = window.session.project.component("ly2").main
+    assert line.param("ColDens").start == pytest.approx(
+        13.2 + 2.0 * 0.2 / (vy1 - vy0), abs=2e-4
+    )
+    assert line.param("bturb").start == pytest.approx(20.0 + 3.0, abs=2e-3)
+    # A value typed, and a badge's menu (Fixed asks for a label: the one suggested)
+    edit = tab.card_widgets["ly2"].values["ColDens:1Ly_a"]
+    edit.setText("13.4")
+    assert one_step(window, edit.editingFinished.emit) == "Set log N of ly2"
+    window.on_dialog = lambda dialog: 1
+    card = tab.card_widgets["ly2"]
+    assert one_step(window, card_menu(card, "bturb", "Fixed").trigger) == (
+        "Fix b_turb of ly2"
+    )
+    assert window.session.project.component("ly2").main.param("bturb").fixed
+    # Blind…, after its question; ✕, after its plan (on ly1: ly2's T label, which
+    # ly1 shares, is hidden now, and removing ly2 would show it on ly1)
+    window.answers.answers["blind_component"] = "Blind"
+    one_step(window, tab.card_widgets["ly2"].blind.click)
+    assert window.session.project.component("ly2").main.blind
+    assert tab.card_widgets["ly2"].values["ColDens:1Ly_a"].text() == "▒▒▒▒"
+    assert one_step(window, tab.card_widgets["ly1"].remove.click) == (
+        "Remove an interloper"
+    )
+    assert list(tab.card_widgets) == ["ly1"]
+    assert window.session.project.forest[0].main.ion == "1Ly_a"
+    # + Add component in the forest: a line where clicked, selected
+    assert one_step(window, lambda: added(window, tab, 40.0)) == "Add an interloper"
+    comp = tab.selected_component()
+    assert comp is not None and len(window.session.project.forest) == 2
+    assert "2px solid" in tab.card_widgets[comp.id].styleSheet()

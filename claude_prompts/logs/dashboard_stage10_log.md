@@ -546,3 +546,79 @@ T's (Task 10.11); the list was updated, and the Components tab's 44 tests pass.
   was not run again: nothing outside `alis/dashboard/` changed after the `fast`
   batch passed.
 - *Still to close*: CI on RJC's push. The review is applied.
+- **Prompt 6** (2026-11-09). RJC: the Lyα forest's cards showed no values, and its
+  lines could not be dragged (z above the continuum; log N and b below); the forest
+  should be adjusted as the primary's components are, and every other system
+  checked too. No query: the request is clear, and the leans below follow the
+  components' rules (D119).
+- *Other systems, checked first*: `test_another_system_is_adjusted_as_the_primary_is`
+  (a C IV system at z = 1.7503 beside the H I primary) drags its z and its log N and
+  b, types a log N and fixes a b_turb from its card: it passed before any change.
+  Nothing needed fixing. (An inferred system's redshift is its component's, so the
+  test checks the z written, not the velocity.)
+- *The change*: each line of the forest (``1Ly_a``, ``1H_IB``) is a component of no
+  system, `project.forest`, ``ly1``, ``ly2``, … in order of redshift
+  (`project.py`), found by `Project.component`. `forest_ticks` keys its ticks by
+  that component, so the tab's selection, nearest line, tick drag and readout serve
+  it; a drag's velocity is in the panel's frame (`_drag["frame"]`: for a forest
+  line, the redshift at which the dragged tick's transition sits at zero). The card
+  is `_card`'s, with the Lyα's wavelength in the header, the line's log N, and no
+  lists of ions; Tie to offers the forest's other lines; ✕ removes the line, as
+  before. `at_line` names the forest line, so the `.mod` panel's cursor selects it;
+  + Add component selects the line it adds. `run_component` finds a forest line in a
+  run's forest (Use best fit); `temperature_plan` labels a forest line's T in the
+  forest's scheme (`ly`), and `temperature_value_plan` names the forest's lines that
+  share a free T label. On a system's panels the forest's lines stay locked (S30).
+- *Tests*: `test_the_forest_s_lines_are_components_of_no_system` (ids and order,
+  ticks, a drag as one step, T's description; `test_dashboard_components.py`);
+  `test_use_best_fit_copies_a_line_of_the_forest` (J1358p6522, skipped where
+  absent; `test_dashboard_results.py`); `test_a_line_of_the_forest_is_adjusted_as_a_
+  component_is` (its cards' values, badges and buttons, a click, both drags, a
+  typed value, Fixed, Blind…, ✕ and + Add component) and the `.mod` cursor's
+  selection in `test_the_mod_cursor_and_the_tab_highlight_each_other`
+  (`test_dashboard_qt_components.py`).
+- *Found, not changed*: blinding a forest line hides its T label's value, which the
+  forest's other lines share (ZEROT), so removing that line is refused while they
+  remain, as for any blinded line whose labels others share (the guard, Q3.14).
+  `edit.suggest_label` offers the ``x`` scheme (``bx1``) to every component, a
+  system's too.
+- *The page*: draft 3 (same URL) adds J1358p6522's forest, a line selected on its
+  card and in its panels (screen `forest`). D119 records the decision; the workflow
+  guide, `tests/README.md`, the `gui-component` skill, `dashboard_stage0.md` and
+  `dashboard_stage11.md` follow.
+- *Batches after Prompt 6* (pytest 9.2.0): `unit` 2211 passed, 120 skipped (2 min
+  10 s); `gui` 279 passed (10 min 14 s). pre-commit passed. The regression harness
+  was not run again: nothing outside `alis/dashboard/` changed.
+- *Still to close*: RJC's look at draft 3, then CI on RJC's push.
+- **Prompt 7** (2026-11-09). RJC: the Fit tab's button should read "Random
+  restarts…", and its dialog "Set the number of restarts to run:" [n] "Go!" in place
+  of "Run" [n] "restarts". The action was already named "Random restarts…", but a
+  button drops a trailing "…" from its action's text unless its icon text is set (as
+  Export… sets it), so the window now sets it (`window.py`); the dialog's label and
+  button are changed (`fittools.py`). *Test*: `test_the_restarts_window_and_export`
+  checks the Fit tab's button, the dialog's label and Go!. The workflow guide names
+  them; the page's "Also done" list says so (version 4, same URL). The other
+  buttons that open a dialog still show no "…" (Add ion, Add system, Add
+  interloper on the Components tab), as before.
+- *Batch after Prompt 7* (pytest 9.2.0): `gui` 279 passed. pre-commit passed. Only
+  the window's code changed, so the `unit` batch was not run again.
+- *Still to close*: RJC's look at the page, then CI on RJC's push.
+
+### 2026-11-09 (Stage 10 closed)
+
+- **Closed** at RJC's request ("Great, let's close this stage."). Every point of the
+  Feedback list (1–13) and every item carried over from Stage 9 has its task logged
+  as done with its check passing; Q10.1–Q10.10 are answered; the review is applied
+  (no comments; the row-spacing question taken as it is), and RJC's Prompts 5–7 are
+  built. The decisions are D113–D119.
+- **Final batches** (pytest 9.2.0), against Stage 9's close: `unit` 2211 passed, 120
+  skipped (2176 and 120); `gui` 279 passed (256), run after Prompt 7; `fast` 149
+  passed (149), the regression harness and its `test_bundle` mode included, in
+  17 min 34 s. pre-commit passed on every changed file.
+- **CI**: Prompts 6 and 7 and the close are not committed yet, and
+  `doc/dashboard/stage10/` and `claude_prompts/dashboard_stage11.md` are untracked;
+  CI on RJC's push of them is the last check.
+- **Updated:** `dashboard_stage0.md` (Stage 10 done; "After v1"),
+  `dashboard_stage10.md` (the close), and `dashboard_stage11.md` (items 2 and 3
+  carried over: the "…" of the Components tab's dialog buttons, and the ``x``
+  scheme of suggested labels; Q11.1 now covers each item, with a lean).

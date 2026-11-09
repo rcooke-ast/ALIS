@@ -940,7 +940,8 @@ the work of the stage, RJC's review (D110) and RJC's use of the tab (D111, Promp
   figure saved with those reads as the side they meant.
 
 *Stage 10 decisions (users' feedback). Added by Claude on 2026-11-08 from Q10.1–Q10.10,
-the work of the stage, and RJC's review of the stage's page (D118, Prompt 5).*
+the work of the stage, and RJC's review of the stage's page (D118, Prompt 5; D119,
+Prompt 6).*
 - **D113. SNIP over unusable data** (point 8; refines D53): a dataset covers a
   transition when it falls on its source and at least 10 of the source's pixels
   within the window can be fitted; SNIP cuts those, names the others with why
@@ -981,6 +982,17 @@ the work of the stage, and RJC's review of the stage's page (D118, Prompt 5).*
   figure's default range, and with it the ticks, the residuals and the label sit
   alike in every panel. A figure saved with both ends keeps its lowest. RJC took one
   row spacing for every row (the review's question) as it is.
+- **D119. The Lyα forest's lines adjusted as components** (RJC's Prompt 6 of Stage
+  10; refines S11–S13 and Q5.14): each line of the forest (``1Ly_a``, ``1H_IB``) is a
+  component of no system, ``ly1``, ``ly2``, … in order of redshift. Its card is a
+  component's: z, b_turb, T's mode and value, its log N, the badges and their menus
+  (Tie to offers the forest's other lines), Use best fit, Blind… and ✕, with its
+  Lyα's wavelength in the header and no lists of ions. In the forest's panels a
+  click selects the nearest line and a drag moves it as it moves a component (z
+  above the continuum; log N and b below), in the panel's frame; + Add component
+  selects the line it adds, and the `.mod` panel's cursor on a line selects it. On a
+  system's panels the forest's lines stay drawn and locked (S30). Every other system
+  is adjusted as the primary is, as before.
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

@@ -257,6 +257,11 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
   otherwise widens to the ticks.
 - **`QDrag.exec` in a test**: replace `QtGui.QDrag` with a subclass whose `exec`
   records the drag (`test_a_drag_begun_on_a_cell`).
+- **The Lyα forest's lines are components of no system** (`project.forest`, ids
+  `ly1`, … by redshift; `comp.system is None`), so the Components tab's cards, ticks,
+  drags and menus serve them as they serve a system's (D119). Code that walks a
+  system's components (`comp.system.components`) must take the forest's for these;
+  a drag's velocity is in the panel's frame (`self._drag["frame"]`), not a system's.
 
 ## Notes
 

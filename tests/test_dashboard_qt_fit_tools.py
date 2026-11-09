@@ -27,6 +27,7 @@ pytestmark = pytest.mark.gui
 pytest.importorskip("qtpy.QtWidgets")
 pytest.importorskip("pyqtgraph")
 
+from qtpy import QtWidgets  # noqa: E402
 from test_dashboard_restarts import made_up  # noqa: E402
 from test_dashboard_results import _push, store_run  # noqa: E402
 
@@ -162,8 +163,15 @@ def test_the_restarts_window_and_export(window, qtbot, tmp_path):
         assert dialog.continue_button.isVisible()
         assert dialog.continue_button.text() == "Continue from restart 2…"
         assert dialog.count.value() == 10
+        # RJC's Prompt 7 of Stage 10: what the number is, and what starts them
+        labels = [w.text() for w in dialog.findChildren(QtWidgets.QLabel)]
+        assert "Set the number of restarts to run:" in labels
+        assert dialog.run_button.text() == "Go!"
         return 0
 
+    # The Fit tab's button keeps its "…": it opens this dialog first
+    button = window.findChild(QtWidgets.QToolButton, "fit_restarts")
+    assert button.text() == "Random restarts…"
     window.on_dialog = look
     window.qactions["fit.restarts"].trigger()
     assert seen

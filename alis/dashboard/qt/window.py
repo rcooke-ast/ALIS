@@ -436,7 +436,10 @@ class MainWindow(QtWidgets.QMainWindow):
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
         bar.addWidget(spacer)
+        # A button drops a trailing "…" from its action's text unless set: these
+        # open a dialog first (Random restarts…, RJC's Prompt 7 of Stage 10)
         self.qactions["file.export"].setIconText("Export…")
+        self.qactions["fit.restarts"].setIconText("Random restarts…")
         self.qactions["help.shortcuts"].setIconText("?  Shortcuts")
         bar.addAction(self.qactions["file.export"])
         bar.addAction(self.qactions["help.shortcuts"])

@@ -27,7 +27,8 @@ hold the chosen ion's transitions, on one velocity axis; at the right, the
   component" arms one click, which adds a component at the clicked velocity with
   its first guesses (in the Lyα forest, a line of the forest); otherwise a click
   selects the component nearest in velocity (its thin ticks count, other systems'
-  locked lines do not), and Esc clears the selection. A drag moves the component
+  locked lines do not), and Esc clears the selection. In the Lyα forest its lines
+  are selected and dragged in the same way (RJC's Prompt 6 of Stage 10). A drag moves the component
   nearest where it starts, by the drag's movement: above the continuum (by the
   ticks) its z; below it, log N (vertically, 2 dex over the panel's height) and b
   (how much farther from the component the pointer is) together, N held keeping b
@@ -44,7 +45,9 @@ hold the chosen ion's transitions, on one velocity axis; at the right, the
   ion it is in, isotopes under their element. Under faint rules, "Included ions
   (click to exclude):" and "Excluded ions (click to include):" list the system's
   ions (RJC's review of Stage 7); a card excluded from the ion shown is greyed but
-  for the lists. A value can be
+  for the lists. A line of the Lyα forest has the same card (``ly1``, ``ly2``, … in
+  order of redshift; RJC's Prompt 6 of Stage 10), with its Lyα's wavelength in its
+  header, its one log N, and no lists of ions. A value can be
   typed, a hidden one too, and stays hidden; the step that writes it names no value.
   Use best fit (Stage 6.6, Q6.17) copies the Fit tab's shown run's best fit of the
   component (z, b_turb, T, each ion's log N) into its lines, as one step; greyed,
@@ -98,8 +101,9 @@ INCLUDED_IONS = "Included ions (click to exclude):"
 EXCLUDED_IONS = "Excluded ions (click to include):"
 # More components than this in a panel: only the selected one's tick is labelled
 CROWDED = 6
-# The Lyα forest's lines, as people name them
-FOREST_NAMES = {"1Ly_a": "Lyα", "1H_IB": "H I"}
+# The Lyα forest's lines, as people name them, and the wavelength of their Lyα
+FOREST_NAMES = {"1Ly_a": "Lyα", "1H_IB": "H I blend"}
+LYA = 1215.6701
 # What the tab keeps in the view state (ui/view.json)
 VIEW_KEYS = ("system", "ion", "dataset", "columns", "range")
 RANGES = (100.0, 200.0, 300.0, 500.0, 1000.0, 2000.0)
@@ -786,6 +790,9 @@ class ComponentsTab(W.Tab):
         if place.forest:
             if self.state.get("ion") != FOREST:
                 self.show_ion(self.state.get("system"), FOREST)
+            comp = place.component
+            if comp is not None and self.selected != (comp.label or comp.id):
+                self.select(comp)
             return
         system, ion = self.current()
         if system is None or system.id != place.system.id or ion != place.ion:
@@ -1040,12 +1047,19 @@ class ComponentsTab(W.Tab):
 
     # -- selecting (Q5.15(b)) ----------------------------------------------------
 
-    def selected_component(self):
-        """The selected component of the system shown, or None."""
+    def _shown_components(self):
+        """The components shown: the system's, or the Lyα forest's lines."""
         system, ion = self.current()
-        if self.selected is None or system is None:
+        if ion == FOREST:
+            return self.session.project.forest
+        return system.components if system is not None else []
+
+    def selected_component(self):
+        """The selected component of the system shown (or line of the Lyα forest),
+        or None."""
+        if self.selected is None or self.session is None:
             return None
-        for comp in system.components:
+        for comp in self._shown_components():
             if (comp.label or comp.id) == self.selected:
                 return comp
         return None
@@ -1095,13 +1109,13 @@ class ComponentsTab(W.Tab):
         # The run Use best fit copies from: the Fit tab's shown run (Q6.17)
         self._shown = self.main.shown_run() if self.main is not None else (None, "")
         if ion == FOREST:
+            # Its lines, each a card as a component's (RJC's Prompt 6 of Stage 10)
             self._add_card_title("Lyα forest")
-            lines = sorted(
-                self.session.project.absorbers,
-                key=lambda ln: ln.param("redshift").start,
-            )
-            for line in lines:
-                self._insert_card(self._forest_card(line))
+            for comp in self.session.project.forest:
+                card = self._card(comp, None, [])
+                self.card_widgets[comp.id] = card
+                self._insert_card(card)
+            self.selection_changed()
             return
         if system is None:
             return
@@ -1124,21 +1138,32 @@ class ComponentsTab(W.Tab):
     def _card(self, comp, ion, rows):
         """
         One component's card (S11): its header, z, b_turb, T, and each ion's log N.
+        A line of the Lyα forest (a component of no system) has the same, with its
+        Lyα's wavelength in the header and no lists of ions (RJC's Prompt 6 of Stage
+        10).
 
         Generated by RJC and Claude.
         """
         gate = self.gate
+        forest = comp.system is None
         card = CardFrame(lambda c=comp: self.select(c))
         card.setObjectName("card")
         layout = QtWidgets.QVBoxLayout(card)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setSpacing(3)
         head = QtWidgets.QHBoxLayout()
-        vel = gate.velocity(comp)
-        if vel != BL.MASK:
+        if forest:
+            zpar = comp.main.param("redshift")
             z = C.component_z(comp, self._linked)
-            vel = "{0:+.1f}".format(P.velocity(z, comp.system.z))
-        card.title = QtWidgets.QLabel("<b>{0}</b> · v = {1} km/s".format(comp.id, vel))
+            wave = gate.value(zpar, LYA * (1.0 + z), digits=7)
+            where = "{0} {1} Å".format(FOREST_NAMES.get(comp.main.ion), wave)
+        else:
+            vel = gate.velocity(comp)
+            if vel != BL.MASK:
+                z = C.component_z(comp, self._linked)
+                vel = "{0:+.1f}".format(P.velocity(z, comp.system.z))
+            where = "v = {0} km/s".format(vel)
+        card.title = QtWidgets.QLabel("<b>{0}</b> · {1}".format(comp.id, where))
         card.title.setMinimumWidth(10)
         head.addWidget(card.title, 1)
         excluded = ion is not None and (
@@ -1173,8 +1198,14 @@ class ComponentsTab(W.Tab):
         card.remove = QtWidgets.QToolButton()
         card.remove.setText("✕")
         card.remove.setObjectName("card_remove")
-        card.remove.setToolTip("Remove {0} from every ion…".format(comp.id))
-        card.remove.clicked.connect(lambda _=False, c=comp: self._remove(c))
+        if forest:
+            card.remove.setToolTip("Remove {0}…".format(comp.id))
+            card.remove.clicked.connect(
+                lambda _=False, ln=comp.main: self._remove_line(ln)
+            )
+        else:
+            card.remove.setToolTip("Remove {0} from every ion…".format(comp.id))
+            card.remove.clicked.connect(lambda _=False, c=comp: self._remove(c))
         head.addWidget(card.remove)
         layout.addLayout(head)
         if everywhere:
@@ -1212,6 +1243,22 @@ class ComponentsTab(W.Tab):
         else:
             grid.addWidget(card.temp, row, 1, 1, 2)
         row += 1
+        if forest:
+            # Its one line's log N; it is in no system, so has no lists of ions
+            grid.addWidget(QtWidgets.QLabel("log N"), row, 0)
+            self._value_row(
+                grid,
+                row,
+                card,
+                comp,
+                comp.main.param("ColDens"),
+                "ColDens:" + comp.main.ion,
+                "log N of {1}",
+            )
+            grid.setColumnStretch(1, 1)
+            layout.addWidget(body)
+            card.body = body
+            return card
         notes = self.notes.get(comp.label or comp.id, {})
         # The ions it is in, each with its log N, or the ratio that gives it (Q7.7);
         # listed again under the rows, with the others (Q5.20)
@@ -1413,7 +1460,13 @@ class ComponentsTab(W.Tab):
             fixed.triggered.connect(lambda: self._param_step("fix", par, description))
         others = []
         if par.name in E.COMPONENT_PREFIX:
-            for other in comp.system.components:
+            # A line of the Lyα forest is tied to the forest's other lines
+            siblings = (
+                comp.system.components
+                if comp.system is not None
+                else self.session.project.forest
+            )
+            for other in siblings:
                 if other.main is None:
                     continue  # excluded from every ion: no tie to it (Q7.6)
                 theirs = other.main.param(par.name)
@@ -1475,34 +1528,6 @@ class ComponentsTab(W.Tab):
         button.setMenu(menu)
         button.setEnabled(mode != "linked")
         return button
-
-    def _forest_card(self, line):
-        """A line of the Lyα forest: its Lyα's wavelength, log N and b (Q5.14)."""
-        gate = self.gate
-        card = CardFrame(lambda: None)
-        layout = QtWidgets.QVBoxLayout(card)
-        layout.setContentsMargins(8, 4, 8, 4)
-        head = QtWidgets.QHBoxLayout()
-        zpar = line.param("redshift")
-        wave = gate.value(zpar, 1215.6701 * (1.0 + zpar.start), digits=7)
-        card.title = QtWidgets.QLabel(
-            "<b>{0}</b> {1} Å".format(FOREST_NAMES.get(line.ion, line.ion), wave)
-        )
-        head.addWidget(card.title, 1)
-        remove = QtWidgets.QToolButton()
-        remove.setText("✕")
-        remove.setObjectName("card_remove")
-        remove.setToolTip("Remove this line…")
-        remove.clicked.connect(lambda _=False, ln=line: self._remove_line(ln))
-        head.addWidget(remove)
-        layout.addLayout(head)
-        values = []
-        for name in ("ColDens", "bturb"):
-            par = line.param(name)
-            if par is not None:
-                values.append("{0} {1}".format(WHAT[name], gate.value(par, digits=6)))
-        layout.addWidget(W.muted(" · ".join(values)))
-        return card
 
     # -- the cards' actions ---------------------------------------------------------
 
@@ -1745,11 +1770,11 @@ class ComponentsTab(W.Tab):
         self._act("components.blind", do)
 
     def _component_of(self, key):
-        """The component a tick names, or None."""
-        system, _ = self.current()
-        if system is None or not key or key[0] != "component":
+        """The component a tick names (a line of the Lyα forest's, in the forest), or
+        None."""
+        if self.session is None or not key or key[0] != "component":
             return None
-        for comp in system.components:
+        for comp in self._shown_components():
             if comp.id == key[1]:
                 return comp
         return None
@@ -1926,6 +1951,11 @@ class ComponentsTab(W.Tab):
                 project, wave, specid=widget.panel.snip.specid, prefs=self.prefs()
             )
             self._do(step)
+            # The new line is selected, as a new component is
+            z = wave / LYA - 1.0
+            forest = self.session.project.forest
+            comp = min(forest, key=lambda c: abs(c.z - z)) if forest else None
+            self.selected = None if comp is None else (comp.label or comp.id)
             return
         if system is None:
             return
@@ -2011,22 +2041,23 @@ class ComponentsTab(W.Tab):
         b narrows as the pointer moves toward the component, from the side the drag
         began on, and on past its tick down to the bound of b_turb or T; it widens
         as the pointer moves away (Stage 8, Q8.9). ALIS's model follows; the text
-        changes once, when the drag ends.
+        changes once, when the drag ends. A line of the Lyα forest is dragged as a
+        component is, in its own ion (RJC's Prompt 6 of Stage 10).
 
         Generated by RJC and Claude.
         """
         system, ion = self.current()
         if state == "start":
             self._drag = None
-            if self.armed() or self.armed(INTERLOPER) or system is None:
-                return
-            if ion in (None, FOREST):
+            if self.armed() or self.armed(INTERLOPER) or ion is None:
                 return
             comp, at = self.nearest(widget, x0)
             if comp is None:
                 return
             if (comp.label or comp.id) != self.selected:
                 self.select(comp)
+            if ion == FOREST:
+                ion = comp.main.ion
             if not comp.lines_of(ion):
                 # Excluded from the ion (or never in it): selected, not dragged
                 return
@@ -2040,7 +2071,13 @@ class ComponentsTab(W.Tab):
             if kind == "shape" and not (axes["logn"] or axes["b"]):
                 return
             self._start_drag(comp, ion, kind)
+            # The redshift of the panel's zero velocity: the system's or, for a line
+            # of the forest, where the transition of the tick dragged is at zero
+            frame = system.z if system is not None and comp.system is not None else None
+            if frame is None:
+                frame = (1.0 + self._drag["z"]) / (1.0 + at / C.C_KMS) - 1.0
             self._drag.update(widget=widget, x0=x0, y0=y0, at=at, axes=axes, values={})
+            self._drag["frame"] = frame
             # The side of the tick the drag begins on: toward the tick narrows
             self._drag["side"] = 1.0 if x0 >= at else -1.0
             if kind == "z":
@@ -2054,8 +2091,9 @@ class ComponentsTab(W.Tab):
             dv = x - drag["x0"]
             for line, base in drag["ticks"]:
                 line.setValue(base + dv)
-            vel = P.velocity(drag["z"], system.z) + dv
-            self._drag_to(dict(z=system.z + vel * (1.0 + system.z) / C.C_KMS), finished)
+            frame = drag["frame"]
+            vel = P.velocity(drag["z"], frame) + dv
+            self._drag_to(dict(z=frame + vel * (1.0 + frame) / C.C_KMS), finished)
             return
         held = frozenset(self.drag_keys.held)
         if held != drag["held"]:
@@ -2152,8 +2190,12 @@ class ComponentsTab(W.Tab):
             if par.name in names:
                 part = names[par.name].format(value)
             elif par.name == "redshift":
+                # In the panel's frame: the system's, or a forest line's own
                 system, _ = self.current()
-                vel = P.velocity(value, system.z) if system is not None else 0.0
+                frame = (self._drag or {}).get("frame")
+                if frame is None and system is not None:
+                    frame = system.z
+                vel = P.velocity(value, frame) if frame is not None else 0.0
                 part = "v {0:+.2f} km/s".format(vel)
             else:
                 continue

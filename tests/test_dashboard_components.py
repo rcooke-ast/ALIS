@@ -1392,6 +1392,55 @@ def test_the_forest_shares_its_temperature_label(registry):
     assert C.forest_temperature_label(project) == "ZEROT"
 
 
+# A line of the Lyα forest and an H I blend beside H I (write_ratio_fit's snip)
+FOREST_LINES = [
+    "voigt ion=1H_I 14.0 2.50360 10.0 10000.0 specid=0",
+    "voigt ion=1Ly_a 13.2 2.50480 20.0 0.0ZEROT specid=0",
+    "voigt ion=1H_IB 12.8 2.50250 25.0 0.0ZEROT specid=0",
+]
+
+
+def test_the_forest_s_lines_are_components_of_no_system(registry, tmp_path):
+    # RJC's Prompt 6 of Stage 10: each line of the forest, a component (ly1, …
+    # in order of redshift), ticked, dragged and found as a system's is
+    path = write_ratio_fit(tmp_path, FOREST_LINES)
+    project = P.Project.import_model(str(path), registry=registry)
+    blend, lya = project.forest
+    assert (blend.id, lya.id) == ("ly1", "ly2")
+    assert blend.system is None and blend.ions == ["1H_IB"]
+    assert [c.main for c in project.forest] == sorted(
+        project.absorbers, key=lambda ln: ln.param("redshift").start
+    )
+    assert project.component("ly2") is lya
+    assert C.at_line(project, lya.main.line).component is lya
+    # Its ticks are its own: the component's key, moving its z
+    panel = C.Panel("Lyα", None, None, project.snips[0], 1215.6701 * 3.5036)
+    ticks = C.forest_ticks(project, panel, half=300.0)
+    assert {t.key for t in ticks} == {("component", "ly1"), ("component", "ly2")}
+    assert C.draggable(lya, "1Ly_a") == {"z": True, "logn": True, "b": True}
+    # A drag: its z, log N and b_turb (T is fixed at 0 K), as one step
+    hist = H.History(project)
+    changes = C.drag(project, lya, "1Ly_a", z=2.5049, logn=13.6, b=24.0)
+    step = C.drag_step(project, lya, changes)
+    assert step.description == "Drag component ly2"
+    hist.do(step)
+    line = project.component("ly2").main
+    assert line.param("redshift").start == pytest.approx(2.5049)
+    assert line.param("ColDens").start == pytest.approx(13.6)
+    assert line.param("bturb").start == pytest.approx(24.0)
+    assert errors(project) == []
+    hist.undo()
+    # T typed under a free T, on a label a line of the forest shares: named
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360 10.0 10000.0tsh specid=0",
+        "voigt ion=1Ly_a 13.2 2.50480 20.0 10000.0tsh specid=0",
+    ]
+    path = write_ratio_fit(tmp_path / "shared", lines)
+    project = P.Project.import_model(str(path), registry=registry)
+    plan = C.temperature_value_plan(project, project.component("a1"), "12000")
+    assert plan.description == "Set T of a1 (and of ly1, on its label tsh)"
+
+
 # -- Links (S15, Q5.9) -------------------------------------------------------------
 
 

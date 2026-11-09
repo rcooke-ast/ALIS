@@ -978,3 +978,26 @@ def test_no_blinded_value_is_shown(blinded):
     assert {oxygen.line, silicon.line} <= set(blinded.hidden_lines())
     masked = BL.Gate(blinded).view().text + plan.step.description + repr(plan.changed)
     assert not [b for b in bad if b in masked]
+
+
+def test_use_best_fit_copies_a_line_of_the_forest(j1358):
+    # RJC's Prompt 6 of Stage 10: a line of the Lyα forest has a card as a
+    # component's, and its Use best fit copies the run's values of that line
+    view = RS.View.latest(j1358)
+    comp = j1358.forest[0]
+    (line,) = comp.lines
+    assert comp.id == "ly1" and comp.system is None
+    assert RS.run_component(view, comp).lines[0].line == line.line
+    before = j1358.text
+    changed = edit_value(j1358, line.param("ColDens"), 15.0)
+    comp = j1358.forest[0]
+    assert RS.component_reason(j1358, view, comp) == ""
+    step = RS.component_step(j1358, view, comp)
+    assert step.description == "Use the best fit of component ly1"
+    j1358.apply(step)
+    best = best_values(j1358)
+    par = j1358.forest[0].main.param("ColDens")
+    assert par.start == pytest.approx(best[par.index])
+    j1358.revert(step)
+    j1358.revert(changed)
+    assert j1358.text == before
