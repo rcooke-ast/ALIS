@@ -290,6 +290,17 @@ def _parse_range(text):
     return [low, high]
 
 
+def _parse_number(text):
+    """A number, ``""`` as None."""
+    text = text.strip()
+    if not text:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        raise FG.FigureError("Give a number, such as 0.5.") from None
+
+
 def _parse_numbers(text):
     text = text.strip()
     if not text:
@@ -378,12 +389,28 @@ class OptionsDialog(QtWidgets.QDialog):
             lambda: self.change("xrange", lambda: _parse_range(xrange_.text()))
         )
         add("xrange", "x range", xrange_, shared=cell["axis"] == FG.VELOCITY)
-        yrange = QtWidgets.QLineEdit(_range_text(cell["yrange"]))
-        yrange.setPlaceholderText("by the residuals drawn")
-        yrange.editingFinished.connect(
-            lambda: self.change("yrange", lambda: _parse_range(yrange.text()))
+        # The lowest flux alone: the highest is worked out, so that the continuum
+        # sits as in every other panel (RJC's Prompt 5 of Stage 10)
+        default = FS.flux_range(fig["residuals"])
+        ymin = QtWidgets.QLineEdit(
+            "" if cell["ymin"] is None else "{0:g}".format(cell["ymin"])
         )
-        add("yrange", "Flux range", yrange, shared=True)
+        ymin.setPlaceholderText("{0:g}, by the residuals drawn".format(default[0]))
+        ymin.setToolTip(
+            "The panel's lowest flux. Its highest is worked out, so that the"
+            " continuum, the ticks, the residuals and the label sit as in every other"
+            " panel"
+        )
+        self.ymax = W.muted("")
+        ymin.textChanged.connect(lambda text: self._show_ymax(text))
+        ymin.editingFinished.connect(
+            lambda: self.change("ymin", lambda: _parse_number(ymin.text()))
+        )
+        add("ymin", "Flux from", ymin, shared=True)
+        form.addWidget(self.ymax, line[0], 1)
+        line[0] += 1
+        self._residuals = fig["residuals"]
+        self._show_ymax(ymin.text())
         yticks = QtWidgets.QLineEdit(
             ", ".join("{0:g}".format(v) for v in cell["yticks"] or [])
         )
@@ -478,8 +505,10 @@ class OptionsDialog(QtWidgets.QDialog):
             return FG.CORNERS[widget.currentIndex()]
         if key == "axis":
             return FG.AXES[widget.currentIndex()]
-        if key in ("xrange", "yrange"):
+        if key == "xrange":
             return _parse_range(widget.text())
+        if key == "ymin":
+            return _parse_number(widget.text())
         if key == "yticks":
             return _parse_numbers(widget.text())
         if key == "xnumbers":
@@ -489,6 +518,19 @@ class OptionsDialog(QtWidgets.QDialog):
         if key in ("xtitle", "ytitle"):
             return widget.isChecked()
         return widget.text()
+
+    def _show_ymax(self, text):
+        """The highest flux the lowest gives, beside it."""
+        try:
+            low = _parse_number(text)
+        except FG.FigureError:
+            self.ymax.setText("")
+            return
+        if low is not None and not low < 1.0:
+            self.ymax.setText("")
+            return
+        high = FS.flux_range(self._residuals, low)[1]
+        self.ymax.setText("to {0:g}, worked out from the continuum".format(high))
 
     def change(self, key, value, every=False):
         """Make the change as a step; a refusal is said in the dialog. ``value`` may

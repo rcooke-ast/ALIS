@@ -493,3 +493,56 @@ T's (Task 10.11); the list was updated, and the Components tab's 44 tests pass.
   with Q11.1 and Q11.2).
 - *Still to do*: the review page (`doc/dashboard/stage10/`), RJC's review applied,
   and the close's checks.
+- *Batches before the close* (pytest 9.2.0, in the scratch venv): `unit` 2208
+  passed, 120 skipped (2176 at Stage 9's close; 2 min 2 s); `gui` 277 passed (256;
+  9 min 55 s); `fast` 149 passed (149), the regression harness with its
+  `test_bundle` mode included (17 min 33 s). pre-commit passed on every changed
+  file. RJC's files: J0035m0918 (with its sources) and J1358p6522 were present, and
+  their tests passed here.
+- *The review page*, draft 1: https://claude.ai/artifact/BHMVF9gsdr2hmdHxVS1kQY,
+  built by `doc/dashboard/stage10/take_screenshots.py` and `build_review.py`: SNIP
+  on J0035m0918's Al II 1670 with its message, D I beside Lyβ by the default line
+  IDs and by This transition, the Transitions pane, the tools with a region's edge
+  and the two grips, the zoomed-out source, the cards' T, and J1358p6522's metals
+  figure (a panel ranged 0.5–1.2; O I λ988, λ929, λ1025 rounded down), DH from Ly8,
+  and a rest-wavelength panel above velocity ones with the spacing worked out
+  (0.84). It asks whether one row spacing for every row is acceptable. Task 10.3
+  has no still image; the page names its test.
+- From the screenshots: the Snip box's "No fit region yet: Adjust fit regions ▾
+  draws one." showed the ▾ as a dot; it now reads "No fit region yet: choose Adjust
+  fit regions to draw one."
+- *Waiting on*: RJC's review of the page, then CI on RJC's push. The stage closes
+  once the review is applied.
+
+### 2026-11-08 (Prompt 5: RJC's review, and a panel's flux from its lowest value)
+
+- **The review.** RJC: "All of these things work great!" No comments on the page;
+  its question (one row spacing for every row) is taken as accepted as it is.
+- **Prompt 5.** A panel's options took a flux range of two values; with the ticks,
+  the residuals and a lower label placed by fractions of the panel (Task 10.13),
+  the user had to choose both ends so that they sat well. Now a panel takes only its
+  lowest flux (Flux from), and its highest is worked out so that the continuum sits
+  at the same height as at the figure's default range for its residuals: high =
+  low + (1 − low) / c, with c the continuum's height there. The continuum, the
+  ticks, the residuals and the label then sit alike in every panel. From 0.5 under
+  a strip, the panel ends at 1.125.
+- *Tests first, changed*: `test_the_residuals_and_a_label_stay_in_a_panel` draws
+  each residual choice from 0.5 and from −0.1: the range is the one worked out, the
+  continuum at the default's height, and the label, the ticks and every residual
+  at the same places in the panel, to 10⁻⁹; `test_a_figure_saved_with_a_flux_range_
+  keeps_its_lowest_flux` (`test_dashboard_figure.py`); Apply to all panels sets
+  `ymin`, which is refused at or above 1 and when not a number; the dialog shows
+  "to 1.125, worked out from the continuum" and "Give a number, such as 0.5."
+  (`test_dashboard_qt_figure.py`); a dragged panel carries its `ymin`.
+- *The change*: the cell's `yrange` gives way to `ymin` (`CELL_DEFAULTS`, Apply to
+  all panels, carried by a drag); `_complete` reads a saved `yrange` as its lowest
+  value; `figscript.flux_range(residuals, low)` gives the panel's range; the panel
+  options' "Flux from" field shows the highest beside it.
+- *The page*: draft 2 (same URL) retakes J1358p6522's metals figure with its first
+  panel from 0.5 (to 1.125), and says so. D118 records the decision; the workflow
+  guide, `tests/README.md`, `dashboard_stage0.md` and `dashboard_stage11.md` follow.
+- *Batches after Prompt 5* (pytest 9.2.0): `unit` 2209 passed, 120 skipped (2 min
+  6 s); `gui` 277 passed (10 min 16 s). pre-commit passed. The regression harness
+  was not run again: nothing outside `alis/dashboard/` changed after the `fast`
+  batch passed.
+- *Still to close*: CI on RJC's push. The review is applied.

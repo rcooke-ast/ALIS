@@ -939,8 +939,8 @@ the work of the stage, RJC's review (D110) and RJC's use of the tab (D111, Promp
   set; it replaces the separate Shown/Hidden choice and the left/right side, and a
   figure saved with those reads as the side they meant.
 
-*Stage 10 decisions (users' feedback). Added by Claude on 2026-11-08 from Q10.1–Q10.10
-and the work of the stage; RJC's review of the stage's page may add more.*
+*Stage 10 decisions (users' feedback). Added by Claude on 2026-11-08 from Q10.1–Q10.10,
+the work of the stage, and RJC's review of the stage's page (D118, Prompt 5).*
 - **D113. SNIP over unusable data** (point 8; refines D53): a dataset covers a
   transition when it falls on its source and at least 10 of the source's pixels
   within the window can be fitted; SNIP cuts those, names the others with why
@@ -975,6 +975,12 @@ and the work of the stage; RJC's review of the stage's page may add more.*
   own flux range stands; the spacing between rows is worked out from the panels
   unless set (Automatic, as the margins); the DH preset can start from a chosen
   Lyman member, kept with the figure.
+- **D118. A panel's flux from its lowest value** (RJC's Prompt 5 of Stage 10; refines
+  D117): a panel's options take only its lowest flux, below the continuum; the
+  highest is worked out so that the continuum sits at the same height as at the
+  figure's default range, and with it the ticks, the residuals and the label sit
+  alike in every panel. A figure saved with both ends keeps its lowest. RJC took one
+  row spacing for every row (the review's question) as it is.
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

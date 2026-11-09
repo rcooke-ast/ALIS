@@ -963,9 +963,10 @@ run_alis myfit.model     # fits the project from the command line, as before
     (▼, at its top) that moves that edge in every dataset, to the same velocity.
   - **A card's T** can be typed, free or fixed: fixed, as Fixed at… sets it; free,
     in every place of its label, so that a tie stays one value.
-  - **Figures.** A label rounds its wavelength down (C II λ1334). The residuals, a
-    label in a lower corner and the ticks keep their places in a panel with its own
-    flux range, and that range stands. The spacing between rows is worked out (more
+  - **Figures.** A label rounds its wavelength down (C II λ1334). A panel's flux is
+    set by its lowest value (Flux from): the highest is worked out, so that the
+    continuum, the ticks, the residuals and a label in a lower corner sit at the same
+    heights as in every other panel. The spacing between rows is worked out (more
     room under a panel's own x numbers or title), unless set. The DH preset can start
     from a higher member (From ▾).
 

@@ -107,7 +107,10 @@ CELL_DEFAULTS = {
     "title": "",
     "axis": VELOCITY,
     "xrange": None,
-    "yrange": None,
+    # The panel's lowest flux; its highest is worked out, so that the continuum sits
+    # where it sits in every other panel (RJC's Prompt 5 of Stage 10). None: the
+    # figure's default range
+    "ymin": None,
     "yticks": None,
     "xtitle": False,
     "ytitle": False,
@@ -119,7 +122,7 @@ CELL_DEFAULTS = {
 }
 # The options that Apply to all panels sets (RJC's response to Q9.8, Q9.12's ✱)
 SHARED = (
-    "yrange",
+    "ymin",
     "xtitle",
     "ytitle",
     "xnumbers",
@@ -138,7 +141,7 @@ CARRIED = (
     "components",
     "axis",
     "xrange",
-    "yrange",
+    "ymin",
     "yticks",
     "xtitle",
     "corner",
@@ -330,6 +333,11 @@ def _complete(fig):
         fig.setdefault(key, copy.deepcopy(value))
     for row in fig.get("cells", []):
         for cell in row:
+            if "yrange" in cell:
+                # Saved with a range of two values, before Stage 10's Prompt 5: its
+                # lowest flux stays, and its highest is worked out
+                old = cell.pop("yrange")
+                cell.setdefault("ymin", old[0] if old else None)
             if "yside" not in cell:
                 # Saved with the flux numbers' two options before Prompt 5
                 shown, right = cell.pop("ynumbers", None), cell.pop("yright", None)
@@ -892,8 +900,16 @@ def _check_cell(key, value):
             raise FigureError("A panel's x axis is velocity, or a wavelength.")
     elif key == "xrange":
         value = _check_range(value, "The x range")
-    elif key == "yrange":
-        value = _check_range(value, "The flux range")
+    elif key == "ymin":
+        if value is not None:
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                raise FigureError("A panel's lowest flux is a number.") from None
+            if not value < 1.0:
+                raise FigureError(
+                    "A panel's lowest flux is below the continuum, which is at 1."
+                )
     elif key == "yticks":
         if value is not None:
             value = sorted(float(v) for v in value)

@@ -426,7 +426,7 @@ def test_a_label_rounds_its_wavelength_down(ion, rest, label):
 @pytest.mark.parametrize("residuals", [FG.NO_RESIDUALS, FG.STRIP, FG.INSIDE])
 def test_the_residuals_and_a_label_stay_in_a_panel(tmp_path, registry, residuals):
     # Stage 10, point 13: at a flux of −0.3 (or −0.2) and 0.07, the strip and a
-    # lower label were out of view in a panel ranged (0.5, 1.2)
+    # lower label were out of view in a panel ranged from 0.5
     project, view = project_with_run(METAL, registry)
     fid = with_preset(project, view, FP.METALS)
     project.apply(FG.set_option(project, fid, "residuals", residuals))
@@ -448,25 +448,42 @@ def test_the_residuals_and_a_label_stay_in_a_panel(tmp_path, registry, residuals
         assert flux.size and np.allclose(
             flux, FS.RESIDUAL_OFFSETS[residuals] + 0.05 * sigma, rtol=0, atol=1e-9
         )
-    # Ranged (0.5, 1.2): every one inside the panel, at the same place in it
-    project.apply(FG.set_cell(project, fid, 0, 0, "yrange", [0.5, 1.2]))
-    script, _ = written(project, view, fid, tmp_path / "ranged")
-    ranged = read_back(script)["panels"][0]
-    assert ranged["ylim"] == pytest.approx([0.5, 1.2])
-    bottom, top = ranged["texts_up"][0][1]
-    assert 0.0 < bottom < top < 1.0
-    assert ranged["texts_up"][0][1] == pytest.approx(panel["texts_up"][0][1], abs=1e-6)
-    if residuals != FG.NO_RESIDUALS:
-        # The bands inside the panel, and every point where it was in the panel
-        assert ranged["bands_up"]
-        assert all(0.0 <= v <= 1.0 for v in ranged["bands_up"])
-        assert ranged["residuals_up"] == pytest.approx(panel["residuals_up"])
-    # Ranged (−0.1, 1.1): the ticks, which reached 1.15, are inside too
-    project.apply(FG.set_cell(project, fid, 0, 0, "yrange", [-0.1, 1.1]))
-    script, _ = written(project, view, fid, tmp_path / "ticks")
-    top_cut = read_back(script)["panels"][0]
-    ticks = [y for _, _, y in top_cut["lines"] if y[1] > y[0] > 0.5]
-    assert ticks and all(-0.1 < y[0] < y[1] < 1.1 for y in ticks)
+    # From 0.5 (RJC's Prompt 5): the highest flux is worked out, so that the
+    # continuum, the label, the residuals and the ticks are where they are in a
+    # panel at the default range, and inside it
+    for low in (0.5, -0.1):
+        project.apply(FG.set_cell(project, fid, 0, 0, "ymin", low))
+        script, _ = written(project, view, fid, tmp_path / "from{0:g}".format(low))
+        ranged = read_back(script)["panels"][0]
+        bottom_, top_ = FS.flux_range(residuals, low)
+        assert ranged["ylim"] == pytest.approx([bottom_, top_])
+        assert (1.0 - bottom_) / (top_ - bottom_) == pytest.approx(
+            (1.0 - low_default(residuals)) / span_default(residuals)
+        )
+        bottom, top = ranged["texts_up"][0][1]
+        assert 0.0 < bottom < top < 1.0
+        assert ranged["texts_up"][0][1] == pytest.approx(
+            panel["texts_up"][0][1], abs=1e-6
+        )
+        ticks = [y for _, _, y in ranged["lines"] if y[1] > y[0] > bottom_ + 0.1]
+        assert ticks and all(
+            [(v - bottom_) / (top_ - bottom_) for v in y]
+            == pytest.approx(list(fractions["ticks"]), abs=1e-9)
+            for y in ticks
+        )
+        if residuals != FG.NO_RESIDUALS:
+            assert ranged["bands_up"]
+            assert all(0.0 <= v <= 1.0 for v in ranged["bands_up"])
+            assert ranged["residuals_up"] == pytest.approx(panel["residuals_up"])
+
+
+def low_default(residuals):
+    return FS.FLUX_RANGES[residuals][0]
+
+
+def span_default(residuals):
+    low, high = FS.FLUX_RANGES[residuals]
+    return high - low
 
 
 def test_exporting_two_figures(tmp_path, registry):

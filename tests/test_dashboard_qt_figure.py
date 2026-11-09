@@ -397,17 +397,19 @@ def test_a_panel_s_options(window, qtbot, tmp_path):
     def options(dialog):
         assert isinstance(dialog, QF.OptionsDialog)
         dialog.fields["axis"].setCurrentIndex(FG.AXES.index(FG.REST))
-        dialog.fields["yrange"].setText("0.5 to 1.2")
-        dialog.fields["yrange"].editingFinished.emit()
-        dialog.apply_all("yrange")
+        dialog.fields["ymin"].setText("0.5")
+        dialog.fields["ymin"].editingFinished.emit()
+        # Its highest flux, worked out from the continuum (Stage 10, Prompt 5)
+        seen.append(dialog.ymax.text())
+        dialog.apply_all("ymin")
         dialog.fields["title"].setText("UVES data")
         dialog.fields["title"].editingFinished.emit()
         dialog.fields["yticks"].setText("0.6, 0.8, 1")
         dialog.fields["yticks"].editingFinished.emit()
         dialog.fields["corner"].setCurrentIndex(3)
         dialog.apply_all("corner")
-        dialog.fields["yrange"].setText("a to b")
-        dialog.fields["yrange"].editingFinished.emit()
+        dialog.fields["ymin"].setText("a")
+        dialog.fields["ymin"].editingFinished.emit()
         seen.append(dialog.message.text())
         assert "Apply to all panels" in [b.text() for b in dialog.everywhere.values()]
         assert "title" not in dialog.everywhere
@@ -419,9 +421,13 @@ def test_a_panel_s_options(window, qtbot, tmp_path):
     first = FG.cell_at(fig, 0, 0)[0]
     assert first["axis"] == FG.REST and first["xtitle"] is True
     assert first["title"] == "UVES data" and first["yticks"] == [0.6, 0.8, 1.0]
-    assert all(c["yrange"] == [0.5, 1.2] for _, _, c in FG.places(fig))
+    assert all(c["ymin"] == 0.5 for _, _, c in FG.places(fig))
     assert all(c["corner"] == "upper right" for _, _, c in FG.places(fig))
-    assert seen == ["Give a range as two numbers, such as -150 to 150."]
+    high = FS.flux_range(fig["residuals"], 0.5)[1]
+    assert seen == [
+        "to {0:g}, worked out from the continuum".format(high),
+        "Give a number, such as 0.5.",
+    ]
     assert "· rest wavelength" in tab.cells[(0, 0)].detail.text()
 
 

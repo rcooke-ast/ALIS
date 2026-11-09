@@ -262,14 +262,14 @@ def test_options_and_apply_to_all_panels(metal):
     assert fig["vrange"] == [-90.0, 90.0]
     assert FG.cell_at(fig, 0, 0)[0]["xrange"] is None
     assert FG.cell_at(fig, 0, 1)[0]["xrange"] == [1303.9, 1304.9]
-    # One step sets the flux range on every panel, empty ones too
-    step = do(metal, FG.set_cell(metal, fid, 0, 0, "yrange", [0.5, 1.2], every=True))
-    assert step.description == "Set yrange on all panels"
-    assert {tuple(c["yrange"]) for _, _, c in FG.places(FG.figure(metal, fid))} == {
-        (0.5, 1.2)
-    }
-    with pytest.raises(FG.FigureError, match="first number must be below"):
-        FG.set_cell(metal, fid, 0, 0, "yrange", [1.0, 0.0])
+    # One step sets the lowest flux on every panel, empty ones too
+    step = do(metal, FG.set_cell(metal, fid, 0, 0, "ymin", 0.5, every=True))
+    assert step.description == "Set ymin on all panels"
+    assert {c["ymin"] for _, _, c in FG.places(FG.figure(metal, fid))} == {0.5}
+    # At or above the continuum, or not a number: refused (Stage 10, Prompt 5)
+    for bad in (1.0, 1.2, "low"):
+        with pytest.raises(FG.FigureError, match="lowest flux"):
+            FG.set_cell(metal, fid, 0, 0, "ymin", bad)
     # The figure's own options
     do(metal, FG.set_option(metal, fid, "titles", [True, False]))
     do(metal, FG.set_option(metal, fid, "numbered", True))
@@ -430,12 +430,12 @@ def test_a_dragged_panel_takes_its_axis_and_ranges(metal):
     do(metal, FG.set_span(metal, fid, 1, 0, 3))
     do(metal, FG.set_cell(metal, fid, 1, 0, "axis", FG.REST))
     do(metal, FG.set_cell(metal, fid, 1, 0, "xrange", [1304.0, 1304.8]))
-    do(metal, FG.set_cell(metal, fid, 1, 0, "yrange", [0.5, 1.2]))
+    do(metal, FG.set_cell(metal, fid, 1, 0, "ymin", 0.5))
     do(metal, FG.move(metal, fid, (1, 0), (0, 0)))
     fig = FG.figure(metal, fid)
     top, bottom = FG.cell_at(fig, 0, 0)[0], FG.cell_at(fig, 1, 0)[0]
     assert top["show"]["ion"] == "28Si_II" and top["axis"] == FG.REST
-    assert top["xrange"] == [1304.0, 1304.8] and top["yrange"] == [0.5, 1.2]
+    assert top["xrange"] == [1304.0, 1304.8] and top["ymin"] == 0.5
     assert top["xtitle"] is True and top["span"] == 1
     assert bottom["show"]["ion"] == "16O_I" and bottom["axis"] == FG.VELOCITY
     assert bottom["xrange"] is None and bottom["span"] == 3
@@ -492,6 +492,18 @@ def test_a_size_out_of_range_is_refused(metal):
     for spacing in ([0.0, 2.0], [2.0, 0.0]):
         do(metal, FG.set_option(metal, fid, "spacing", spacing))
         assert FG.figure(metal, fid)["spacing"] == spacing
+
+
+def test_a_figure_saved_with_a_flux_range_keeps_its_lowest_flux(metal):
+    # Before Stage 10's Prompt 5, a cell kept both ends of its flux range
+    fid = made(metal)
+    cells = metal.ui[FG.FIGURES_KEY][0]["cells"][0]
+    for cell, old in zip(cells, ([0.5, 1.2], None)):
+        del cell["ymin"]
+        cell["yrange"] = old
+    fig = FG.figure(metal, fid)
+    assert [c["ymin"] for c in fig["cells"][0][:2]] == [0.5, None]
+    assert all("yrange" not in c for row in fig["cells"] for c in row)
 
 
 def test_a_figure_saved_with_the_flux_numbers_two_options(metal):

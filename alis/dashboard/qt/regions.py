@@ -2126,7 +2126,7 @@ class RegionsTab(W.Tab):
             )
         else:
             self.fitted_label.setText(
-                "No fit region yet: Adjust fit regions ▾ draws one."
+                "No fit region yet: choose Adjust fit regions to draw one."
             )
         self.buffer_label.setText(self._buffer_text(snip, facts["buffers"]))
         pairs = SN.shared_pixels(project, snip)
