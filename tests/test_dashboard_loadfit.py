@@ -20,8 +20,10 @@ import glob
 import json
 from pathlib import Path
 
+import dashboard_fits as FT
 import numpy as np
 import pytest
+from dashboard_fits import OI, SII, SPECTRUM, noisy_copy, prepfit_snip
 
 from alis.dashboard import blinding as BL
 from alis.dashboard import datasets as DS
@@ -38,11 +40,7 @@ from alis.dashboard import validate as V
 pytestmark = pytest.mark.unit
 
 ROOT = Path(__file__).resolve().parents[1]
-SPECTRUM = ROOT / "examples/metal_line_abs/data/OI_SiII.dat"
 J0133 = ROOT / "context/fitting_examples/Temperature/J013301m400628"
-OI = ("16O_I", 1302.16849, "16O_I_1302.2")
-SII = ("28Si_II", 1304.3702, "28Si_II_1304.4")
-C_KMS = 299792.458
 
 
 @pytest.fixture(scope="module")
@@ -81,33 +79,6 @@ def state(project):
 
 def errors(project):
     return [p.message for p in V.check(project) if p.severity == V.ERROR]
-
-
-def prepfit_snip(
-    folder,
-    source,
-    trans,
-    half=150.0,
-    fit=(-40.0, 40.0),
-    ncols=4,
-    name=None,
-    fmt="%.18e",
-    centre=None,
-):
-    """
-    A snip as ``prepfit`` writes it: the source's pixels within ±half km/s of a
-    transition (z = 0), with a fit range over ``fit`` km/s.
-    """
-    table = np.loadtxt(str(source))
-    rest = trans[1] if centre is None else centre
-    vel = (table[:, 0] / rest - 1.0) * C_KMS
-    keep = np.abs(vel) <= half
-    regions = ((vel >= fit[0]) & (vel <= fit[1]))[keep].astype(float)
-    cols = [table[keep, 0], table[keep, 1], table[keep, 2], regions][:ncols]
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / (name or "src_{0}_reg.dat".format(trans[2]))
-    np.savetxt(str(path), np.column_stack(cols), fmt=fmt)
-    return path
 
 
 def load(project, paths):
@@ -337,6 +308,75 @@ def test_snip_still_cuts_after_a_load(registry, source, tmp_path):
     assert sorted(s.specid for s in project.snips) == ["OI_1302", "SiII_1304"]
 
 
+def test_load_snips_gives_each_file_a_fate(registry, source, tmp_path):
+    # Stage 11 (Q11.10 (iv)): no file is refused for its pixels. By the best guess,
+    # one of no spectrum is loaded unassigned; given to a spectrum, it is cut again
+    # from it; unticked, it is left out
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source])
+    mine = prepfit_snip(tmp_path / "data", source, OI)
+    theirs = prepfit_snip(
+        tmp_path / "data", other, SII, name="other_28Si_II_1304.4_reg.dat"
+    )
+    paths = [str(mine), str(theirs)]
+    plan = load(project, [mine, theirs])
+    assert plan.ok
+    assert [i.fate for i in plan.loaded] == [LF.HELD, LF.UNASSIGNED]
+    assert (
+        "other_28Si_II_1304.4_reg.dat is loaded unassigned, with no source, in other"
+        " (unassigned)." in plan.notes
+    )
+    hist = H.History(project)
+    before = state(project)
+    hist.do(plan.step)
+    assert [(r.name, r.specids, r.unassigned) for r in project.rows] == [
+        ("src", ["OI_1302"], False),
+        ("other (unassigned)", ["SiII_1304"], True),
+    ]
+    snip = project.snip("SiII_1304")
+    assert project.files[snip.member] == theirs.read_bytes()
+    assert spectra(project)["r2"] is None
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+    # Given to src: cut again from it, its fit range carried over
+    files, problems = LF.read_snip_files(project, paths)
+    assert problems == []
+    holders = LF.snip_holders(project, files, spectra(project))
+    plan = LF.load_snips_plan(
+        project,
+        paths,
+        spectra(project),
+        assignment=LF.Assignment({"1": "r1", "2": "r1"}),
+        files=files,
+        holders=holders,
+    )
+    assert plan.ok and [i.fate for i in plan.loaded] == [LF.HELD, LF.CUT]
+    hist.do(plan.step)
+    snip = project.snip("SiII_1304")
+    assert snip.member == "files/data/src_Si_II_1304.4_reg.dat"
+    spec = spectra(project)["r1"]
+    old = LF.read_snip_file(str(theirs))
+    inside = (spec.wave >= old.wave.min()) & (spec.wave <= old.wave.max())
+    assert np.array_equal(snip.pixels.flux, spec.flux[inside])
+    assert np.array_equal(S.fitted(snip), old.fit)
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+    # Left out: not loaded
+    plan = LF.load_snips_plan(
+        project,
+        paths,
+        spectra(project),
+        assignment=LF.Assignment({"1": "r1", "2": None}, load={"2": False}),
+        files=files,
+        holders=holders,
+    )
+    assert [i.old.name for i in plan.loaded] == [mine.name]
+    hist.do(plan.step)
+    assert [s.specid for s in project.snips] == ["OI_1302"]
+
+
 # -- Load a .mod… -----------------------------------------------------------------------
 
 MOD = """run blind {blind}
@@ -450,9 +490,11 @@ def test_components_far_from_every_system_form_a_guessed_one(
     assert trans.system == project.systems[1].id
 
 
-def test_a_mod_whose_snip_is_not_from_the_spectra_is_refused(
+def test_a_mod_whose_snip_is_not_from_the_spectra_loads_it_unassigned(
     registry, source, tmp_path
 ):
+    # Stage 11 (Q11.9): no snip is refused; by the best guess, one that no spectrum
+    # holds is loaded as it is, with no source, and the plan says why
     project = new_project(registry, [source])
     data = tmp_path / "data"
     one = prepfit_snip(data, source, OI)
@@ -461,10 +503,24 @@ def test_a_mod_whose_snip_is_not_from_the_spectra_is_refused(
     np.savetxt(str(one), table)
     mod = write_mod(tmp_path, source, one=one)
     plan = LF.load_mod_plan(project, str(mod), spectra(project))
-    assert not plan.ok and plan.step is None
-    assert plan.problems[0][0] == one.name
-    assert "flux differs from src's at 1 pixel" in plan.problems[0][1]
-    assert "add it on the Data tab" in plan.message()
+    assert plan.ok
+    assert plan.fates == {"0": LF.UNASSIGNED, "1": LF.HELD}
+    assert "flux differs from src's at 1 pixel" in plan.holders.why("0")
+    assert (
+        "Loaded unassigned, with no source, in src (unassigned): " + one.name + "."
+    ) in plan.notes
+    hist = H.History(project)
+    before = state(project)
+    hist.do(plan.step)
+    assert [(r.name, r.specids, r.unassigned) for r in project.rows] == [
+        ("src", ["1"], False),
+        ("src (unassigned)", ["0"], True),
+    ]
+    assert project.rows[1].source is None
+    assert DS.contents(project.rows[1]) == "1 snip · unassigned: no source spectrum"
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
 
 
 def test_a_mod_that_cannot_be_read_is_refused(registry, source, tmp_path):
@@ -505,6 +561,462 @@ def test_a_data_path_outside_the_project_is_rewritten(registry, source, tmp_path
     assert "../data/" + one.name in project.text
     assert "files/data/" + one.name in project.files
     assert errors(project) == []
+
+
+# -- A .mod of several spectra (Stage 11) -----------------------------------------------
+
+MOD_TWO = """run blind False
+
+data read
+  ../data/{one}   specid=0   fitrange=columns   resolution=vfwhm(7.0VA)   columns=[wave,flux,error,fitrange]   label=OI   {shift_one}
+  ../data/{two}   specid=1   fitrange=columns   resolution=vfwhm(5.0VB)   columns=[wave,flux,error,fitrange]   label=SiII   {shift_two}
+data end
+
+model read
+  emission
+    legendre 1.0   0.01   scale=[1.0,1.0]   specid=0
+    legendre 1.0   0.01   scale=[1.0,1.0]   specid=1
+  absorption
+    voigt   ion=16O_I     14.0   0.0za   5.0ba   0.0TA   specid=0,1
+    voigt   ion=28Si_II   13.0   0.0za   5.0ba   0.0TA   specid=0,1
+model end
+"""
+
+
+def write_two_mod(folder, source, other, shift_one="", shift_two=""):
+    """A .mod of two datasets: O I cut from ``source``, Si II from ``other``."""
+    data = folder / "data"
+    one = prepfit_snip(data, source, OI)
+    two = prepfit_snip(data, other, SII, name="other_{0}_reg.dat".format(SII[2]))
+    model = folder / "model"
+    model.mkdir(parents=True, exist_ok=True)
+    path = model / "old.mod"
+    path.write_text(
+        MOD_TWO.format(
+            one=one.name, two=two.name, shift_one=shift_one, shift_two=shift_two
+        )
+    )
+    return path
+
+
+def test_a_mod_of_two_spectra_decides_the_reference(registry, source, tmp_path):
+    # Task 11.1: the .mod frees the first spectrum's shift and leaves the second's at
+    # 0, so the second becomes the reference (D14)
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source, other])
+    assert [r.reference for r in project.rows] == [True, False]
+    hist = H.History(project)
+    before = state(project)
+    mod = write_two_mod(tmp_path / "old", source, other, "shift=vshift(0.0vsa)")
+    plan = LF.load_mod_plan(project, str(mod), spectra(project))
+    assert plan.ok
+    assert [entry[2] for entry in plan.loaded] == ["src", "other"]
+    assert "other becomes the reference: old.mod leaves its shift at 0." in plan.notes
+    hist.do(plan.step)
+    assert [r.reference for r in project.rows] == [False, True]
+    first = project.rows[0]
+    assert first.shift.label == "vsa" and not first.shift.fixed
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_mod_that_shifts_every_spectrum_keeps_the_reference(
+    registry, source, tmp_path
+):
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source, other])
+    mod = write_two_mod(
+        tmp_path / "old",
+        source,
+        other,
+        "shift=vshift(0.0vsa)",
+        "shift=vshift(1.5vsb)",
+    )
+    plan = LF.load_mod_plan(project, str(mod), spectra(project))
+    assert plan.ok
+    assert (
+        "No dataset of old.mod has its shift fixed at 0, so src stays the reference."
+        in plan.notes
+    )
+    H.History(project).do(plan.step)
+    assert [r.reference for r in project.rows] == [True, False]
+    assert errors(project) == []
+    # A .mod that leaves the reference's shift at 0 changes nothing, and says nothing
+    again = new_project(registry, [source, other])
+    mod = write_two_mod(tmp_path / "same", source, other, "", "shift=vshift(1.5vsb)")
+    plan = LF.load_mod_plan(again, str(mod), spectra(again))
+    assert not [n for n in plan.notes if "reference" in n]
+    H.History(again).do(plan.step)
+    assert [r.reference for r in again.rows] == [True, False]
+
+
+def test_the_datasets_of_a_mod_of_two_spectra(registry, source, tmp_path):
+    # Task 11.3: grouped as an imported fit groups them, by resolution label
+    other = noisy_copy(tmp_path)
+    data = tmp_path / "old" / "data"
+    snips = [
+        (prepfit_snip(data, source, OI), "7.0", "VA", ""),
+        (prepfit_snip(data, source, SII), "7.0", "VA", ""),
+        (
+            prepfit_snip(data, other, OI, name="other_16O_I_1302.2_reg.dat"),
+            "5.0",
+            "vb",
+            "shift=vshift(0.0vsb)",
+        ),
+    ]
+    mod = FT.write_mod(tmp_path / "old", snips)
+    found = LF.fit_datasets(str(mod), registry)
+    assert [(d.name, d.specids, d.fwhm, d.shift_free) for d in found] == [
+        ("src", ["0", "1"], 7.0, False),
+        ("other", ["2"], 5.0, True),
+    ]
+    # Two files of one resolution label are one dataset
+    found = LF.fit_datasets(str(FT.two_exposures(tmp_path / "two")), registry)
+    assert [(d.name, d.specids, d.shift_free) for d in found] == [
+        ("vb", ["0", "1"], False)
+    ]
+
+
+def test_two_spectra_hold_their_own_snips(registry, source, tmp_path):
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source, other])
+    mod = write_two_mod(tmp_path / "old", source, other)
+    fit = LF.read_fit(str(mod), registry)
+    holders = LF.snip_holders(project, fit, spectra(project))
+    assert holders.holding("0") == ["r1"] and holders.holding("1") == ["r2"]
+    assert "flux differs from src's" in holders.reasons["1"]["r1"]
+    assert "flux differs from other's" in holders.reasons["0"]["r2"]
+    assert holders.cannot == {"0": {}, "1": {}}
+    guess = LF.best_guess(fit, holders)
+    assert guess.rows == {"0": "r1", "1": "r2"}
+    assert {s: guess.fate(s, holders) for s in "01"} == {"0": LF.HELD, "1": LF.HELD}
+
+
+def test_a_snip_held_by_two_spectra_is_guessed_by_its_dataset(
+    registry, source, tmp_path
+):
+    # r2 is the source itself; r3 is the source with other noise about Si II only,
+    # so that both hold the O I snip, and r3 alone the Si II snip of its dataset
+    table = np.loadtxt(str(SPECTRUM))[:, :3]
+    half = table.copy()
+    far = half[:, 0] > 1303.3
+    half[far, 1] += np.random.default_rng(3).normal(0.0, half[far, 2])
+    path = tmp_path / "half.dat"
+    np.savetxt(str(path), half)
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [other, source, path])
+    data = tmp_path / "old" / "data"
+    snips = [
+        (
+            prepfit_snip(data, path, OI, name="half_16O_I_1302.2_reg.dat"),
+            "7.0",
+            "VA",
+            "",
+        ),
+        (
+            prepfit_snip(data, path, SII, name="half_28Si_II_1304.4_reg.dat"),
+            "7.0",
+            "VA",
+            "",
+        ),
+    ]
+    fit = LF.read_fit(str(FT.write_mod(tmp_path / "old", snips)), registry)
+    holders = LF.snip_holders(project, fit, spectra(project))
+    assert holders.holding("0") == ["r2", "r3"] and holders.holding("1") == ["r3"]
+    guess = LF.best_guess(fit, holders)
+    assert guess.rows == {"0": "r3", "1": "r3"}
+    # Marked as held by the other too
+    assert holders.also("0", "r3") == ["src"] and holders.also("1", "r3") == []
+
+
+def test_a_snip_that_no_spectrum_holds_has_a_reason_for_each(
+    registry, source, tmp_path
+):
+    one, two = noisy_copy(tmp_path, "one.dat", 1), noisy_copy(tmp_path, "two.dat", 2)
+    project = new_project(registry, [source, one, two])
+    far = noisy_copy(tmp_path / "far", "far.dat", 4)
+    old = LF.read_snip_file(str(prepfit_snip(tmp_path / "data", far, OI)))
+    with pytest.raises(LF.LoadError) as err:
+        LF.match_row(project, spectra(project), old.wave, old.flux, old.error)
+    # Before: the reason of the row nearest to matching alone
+    for name in ("src", "one", "two"):
+        assert "flux differs from {0}'s".format(name) in str(err.value)
+    assert str(err.value).count(";") == 2
+    data = tmp_path / "old" / "data"
+    snips = [
+        (prepfit_snip(data, far, OI, name="far_16O_I_1302.2_reg.dat"), "7.0", "VA", "")
+    ]
+    fit = LF.read_fit(
+        str(FT.write_mod(tmp_path / "old", snips, ions=(OI[0],))), registry
+    )
+    holders = LF.snip_holders(project, fit, spectra(project))
+    assert sorted(holders.reasons["0"]) == ["r1", "r2", "r3"]
+    assert holders.why("0") == str(err.value)
+    assert LF.best_guess(fit, holders).rows == {"0": None}
+
+
+def test_a_snip_is_cut_again_from_the_spectrum_it_is_given(registry, source, tmp_path):
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source, other])
+    mod = write_two_mod(tmp_path / "old", source, other)
+    fit = LF.read_fit(str(mod), registry)
+    found = spectra(project)
+    holders = LF.snip_holders(project, fit, found)
+    # Si II, cut from other, given to src
+    assignment = LF.Assignment({"0": "r1", "1": "r1"})
+    assert assignment.fate("1", holders) == LF.CUT
+    hist = H.History(project)
+    before = state(project)
+    plan = LF.load_mod_plan(project, str(mod), found, assignment, fit, holders)
+    assert plan.ok and plan.fates == {"0": LF.HELD, "1": LF.CUT}
+    assert any(
+        n.startswith(
+            "other_28Si_II_1304.4_reg.dat (specid 1) is cut again from src, as"
+            " src_Si_II_1304.4_reg.dat"
+        )
+        for n in plan.notes
+    )
+    hist.do(plan.step)
+    snip = project.snip("1")
+    oldsnip = fit.snip("1")
+    spec = found["r1"]
+    low, high = oldsnip.extent
+    inside = (spec.wave >= low) & (spec.wave <= high)
+    # src's pixels over the snip's own range, its fit range carried over
+    assert snip.member == "files/data/src_Si_II_1304.4_reg.dat"
+    assert np.array_equal(snip.pixels.wave, spec.wave[inside])
+    assert np.array_equal(snip.pixels.flux, spec.flux[inside])
+    assert np.array_equal(S.fitted(snip), S.fitted(oldsnip))
+    assert "../data/src_Si_II_1304.4_reg.dat" in project.text
+    assert snip.data.keyword("columns") == S.COLUMNS
+    # The model's values are as the .mod has them
+    assert project.text.split("model read")[1] == mod.read_text().split("model read")[1]
+    assert [r.specids for r in project.rows] == [["0", "1"], []]
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+
+
+def test_a_fit_range_is_carried_over_by_wavelength(registry, source, tmp_path):
+    # A spectrum on other pixels: half a pixel along. A new pixel is fitted when its
+    # whole step lies within a fitted run of the old snip's (D97)
+    table = np.loadtxt(str(SPECTRUM))[:, :3]
+    table[:, 0] += 0.5 * np.median(np.diff(table[:, 0]))
+    moved = tmp_path / "moved.dat"
+    np.savetxt(str(moved), table)
+    project = new_project(registry, [moved])
+    spec = spectra(project)["r1"]
+    data = tmp_path / "old" / "data"
+    snips = [(prepfit_snip(data, source, OI), "7.0", "VA", "")]
+    fit = LF.read_fit(
+        str(FT.write_mod(tmp_path / "old", snips, ions=(OI[0],))), registry
+    )
+    oldsnip = fit.snip("0")
+    index, fitted = LF.cut_again(spec, oldsnip)
+    wave = spec.wave[index]
+    old_wave = oldsnip.pixels.wave[S.fitted(oldsnip)]
+    step = np.median(np.diff(old_wave))
+    lo, hi = old_wave[0] - 0.5 * step, old_wave[-1] + 0.5 * step
+    expect = (wave - 0.5 * step >= lo - 1e-9) & (wave + 0.5 * step <= hi + 1e-9)
+    assert np.array_equal(fitted, expect)
+    assert fitted.sum() == S.fitted(oldsnip).sum() - 1
+
+
+def test_a_spectrum_with_too_few_usable_pixels_cannot_take_a_snip(
+    registry, source, tmp_path
+):
+    table = np.loadtxt(str(SPECTRUM))[:, :3]
+    table[table[:, 0] > 1303.0, 2] = -1.0
+    broken = tmp_path / "broken.dat"
+    np.savetxt(str(broken), table)
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source, other, broken])
+    mod = write_two_mod(tmp_path / "old", source, other)
+    fit = LF.read_fit(str(mod), registry)
+    holders = LF.snip_holders(project, fit, spectra(project))
+    assert list(holders.cannot["1"]) == ["r3"]
+    assert holders.cannot["1"]["r3"].startswith(
+        "broken has 0 pixels that can be fitted over its range"
+    )
+    plan = LF.load_mod_plan(
+        project,
+        str(mod),
+        spectra(project),
+        LF.Assignment({"0": "r1", "1": "r3"}),
+        fit,
+        holders,
+    )
+    assert not plan.ok and plan.step is None
+    assert plan.problems[0][0] == "other_28Si_II_1304.4_reg.dat"
+    assert "a snip needs at least 10" in plan.problems[0][1]
+
+
+def three_snip_mod(folder, source, other):
+    """O I from ``source`` (dataset VA); Si II and O I from ``other`` (dataset vb),
+    each with a continuum of its own."""
+    data = folder / "data"
+    snips = [
+        (prepfit_snip(data, source, OI), "7.0", "VA", ""),
+        (
+            prepfit_snip(data, other, SII, name="other_28Si_II_1304.4_reg.dat"),
+            "5.0",
+            "vb",
+            "",
+        ),
+        (
+            prepfit_snip(data, other, OI, name="other_16O_I_1302.2_reg.dat"),
+            "5.0",
+            "vb",
+            "",
+        ),
+    ]
+    return FT.write_mod(folder, snips)
+
+
+@pytest.mark.parametrize("how", [LF.ONE, LF.EACH])
+def test_unassigned_snips_load_without_a_source(registry, source, tmp_path, how):
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source])
+    mod = three_snip_mod(tmp_path / "old", source, other)
+    fit = LF.read_fit(str(mod), registry)
+    found = spectra(project)
+    holders = LF.snip_holders(project, fit, found)
+    guess = LF.best_guess(fit, holders)
+    assert guess.rows == {"0": "r1", "1": None, "2": None}
+    guess.unassigned = how
+    hist = H.History(project)
+    before = state(project)
+    plan = LF.load_mod_plan(project, str(mod), found, guess, fit, holders)
+    assert plan.ok
+    hist.do(plan.step)
+    if how == LF.ONE:
+        expect = [("src", ["0"]), ("other (unassigned)", ["1", "2"])]
+    else:
+        expect = [
+            ("src", ["0"]),
+            ("other_28Si_II_1304.4", ["1"]),
+            ("other_16O_I_1302.2", ["2"]),
+        ]
+    assert [(r.name, r.specids) for r in project.rows] == expect
+    assert [r.unassigned for r in project.rows] == [False] + [True] * (len(expect) - 1)
+    assert all(r.source is None for r in project.rows[1:])
+    # Loaded as they are, byte for byte
+    assert (
+        project.files[project.snip("1").member]
+        == (tmp_path / "old/data/other_28Si_II_1304.4_reg.dat").read_bytes()
+    )
+    # SNIP passes over them: they have no source
+    found = spectra(project)
+    assert all(found[r.id] is None for r in project.rows[1:])
+    line = next(
+        ln
+        for ln in L.atomic(registry).ion_lines(SII[0])
+        if abs(ln.rest - SII[1]) < 0.01
+    )
+    assert [r.id for r in S.covering(project, project.systems[0], line, found)] == [
+        "r1"
+    ]
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+
+
+def edge_snip(folder, source, low, high, name):
+    """A snip of the source's pixels from ``low`` to ``high`` Å."""
+    table = np.loadtxt(str(source))
+    keep = (table[:, 0] >= low) & (table[:, 0] <= high)
+    path = folder / name
+    folder.mkdir(parents=True, exist_ok=True)
+    cols = np.column_stack([table[keep, :3], np.zeros(keep.sum())])
+    np.savetxt(str(path), cols, fmt="%.18e")
+    return path
+
+
+def test_unassigned_snips_that_would_share_a_dataset_and_overlap(
+    registry, source, tmp_path
+):
+    other = noisy_copy(tmp_path)
+    table = np.loadtxt(str(other))
+    middle = float(table[table[:, 0] > 1303.0, 0][0])
+    data = tmp_path / "old" / "data"
+    snips = [
+        # O I twice, overlapping; Si II from far enough out to overlap O I
+        (prepfit_snip(data, other, OI, name="a_16O_I_1302.2_reg.dat"), "5.0", "vb", ""),
+        (
+            prepfit_snip(data, other, OI, name="b_16O_I_1302.2_reg.dat", centre=1302.4),
+            "5.0",
+            "vb",
+            "",
+        ),
+        (
+            prepfit_snip(data, other, SII, name="c_28Si_II_1304.4_reg.dat", half=500.0),
+            "5.0",
+            "vb",
+            "",
+        ),
+        # Two that only meet at an edge, in another dataset
+        (
+            edge_snip(data, other, 1300.5, middle, "d_16O_I_1302.2_reg.dat"),
+            "6.0",
+            "vc",
+            "",
+        ),
+        (
+            edge_snip(data, other, middle, 1305.5, "e_28Si_II_1304.4_reg.dat"),
+            "6.0",
+            "vc",
+            "",
+        ),
+    ]
+    fit = LF.read_fit(str(FT.write_mod(tmp_path / "old", snips)), registry)
+    assignment = LF.Assignment({s.specid: None for s in fit.snips})
+    found = LF.unassigned_overlaps(fit, assignment)
+    assert [(a[0], a[1]) for a in found] == [
+        ("a_16O_I_1302.2_reg.dat", "b_16O_I_1302.2_reg.dat"),
+        ("a_16O_I_1302.2_reg.dat", "c_28Si_II_1304.4_reg.dat"),
+        ("b_16O_I_1302.2_reg.dat", "c_28Si_II_1304.4_reg.dat"),
+    ]
+    low, high = found[0][2:]
+    assert low == pytest.approx(fit.snip("1").extent[0])
+    assert high == pytest.approx(fit.snip("0").extent[1])
+    # Left out, a snip overlaps nothing; each its own dataset, none share one
+    assignment.load["0"] = False
+    assert len(LF.unassigned_overlaps(fit, assignment)) == 1
+    assignment.unassigned = LF.EACH
+    assert LF.unassigned_overlaps(fit, assignment) == []
+
+
+def test_a_snip_left_out_takes_its_own_lines_with_it(registry, source, tmp_path):
+    other = noisy_copy(tmp_path)
+    project = new_project(registry, [source])
+    mod = three_snip_mod(tmp_path / "old", source, other)
+    fit = LF.read_fit(str(mod), registry)
+    found = spectra(project)
+    holders = LF.snip_holders(project, fit, found)
+    assignment = LF.Assignment(
+        {"0": "r1", "1": None, "2": None}, load={"1": False, "2": False}
+    )
+    assert assignment.fate("1", holders) == LF.LEFT_OUT
+    hist = H.History(project)
+    before = state(project)
+    plan = LF.load_mod_plan(project, str(mod), found, assignment, fit, holders)
+    assert plan.ok
+    assert (
+        "Left out: other_28Si_II_1304.4_reg.dat, other_16O_I_1302.2_reg.dat; of"
+        " old.mod, lines 5, 6, 12 and 13 go, and lines 15 and 16 lose their"
+        " specids." in plan.notes
+    )
+    hist.do(plan.step)
+    assert [s.specid for s in project.snips] == ["0"]
+    assert sorted(project.files) == ["files/data/src_16O_I_1302.2_reg.dat"]
+    # Their continua go; the voigt lines keep the snip that stays
+    assert len(project.parsed.function_lines("legendre")) == 1
+    assert all(v.specids == ["0"] for v in project.parsed.function_lines("voigt"))
+    assert [(r.name, r.specids) for r in project.rows] == [("src", ["0"])]
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
 
 
 # -- The example of Task 7.1 ------------------------------------------------------------

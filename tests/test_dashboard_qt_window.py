@@ -378,3 +378,30 @@ def test_the_recent_projects_are_removed_and_cleared(window, qtbot, home, tmp_pa
     assert texts[-1] == "Clear recent projects…"
     window.recent_menu.actions()[-1].trigger()
     assert PR.Recent(str(home)).paths() == []
+
+
+def test_every_button_keeps_its_ellipsis(window, qtbot, tmp_path):
+    # Task 11.6 (item 2 carried over from Stage 10): a button made from an action
+    # whose text ends with "…" shows it; Qt's own icon text drops it
+    path = tmp_path / "metal.model"
+    B.pack_to(str(METAL), str(path))
+    window.launch(S.launch_target(str(path)))
+    wait_idle(qtbot, window)
+    for num in range(window.tabs.count()):
+        window.tabs.setCurrentIndex(num)
+        qtbot.wait(20)
+    dropped, kept = [], []
+    for button in window.findChildren(QtWidgets.QToolButton):
+        action = button.defaultAction()
+        if action is None or not action.text().endswith("…"):
+            continue
+        if action.objectName() == "help.shortcuts":
+            # It keeps its own text
+            assert button.text() == "?  Shortcuts"
+            continue
+        (kept if button.text() == action.text() else dropped).append(action.text())
+    assert dropped == [], dropped
+    for text in ("Add ion…", "Open…", "Export…", "Random restarts…"):
+        assert text in kept
+    # The menus are unchanged
+    assert window.qactions["file.open"].text() == "Open…"

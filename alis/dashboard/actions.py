@@ -570,6 +570,16 @@ ACTIONS += (
         scope="Components",
         section=1,
     ),
+    Action(
+        "components.renumber",
+        "Renumber labels…",
+        COMPONENTS_TAB,
+        "",
+        "Rename the labels of the system's components so that their numbers follow"
+        " the components' order by redshift",
+        scope="Components",
+        section=1,
+    ),
 )
 
 ACTIONS += (

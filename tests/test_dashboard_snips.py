@@ -567,6 +567,46 @@ def test_regions_copied_to_a_shifted_row_move_with_it():
     )
 
 
+def test_two_snips_of_one_transition_in_one_dataset(registry, tmp_path):
+    # Task 11.2: an imported fit groups two exposures' snips of O I 1302 into one
+    # dataset (one resolution label); each is a snip of the transition there, the
+    # second with a shift of its own (+3 km/s)
+    from dashboard_fits import two_exposures
+
+    project = P.Project.import_model(str(two_exposures(tmp_path)), registry=registry)
+    (row,) = project.rows
+    found = S.snips_of(project, "a", *OI)
+    assert {k: [s.specid for s in v] for k, v in found.items()} == {row.id: ["0", "1"]}
+    line = transition(registry, *OI)
+    shown = S.strips(project, project.systems[0], line, {})
+    assert [(r.id, s.specid) for r, s in shown] == [(row.id, "0"), (row.id, "1")]
+    first = project.snip("0")
+    assert [s.specid for s in S.linked_snips(project, first)] == ["0", "1"]
+    name = S.linked_name(project, first, "Add a fit region to")
+    assert name == "Add a fit region to O I 1302.2 in 1 dataset"
+    hist = H.History(project)
+    before = state(project)
+    # A region added on the first reaches the second, moved by its shift (D55)
+    hist.do(S.linked_step(project, first, [("add", 1301.9, 1302.4)], name))
+    ((a, b),) = S.regions_of(project.snip("0"))
+    ((c, d),) = S.regions_of(project.snip("1"))
+    factor = 1.0 + 3.0 / S.C_KMS
+    step = float(np.median(np.diff(project.snip("1").pixels.wave)))
+    assert abs(c - a * factor) <= step and abs(d - b * factor) <= step
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+    # The edges' grip moves that edge of both, each in its own frame
+    report = {}
+    high = first.extent[1] - 0.2
+    hist.do(S.edges_all_step(project, first, "high", high, {}, report=report))
+    assert report["message"] == ""
+    ends = [project.snip(s).extent[1] for s in ("0", "1")]
+    assert abs(ends[0] - high) <= step
+    assert abs(ends[1] - high * factor) <= step
+    assert errors(project) == []
+
+
 # -- The buffer --------------------------------------------------------------------------
 
 

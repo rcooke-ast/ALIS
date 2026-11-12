@@ -632,7 +632,7 @@ def test_two_datasets_and_regions_copied_on_drawing(window, qtbot, tmp_path):
     window.refresh()
     project = window.session.project
     snips = SN.snips_of(project, "a", "16O_I", 1302.16849)
-    regions = [SN.regions_of(snips[s.row_id]) for s in tab.strips]
+    regions = [SN.regions_of(snips[s.row_id][0]) for s in tab.strips]
     assert regions[0] == regions[1] and len(regions[0]) == 1
     origins = [tab.datasets.item(n, 3).text() for n in range(2)]
     assert origins == ["drawn here", "copied from OI_SiII"]
@@ -641,6 +641,74 @@ def test_two_datasets_and_regions_copied_on_drawing(window, qtbot, tmp_path):
     other.view.clicked.emit(1302.0, 0.5)
     assert tab.selected == other.row_id
     assert tab.continuum.title.text() == "Continuum · second"
+
+
+def test_two_snips_of_one_transition_in_one_dataset(window, qtbot, tmp_path):
+    # Task 11.2: an imported fit with two snips of O I 1302 in one dataset (two
+    # exposures, one resolution label), the second with a shift of its own (+3 km/s)
+    from dashboard_fits import two_exposures
+
+    window.import_path(str(two_exposures(tmp_path)))
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    show(tab, "O", "I", "O I 1302")
+    # One spectrum for each snip, titled by its file
+    assert [s.title.text() for s in tab.strips] == [
+        "vb · exp1_16O_I_1302.2_reg.dat",
+        "vb · exp2_16O_I_1302.2_reg.dat",
+    ]
+    assert tab.plot.title.text().startswith("O I 1302.2 · vb · 2 snips")
+    first, second = tab.strips
+    assert first.row_id == second.row_id
+    assert tab.current_snip().specid == "0"
+    assert tab.shift_choice.currentIndex() == 0
+    # Selecting the second shows its continuum and its Snip box, with its own shift
+    second.view.clicked.emit(1302.0, 0.5)
+    assert tab.current_snip().specid == "1"
+    assert tab.current_strip() is second and second.title.font().bold()
+    assert not first.title.font().bold()
+    assert tab.continuum.title.text() == "Continuum · vb · exp2_16O_I_1302.2_reg.dat"
+    assert tab.snip.title.text().endswith("vb · exp2_16O_I_1302.2_reg.dat")
+    assert tab.shift_choice.currentIndex() == 1 and tab.shift_value.text() == "3"
+    # The table of the transition's snips has a row for each
+    assert [tab.datasets.item(n, 0).text() for n in range(2)] == [
+        "vb · exp1_16O_I_1302.2_reg.dat",
+        "vb · exp2_16O_I_1302.2_reg.dat",
+    ]
+    project = window.session.project
+    old = {s: SN.regions_of(project.snip(s)) for s in ("0", "1")}
+    factor = 1.0 + 3.0 / C_KMS
+    pixel = float(np.median(np.diff(project.snip("1").pixels.wave)))
+    # A region drawn on the first (all spectra) reaches the second, moved by its shift
+    tab.actions_["regions.draw"].trigger()
+    tab.strips[0].view.spanned.emit(PL.DRAW, 1302.6, 1302.8)
+    project = window.session.project
+    new = {s: SN.regions_of(project.snip(s)) for s in ("0", "1")}
+    added = [r for r in new["0"] if r not in old["0"]]
+    assert added and added[0][0] >= 1302.55
+    moved = [r for r in new["1"] if r not in old["1"]]
+    assert abs(moved[0][0] - added[0][0] * factor) <= pixel
+    window.qactions["edit.undo"].trigger()
+    # One spectrum: a region drawn on the second changes the second alone
+    tab.actions_["regions.tweak"].trigger()
+    tab.strips[1].view.spanned.emit(PL.DRAW, 1302.6, 1302.8)
+    project = window.session.project
+    assert SN.regions_of(project.snip("0")) == old["0"]
+    assert SN.regions_of(project.snip("1")) != old["1"]
+    assert tab.current_snip().specid == "1"
+    window.qactions["edit.undo"].trigger()
+    # The grip moves that edge of both, each in its own frame
+    high = project.snip("0").extent[1] - 0.2
+    tab.strips[0].view.edgesMoved.emit("high", high, True)
+    project = window.session.project
+    assert abs(project.snip("0").extent[1] - high) <= pixel
+    assert abs(project.snip("1").extent[1] - high * factor) <= pixel
+    # One snip's own edge moves that snip alone
+    window.qactions["edit.undo"].trigger()
+    tab.strips[1].view.edgeMoved.emit("high", high, True)
+    project = window.session.project
+    assert project.snip("0").extent[1] > high + 0.1
+    assert abs(project.snip("1").extent[1] - high) <= pixel
 
 
 def regions_by_row(tab):
@@ -1225,6 +1293,14 @@ def test_the_coverage_grid_opens_a_transition(window, qtbot):
 # -- Load snips… and Load a .mod… (Task 7.1) ------------------------------------------
 
 
+def confirm(then=1):
+    """Answers the window's dialogs: Confirm for the one that assigns snips (Stage
+    11), ``then`` for the others."""
+    from alis.dashboard.qt import dialogs as D
+
+    return lambda dialog: 1 if isinstance(dialog, D.AssignDialog) else then
+
+
 def saved_snip(window, folder, ion_word, rest, half=150.0, fit=40.0, name=None):
     """A snip as prepfit saves it, cut from the project's first spectrum (z = 0)."""
     project = window.session.project
@@ -1268,6 +1344,7 @@ def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
     assert state(project) == before
     # Both snips, loaded from another tab: with their fit ranges, the first one
     # shown on the Regions tab
+    window.on_dialog = confirm(0)
     window.tabs.setCurrentIndex(0)
     window.chosen["open_many"] = [str(one), str(two)]
     load.trigger()
@@ -1283,7 +1360,7 @@ def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
     wider = saved_snip(window, tmp_path / "wider", "16O_I", 1302.16849, half=200.0)
     loaded = state(project)
     window.chosen["open_many"] = [str(wider)]
-    window.on_dialog = lambda dialog: 0
+    window.on_dialog = confirm(0)
     load.trigger()
     dialog = window.dialogs[-1]
     assert dialog.windowTitle() == "Load snips"
@@ -1335,7 +1412,7 @@ def test_open_a_fit_loads_it_into_a_project_of_its_spectrum(window, qtbot, tmp_p
     assert action.text() == "Open a fit (.mod)…" and action.isEnabled()
     before = window.session.project.text
     window.chosen["open"] = str(mod)
-    window.on_dialog = lambda dialog: 0
+    window.on_dialog = confirm(0)
     action.trigger()
     dialog = window.dialogs[-1]
     assert dialog.windowTitle() == "Load old.mod"
@@ -1410,7 +1487,7 @@ def test_open_a_fit_with_no_project_asks_first(window, qtbot, tmp_path):
     window.on_dialog = answer
     window.qactions["file.import"].trigger()
     wait_idle(qtbot, window)
-    assert seen == ["NewProjectDialog", "PlanDialog"]
+    assert seen == ["NewProjectDialog", "AssignDialog", "PlanDialog"]
     project = window.session.project
     assert window.session.path == str(target / "again.model")
     assert (target / "again.model").exists()
@@ -1426,7 +1503,7 @@ def test_open_a_fit_with_no_project_asks_first(window, qtbot, tmp_path):
 
 
 def test_open_a_fit_of_another_spectrum_says_why(window, qtbot, tmp_path):
-    from alis.dashboard.qt import window as WN
+    from alis.dashboard.qt import dialogs as D
 
     new_project(window, tmp_path, z=0.0)
     mod = old_fit(window, tmp_path)
@@ -1440,12 +1517,17 @@ def test_open_a_fit_of_another_spectrum_says_why(window, qtbot, tmp_path):
     new_project(window, tmp_path / "second", z=0.0, spectra=(other,))
     before = window.session.project.text
     window.chosen["open"] = str(mod)
+    # No snip is refused (Stage 11): the dialog that assigns them has each on the
+    # right, saying why the spectrum does not hold it; Cancel loads nothing
     window.qactions["file.import"].trigger()
-    kind, title, text = window.answers.asked[-1]
-    assert kind == "open_fit_refused" and title == "Open a fit" and text
+    dialog = window.dialogs[-1]
+    assert isinstance(dialog, D.AssignDialog)
+    assert dialog.left.count() == 0 and dialog.right.count() == 2
+    assert "outside the range of other" in dialog.right.item(0).toolTip()
     assert window.session.project.text == before
-    # Open as a new project… asks the question of a fit with no project
-    window.answers.answers["open_fit_refused"] = WN.NEW_PROJECT
+    # Confirmed, the preview offers Open as a new project…, which asks the question
+    # of a fit with no project
+    window.on_dialog = confirm(D.OTHER)
     window.qactions["file.import"].trigger()
     assert window.answers.asked[-1][0] == "open_fit"
     assert window.session.project.text == before

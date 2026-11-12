@@ -147,11 +147,22 @@ def test_a_column_density_needs_a_label_from_the_user(registry):
 
 
 def test_a_redshift_gets_a_label_from_the_scheme(registry):
+    # Stage 11, item 3: the component's label (L + S + #), not zx1. The component
+    # that holds the value suggests it, through the card's question
+    from alis.dashboard import components as C
+    from alis.dashboard import project as P
+
     pm = parsed(J1358, registry)
     zval = voigt(pm, "1H_I", 1).param("redshift")
     with pytest.raises(E.LabelNeeded) as need:
         E.fix(pm, zval)
-    assert need.value.suggestion == "zx1"
+    assert need.value.suggestion is None
+    project = P.Project.import_model(str(J1358), registry=registry)
+    zval = voigt(project.parsed, "1H_I", 1).param("redshift")
+    assert C.holding(project, zval).id == "a1"
+    assert C.suggest_label(project, zval) == "za1"
+    nval = voigt(project.parsed, "1H_I", 1).param("ColDens")
+    assert C.suggest_label(project, nval) == "na1h1"
 
 
 def test_free_a_fixed_label(registry):
@@ -271,6 +282,20 @@ def test_set_specids(registry):
 
 
 # -- New lines ---------------------------------------------------------------------
+
+
+def test_the_scheme_s_numbers(registry):
+    # Stage 11, Q11.5: a label's number, and the first number free in a system
+    assert E.scheme_number("za3", "a") == 3
+    assert E.scheme_number("NA3SI2", "a") == 3
+    assert E.scheme_number("na12c2_13", "a") == 12
+    assert E.scheme_number("nly3", "ly") == 3
+    assert E.scheme_number("zaa1", "a") is None
+    assert E.scheme_number("vs1", "a") is None
+    pm = parsed(J1358, registry)
+    assert E.free_number(pm, "a") == 1
+    text = pm.text.text.replace("3.160089da", "3.160089na1h1", 1)
+    assert E.free_number(M.ParsedModel(text, registry), "a") == 2
 
 
 def test_new_component_labels(registry):

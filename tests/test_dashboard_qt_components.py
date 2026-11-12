@@ -1500,3 +1500,84 @@ def test_a_line_of_the_forest_is_adjusted_as_a_component_is(window, qtbot, tmp_p
     comp = tab.selected_component()
     assert comp is not None and len(window.session.project.forest) == 2
     assert "2px solid" in tab.card_widgets[comp.id].styleSheet()
+
+
+def test_the_card_asks_for_the_component_s_label(window, qtbot, tmp_path):
+    # Task 11.8 (item 3): fixing an unlabelled value asks for a label, and offers
+    # the component's label of the scheme: a3, whose system's labels use 1 and 2
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360za1 10.0ba1 0.0ta1 specid=0",
+        "voigt ion=1H_I 13.8 2.50380za2 10.0ba2 0.0ta2 specid=0",
+        "voigt ion=1H_I 13.5 2.50420 10.0 0.0 specid=0",
+        "voigt ion=28Si_II 12.0 2.50420 10.0 0.0 specid=0",
+    ]
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path, lines))
+    card = tab.card_widgets["a3"]
+    asked = []
+
+    def answer(dialog):
+        if isinstance(dialog, D.AskDialog):
+            asked.append((dialog.windowTitle(), dialog.values()["label"]))
+            return 1
+        return 0
+
+    window.on_dialog = answer
+    card_menu(card, "redshift", "Fixed").trigger()
+    assert asked == [("A label for this z", "za3")]
+    assert "2.50420ZA3" in window.session.project.text
+    card = tab.card_widgets["a3"]
+    card_menu(card, "ColDens:28Si_II", "Fixed").trigger()
+    assert asked[-1][1] == "na3si2"
+    assert "12.0NA3SI2" in window.session.project.text
+
+
+def test_renumber_labels_after_a_warning(window, qtbot, tmp_path):
+    # Task 11.9: under the navigator, for the system shown; its warning lists the
+    # lines that change; greyed once the labels are in order
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360za1 10.0ba1 0.0ta1 specid=0",
+        "voigt ion=1H_I 13.8 2.50380za3 10.0ba3 0.0ta3 specid=0",
+        "voigt ion=1H_I 13.5 2.50420za2 10.0ba2 0.0ta2 specid=0",
+    ]
+    tab = imported(window, qtbot, write_ratio_fit(tmp_path, lines))
+    action = window.qactions["components.renumber"]
+    button = tab.findChild(QtWidgets.QToolButton, "components_renumber")
+    assert button is not None and button.text() == "Renumber labels…"
+    # Under the navigator, stacked, each as wide as the pane (RJC's review)
+    names = ("components_add_ion", "components_add_system", "components_renumber")
+    buttons = [tab.findChild(QtWidgets.QToolButton, n) for n in names]
+    tops = [b.geometry().top() for b in buttons]
+    assert tops == sorted(tops) and len(set(tops)) == 3
+    assert len({b.width() for b in buttons}) == 1
+    assert all(b.width() >= b.sizeHint().width() for b in buttons)
+    assert action.isEnabled()
+    before = window.session.project.text
+    seen = []
+
+    def answer(dialog):
+        seen.append(dialog)
+        return 0
+
+    window.on_dialog = answer
+    action.trigger()
+    (dialog,) = seen
+    assert isinstance(dialog, D.PlanDialog)
+    labels = [w.text() for w in dialog.findChildren(QtWidgets.QLabel)]
+    assert any("will no longer match" in t for t in labels)
+    assert [r[2] for r in dialog.rows()] == [
+        "za3 → za2, ba3 → ba2, ta3 → ta2",
+        "za2 → za3, ba2 → ba3, ta2 → ta3",
+    ]
+    # Cancel changes nothing; Renumber is one step
+    assert window.session.project.text == before
+    window.on_dialog = lambda dialog: 1
+    assert one_step(window, action.trigger).startswith("Renumber the labels of")
+    assert "13.8 2.50380za2 10.0ba2 0.0ta2" in window.session.project.text
+    assert not action.isEnabled()
+    assert action.toolTip().endswith(
+        "follow their components' order by redshift already"
+    )
+    window.session.history.undo()
+    window.refresh()
+    assert window.session.project.text == before and action.isEnabled()
+    assert design_references(ui_strings(window)) == []

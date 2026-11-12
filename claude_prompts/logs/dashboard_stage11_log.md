@@ -336,3 +336,349 @@ No code was changed. Waiting on RJC's response to Q11.11.
   is complete. Q11.1–Q11.11 are answered; no query is open.
 
 No code was changed. The tasks are ready to execute, 11.1 first.
+
+### 2026-11-12 (Prompt 6: the tasks, in order)
+
+**Task 11.1 — A loaded `.mod` decides the reference (point 2, bug).** Done.
+- *Tests first* (`test_dashboard_loadfit.py`, on the metal example's spectrum and
+  `noisy_copy`, a copy with other noise in its flux):
+  - `test_a_mod_of_two_spectra_decides_the_reference`: a `.mod` that frees src's
+    shift (`vshift(0.0vsa)`) and leaves other's unwritten. Before the fix src stayed
+    the reference, with its free shift (checked with a scratch script, and the test
+    failed at the missing note). Now other is the reference, src's shift reads free,
+    the preview says "other becomes the reference: old.mod leaves its shift at 0.",
+    ALIS reads the model, and one undo gives back the text, the files and
+    `ui/project.json`.
+  - `test_a_mod_that_shifts_every_spectrum_keeps_the_reference`: both shifted, src
+    stays, with "No dataset of old.mod has its shift fixed at 0, so src stays the
+    reference."; a `.mod` that leaves src's shift at 0 changes nothing and says
+    nothing.
+- *The fix* (`loadfit.py`): `_loaded_reference` takes the first row whose loaded
+  snips have no shift or one fixed at 0 (`Project._infer_reference`'s rule, D14),
+  and `load_mod_plan` sets the rows' `reference` flags in `ui/project.json` to it.
+  A project of one row, a `.mod` that loads no snips, or one whose every dataset is
+  shifted leave the flags as they were. `_reference_notes` writes the notes.
+- *Shared test helpers*: `tests/dashboard_fits.py` (new) holds `noisy_copy`,
+  `prepfit_snip` (moved from `test_dashboard_loadfit.py`), `write_mod` and
+  `two_exposures`, for this stage's tests of fits of several spectra.
+
+**Task 11.2 — Every snip of a transition on the Regions tab (bug).** Done.
+- *Tests first*, on `two_exposures`: an imported fit of two O I 1302 snips cut from
+  two noisy copies of the spectrum, one resolution label (one dataset, "vb"), the
+  second with its own shift of +3 km/s.
+  - `test_two_snips_of_one_transition_in_one_dataset` (`test_dashboard_snips.py`)
+    failed at `snips_of`, which gave the first snip alone. Now: both snips in their
+    row, in the model's order; `strips` gives one each; `linked_snips` gives both,
+    and a linked step's name counts datasets ("in 1 dataset"); a region added on
+    the first reaches the second, moved by its shift, within a pixel; ALIS reads the
+    model and undo restores it; the edges' grip moves both high edges, each in its
+    own frame.
+  - `test_two_snips_of_one_transition_in_one_dataset`
+    (`test_dashboard_qt_regions.py`): two strips titled "vb · exp1_16O_I_1302.2_
+    reg.dat" and "vb · exp2_…", the plot titled "O I 1302.2 · vb · 2 snips"; a click
+    on the second selects it (framed, bold), and the Continuum and Snip boxes are
+    its own, with its own shift (3); the snips table has a row for each; a region
+    drawn on the first with all spectra reaches the second, moved by its shift; one
+    drawn on the second with one spectrum changes the second alone; the grip moves
+    both edges, and one snip's own edge moves it alone.
+- *The fix.*
+  - `snips.py`: `snips_of` gives a list of snips for each row. `linked_snips`,
+    `same_pairs`, `strips` (one entry per snip) and `edges_all_step` (each snip to
+    the velocity in its own frame, by `snip_shift`) take each. `dataset_count`
+    counts the datasets in a linked step's name and in the edges' step.
+  - `qt/regions.py`: a strip's `key` is (row id, specid); the tab selects by
+    `selected` (the row, as before) and `selected_snip`, kept in the view state as
+    "snip". `select_row(row_id, specid=None)`, `_snip_of_row`, `draw`, `exclude`,
+    `move_edges` and `move_all_edges` take the strip's snip. A dataset with two
+    strips titles each "dataset · file", as do the Continuum and Snip boxes and the
+    snips table; the plot's title counts snips and datasets; Share with… names the
+    snip; a snip's velocity axis is in its own frame; another snip of the same
+    transition is not drawn as "fitted by another snip". A strip keeps its zoom
+    across SNIP, as before.
+  - The one existing test that read `snips_of`'s result directly
+    (`test_two_datasets_and_regions_copied_on_drawing`) takes the row's first snip;
+    the other tests of the Regions tab pass unchanged (121 with the snips, export
+    and shared-pixel tests).
+
+**Task 11.3 — Where each snip goes: held, cut again, unassigned or left out (point
+2).** Done.
+- *Tests* (`test_dashboard_loadfit.py`, synthetic: the example's spectrum, copies with
+  other noise, and `dashboard_fits.write_mod`):
+  - `test_the_datasets_of_a_mod_of_two_spectra`: src's two snips (one label) and
+    other's one, with FWHMs 7 and 5 km/s and other's shift free; `two_exposures`'
+    two files of one label are one dataset.
+  - `test_two_spectra_hold_their_own_snips`: same wavelengths, other fluxes: each
+    holds its own and none of the other's, with the reasons.
+  - `test_a_snip_held_by_two_spectra_is_guessed_by_its_dataset`: O I held by src
+    and by "half" (src with other noise about Si II only) goes to half, which holds
+    its dataset's Si II too, and is marked as held by src.
+  - `test_a_snip_that_no_spectrum_holds_has_a_reason_for_each`: three reasons,
+    joined by semicolons, in `match_row`'s refusal and in `Holders.why` (before:
+    the nearest row's alone).
+  - `test_a_snip_is_cut_again_from_the_spectrum_it_is_given`: Si II given to src
+    takes src's pixels over its own range, its fit range, a file named as SNIP names
+    its own (`src_Si_II_1304.4_reg.dat`), the data line pointing at it, and the
+    model block as written; `test_a_fit_range_is_carried_over_by_wavelength` on a
+    spectrum half a pixel along: a pixel is fitted when its whole step lies in an
+    old fitted run (one fewer than before); `test_a_spectrum_with_too_few_usable_
+    pixels_cannot_take_a_snip`: "broken has 0 pixels that can be fitted over its
+    range (…); a snip needs at least 10."
+  - `test_unassigned_snips_load_without_a_source[one|each]`: "other (unassigned)"
+    with both, or one dataset per snip named after its file; no source, byte for
+    byte, and SNIP (`covering`) passes over them.
+  - `test_unassigned_snips_that_would_share_a_dataset_and_overlap`: two O I that
+    overlap and a wide Si II that overlaps both are found (three pairs, with the
+    overlap's range); two that meet at one pixel are not; leaving one out, or each
+    its own dataset, changes the pairs.
+  - `test_a_snip_left_out_takes_its_own_lines_with_it`: its data line and continuum
+    go, the voigt lines keep specid 0, and the preview names the lines of old.mod.
+  - Each fate: ALIS reads the model, and one undo restores every byte.
+  - `test_a_mod_whose_snip_is_not_from_the_spectra_is_refused` became
+    `…_loads_it_unassigned`: by the best guess, the snip is loaded in "src
+    (unassigned)" with the reason in the plan.
+- *The code* (`loadfit.py`): `sorting` (each spectrum sorted once; `positions` and
+  `compare` take it), `reasons_text`, `FitDataset`, `Fit`, `read_fit`,
+  `fit_datasets`, `Holders` and `snip_holders` (held, reasons, and the rows that
+  cannot take a snip by D113's 10 pixels, counted by a running sum), `Assignment`
+  (rows, load ticks, one or each) with `fate`, `best_guess`, `unassigned_groups`,
+  `unassigned_overlaps`, `cut_again` (D97's step edges), and `load_mod_plan(project,
+  modfile, spectra, assignment=None, fit=None, holders=None)` with the four fates
+  and their notes. `remove.plan_snips` removes several snips at once.
+  `Row.unassigned` is read from `ui/project.json`, and the Data tab's Contents says
+  "unassigned: no source spectrum". `ModPlan.message` ends "Nothing was loaded."
+
+**Task 11.4 — The dialog that assigns the snips (point 2).** Done.
+- *The dialog* (`qt/dialogs.py`): `AssignDialog(fit, holders, guess, ask=)`, with
+  `SnipList` (dragged snips carry their specids; a drop is a copy, the dialog fills
+  both lists again) and `DatasetList` (the datasets at the top; snips dropped on one
+  go to it). Left: the chosen dataset's snips, "file · its dataset", marked "also in
+  …" or "cut again from …". Right: "Not from these spectra", each with Load, and
+  a tooltip of every spectrum's reason (or "… holds it."). Under it One unassigned
+  dataset (chosen) and Each snip its own dataset, greyed while none is ticked. → and
+  ←, double-clicks, and drops move snips; a snip given to a spectrum that does not
+  hold it asks first (one warning for several), and one that cannot be taken is
+  refused on the dialog's line. Confirm returns `assignment()`.
+- *Tests* (`test_dashboard_qt_loadfit.py`, new; four spectra: src, other, copy and
+  broken, and a fit of O I from src, Si II from other, O I from a spectrum the
+  project lacks): the best guess shown (the O I marked "also in copy, broken",
+  broken differing above 1303 Å only); moved right and back by the buttons, by
+  `dropEvent` with real `QDropEvent`s, and by double-clicks; the warning's text,
+  Cancel, and Cut again for two at once; broken refusing Si II with its reason;
+  a drop on a dataset of the top list; unticking (left out) and the choice greyed;
+  Confirm and Cancel; no design reference.
+
+**Task 11.5 — Opening and loading a fit of several spectra (point 2).** Done.
+- *The window* (`qt/window.py`): the question counts the datasets ("Its 3 snips
+  come from 3 datasets: add every spectrum you have in the next dialog"); the New
+  project dialog (`fit=`) says how many datasets and which, and each spectrum added
+  takes its dataset's FWHM (`loadfit.dataset_fwhm`) in place of the default;
+  `assign_snips` opens the dialog every time a fit is loaded with spectra (Open with
+  its spectrum, Open a fit into a project, Load a fit into this project), then warns
+  when unassigned snips that would share a dataset overlap, naming each pair, with
+  Each snip its own dataset advised (the default); a refusal after Create (a snip
+  that is not a table of numbers) offers Back, which opens the New project dialog
+  again with its name, folder, spectra, FWHMs and redshift (`restore`). Choose
+  another spectrum… is gone.
+- *Load snips…* (`qt/regions.py`, `loadfit.read_snip_files`, `FileFit`,
+  `load_snips_plan(..., assignment=, files=, holders=)`): the same dialog; a file
+  cut again or unassigned is added as Load snips… adds its snips (an unassigned
+  dataset is added first, kept while it has no snips yet), one left out is not.
+  *Decided while building:* a file that cannot be read, or whose name names no
+  transition, still stops the whole load before the dialog (Q7.4), as a fit's
+  snip that is not a table of numbers is refused after Create: such a file has no
+  place to go. The check's "one failing file … goes to the right-hand list" is met
+  for a file that matches no spectrum; the existing test's failing file names no
+  transition, so it stays a refusal. RJC may wish otherwise; it is a small change.
+- *Tests* (`test_dashboard_qt_loadfit.py`): the question of a fit of three; both
+  spectra added (FWHMs 7 and 5, each snip under its spectrum, no FWHM note, other the
+  reference); one added (the other's snip on the right, loaded unassigned; unticked,
+  left out with its continuum; dragged onto src, cut again after the warning);
+  overlapping unassigned snips warned, Each giving three datasets and One two, the
+  Regions tab showing all three snips either way; no warning with Each chosen or
+  without overlaps; Load a fit and Load snips… opening the dialog in a project of
+  two spectra (a file of no spectrum loading in "far (unassigned)"); Back keeping
+  what was entered; one spectrum holding every snip. In `test_dashboard_qt_
+  regions.py`, the tests of Open a fit and Load snips… answer the dialog with
+  Confirm (`confirm()`); `test_open_a_fit_of_another_spectrum_says_why` now finds
+  each snip on the dialog's right with its reason, where it had been refused.
+
+**Task 11.6 — Every button keeps its "…" (item 2, bug).** Done.
+- *Test first*: `test_every_button_keeps_its_ellipsis` (`test_dashboard_qt_window.py`)
+  on the metal example, every tab shown. Before the fix ten buttons dropped the
+  "…", the nine actions the design names (Open…, ⌖ Identify a feature…, Add ion…,
+  Add system…, Add interloper…, Commit run…, Continue from best fit…, Convergence
+  check… and Review clipped pixels…), one of them on two buttons. Now none does;
+  ?  Shortcuts keeps its own text, and the menus are as they were.
+- *The fix* (`qt/window.py`): `keep_ellipsis(action)` sets the icon text of an action
+  whose text ends with "…" to its text, where its icon text is still Qt's own (so
+  ?  Shortcuts is kept). It runs as each window action is made, and for a tab's
+  action after the tab has bound it (the Data tab gives Identify its "⌖"). The two
+  lines that set Export… and Random restarts… by hand are gone.
+
+**Task 11.7 — One choice of line IDs for the Data and Regions tabs (item 1).** Done.
+- *Tests first* (`test_dashboard_qt_data.py`): `test_one_choice_of_line_ids_for_
+  both_tabs`: the Data tab's menu (the four entries, after Transitions of z, greyed
+  with it off); This transition with no transition shown yet draws the model's
+  choice; Every line chosen on the Data tab is the Regions tab's, and the reverse;
+  with Si II 1304 shown on the Regions tab, This transition labels it alone and
+  counts the rest, and This ion labels Si II's lines; no step; kept and read back
+  after Save and Open. `test_a_project_saved_before_keeps_the_regions_choice`: a
+  `ui/view.json` written as Stage 10 wrote it (the choice under "regions") reads as
+  the shared choice, on both tabs, and stays after the Regions tab redraws.
+  `test_the_spectrum_shows_line_ids_and_counts_the_rest` uses the menu in place of
+  All lines; the Regions tab's `test_the_line_ids_menu` passes unchanged.
+- *The change*: `lines.LINE_IDS` and `labelled_choice(view)`; `session.view_of`
+  reads a Regions-tab choice as the shared one; the Regions tab's `SETTINGS` lose
+  "line_ids", its menu reads and writes the shared setting; the Data tab's "All
+  lines" switch becomes the same menu, `_draw_ids` labelling the Regions tab's
+  transition or ion of its system for This transition and This ion, the primary
+  system otherwise; `MainWindow.line_ids_changed` tells the other tab
+  (`sync_line_ids`).
+
+**Task 11.8 — Labels from the component's scheme (item 3, Q11.4 and Q11.5).** Done.
+- *The scheme* (`edit.py`): `SCHEME_PREFIX` adds `n` for a column density;
+  `scheme_number(label, letter)` reads a label's number (`za3`, `NA3SI2`, `nly3`;
+  not `zaa1` for the letter a); `free_number(pm, letter)` is the first number no
+  label of the scheme uses in the system, live or commented out; `new_component`
+  takes it (so a column density's label counts too). `suggest_label` keeps the
+  datasets' suggestions and gives none for a component's value, which the component
+  suggests.
+- *The component's labels* (`project.py`): `ion_word` (`si2`, `s3`, `d1`, `h1`,
+  `o1s`, `c2_13`; nothing for the forest), `component_number` (its redshift label's
+  number, else its other labels', else the system's first free number) and
+  `scheme_label(pm, comp, name, letter, ion=)`: L + S + #, with the ion for N; a
+  label a line outside the component uses is never given (the first free number
+  then). D20's and D22's fixes (`component_label`, `tie_isotope`) use it.
+  `components.py`: a temperature mode's own labels (D93) use it, `_tied_first`
+  gives a component of no system the forest's letter in place of `x`, and
+  `holding` and `suggest_label(project, par)` give the card its question's label
+  (`qt/components.py`, `_with_label`).
+- *Tests*: `test_the_scheme_s_numbers` and `test_a_redshift_gets_a_label_from_the_
+  scheme` (`test_dashboard_edit.py`: J1358's H I component a1 is offered `za1` and
+  `na1h1`, in place of `zx1`; `edit` alone offers none). In
+  `test_dashboard_components.py`: `test_a_component_s_values_are_offered_its_scheme_
+  s_labels` (a3, in a system whose labels use 1 and 2: `za3`, `ba3`, `ta3`, `na3h1`,
+  `na3si2`, `na3s3`, `na3d1`; forest line ly3: `bly3`, `nly3`), `test_a_component_
+  s_labels_share_its_number` (z `za3` gives `ba3` and `na3si2`; a1's `za5` gives
+  `na5h1`; a3 sharing a1's `ba1` is offered `za3`, `za1` being a1's), `test_a_
+  temperature_mode_s_label_shares_the_component_s_number` (pure thermal on a
+  component of `za3` writes `ta3`). `test_the_card_asks_for_the_component_s_label`
+  (`test_dashboard_qt_components.py`): Fixed on a3's z asks with `za3`, on its Si II
+  N with `na3si2`, and writes them fixed.
+- *Tests changed by the rule*: `test_an_excluded_ion_keeps_the_component_s_new_label`
+  (the exclusion ties a2 to `za1`, so its own T label is `ta1`, not `ta2`) and
+  `test_rjc_j1011_pure_thermal_on_a2_leaves_the_others` (a2 carries `BA1`, so `ta1`,
+  not `ta3`): the new label shares the component's number, as Q11.5's response
+  asks.
+
+**Task 11.9 — Renumber a system's labels by redshift (Q11.5's response).** Done.
+- *The plan* (`components.py`): `renumber_plan(project, system=None)` (None: the Lyα
+  forest) gives each component's labels of the scheme, on its lines and on the
+  lines commented out of it, the number its id shows (a2: `za3` → `za2`, with its
+  b, T and N). Labels the user named, labels shared with another component, and
+  labels of another system's scheme are left, and named in the plan's notes, after
+  the warning (the labels of every component change; labels written outside the
+  dashboard will no longer match; Undo takes it back). Its lines say what each line
+  renames. `renumbered` says whether there is nothing to do. `edit.rename_labels`
+  renames several labels in one change (the lines, those commented out, `fix` and
+  `lim` commands, links), so that swaps need no name between.
+- *The action*: `components.renumber`, "Renumber labels…", a button under the
+  navigator beside Add ion… and Add system…; it acts on the system shown, or the
+  forest; the warning is a preview (`PlanDialog`, "Renumber") with the lines that
+  change; it is greyed, its tooltip saying so, when the labels are in order.
+- *Tests* (`test_dashboard_components.py`): `test_renumber_labels_by_redshift` (a1,
+  a2, a3 reading 1, 3, 2 become 1, 2, 3 with their b and N; `ta3`, shared by a2 and
+  a3, and `bsh`, the user's, stay and are named; the `lim` command, the link and a
+  commented-out line of a2 follow; ALIS reads it; in order afterwards; one undo),
+  `test_the_renumber_plan_lists_the_lines_that_change`. In
+  `test_dashboard_qt_components.py`: `test_renumber_labels_after_a_warning` (the
+  button, the warning's text and lines, Cancel, one step, greyed with its tooltip,
+  undo, no design reference).
+
+*Batches* (on a snapshot of the tree, so that work went on meanwhile; locally with
+pytest 9.0.2 and in a scratch venv with CI's pytest 9.2.0):
+- after 11.1: unit 2214 passed, 119 skipped; gui 279 passed; under 9.2.0, unit 2213
+  passed, 120 skipped, and gui 279 passed.
+- after 11.4: unit 2227 passed, 119 skipped (9.2.0: 2226, 120); gui 286 passed and 1
+  failed, under both: `test_open_a_fit_of_another_spectrum_says_why`, which expected
+  the refusal that 11.3 removed. The window and that test were changed in 11.5, as
+  planned.
+- after 11.7: unit 2227 passed, 119 skipped (9.2.0: 2226, 120); gui 299 passed (and
+  299 under 9.2.0).
+- after 11.9: unit 2233 passed, 119 skipped (9.2.0: 2232, 120); gui 301 passed (and
+  301 under 9.2.0). No failures. (Taken before the two review changes, which their
+  own tests cover; the close runs every batch again.)
+
+**Task 11.10 — The review.** Draft 1 published, waiting on RJC's comments.
+- `doc/dashboard/stage11/take_screenshots.py` (all synthetic, from
+  `tests/dashboard_fits.py`; dialogs drawn on their own, questions and warnings as
+  the window's message box draws them) and `build_review.py` (the earlier pages'
+  stylesheet). Eleven screens: the question, the New project dialog, the dialog that
+  assigns the snips, the warning before cutting again, the overlap warning, the
+  preview (specB becomes the reference; specC unassigned), the Regions tab's two
+  snips of O I in one dataset, the Components tab's buttons, the Data tab's line IDs
+  (This transition, Si II 1304), a card's label question (`na3si2`) and Renumber
+  labels…'s warning. Tasks with nothing new to see are listed under "Also done".
+- Found while taking them: the snips table's first column elides "vb · …"; its
+  cells now carry the full name as a tooltip.
+- Published as a private page: https://claude.ai/artifact/Etked222zQpXMBmeJQoqBi
+  (version 1). It asks whether a Load snips… file that names no transition should go
+  to the dialog's right rather than stop the load (see 11.5).
+
+- *RJC's comments on draft 1.* "These buttons cannot be seen. I think it would be
+  better to have them vertically stacked, rather than horizontally stacked." (the
+  Components tab's buttons under the navigator, which read "Ad…n…", "A……",
+  "Re…s…" side by side in the narrow pane). Applied: `qt/components.py` stacks them
+  (`nav_buttons` is a `QVBoxLayout`), each expanding to the pane's width;
+  `test_renumber_labels_after_a_warning` checks that the three are stacked, equally
+  wide and not cut short. The screenshot was retaken and the page republished as
+  version 2; the thread is answered and resolved.
+- *RJC's comment on draft 2* (the overlap warning): "Can we change this message to:
+  It is advised that each snip has its own dataset. However, you can choose to keep
+  these in a single dataset if you prefer." Applied in `qt/window.py`
+  (`assign_snips`): the warning names each overlapping pair, then gives RJC's two
+  sentences (the sentence about the Regions tab is gone).
+  `test_overlapping_unassigned_snips_are_warned` checks the new ending. The
+  screenshot was retaken and the page republished as version 3; the thread is
+  answered and resolved.
+- *RJC's comment on draft 3* (the warning before a snip is cut again): "The two
+  options here are not clear enough. The buttons should say "Cut again" and
+  "Unassign snip"". Applied in `qt/dialogs.py` (`AssignDialog._agree` and `move`):
+  the buttons are Cut again and Unassign snip (Unassign snips for several dropped
+  together); Unassign snip puts the snips on the right, ticked (loaded as they are),
+  where Cancel had left them where they were. `test_a_snip_given_to_another_
+  spectrum_is_cut_again_after_a_warning` checks both buttons and the snip on the
+  right. Screenshot retaken, page republished as version 4, thread answered and
+  resolved.
+- *RJC's comment on draft 4* (the assignment dialog's message): "Please change this
+  information message to read: …" (two paragraphs: check each snip's dataset, move
+  a snip through the unassigned snips, drag or use the arrows or double-click; the
+  unassigned snips as their own datasets or one "unassigned" dataset, and untick to
+  exclude). Applied in `qt/dialogs.py` (`AssignDialog`'s message), with the arrows
+  as → and ←, and "datset" read as "dataset". `test_the_best_guess_is_shown` checks
+  the message. Screenshot retaken, page republished as version 5, thread answered
+  and resolved.
+- *RJC's comment on draft 5* (Open a fit's question): "How does the project know
+  that the three snips come from 3 datasets? At this stage, we can't know that
+  information." with the question to write instead. Applied in `qt/window.py`
+  (`open_fit_new`): RJC's wording, with the `.mod`'s name, for every fit (the
+  question no longer differs by the `.mod`'s number of datasets).
+  `test_the_question_counts_the_datasets` became `test_the_question_asks_for_the_
+  full_spectra`, checking the text. The New project dialog made the same claim, so
+  it now says only what the `.mod` names ("old.mod names 2 snips in 2 datasets (src,
+  other). Add every spectrum the snips were cut from: …"), and
+  `test_a_fit_of_two_spectra_opens_with_both` checks it. Asked in the thread: whether
+  a fit of one dataset should keep its old question, and whether the button "Open
+  with its spectrum (recommended)…" should say "spectra". Screenshots retaken, page
+  republished as version 6, thread answered and resolved.
+- *RJC's comments on draft 6* (three threads): the right-hand list to be titled
+  "Unassigned snips" (was "Not from these spectra"), and the choice to read "Each
+  snip is its own dataset", in the dialog and in the overlap warning (one text,
+  `dialogs.EACH_TEXT`). Applied in `qt/dialogs.py`; `test_the_best_guess_is_shown`
+  and `test_overlapping_unassigned_snips_are_warned` check them. Screenshots
+  retaken, page republished as version 7, the three threads answered and resolved.
+- *RJC's comment on draft 7*: Open a fit's first button to read "Open with full
+  spectra (recommended)…" (was "Open with its spectrum (recommended)…"). Applied in
+  `qt/window.py` (`WITH_SPECTRUM`); `test_the_question_asks_for_the_full_spectra`
+  checks it. Screenshot retaken, page republished as version 8, thread answered and
+  resolved. This answers the second of the two questions asked on draft 5.

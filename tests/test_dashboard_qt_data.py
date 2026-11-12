@@ -313,12 +313,88 @@ def test_the_spectrum_shows_line_ids_and_counts_the_rest(window, qtbot, tmp_path
     tab._draw_ids()
     assert any("O I" in text.toPlainText() for _, _, text in tab.view._ids)
     hidden = getattr(tab.view, "hidden_note", 0)
-    tab.all_lines.setChecked(True)
+    tab.line_ids_menu.setCurrentIndex(tab.line_ids_menu.findData(L.EVERY))
     assert getattr(tab.view, "hidden_note", 0) == 0
     assert len(tab.view._ids) >= hidden
     tab.log_button.click()
     assert tab.view.log
     assert np.isfinite(tab.view.view_range()[0][0])
+
+
+def data_ids(tab):
+    return [text.toPlainText().split("\n")[0] for _, _, text in tab.view._ids]
+
+
+def test_one_choice_of_line_ids_for_both_tabs(window, qtbot, tmp_path):
+    # Task 11.7 (item 1 carried over from Stage 10): the Regions tab's choice, on
+    # the Data tab too, after Transitions of z
+    tab = new_project(window, tmp_path, z=0.0)
+    menu = tab.line_ids_menu
+    assert [menu.itemText(n) for n in range(menu.count())] == [
+        "This transition",
+        "This ion",
+        "The model's ions and strong lines",
+        "Every line",
+    ]
+    assert menu.currentData() == L.MODEL
+    assert menu.isEnabled()
+    tab.show_ids.setChecked(False)
+    assert not menu.isEnabled()
+    tab.show_ids.setChecked(True)
+    tab._draw_ids()
+    model = data_ids(tab)
+    # With no transition shown on the Regions tab yet, This transition draws the
+    # model's choice
+    menu.setCurrentIndex(menu.findData(L.TRANSITION))
+    assert data_ids(tab) == model
+    regions = window.tab_widgets[1]
+    # Every line chosen on the Data tab is the Regions tab's choice
+    menu.setCurrentIndex(menu.findData(L.EVERY))
+    assert window.session.view["line_ids"] == L.EVERY
+    assert tab.view.hidden_note == 0
+    window.tabs.setCurrentIndex(1)
+    assert regions.line_ids_menu.currentData() == L.EVERY
+    # And the reverse
+    regions.line_ids_menu.setCurrentIndex(regions.line_ids_menu.findData(L.TRANSITION))
+    window.tabs.setCurrentIndex(0)
+    assert menu.currentData() == L.TRANSITION
+    # This transition labels the Regions tab's transition alone, and counts the rest
+    regions.show_transition("a", "28Si_II", 1304.3702)
+    window.tabs.setCurrentIndex(0)
+    tab._draw_ids()
+    assert data_ids(tab) == ["Si II 1304.4"]
+    assert tab.view.hidden_note > 0
+    menu.setCurrentIndex(menu.findData(L.ION))
+    assert all(t.startswith("Si II") for t in data_ids(tab))
+    # A view setting: no step, kept in ui/view.json, and read back
+    assert not window.session.history.can_undo()
+    path = window.session.path
+    window.save()
+    window.do_file_close()
+    window.open_path(path)
+    wait_idle(qtbot, window)
+    tab = window.tab_widgets[0]
+    assert tab.line_ids_menu.currentData() == L.ION
+    assert window.tab_widgets[1].line_ids_menu.currentData() == L.ION
+
+
+def test_a_project_saved_before_keeps_the_regions_choice(window, qtbot, tmp_path):
+    new_project(window, tmp_path, z=0.0)
+    # Saved as Stage 10 saved it: the Regions tab's own choice
+    view = window.session.view
+    view.pop("line_ids", None)
+    view["regions"] = {"system": "a", "line_ids": L.EVERY}
+    path = window.session.path
+    window.save()
+    window.do_file_close()
+    window.open_path(path)
+    wait_idle(qtbot, window)
+    assert window.tab_widgets[0].line_ids_menu.currentData() == L.EVERY
+    window.tabs.setCurrentIndex(1)
+    assert window.tab_widgets[1].line_ids_menu.currentData() == L.EVERY
+    window.tabs.setCurrentIndex(0)
+    assert window.tab_widgets[0].line_ids_menu.currentData() == L.EVERY
+    assert window.session.view["line_ids"] == L.EVERY
 
 
 def test_cross_highlighting_both_ways(window, qtbot, tmp_path):

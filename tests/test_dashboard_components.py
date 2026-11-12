@@ -842,7 +842,10 @@ def test_an_excluded_ion_keeps_the_component_s_new_label(registry, tmp_path):
     hist.do(step)
     assert errors(project) == []
     a2 = project.component("a2")
-    assert [ln.param("temperature").label for ln in a2.lines] == ["ta2", "ta2"]
+    # The exclusion tied its lines to za1, so its own T label shares its number
+    # (Stage 11, Q11.5)
+    assert a2.lines[0].param("redshift").label == "za1"
+    assert [ln.param("temperature").label for ln in a2.lines] == ["ta1", "ta1"]
     assert written_lines(project, "2.50360", "1Ly_a")[0].endswith("0.0ZEROT specid=0")
     for _ in range(3):
         hist.undo()
@@ -872,8 +875,9 @@ def test_rjc_j1011_pure_thermal_on_a2_leaves_the_others(registry, untie):
     assert errors(project) == []
     # Each written as it was (the lim line written above them moves them down)
     assert all(line in project.text.splitlines() for line in written)
-    assert project.component("a2").main.param("temperature").label == "ta3"
-    assert "lim param ta3 [1.0,None]" in [
+    # Its own T label shares the number of its b label, BA1 (Stage 11, Q11.5)
+    assert project.component("a2").main.param("temperature").label == "ta1"
+    assert "lim param ta1 [1.0,None]" in [
         " ".join(ln.split()) for ln in lim_lines(project)
     ]
     while hist.can_undo():
@@ -1560,3 +1564,167 @@ def test_shared_ratios_skips_what_does_not_give_the_ion(registry, tmp_path):
     assert [item.ion for item in a1.excluded_with] == ["2H_I/1H_I"]
     assert C._shared_ratios(project, a2, "1H_I") == []
     assert [item.ion for item in C._shared_ratios(project, a2, "2H_I")] == ["2H_I/1H_I"]
+
+
+# -- Labels from the component's scheme (Stage 11, Task 11.8) -----------------------
+
+SCHEME_LINES = [
+    "voigt ion=1H_I 14.0 2.50360za1 10.0ba1 0.0ta1 specid=0",
+    "voigt ion=1H_I 13.8 2.50380za2 10.0ba2 0.0ta2 specid=0",
+    "voigt ion=1H_I 13.5 2.50420 10.0 0.0 specid=0",
+    "voigt ion=28Si_II 12.0 2.50420 10.0 0.0 specid=0",
+    "voigt ion=32S_III 12.0 2.50420 10.0 0.0 specid=0",
+    "voigt ion=2H_I 9.0 2.50420 10.0 0.0 specid=0",
+    "voigt ion=1Ly_a 13.0 2.50600zly1 20.0bly1 0.0TF specid=0",
+    "voigt ion=1Ly_a 13.0 2.50700zly2 20.0bly2 0.0TF specid=0",
+    "voigt ion=1Ly_a 13.0 2.50800 20.0 0.0TF specid=0",
+]
+
+
+def suggestions(project, comp, ion, names=("redshift", "bturb", "temperature")):
+    line = next(ln for ln in comp.lines if ln.ion == ion)
+    item = project.parsed.item_at(line.line)
+    return [C.suggest_label(project, item.param(name)) for name in names]
+
+
+def test_a_component_s_values_are_offered_its_scheme_s_labels(registry, tmp_path):
+    # Item 3 and Q11.5: L + S + #; a3 has no labels, and the system's use 1 and 2
+    project, _ = ratio_fit(registry, tmp_path, SCHEME_LINES)
+    a3 = project.component("a3")
+    assert suggestions(project, a3, "1H_I") == ["za3", "ba3", "ta3"]
+    # A column density adds its ion: Si II, S III, D I
+    names = ("ColDens",)
+    assert suggestions(project, a3, "28Si_II", names) == ["na3si2"]
+    assert suggestions(project, a3, "32S_III", names) == ["na3s3"]
+    assert suggestions(project, a3, "2H_I", names) == ["na3d1"]
+    assert suggestions(project, a3, "1H_I", names) == ["na3h1"]
+    # A line of the Lyα forest: its first free number, and one ion
+    ly3 = project.forest[2]
+    assert ly3.id == "ly3"
+    assert suggestions(project, ly3, "1Ly_a", ("bturb", "ColDens")) == [
+        "bly3",
+        "nly3",
+    ]
+    # A dataset's value, as before
+    data = project.parsed.data[0]
+    assert C.suggest_label(project, data.param("resolution")) is not None
+
+
+def test_a_component_s_labels_share_its_number(registry, tmp_path):
+    lines = [ln.replace("2.50420 ", "2.50420za3 ") for ln in SCHEME_LINES]
+    lines[0] = lines[0].replace("za1", "za5")
+    project, _ = ratio_fit(registry, tmp_path, lines)
+    a3 = project.component("a3")
+    # Its z label is za3: its b is offered ba3, its N na3si2
+    assert suggestions(project, a3, "1H_I", ("bturb",)) == ["ba3"]
+    assert suggestions(project, a3, "28Si_II", ("ColDens",)) == ["na3si2"]
+    # a1's labels carry 5 and 1: its z label's number is its
+    a1 = project.component("a1")
+    assert suggestions(project, a1, "1H_I", ("ColDens",)) == ["na5h1"]
+    # A label in use elsewhere is never offered: a3's H I shares a1's b label, ba1,
+    # so its number is 1, but za1 is a1's; the first free number then
+    lines = list(SCHEME_LINES)
+    lines[2] = lines[2].replace(" 10.0 ", " 10.0ba1 ")
+    project, _ = ratio_fit(registry, tmp_path / "shared", lines)
+    a3 = project.component("a3")
+    assert suggestions(project, a3, "1H_I", ("redshift",)) == ["za3"]
+    assert suggestions(project, a3, "32S_III", ("bturb",)) == ["ba3"]
+
+
+def test_a_temperature_mode_s_label_shares_the_component_s_number(registry, tmp_path):
+    # D93: a3 (za3, ba3) shares T with a line of the forest; pure thermal gives it a
+    # T label of its own, with its number
+    lines = [
+        "voigt ion=1H_I 14.0 2.50360za1 10.0ba1 0.0ta1 specid=0",
+        "voigt ion=1H_I 13.5 2.50420za3 10.0ba3 0.0zerot specid=0",
+        "voigt ion=1Ly_a 13.0 2.50600 20.0 0.0zerot specid=0",
+    ]
+    project, hist = ratio_fit(registry, tmp_path, lines)
+    hist.do(C.temperature(project, project.component("a2"), "thermal"))
+    assert errors(project) == []
+    a2 = project.component("a2")
+    assert a2.main.param("redshift").label == "za3"
+    assert a2.main.param("temperature").label == "ta3"
+
+
+# -- Renumber labels (Stage 11, Task 11.9) -------------------------------------------
+
+RENUMBER_LINES = [
+    "voigt ion=1H_I 14.0na1h1 2.50360za1 10.0ba1 0.0ta1 specid=0",
+    "voigt ion=1H_I 13.8na3h1 2.50380za3 10.0ba3 0.0ta3 specid=0",
+    "voigt ion=28Si_II 12.0na3si2 2.50380za3 10.0ba3 0.0ta3 specid=0",
+    "voigt ion=1H_I 13.5na2h1 2.50420za2 10.0bsh 0.0ta3 specid=0",
+    "voigt ion=1Ly_a 13.0 2.50600 20.0bl 0.0TF specid=0",
+]
+
+
+def renumber_fit(registry, folder):
+    """a1, a2 and a3 by redshift, whose labels read 1, 3 and 2; a lim command on
+    ba3, a link to it, and a line of a2 commented out."""
+    path = write_ratio_fit(
+        folder,
+        ["lim param ba3 [1.0,50.0]"] + RENUMBER_LINES,
+        extra=["# voigt ion=16O_I 12.0na3o1 2.50380za3 10.0ba3 0.0ta3 specid=0"],
+        links=["bl(ba3) = ba3"],
+    )
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    return project, H.History(project)
+
+
+def labels_of(project, comp_id):
+    comp = project.component(comp_id)
+    out = []
+    for line in comp.lines:
+        item = project.parsed.item_at(line.line)
+        out.append(
+            tuple(
+                item.param(n).label
+                for n in ("ColDens", "redshift", "bturb", "temperature")
+            )
+        )
+    return out
+
+
+def test_renumber_labels_by_redshift(registry, tmp_path):
+    project, hist = renumber_fit(registry, tmp_path)
+    before = state(project)
+    system = project.systems[0]
+    assert [c.id for c in system.components] == ["a1", "a2", "a3"]
+    assert not C.renumbered(project, system)
+    plan = C.renumber_plan(project, system)
+    assert plan.description == "Renumber the labels of system " + system.name
+    assert plan.notes[0].startswith("Renumber labels renames the labels of every")
+    # The label the user named and the one shared with another component stay
+    assert plan.notes[1] == (
+        "Left as they are: ta3 (shared with a3); bsh (named by the user)."
+    )
+    hist.do(plan.step(project))
+    assert errors(project) == []
+    assert labels_of(project, "a1") == [("na1h1", "za1", "ba1", "ta1")]
+    assert labels_of(project, "a2") == [
+        ("na2h1", "za2", "ba2", "ta3"),
+        ("na2si2", "za2", "ba2", "ta3"),
+    ]
+    assert labels_of(project, "a3") == [("na3h1", "za3", "bsh", "ta3")]
+    # Every use follows: the lim command, the link, the line commented out
+    text = project.text
+    assert "lim param ba2 [1.0,50.0]" in text
+    assert "bl(ba2) = ba2" in text
+    assert "# voigt ion=16O_I 12.0na2o1 2.50380za2 10.0ba2 0.0ta3 specid=0" in text
+    # In order now: nothing to renumber
+    assert C.renumbered(project, project.systems[0])
+    assert C.renumber_plan(project, project.systems[0]).lines == []
+    hist.undo()
+    assert state(project) == before
+
+
+def test_the_renumber_plan_lists_the_lines_that_change(registry, tmp_path):
+    project, _ = renumber_fit(registry, tmp_path)
+    plan = C.renumber_plan(project, project.systems[0])
+    reasons = {e.line: e.reason for e in plan.lines}
+    lines = project.text.splitlines()
+    first = next(n for n, t in enumerate(lines) if "13.8na3h1" in t)
+    assert reasons[first] == "na3h1 → na2h1, za3 → za2, ba3 → ba2"
+    assert all(e.action == R.EDIT for e in plan.lines)
+    assert "13.8na2h1" in next(e.after for e in plan.lines if e.line == first)
