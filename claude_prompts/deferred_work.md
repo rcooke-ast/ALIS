@@ -66,20 +66,25 @@ correctness first, then what users need next, then effort; RJC orders the work.
     can hide a real failure, and narrowing them needs tests of the failure paths
     first.
 
+13. **A GPU evaluation kept on the device** (§1.4): the whole model evaluation on
+    the GPU for the whole fit, explored as a series of its own that measures before
+    it builds (dashboard Stage 11, Feedback point 1 and Q11.3). It speeds up the
+    largest fits only, such as DH_orders; smaller fits are faster on the CPU.
+
 ### Low priority
-13. The link editor and its templates (S15). Links can already be typed in the
+14. The link editor and its templates (S15). Links can already be typed in the
     `.mod` panel.
-14. Command search (F10).
-15. Reproducing an imported fit (S28).
-16. Solar abundances in `atomic.ecsv`, replacing the two hard-coded copies (§7.3).
+15. Command search (F10).
+16. Reproducing an imported fit (S28).
+17. Solar abundances in `atomic.ecsv`, replacing the two hard-coded copies (§7.3).
     This changes no behaviour.
-17. Deciding whether to keep `systmodule=`, which nobody uses (§2.3).
-18. Whether `msgs.bug` should stop the fit (§3.4).
-19. The black/isort reformat and the remaining lint rules, then the black badge on
+18. Deciding whether to keep `systmodule=`, which nobody uses (§2.3).
+19. Whether `msgs.bug` should stop the fit (§3.4).
+20. The black/isort reformat and the remaining lint rules, then the black badge on
     the README (§4.1, §4.2, §6).
-20. Testing gaps: the plotting code, GPU coverage, and the `context/` fits in CI
+21. Testing gaps: the plotting code, GPU coverage, and the `context/` fits in CI
     (§5).
-21. The metal example's junk last pixel (`examples/metal_line_abs/data/OI_SiII.dat`,
+22. The metal example's junk last pixel (`examples/metal_line_abs/data/OI_SiII.dat`,
     flux −10¹⁰, outside the fit range), found in dashboard Stage 6.
 
 ### Not planned, or entries to close
@@ -136,6 +141,42 @@ correctness first, then what users need next, then effort; RJC orders the work.
   cheaper answer then is a documented `.mod` <-> dict API in `alis/load.py`,
   which the Stage 5.5 parser tests already pin down, rather than a second
   first-class format.
+
+### 1.4 A GPU evaluation kept on the device (dashboard Stage 11, Feedback point 1)
+- **What:** keep the whole model evaluation on the GPU for the whole fit. The
+  fit's constant arrays are uploaded once, each evaluation sends only the
+  parameters, and as little as possible comes back. RJC's Feedback point 1 of
+  `dashboard_stage11.md` (2026-11-10), to be explored as a series of its own:
+  `claude_prompts/gpu_stage0.md` first, then `gpu_stage1.md`, …, on its own branches
+  (Q11.3 (b)).
+- **Why deferred:** RJC, Prompt 2 of `dashboard_stage11.md` (2026-11-12): the GPU's
+  tests and speed-ups wait, and the stage takes the dashboard's feedback.
+- **Where:** Q11.3 of `dashboard_stage11.md` (the review, against refactor Stage 4's
+  measurements); `refactor_code_stage4.md`, Tasks 4.3–4.9 (4.9, "Cut the GPU's
+  per-group round trips", is still proposed) and the "Pre-4.7" and "Pre-4.9"
+  analyses of its log; `alis/gpu_dispatch.py`, `alis/minimise.py`,
+  `alis/model_eval.py`.
+- **What was found** (Q11.3, from Stage 4's figures on DH_orders):
+  - the sub-pixel grids already stay on the device: 28.8 MB, uploaded once per
+    iteration;
+  - the transfers are small. What costs is the 351 synchronising round trips per
+    evaluation, and the host's work between them (`vfwhm` 20% and `legendre` 9.3% of
+    a GPU Jacobian, and the loop over snips). A Jacobian takes 61.9 s on 4 GPUs
+    against about 32–37 s on 12 CPUs;
+  - the Voigt arithmetic of one base evaluation is about 0.2 s on one RTX 2080 Ti;
+  - the Levenberg–Marquardt minimiser needs the residuals (0.6 MB) at each
+    evaluation and the Jacobian (248 MB dense) at each iteration, not χ² alone.
+- **To finish:** `gpu_stage0.md`, the series' design document:
+  - measure again, then build a prototype of the evaluation kept on the device, with
+    the figure it must beat;
+  - its queries: what comes back (the residuals and the Jacobian, or JᵀJ and Jᵀr, or
+    χ² with another minimiser); the convolution's FFT, which numba.cuda lacks (CuPy,
+    or a direct convolution at 21× the arithmetic); the hardware to measure on
+    (float64 at 1/32 of float32 on the RTX 2080 Ti, 1/2 on a data-centre card); and
+    which functions to port first (those DH_orders uses).
+
+  The CPU path stays bitwise-identical throughout. Refactor Task 4.9 closes as taken
+  over by the series.
 
 ---
 
