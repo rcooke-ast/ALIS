@@ -852,6 +852,55 @@ def test_a_spectrum_with_too_few_usable_pixels_cannot_take_a_snip(
     assert "a snip needs at least 10" in plan.problems[0][1]
 
 
+def test_a_bare_data_line_is_cut_again_with_its_columns_written(
+    registry, source, tmp_path
+):
+    # Stage 11's close (coverage): a data line with no columns= and a fit range of
+    # all its pixels, of a file whose name names no transition, cut again; and an
+    # assignment to a dataset that has no source
+    other = noisy_copy(tmp_path)
+    data = tmp_path / "old" / "data"
+    piece = prepfit_snip(data, other, SII, name="piece.dat", ncols=3)
+    model = tmp_path / "old" / "model"
+    model.mkdir(parents=True)
+    mod = model / "old.mod"
+    mod.write_text(
+        "run blind False\n\ndata read\n"
+        "  ../data/piece.dat   specid=0   fitrange=all   resolution=vfwhm(7.0VA)\n"
+        "data end\n\nmodel read\n  emission\n"
+        "    legendre 1.0   0.01   scale=[1.0,1.0]   specid=0\n"
+        "  absorption\n"
+        "    voigt   ion=28Si_II   13.0   0.0za   5.0ba   0.0TA   specid=0\n"
+        "model end\n"
+    )
+    project = new_project(registry, [source])
+    found = spectra(project)
+    fit = LF.read_fit(str(mod), registry)
+    holders = LF.snip_holders(project, fit, found)
+    plan = LF.load_mod_plan(
+        project, str(mod), found, LF.Assignment({"0": "r9"}), fit, holders
+    )
+    assert plan.problems == [
+        ("piece.dat", "it is assigned to r9, which has no source.")
+    ]
+    plan = LF.load_mod_plan(
+        project, str(mod), found, LF.Assignment({"0": "r1"}), fit, holders
+    )
+    assert plan.ok and plan.fates == {"0": LF.CUT}
+    hist = H.History(project)
+    before = state(project)
+    hist.do(plan.step)
+    snip = project.snip("0")
+    assert snip.member == "files/data/src_piece_reg.dat"
+    assert snip.data.keyword("columns") == S.COLUMNS
+    assert snip.data.keyword("fitrange") == "columns"
+    # Every pixel was fitted, so every one of src's is
+    assert S.fitted(snip).all() and piece.name not in "".join(project.files)
+    assert errors(project) == []
+    hist.undo()
+    assert state(project) == before
+
+
 def three_snip_mod(folder, source, other):
     """O I from ``source`` (dataset VA); Si II and O I from ``other`` (dataset vb),
     each with a continuum of its own."""

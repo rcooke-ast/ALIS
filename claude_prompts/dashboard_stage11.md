@@ -28,7 +28,10 @@ and the items carried over), with Q11.5 and Q11.6; point 1 waits in
 `deferred_work.md` (§1.4). Prompt 3 (the same day) revised them after the responses,
 with the close, and raised Q11.7–Q11.10. Prompt 4 added the fix of a bug found at
 Prompt 3 (Task 11.2, the tasks after it renumbered) and the user's choice of how
-unassigned snips are loaded, and raised Q11.11.*
+unassigned snips are loaded, and raised Q11.11. Prompt 6 (2026-11-12) built Tasks
+11.1–11.10, RJC's review comments applied on the page (drafts 1–8); Prompt 7 fixed
+the reading of commented-out lines behind RJC's MWC137 import, with Q11.12; Task
+11.11 closed the stage on 2026-11-13 (D120–D128), and wrote `dashboard_stage12.md`.*
 
 ## Feedback
 
@@ -1029,6 +1032,34 @@ see no warning; where snips overlap, the warning advises the other choice.
 you propose after testing the design are asked here as they come, and the work
 pauses for them (Prompt 2).*
 
+**Q11.12 — The empty systems a saved project keeps after Prompt 7's fix (Prompt 7).**
+The bug: a commented-out voigt line that names its redshift (`9.5lic
+redshift=0.00003915rc 2.17dc 0.0TZERO`) had its next value, its b_turb, read as its
+redshift, because `project.commented_lines` counted the positional words alone. Each
+such line whose b label no live line carries became a component excluded from every
+ion, at z = 1.0, 2.17, 3.17 or 5.33, and so four systems that are not real. Fixed: a
+named value takes its own place and the others fill the rest, as ALIS reads a line.
+A fresh import of `alis2.mod` now has one system (five components, `re` excluded from
+every ion, its lines all commented out) and the forest's one Lyα line.
+`testing.model` was saved with the four systems in its `ui/project.json`, so they
+open still, empty. Two ways:
+- **(a) As any saved system:** remove them on the Data tab (Remove system, four
+  times), or import `alis2.mod` again. Nothing is removed without the user.
+- **(b) Dropped as the project is read**, while its structure is still a guess (not
+  confirmed): a system with no component and no line IDs of its own goes. A system
+  the user added and left empty in an unconfirmed project would go too.
+
+My lean: (a). Fresh imports are right now, and a saved system is the user's to
+remove.
+
+*Response (RJC, in the thread, 2026-11-13): "This question seems more to do with the
+context files rather than development of ALIS. If I've misunderstood, please let me
+know. Otherwise, if the code will be unaffected, I think we can close this stage."*
+
+*Applied: (a). The code is unaffected: fresh imports are right, and the four empty
+systems of `testing.model` are removed on its Data tab, as any saved system.*
+
+**Response:** 
 
 ## Prompts
 

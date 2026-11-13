@@ -975,6 +975,28 @@ run_alis myfit.model     # fits the project from the command line, as before
     heights as in every other panel. The spacing between rows is worked out (more
     room under a panel's own x numbers or title), unless set. The DH preset can start
     from a higher member (From ▾).
+- **Since Stage 11** (2026-11-13), a fit of several spectra:
+  - **Open a fit (.mod)…** asks for the full spectra the snips were cut from; add
+    every one you have in the New project dialog, which says what the `.mod` names.
+    Each spectrum takes the FWHM of the `.mod`'s dataset whose snips it holds.
+  - **Where the snips go.** Whenever a fit (or Load snips…) is loaded with spectra,
+    a dialog shows each snip with the spectrum that holds it, and the others under
+    Unassigned snips. Move a snip to another dataset to cut it again from that
+    spectrum (after a warning: Cut again, or Unassign snip), leave it unassigned to
+    load it as it is, with no source, or untick it to leave it out. Unassigned snips
+    go in one dataset for each of the `.mod`'s datasets, or each in its own; you are
+    warned when snips that would share one overlap. No snip is refused.
+  - **The reference** follows the loaded `.mod`: the first dataset whose shift it
+    leaves at 0.
+  - **Two snips of one transition in one dataset** (two exposures) each have their
+    spectrum on the Regions tab, titled "dataset · file".
+  - **Line IDs ▾** is one choice for the Data and Regions tabs.
+  - **Labels** the dashboard makes or suggests read z, b, t or n, the system's
+    letter, and the component's number (`za3`, `ba3`); a column density adds its
+    ion (`na3si2`). **Renumber labels…** (Components tab, under the navigator) puts
+    a system's numbers in order of redshift.
+  - A commented-out line that names its redshift (`redshift=…`) is read as ALIS
+    reads it.
 
 #### Preparing a fit: the Data and Regions tabs
 

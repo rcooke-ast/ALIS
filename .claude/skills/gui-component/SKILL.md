@@ -267,3 +267,26 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
 
 - `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).
 - Do not change existing components or key bindings without explicit instruction.
+
+## Stage 11 additions
+
+- **A strip is selected by its snip** where a dataset holds two snips of one
+  transition: the Regions tab keeps `selected` (the row) and `selected_snip`, and a
+  `Strip.key` is (row id, specid). Code that takes a row id (`draw`, `exclude`,
+  `move_edges`) takes the strip's specid too; `snips.snips_of` gives a list per row.
+- **A drop between list widgets** (`dialogs.SnipList`): carry the items' ids in
+  your own MIME type, accept the drop as a **copy** (a move makes Qt remove the
+  dragged rows from a list you have just filled again), and emit the ids; test it
+  with a real `QDropEvent` sent to `dropEvent`.
+- **A dialog that asks a question of its own** takes the window's `ask` (tests
+  answer it) rather than opening a `QMessageBox` itself; give its buttons the words
+  RJC uses (Cut again / Unassign snip).
+- **A button made from an action** shows its icon text, which drops a trailing
+  "…": `window.keep_ellipsis(action)` runs as each action is made, and after a tab
+  has changed its text in `bind_action`.
+- **One view setting for two tabs** (`lines.LINE_IDS` in `ui/view.json`): each tab
+  reads it, writes it, and tells the other through the window
+  (`line_ids_changed` → `sync_line_ids`); read an older project's own setting as the
+  shared one when the view is loaded (`session.view_of`).
+- **Buttons in a narrow pane** stack (a `QVBoxLayout`), each expanding to its width,
+  so that every name reads in full.

@@ -203,18 +203,25 @@ def commented_lines(mtext):
         words = body.split("#", 1)[0].split()
         item = Commented(line.num, words, note=note.groups() if note else None)
         if item.voigt:
-            pos = 0
+            # As ALIS reads a line: a named value takes its own place, and the
+            # others fill the places left, in order (Stage 11, Prompt 7: a line
+            # with redshift= named had its b_turb read as its redshift)
+            named, positional = {}, []
             for word in words[1:]:
                 if "=" in word:
                     key, value = word.split("=", 1)
                     if key == "ion":
                         item.ion = value
-                    elif key == "redshift":
-                        item.zlabel, item.z = _word_label(value), _word_value(value)
-                    continue
-                if pos == _VOIGT_ROLES.index("redshift"):
-                    item.zlabel, item.z = _word_label(word), _word_value(word)
-                pos += 1
+                    elif key in _VOIGT_ROLES:
+                        named[key] = value
+                elif ":" not in word:
+                    positional.append(word)
+            for role in _VOIGT_ROLES:
+                if role not in named and positional:
+                    named[role] = positional.pop(0)
+            if "redshift" in named:
+                word = named["redshift"]
+                item.zlabel, item.z = _word_label(word), _word_value(word)
         out.append(item)
     return out
 

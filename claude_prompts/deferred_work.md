@@ -149,6 +149,8 @@ correctness first, then what users need next, then effort; RJC orders the work.
   `dashboard_stage11.md` (2026-11-10), to be explored as a series of its own:
   `claude_prompts/gpu_stage0.md` first, then `gpu_stage1.md`, …, on its own branches
   (Q11.3 (b)).
+- **Still deferred** at Stage 11's close (2026-11-13): it stays here, a series of its
+  own, until RJC starts it (Q12.2 in `dashboard_stage12.md`).
 - **Why deferred:** RJC, Prompt 2 of `dashboard_stage11.md` (2026-11-12): the GPU's
   tests and speed-ups wait, and the stage takes the dashboard's feedback.
 - **Where:** Q11.3 of `dashboard_stage11.md` (the review, against refactor Stage 4's

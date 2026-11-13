@@ -994,6 +994,71 @@ Prompt 6).*
   system's panels the forest's lines stay drawn and locked (S30). Every other system
   is adjusted as the primary is, as before.
 
+*Stage 11 decisions (a fit of several spectra, and the items carried over from Stage
+10). Added by Claude on 2026-11-13 from Q11.1–Q11.12, the work of the stage, RJC's
+Prompts 4 and 7, and his review of the stage's page.*
+- **D120. A loaded `.mod` decides the reference** (point 2's bug; refines D14, D78):
+  loaded into a project of several spectra, it makes the reference the first row
+  whose loaded snips have no shift or one fixed at 0; where every dataset is shifted
+  the reference stays, and the preview says so. A project of one spectrum is as
+  before.
+- **D121. Every snip of a transition has its spectrum** (found in Stage 11; refines
+  D36, D55, D115): a dataset that holds two snips of a transition (two exposures of
+  one resolution label, or unassigned snips) shows a strip for each, titled
+  "dataset · file"; a strip is selected by its snip, and the Continuum and Snip
+  boxes and Adjust fit regions: one spectrum act on it; a region and the top grip
+  reach every snip, each in its own frame (its own shift where it has one).
+- **D122. Where a fit's snips go** (point 2, Q11.9, Q11.10, Q11.11, Prompt 4;
+  refines D12, D78 and Q7.4's rule): no snip is refused for its pixels. Each is
+  held (on its spectrum's pixels, loaded as it is), cut again (from the spectrum it
+  is given, over its own range, its fit range carried over by the pixels' steps
+  (D97), with a bad-pixel column where the source has a mask (D52), refused only by
+  a spectrum with fewer than 10 pixels that can be fitted there (D113)), unassigned
+  (loaded as it is in a dataset with no source, marked unassigned: one for each of
+  the fit's datasets, or one for each snip, as the user chooses), or left out (with
+  the lines only it uses, as CLEAR). A snip of no spectrum has every spectrum's
+  reason. Load snips… gives its files the same fates; a file that cannot be read, or
+  whose name names no transition, still stops the load (Q7.4).
+- **D123. The dialog that assigns the snips, and the way to it** (point 2, Q11.6,
+  Q11.8; refines D46, D78): it opens every time a fit or snips are loaded with
+  spectra, from the best guess (a snip held by several goes where most of its
+  dataset is): the datasets at the top, the chosen dataset's snips on the left,
+  Unassigned snips on the right with a Load tick each, and One unassigned dataset
+  or Each snip is its own dataset below; drag and drop, → and ←, double-click. Its
+  message, the warning before cutting again (Cut again / Unassign snip) and the
+  overlap warning ("It is advised that each snip has its own dataset…", each pair
+  named) are in RJC's words. Open a fit asks, for every fit, in RJC's words, for the
+  full spectra the snips were cut from (Open with full spectra (recommended)…),
+  since their number cannot be known before they are given; the New project dialog
+  says what the `.mod` names, and each spectrum takes the FWHM of the `.mod`'s
+  dataset whose snips it holds; a refusal after Create offers Back.
+- **D124. A button keeps its "…"** (item 2 carried over): an action whose text ends
+  with "…" keeps it on every button and toolbar item made from it.
+- **D125. One choice of line IDs** (item 1 carried over; refines D59, D114): the
+  Data tab's All lines becomes the Regions tab's menu, one view setting of the
+  project shared by both tabs; This transition and This ion label the Regions tab's
+  transition and ion of its system (the model's choice before any is shown). A
+  project saved with the Regions tab's choice keeps it.
+- **D126. Labels from the component's scheme** (item 3, Q11.4, Q11.5; refines Q2.3,
+  D93, D119): every label the dashboard makes or suggests for a component is
+  L + S + #: z, b, t or n; the system's letter (`ly` for the forest); the component's
+  number, the one its labels already carry, else the first free in its system (so
+  numbers follow the order components are given labels). A column density adds its
+  ion (`na2si2`, `na2d1`, `na2c2_13`; `nly3`). The card's question, the fixes of
+  D20 and D22, a temperature mode's own labels and a component of no system follow
+  it; a label in use elsewhere is never offered.
+- **D127. Renumber labels…** (Q11.5's response, Q11.7 (a); refines Q2.3): under the
+  Components tab's navigator (stacked with Add ion… and Add system…, RJC's review),
+  for the system shown or the forest: each component's labels of the scheme take
+  the number its card shows, in one step, every use following; labels the user
+  named, shared ones and other systems' are left and named; after a warning with
+  the lines that change; greyed when in order; Undo takes it back.
+- **D128. A commented-out line is read as ALIS reads a line** (RJC's Prompt 7 of
+  Stage 11; refines Q7.6): a named value (`redshift=…`) takes its own place, and the
+  positional values fill the places left, in order. (A named redshift had let the
+  b_turb be read as the redshift, and made systems that are not real.) A saved
+  project keeps the systems it recorded; they are removed as any system (Q11.12).
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

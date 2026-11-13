@@ -9,6 +9,13 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Dashboard Stage 11 (a fit of several spectra): Open a fit (.mod)… and Load snips…
+  show where each snip goes, in a dialog that assigns them; a snip that no spectrum
+  holds is cut again from the spectrum it is given, loaded with no source
+  ("unassigned", in one dataset per `.mod` dataset or each in its own), or left out,
+  never refused. Each spectrum of a new project takes its `.mod` dataset's FWHM.
+  Renumber labels… on the Components tab; labels from the component's scheme
+  (`za3`, `na3si2`); one choice of line IDs for the Data and Regions tabs.
 - Project bundles (`alis/bundle.py`): a whole fit in one zip file,
   `project.model`, holding the model, its snips, the atomic table it uses, the
   outputs of its latest run and, for the ALIS dashboard, its own state. Lines
@@ -203,6 +210,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does. It keeps working, and says so once when it starts.
 
 ### Fixed
+- Dashboard Stage 11: a loaded `.mod` now decides the reference dataset; an imported
+  fit's second snip of a transition in one dataset is shown on the Regions tab; every
+  button keeps the "…" of its action; a commented-out voigt line that names its
+  redshift (`redshift=…`) no longer has its b_turb read as its redshift, which made
+  absorption systems that are not real.
 - `lsffile` asks for the kernel's width in Å either side of the fit range, at any
   wavelength; it used to take the width as a velocity at a fixed 1309 Å, so its
   buffer was too wide at longer wavelengths and too narrow at shorter.

@@ -682,3 +682,86 @@ pytest 9.0.2 and in a scratch venv with CI's pytest 9.2.0):
   `qt/window.py` (`WITH_SPECTRUM`); `test_the_question_asks_for_the_full_spectra`
   checks it. Screenshot retaken, page republished as version 8, thread answered and
   resolved. This answers the second of the two questions asked on draft 5.
+
+### 2026-11-12 (Prompt 7: RJC's MWC137 import, its systems that are not real)
+
+- **The bug.** `context/feedback01/MWC137/testing.model`, imported from `alis2.mod`,
+  had systems at z = 1.0, 2.17, 3.17 and 5.33 with components `de`, `dd`, `dc`, `da`
+  and `db`: the b labels of commented-out lines. Those lines name their redshift
+  (`#  voigt  ion=7Li_I  9.5lic  redshift=0.00003915rc  2.17dc  0.0TZERO`), and
+  `project.commented_lines` counted only the positional words, so the second (the
+  b_turb, `2.17dc`) was read as the redshift and overwrote the named one. A line
+  whose label no live line carries is a component excluded from every ion (Q7.6),
+  so each such b label made one, at its b_turb's value.
+- **Test first**: `test_a_commented_out_line_with_a_named_redshift_keeps_its_place`
+  (`test_dashboard_components.py`, synthetic, `write_ratio_fit`): three
+  commented-out lines, two naming their redshift and one naming its column density.
+  Before the fix their redshifts read `bc` 1.0, …, `be` 3.17; now `zc` 2.5038, `zb`
+  2.5042, `zd` 2.5045, with one system, `zc` and `zd` excluded from every ion, and
+  ALIS reading the model.
+- **The fix** (`project.py`, `commented_lines`): as ALIS reads a line (and as
+  `model._slots` reads a live one), a named value takes its own place and the
+  positional words fill the places left, in order.
+- **RJC's files** (a scratch script, not a test): a fresh import of `alis2.mod` has
+  one system, a, of five components (`re`, at z = 5.78e-5, excluded from every ion:
+  its Li I, Na I, K I and Rb I lines are all commented out) and the forest's one Lyα
+  line; ALIS reads it. `testing.model` opens with the false components gone, but its
+  `ui/project.json` keeps the four systems, empty. Asked as Q11.12 (lean: remove them
+  as any saved system, or import again).
+- The related tests pass (158 in the components, project, remove and loadfit files);
+  pre-commit passes. The fix goes into the close's documents (11.11).
+
+Waiting on RJC's response to Q11.12.
+
+### 2026-11-13 (RJC's response to Q11.12; Task 11.11, the close)
+
+- **Q11.12.** RJC: the question is about the context files, not ALIS; if the code is
+  unaffected, close the stage. It is: (a), no code changes; `testing.model`'s four
+  empty systems are removed on its Data tab.
+
+**Task 11.11 — Close the stage.** Done (CI on both platforms waits for RJC's push).
+- *Coverage* (`test-coverage` on what changed, from their tests): `loadfit.py` 94%,
+  `edit.py` 92%. The untested paths were in cutting again (a data line with no
+  `columns=`, a file name that names no transition, an assignment to a dataset with
+  no source), an unassigned dataset whose name is taken, and a single line left out.
+  Added `test_a_bare_data_line_is_cut_again_with_its_columns_written`
+  (`test_dashboard_loadfit.py`), which covers the first three; the others are
+  wording.
+- *The documents*: decisions D120–D128 in `ALIS_v2_dashboard_prompts.md` (refining
+  D12, D14, D36, D46, D55, D59, D78, D93, D114, D115, D119, Q2.3, Q7.4's rule and
+  Q7.6); `doc/ALIS_workflow.md` §4.3 ("Since Stage 11"); `CHANGELOG.md` (Added,
+  Fixed); `tests/README.md` (a Stage 11 row); the `gui-component` skill's "Stage 11
+  additions"; `dashboard_stage0.md` (Stage 11 done, Stage 12 next); `deferred_work.md`
+  §1.4 still deferred. Nothing else this stage left undone goes to deferred work.
+- *Found and not done* → `dashboard_stage12.md`'s "Carried over from Stage 11", with
+  Q12.1: a Load snips… file that names no transition; an unassigned dataset left
+  empty by CLEAR; Open a fit's question for a fit of one dataset (kept as RJC's
+  wording).
+- *What follows* (Q11.2 (a)): `claude_prompts/dashboard_stage12.md` written, its
+  Feedback section for RJC, with Q12.2 (another stage of feedback, or another series
+  first).
+- *The checks:*
+  - Feedback point 1: `deferred_work.md` §1.4 (Prompt 2). Point 2: Tasks 11.1,
+    11.3–11.5. The bug found at Prompt 3: 11.2. Items 1–3 carried over: 11.7, 11.6,
+    11.8 and 11.9. Prompt 7's bug: fixed (D128). Each is logged above as done with
+    its check passing.
+  - Q11.1–Q11.12 are answered in the Queries section.
+  - The review (11.10) is applied: RJC's nine comments, drafts 2–8, every thread
+    resolved.
+  - Batches (pytest 9.0.2 locally; CI's 9.2.0 in a scratch venv), against Stage 10's
+    close (2211 unit passed, 120 skipped; 279 gui; 149 fast):
+    - unit: 2235 passed, 119 skipped (9.2.0: 2234 passed, 120 skipped);
+    - gui: 301 passed (9.2.0: 301 passed);
+    - fast, the regression harness and its `test_bundle` mode included: 149 passed
+      (9.2.0: 149 passed).
+  - CI on both platforms, the gui job within its 90 minutes: waits for RJC's push.
+  - No design reference in the window's text (D44): the `gui` tests' checks pass
+    (window, Regions, Components, the dialog that assigns snips); pre-commit passes
+    on every changed file.
+  - ALIS outside `alis/dashboard/` is unchanged against 00d5a6f (`git diff --stat
+    00d5a6f -- alis ':!alis/dashboard'` is empty). This stage's tests are synthetic
+    (`tests/dashboard_fits.py`, `dashboard_synthetic.py`) and need none of RJC's
+    files; RJC's MWC137 was checked with a scratch script.
+
+Stage 11 closed on 2026-11-13, CI on both platforms waiting for RJC's push. The next
+stage is `dashboard_stage12.md` (Q12.1, Q12.2).

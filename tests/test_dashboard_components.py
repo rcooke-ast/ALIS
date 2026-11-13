@@ -1258,6 +1258,42 @@ def test_a_component_commented_out_by_hand_is_shown_excluded(registry, tmp_path)
     assert "zq" not in project.text and len(project.components) == 2
 
 
+def test_a_commented_out_line_with_a_named_redshift_keeps_its_place(registry, tmp_path):
+    # Prompt 7 of Stage 11 (RJC's MWC137): a line written "13.0nb redshift=z.. 1.0bc
+    # …" and commented out had its b_turb read as its redshift, and made a system at
+    # z = 1.0. A named value takes its own place; the others fill the rest in order,
+    # as ALIS reads a line
+    lines = [
+        "voigt ion=1H_I 14.0 redshift=2.50360za 10.0ba 0.0TZ specid=0",
+        "voigt ion=1H_I 13.5 redshift=2.50420zb 12.0bb 0.0TZ specid=0",
+    ]
+    extra = [
+        "# voigt ion=1H_I 13.0nc redshift=2.50380zc 1.0bc 0.0TZ specid=0",
+        "# voigt ion=1H_I 13.0 redshift=2.50420zb 5.33bd 0.0TZ specid=0",
+        "# voigt ion=1H_I ColDens=12.0 2.50450zd 3.17be 0.0TZ specid=0",
+    ]
+    project, hist = ratio_fit(registry, tmp_path, lines, extra=extra)
+    found = [c for c in P.commented_lines(project.parsed.text) if c.voigt]
+    assert [(c.zlabel, c.z) for c in found] == [
+        ("zc", 2.5038),
+        ("zb", 2.5042),
+        ("zd", 2.5045),
+    ]
+    # One system: zc and zd are its components excluded from every ion; zb keeps
+    # its live H I line
+    assert len(project.systems) == 1
+    comps = project.systems[0].components
+    assert [(c.label, round(c.z, 5)) for c in comps] == [
+        ("za", 2.5036),
+        ("zc", 2.5038),
+        ("zb", 2.5042),
+        ("zd", 2.5045),
+    ]
+    assert comps[1].everywhere_excluded and comps[3].everywhere_excluded
+    assert not comps[2].everywhere_excluded and comps[2].lines_of("1H_I")
+    assert errors(project) == []
+
+
 def test_the_labels_of_an_excluded_component_stay_its_own(registry, tmp_path):
     # Q7.6's response: they are not taken by another component
     project, hist = linked_fit(registry, tmp_path)

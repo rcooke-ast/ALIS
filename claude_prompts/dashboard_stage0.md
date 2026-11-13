@@ -34,7 +34,8 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 8 | Feedback from users (`dashboard_stage8.md`): RJC collects the points in its Feedback section, and each becomes a task with its check, after its queries (Q8.1–Q8.12). **Done 2026-11-03 (D89–D101).** | as each needs; ALIS's `lsffile` and `bundle.py` (Q8.7) |
 | 9 | The Figure tab, until then the Plot tab (step 8; D28, D42, S22): designed in `dashboard_stage9.md` (Task 8.13; Q9.1–Q9.12). **Done 2026-11-08 (D102–D112).** | `alis/dashboard/`; `alis/data/alis_publication.mplstyle`; comments of `alis/plotscript.py` and `alis/config.py` (D28) |
 | 10 | Feedback from users that arrived after Stage 8's list closed (Q8.4, D99), and on the Figure tab: `dashboard_stage10.md` (Stage 9's Prompt 6), 13 points and three items carried over from Stage 9, each a task with its check (Q10.1–Q10.10). **Done 2026-11-09 (D113–D119, D118 and D119 from RJC's Prompts 5 and 6).** | as each needs; `alis/plotscript.py`'s labels (Q10.8) |
-| 11 | Feedback from users that arrives after Stage 10's list closed (Q10.3): `dashboard_stage11.md` (Task 10.17), its Feedback section for RJC to fill. | as each needs |
+| 11 | A fit of several spectra (Feedback point 2), the bug found on the way, and the three items carried over from Stage 10: `dashboard_stage11.md` (Task 10.17; Q11.1–Q11.12), each a task with its check; point 1 (the GPU) deferred (`deferred_work.md` §1.4). **Done 2026-11-13 (D120–D128, D128 from RJC's Prompt 7).** | `alis/dashboard/` |
+| 12 | Feedback from users that arrives after Stage 11's list closed (Q11.2 (a)): `dashboard_stage12.md` (Task 11.11), its Feedback section for RJC to fill. | as each needs |
 | Later | Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
 
 ### After v1
@@ -54,8 +55,12 @@ dashboard. What follows, for RJC to order (Q6.13(a)):
 4. **Stage 10:** the users' feedback that arrived after Stage 8's list closed (Q8.4),
    and RJC's on the Figure tab, with the three items Stage 9 carried over
    (`dashboard_stage10.md`): done 2026-11-09 (D113–D119).
-5. **Stage 11:** the feedback that arrives after Stage 10's list closed (Q10.3 (a)):
-   `dashboard_stage11.md`, its Feedback section for RJC to fill in, unless RJC names
+5. **Stage 11:** a fit of several spectra, the bug found on the way, and the three
+   items carried over from Stage 10 (`dashboard_stage11.md`): done 2026-11-13
+   (D120–D128). The GPU kept on the device (its Feedback point 1) waits in
+   `deferred_work.md` §1.4, as a series of its own.
+5a. **Stage 12:** the feedback that arrives after Stage 11's list closed (Q11.2 (a)):
+   `dashboard_stage12.md`, its Feedback section for RJC to fill in, unless RJC names
    another item below to come first.
 6. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
    (F6), command search (F10), the `link` editor and its templates (S15),
