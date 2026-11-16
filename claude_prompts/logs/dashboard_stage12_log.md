@@ -80,3 +80,75 @@ Feedback from users, after Stage 11's list closed (Q11.2 (a)). The plan is in
 
 No code was changed. Waiting on RJC's responses to Q12.3–Q12.8; Tasks 12.3, 12.4 and
 12.6–12.10 are written with the leans, and are revised where a response departs.
+
+### 2026-11-16 (Prompt 2: RJC's responses to Q12.3–Q12.8 applied)
+
+Asked as "prompt 23"; the stage document has Prompts 1 and 2, and RJC's responses
+were in, so it was taken as Prompt 2.
+
+**Read.** RJC's responses to Q12.3–Q12.8; `session.py`'s view state (`set_view`,
+`view_of`, `close`, which keeps a changed view in the bundle without unsaved
+changes) and each tab's use of it; `resolution.convert`; `lsfspline.call_CPU`'s
+smoothing (a Gaussian of σ = smoothing/√2); D48 and D114.
+
+**Applied** in `dashboard_stage12.md`:
+- *Q12.3 (Ignore warning)*, Task 12.4: Ignore warning in the offer for pixels fitted
+  twice, for the pair, as one step; `shared_pixels` and ALIS's test unchanged, the
+  dashboard's warnings leaving the pair out; the warning back when the pair's shared
+  pixels change; Warn again in the Snip box's list of warnings ignored, or Undo.
+- *Q12.4 (b)*, Task 12.6: the window's size and position in `dashboard.json`; each
+  view's ranges and each list's place in `ui/view.json`, kept by what each shows and
+  by the item at a list's top; read only at Save, a clean close or a recovery copy,
+  never on a scroll or a zoom, and restored once at open. The check times the
+  reading (under 5 ms on 20 snips) and checks that zooming and scrolling write
+  nothing (RJC's condition of no lag). D48 joins the decisions the close refines.
+- *Q12.5 (b)*, *Q12.6 (a) with (b)*, *Q12.7 (a)*: Tasks 12.7, 12.3 and 12.8 as
+  written.
+- *Q12.8 (a) for all four*, Task 12.9: the smoothing starts at the resolution before
+  as a FWHM in km/s (`vfwhm`; `vsigma` and `Afwhm` converted), or 5 km/s where none
+  converts or the value is hidden. The note under the response says that ALIS's
+  smoothing Gaussian is 1.67 times wider than the smoothing.
+- Notes under each response, and the header's, the Tasks' and the Queries' notes.
+
+**Checked.** Tasks 12.1–12.12 are numbered in order, each with what it builds or
+fixes and its check; 12.12 closes the stage. No further query was needed. No code
+was changed. The next prompt starts Task 12.1.
+
+### 2026-11-16 (Prompt 3: the delta function, and lsfspline's smoothing as a FWHM)
+
+**Read.** Prompt 3; `alis/functions/lsfspline.py` in full (`call_CPU` smooths the
+knots' lines with a Gaussian of σ = smoothing/√2; `set_vars` asks for
+√2 · nsubpix · pixel / smoothing sub-pixels); `vfwhm.set_vars` (2√(2 ln 2) · nsubpix ·
+pixel / FWHM); `load.load_subpixels` and `get_binsize` (the sub-pixels per snip, the
+most any function asks for, between `nsubmin` 5 and `nsubmax` 21, each pixel split
+evenly); `config.py`'s settings; the regression harness's discovery
+(`tests/manifest.py`): no case uses `lsfspline`, since `examples/lsf_spline` has no
+references and no fit of `context/fitting_examples/` uses it.
+
+**Checked** with a scratch script
+(`/private/tmp/claude-501/-Users-rcooke-Software-ALIS/482188ad-3a54-42ff-be7f-241bdc95cabd/scratchpad/s12/delta_check.py`):
+ALIS's `lsfspline` on Prompt 3's five knots, on a grid of 0.1 km/s, gives a Gaussian of
+FWHM 1.65–1.67 times the smoothing (2√(ln 2) = 1.665), as Prompt 3 (ii) says.
+
+**Written** in `dashboard_stage12.md`:
+- Task 12.9: ALIS's smoothing as a FWHM (`call_CPU` and `set_vars`; old models smooth
+  0.60 times as wide, said in `CHANGELOG.md` and the docstring; no harness reference
+  moves); `delta_knots` (spix from the snip's smallest pixel and `nsubmax`, edges at
+  six times the FWHM and at least twice spix, the edges following the FWHM while the
+  five knots stand; ±spix free as inner knots, Q12.8 (iv)); the kernel on the snip's
+  finest sub-pixels; the buffer's σ from the FWHM; the checks: a new
+  `tests/test_lsfspline.py` (a delta function gives a Gaussian of the FWHM to 10⁻⁶
+  of its peak; the sub-pixels asked for match `vfwhm`'s; the knots' shape unchanged)
+  and the delta function in `test_dashboard_lsfknots.py`.
+- Task 12.10: Delta Function, with its question (Confirm, Cancel), and the Smoothing,
+  FWHM field; its checks.
+- Task 12.11: the dialog after Delta Function. Task 12.12: `CHANGELOG.md`, decisions
+  from Q12.1–Q12.10 and Prompt 3, and ALIS outside `alis/dashboard/` changed in
+  `lsfspline.py` alone.
+- The Design's notes on ALIS (how the feedback becomes tasks, point 7, what stays);
+  a note under Q12.8's response; Q12.9 (the sub-pixels in spix: lean `nsubmax`; the
+  edges following the FWHM: lean yes) and Q12.10 (`examples/lsf_spline` as a
+  regression case: lean yes); the header's, the Tasks' and the Queries' notes.
+
+No code was changed. Waiting on RJC's responses to Q12.9 and Q12.10; Tasks 12.9 and
+12.10 are written with the leans.

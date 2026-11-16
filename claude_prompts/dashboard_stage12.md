@@ -25,7 +25,11 @@ Feedback section is RJC's to fill in; the design and the tasks are written once 
 is. The items carried over are what Stage 11 found and did not do. Prompt 1
 (2026-11-16) wrote the design and Tasks 12.1–12.12 from Feedback points 1–8 and the
 item carried over that joins (Q12.1: item 2), with Q12.3–Q12.8; items 1 and 3 wait
-in `deferred_work.md` §7.8 and §7.9. No code was changed.*
+in `deferred_work.md` §7.8 and §7.9. No code was changed. Prompt 2 (2026-11-16)
+applied RJC's responses to Q12.3–Q12.8 to Tasks 12.4, 12.6 and 12.9, and checked the
+list; no further query was needed, and no code was changed. Prompt 3 (2026-11-16)
+added the delta function and lsfspline's smoothing as a FWHM to Tasks 12.9 and
+12.10, with Q12.9 and Q12.10; no code was changed.*
 
 ## Feedback
 
@@ -93,8 +97,9 @@ queries below, each with a lean.*
   `tests/dashboard_fits.py`) that fails before the fix and passes after it. The
   user's files are checked with scratch scripts, logged (D99).
 - **Outside the dashboard.** A point about ALIS itself becomes a query: the
-  dashboard's stages change ALIS only where a query agrees. No point of this list
-  needs ALIS to change.
+  dashboard's stages change ALIS only where a query agrees. No point of the Feedback
+  list needs ALIS to change; Prompt 3 asks for one change, lsfspline's smoothing as
+  a FWHM (Task 12.9).
 - **Grouping and order.** Points are grouped by the part of the window they touch,
   and a bug comes before the work that builds on it.
 - **Shown before it closes.** Every change a user sees is shown on a review page,
@@ -170,7 +175,8 @@ and scratch `gui` tests, before its task was written. No code was changed.
     smoothing in km/s (at least 0), and each other value the kernel's height at a
     knot, held within [0, 1] by ALIS; the knots' velocities are the keyword
     `locations`. The kernel is the knots joined by straight lines, smoothed by a
-    Gaussian of σ = smoothing/√2, and normalised.
+    Gaussian of σ = smoothing/√2, and normalised. (Prompt 3 (ii): Task 12.9 makes
+    the smoothing the Gaussian's FWHM.)
   - RJC's `alis2.mod` uses nine knots from −10 to +10 km/s, the edges fixed at 0 and
     the centre at 1 (`LFIX`, `CFIX`, `RFIX`), the smoothing and the other heights
     free (Q12.8).
@@ -198,7 +204,8 @@ and scratch `gui` tests, before its task was written. No code was changed.
 - The other functions of several parameters (`voigtconv`, `multivfwhm`) are set in
   the `.mod` panel (D89).
 - The Figure tab's preview, drawn by its script (D105), has no zoom bar.
-- ALIS outside `alis/dashboard/` does not change.
+- ALIS outside `alis/dashboard/` does not change, except `lsfspline`'s smoothing
+  (Prompt 3 (ii), Task 12.9).
 
 ## Tasks
 
@@ -218,9 +225,14 @@ Each has:*
 *The last task is the review (a page built by `doc/dashboard/stage12/`), and the one
 after it closes the stage, as Stage 11's Tasks 11.10 and 11.11 did.*
 
-*Tasks 12.1–12.12 were written by Claude on 2026-11-16 (Prompt 1). Tasks 12.3, 12.4
-and 12.6–12.10 are written with the leans of Q12.3–Q12.8, and are revised where a
-response departs from them. The order puts a bug before the work that builds on it,
+*Tasks 12.1–12.12 were written by Claude on 2026-11-16 (Prompt 1), with the leans
+of Q12.3–Q12.8. They were revised at Prompt 2 (2026-11-16) with RJC's responses:
+12.4 (Q12.3: Ignore warning, the test unchanged), 12.6 (Q12.4 (b): each view's
+ranges and each list's place kept in `ui/view.json`, with no lag) and 12.9 (Q12.8
+(iii): the smoothing starts at the resolution before, or 5 km/s); 12.3, 12.7, 12.8
+and 12.10 are as the leans. At Prompt 3 (2026-11-16), 12.9 took lsfspline's
+smoothing as a FWHM in ALIS, and 12.9 and 12.10 the delta function, written with the
+leans of Q12.9 and Q12.10. The order puts a bug before the work that builds on it,
 and keeps work on one part of the window together:*
 - *the Components tab: point 8's names, point 2's include, point 5's drag
   (12.1–12.3);*
@@ -277,7 +289,7 @@ ion (point 2, bug; `components.py`; D62, D64, D79).**
 
 **12.3 — A column density that a link computes, in a drag (point 5;
 `components.py`, `qt/components.py`; D24, D63, D65; Q12.6).**
-- **What** (Q12.6's lean).
+- **What** (Q12.6 (a), with (b) where (a) has no single input to move).
   - **The link's own input moves.** Where the dragged ion's log N is computed by a
     link with exactly one free input that no other line or link uses (`lika` in
     `ka(lia,lika) = lia - lika`), a drag below the continuum moves that input so that
@@ -300,31 +312,39 @@ ion (point 2, bug; `components.py`; D62, D64, D79).**
   - ALIS reads the model, and one undo gives back the text;
   - a `gui` test in `test_dashboard_qt_components.py`: the readout during the drag.
 
-**12.4 — Snips the user says are different data (point 1, bug; `snips.py`,
+**12.4 — Ignore warning, for two snips that share pixels (point 1, bug; `snips.py`,
 `markers.py`, `preflight.py`, `validate.py`, `qt/regions.py`; D19, D67, Q1.8;
 Q12.3).**
-- **What** (Q12.3's lean).
-  - **A third choice.** Beside Merge the snips… and Keep in one snip only, the
-    Regions tab's offer for pixels fitted twice has They are different data. It
-    records the pair in `ui/project.json` (the two snips' files and a digest of their
-    shared pixels, as D67 keeps a notice), as one step that Undo takes back.
-  - **What it silences, for that pair alone:** `snips.shared_pixels`, the hatching
-    and the Regions tab's marker, the pre-flight note, and ALIS's own warning among
-    the `.mod` panel's problems (matched by the two files). A change to either snip
-    that changes the digest (its pixels or fit range) brings the warning back.
-  - **Taking it back:** Undo, or Check again beside the pair in the Snip box.
-  - Every other pair is checked as now, and `run_alis` on its own still warns.
+- **What** (Q12.3's response: an Ignore warning button for the pair; how shared
+  pixels are found does not change).
+  - **Ignore warning.** Beside Merge the snips… and Keep in one snip only, the
+    Regions tab's offer for pixels fitted twice has Ignore warning, for that pair of
+    snips. It records the pair in `ui/project.json` (the two snips' files and a
+    digest of their shared pixels, as D67 keeps a notice), as one step that Undo
+    takes back.
+  - **The test is unchanged.** `snips.shared_pixels` and `load.find_shared_pixels`
+    find the pair as now (D19, Q1.8). The warnings leave out a pair the user has
+    ignored: the hatching, the offer and the Regions tab's marker, the pre-flight
+    note, and ALIS's own warning among the `.mod` panel's problems (matched by the
+    two files).
+  - **A changed pair warns again.** A change to either snip that changes the digest
+    (its pixels or its fit range) brings the warning back: the user ignored the
+    pixels they were warned about, not whatever the pair shares later.
+  - **Taking it back:** Undo, or Warn again beside the pair, which the Snip box
+    lists under "Warnings ignored" while the pair is ignored.
+  - Every other pair is warned about as now, and `run_alis` on its own still warns.
 - **Check.** Made into tests first, in `test_dashboard_snips.py` and
   `test_dashboard_markers.py`, on two synthetic snips on one grid that agree outside
   a core (the shape of RJC's specids 6 and 7):
-  - the pair is found as now; once recorded, `shared_pixels`, `markers.fitted_twice`,
-    the Regions tab's marker, the pre-flight check and `validate.check`'s problems
-    leave it out (before, each lists it);
-  - a wider fit range on one snip, which adds shared pixels, brings it back;
-  - one undo gives back `ui/project.json`, and the pair is found again;
-  - another pair of the same project is still found;
-  - in `test_dashboard_qt_regions.py`, the offer has the third choice, the hatching
-    goes, and Check again brings it back.
+  - the pair is found as now, before and after it is ignored (`shared_pixels` is
+    unchanged);
+  - once ignored, `markers.fitted_twice`, the Regions tab's marker, the pre-flight
+    check and `validate.check`'s problems leave it out (before, each lists it);
+  - a wider fit range on one snip, which adds shared pixels, brings the warning back;
+  - one undo gives back `ui/project.json` and the warning;
+  - another pair of the same project is still warned about;
+  - in `test_dashboard_qt_regions.py`, the offer has Ignore warning, the hatching
+    goes, the Snip box lists the pair, and Warn again brings the hatching back.
 
 **12.5 — An emptied unassigned dataset stays, and says so (item 2 carried over,
 Q12.1's response; `markers.py`, `snips.py`, `qt/data.py`, `qt/regions.py`; D122).**
@@ -346,8 +366,9 @@ Q12.1's response; `markers.py`, `snips.py`, `qt/data.py`, `qt/regions.py`; D122)
     dataset…;
   - the existing tests of CLEAR and of unassigned datasets pass unchanged.
 
-**12.6 — Every view keeps its place (point 3; `qt/components.py`, `qt/regions.py`,
-`qt/fit.py`, `qt/plots.py`, `qt/widgets.py`, `qt/window.py`; D114; Q12.4).**
+**12.6 — Every view keeps its place (point 3; `session.py`, `qt/components.py`,
+`qt/regions.py`, `qt/data.py`, `qt/fit.py`, `qt/fitcompare.py`, `qt/plots.py`,
+`qt/widgets.py`, `qt/window.py`; D48, D114; Q12.4).**
 - **The rule.** Nothing the dashboard does moves a scroll bar or a view's ranges; only
   the user does, with the bars, the mouse, ⌂, ← or →. A view that shows another
   transition or snip on a wavelength axis starts at its home; views on a velocity axis
@@ -365,9 +386,24 @@ Q12.1's response; `markers.py`, `snips.py`, `qt/data.py`, `qt/regions.py`; D122)
     every step.
   - One helper (in `qt/widgets.py`) keeps a scroll area's place across a rebuild,
     restored after the layout pass, for every tab to use.
-- **Between sessions** (Q12.4's lean): the window's size and position are kept in the
-  preferences (`dashboard.json`, D48) and restored when the dashboard opens. Each
-  project's `ui/view.json` keeps what it keeps now.
+- **Between sessions** (Q12.4 (b)): a project opens where it was left.
+  - **The window's size and position** are kept in the preferences (`dashboard.json`,
+    D48), since they belong to the screen. A position on no screen now (a display
+    unplugged) opens the window on the main screen.
+  - **Each view's ranges and each list's place** are kept in the project's
+    `ui/view.json`, beside its tab, transition and ion: the Data tab's view, the
+    Regions tab's spectra (D114) and lists, the Components tab's velocity range and
+    each panel's flux range with the card list, and Fit's Inspect and Compare. A view
+    is kept by what it shows (a spectrum's specid, a panel's transition and dataset,
+    a snip), and a list by the item at its top (a card's component, a spectrum), so
+    that it opens on the same item in a window of another size. What the project no
+    longer has opens at ⌂.
+  - **No lag** (RJC's condition). A scroll or a zoom writes nothing: the places are
+    read from the views only when the project is saved or closed, or a recovery copy
+    is written (a few dozen numbers, read in well under a millisecond). Places alone
+    leave no unsaved changes; a clean close keeps them in the bundle, as it keeps a
+    changed tab now. They are restored once, when the project opens, after its first
+    layout.
 - **Check.** `gui` tests, one for each place, made from the audit's script (each fails
   before the fix):
   - in `test_dashboard_qt_components.py`, a click on a card's Excluded ions link near
@@ -379,13 +415,20 @@ Q12.1's response; `markers.py`, `snips.py`, `qt/data.py`, `qt/regions.py`; D122)
   - in `test_dashboard_qt_fit.py`, Inspect's ranges survive a step, made on the Fit
     tab or on another;
   - in `test_dashboard_qt_window.py`, the window's size and position come back from
-    the preferences;
+    the preferences, and a position on no screen opens on the main screen;
+  - in `test_dashboard_qt_session.py`, a project zoomed and scrolled on each tab,
+    closed and reopened, shows the same ranges and the same items at the top of its
+    lists, also in a window of another size; a transition removed meanwhile opens at
+    ⌂; zooming and scrolling call no `set_view` and leave no unsaved changes, and
+    reading the places of a synthetic project of 20 snips takes under 5 ms;
+  - in `test_dashboard_session.py`, the places survive Save, a clean close and a
+    recovery copy, and a bundle without them opens at ⌂, as now;
   - ⌂ still returns each view home, and the existing tests of D114's ranges pass
     unchanged.
 
 **12.7 — Zooming the flux axis, and ⌂ for each axis (point 4; `qt/plots.py`; D38;
 Q12.5).**
-- **What** (Q12.5's lean).
+- **What** (Q12.5 (b)).
   - **The wheel with ⇧ Shift held** zooms the flux axis about the cursor, in every
     spectrum view: the Data, Regions and Components tabs, and Fit's Inspect and
     Compare. Without it, the wheel zooms the wavelength (or velocity) axis about the
@@ -403,7 +446,8 @@ Q12.5).**
 
 **12.8 — Source spectra kept in the project (point 6; `session.py`, `qt/data.py`,
 `qt/window.py`, `qt/dialogs.py`; D8, F13; Q12.7).**
-- **What** (Q12.7's lean).
+- **What** (Q12.7 (a): the user chooses to save the project with its spectra or
+  without them).
   - **For each spectrum**, the Data tab's row offers Keep a copy in the project, and
     once kept, Remove the copy (`bundle.embed_source`, `unembed_source`); its Source
     column says "kept in the project". As Relink… does, it changes where the spectrum
@@ -427,19 +471,54 @@ Q12.5).**
     actions, and no relink question for a kept spectrum whose path is gone;
   - `test_bundle.py`'s tests of embedding pass unchanged.
 
-**12.9 — lsfspline's knots: the kernel and the step (point 7; `resolution.py`, a new
-`lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8).**
-- **What.** No Qt; used by the dialog of 12.10.
+**12.9 — lsfspline's knots: the smoothing as a FWHM, the delta function, the kernel
+and the step (point 7, Prompt 3; `alis/functions/lsfspline.py`, `resolution.py`, a
+new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
+- **ALIS's smoothing becomes a FWHM** (Prompt 3 (ii); ALIS outside the dashboard,
+  as RJC asks). `lsfspline`'s first value is now the FWHM of the Gaussian that
+  smooths the knots, in km/s.
+  - **The change.** In `call_CPU`, σ = smoothing / 2√(2 ln 2), instead of
+    smoothing / √2 (a FWHM 1.665 times the smoothing). In `set_vars`, the sub-pixels
+    asked for become `vfwhm`'s, 2√(2 ln 2) · nsubpix · pixel / FWHM, instead of
+    √2 · nsubpix · pixel / smoothing.
+  - **Existing models.** A model written before gives a kernel smoothed 0.60 times
+    as wide as it did. `CHANGELOG.md` and the function's docstring say so; nothing
+    converts old models.
+  - **The regression harness.** No case uses `lsfspline` (`examples/lsf_spline` has
+    no references, and no fit of `context/fitting_examples/` uses it), so no
+    reference changes. Q12.10 asks whether `examples/lsf_spline` becomes a case.
+- **What the dashboard builds.** No Qt; used by the dialog of 12.10.
   - **The knots** of a data line's `lsfspline` (`knots_of`): their velocities and
     heights, and the smoothing. A line with another function starts from RJC's
-    three: (−10, 0), (0, 1) and (+10, 0) km/s, with the smoothing of Q12.8 (iii).
+    three: (−10, 0), (0, 1) and (+10, 0) km/s.
+  - **The delta function** (`delta_knots`, Prompt 3 (i)): five knots, (−edge, 0),
+    (−spix, 0), (0, 1), (+spix, 0) and (+edge, 0).
+    - spix is the velocity of one sub-pixel: the snip's smallest pixel in km/s,
+      divided by the most sub-pixels ALIS uses (`nsubmax`, Q12.9 (i)). Every
+      sub-pixel then lies at least spix from its neighbour, so the knots' lines give
+      ALIS one non-zero point, at the centre. For a dataset, it is the smallest
+      over its snips.
+    - edge is six times the FWHM (the smoothing), and at least twice spix, so that
+      the five knots stay apart. The edges follow the smoothing while the knots are
+      the delta function's five (Q12.9 (ii)).
+    - The edges and the centre are fixed at heights 0, 1 and 0, as before; ±spix
+      are inner knots, free in the fit (Q12.8 (iv)).
+    - With a smoothing f, ALIS's kernel is then a Gaussian of FWHM f, sampled on the
+      sub-pixels.
+  - **The smoothing's start** (Q12.8 (iii) and its response): the snip's or the
+    dataset's resolution before, as a FWHM in km/s (`resolution.convert`: `vfwhm` as
+    it is, `vsigma` and `Afwhm` at the snip's wavelength converted); 5 km/s where it
+    has none that converts (`lsffile`, `lsf`, `apod`, another function of several
+    parameters) or where the value is hidden, so that the dialog shows nothing of
+    it.
   - **The rules** (`check_knots`): every height within [0, 1]; no two knots at one
     velocity; every knot between the two edges; the edges at height 0, moved in
     velocity only; the centre fixed at (0, 1) (Q12.8 (ii)); three knots at least.
   - **The kernel** (`kernel`), as ALIS makes it: ALIS's own `lsfspline` function
-    applied to a spike on a fine grid at the snip's wavelength, so that the dialog
-    draws ALIS's kernel (as D60 draws ALIS's model); and its FWHM (`fwhm`), the width
-    at half its peak, interpolated between points.
+    applied to a spike on the snip's finest sub-pixels (its pixels divided by
+    `nsubmax`) at its wavelength, so that the dialog draws ALIS's kernel (as D60
+    draws ALIS's model); and its FWHM (`fwhm`), the width at half its peak,
+    interpolated between points.
   - **The step** (`knots_step`): the data line's resolution becomes
     `lsfspline(smoothing, heights…; locations:velocities…)`, for one snip (its own,
     D89) or for a dataset (every line that takes the dataset's, with shared labels,
@@ -448,21 +527,39 @@ Q12.5).**
     labels, as in RJC's `alis2.mod`), the labels from the dataset's scheme
     (`edit.new_row_labels`); `bintype=` where the model's differs (D92). One step.
   - **The buffer:** the kernel's half width (its outer edge, plus three σ of the
-    smoothing) is what the Snip box's check of each side's buffer asks for
-    (`snips.buffers`), as other functions' widths are.
-- **Check.** New `unit` tests in a new `test_dashboard_lsfknots.py`:
-  - the nine knots of RJC's `lsfspline` line are read, and written back unchanged;
-  - a line with `vfwhm` starts from the three default knots;
-  - each rule refuses what breaks it, with its reason;
-  - the kernel equals ALIS's function on a spike; the three default knots with no
-    smoothing give a triangle of FWHM 10 km/s, and a smoothing widens it;
-  - the step for a snip and for a dataset: ALIS reads the model, and one undo gives
-    back the text;
-  - the buffer check takes the kernel's half width;
-  - a hidden lsfspline value refuses the knots, with the reason.
+    smoothing, σ = FWHM / 2√(2 ln 2)) is what the Snip box's check of each side's
+    buffer asks for (`snips.buffers`), as other functions' widths are.
+- **Check.**
+  - **ALIS's function**, in a new `tests/test_lsfspline.py` (`unit`), made into tests
+    first:
+    - the delta function's knots with a smoothing of 2, 5 or 10 km/s give a
+      normalised Gaussian of that FWHM, sampled on the grid, to 10⁻⁶ of its peak, on
+      grids linear in wavelength and in log wavelength (before the change, a FWHM
+      1.665 times the smoothing);
+    - `set_vars` asks for as many sub-pixels as `vfwhm` with the same FWHM;
+    - RJC's nine knots with a smoothing f give the kernel that the old code gave with
+      f / 2√(ln 2): only the smoothing's meaning changed;
+    - `test_function_interface.py`, the regression harness and its `test_bundle`
+      mode pass unchanged.
+  - **The dashboard's**, in a new `test_dashboard_lsfknots.py` (`unit`):
+    - the nine knots of RJC's `lsfspline` line are read, and written back unchanged;
+    - the delta function for a snip: spix from its smallest pixel and `nsubmax`, the
+      edges at six times the FWHM (at least twice spix), the rules accept the five
+      knots, and the kernel's FWHM is the smoothing's; for a dataset, spix is its
+      snips' smallest;
+    - a line with `vfwhm` starts from the three default knots, with that FWHM as the
+      smoothing; one with `vsigma` or `Afwhm` with its FWHM in km/s; one with
+      `lsffile`, or a hidden value, with 5 km/s;
+    - each rule refuses what breaks it, with its reason;
+    - the kernel equals ALIS's function on a spike; the three default knots with no
+      smoothing give a triangle of FWHM 10 km/s, and a smoothing widens it;
+    - the step for a snip and for a dataset: ALIS reads the model, and one undo
+      gives back the text;
+    - the buffer check takes the kernel's half width;
+    - a hidden lsfspline value refuses the knots, with the reason.
 
-**12.10 — Set LSFSpline knots… (point 7; `qt/dialogs.py`, `qt/regions.py`,
-`qt/data.py`; D2, D43, D89; Q12.8).**
+**12.10 — Set LSFSpline knots… (point 7, Prompt 3; `qt/dialogs.py`,
+`qt/regions.py`, `qt/data.py`; D2, D43, D89; Q12.8, Q12.9).**
 - **What.**
   - **lsfspline is offered** in the Snip box's resolution menu, and in the Data
     tab's (Q12.8 (i)), no longer greyed. With it chosen, **Set LSFSpline knots…**
@@ -470,8 +567,14 @@ Q12.5).**
   - **The dialog** draws, with pyqtgraph (D2): the knots as squares; a thin, faint
     black line joining them in order of velocity; the smoothed kernel as a red line
     of normal weight; and its FWHM, marked at half the peak with its value ("FWHM
-    9.6 km/s"). Beside the plot, the Smoothing (km/s) field. The x axis is velocity
-    in km/s, signed (D43), and the y axis runs from 0 to 1.
+    9.6 km/s"). Beside the plot, the Smoothing, FWHM (km/s) field. The x axis is
+    velocity in km/s, signed (D43), and the y axis runs from 0 to 1.
+  - **Delta Function** (Prompt 3 (i)), a button beside the plot, asks first: "All
+    the knots will be cleared, and replaced by a delta function." with Confirm and
+    Cancel. Confirm puts 12.9's five knots in place of every knot, at the
+    smoothing's FWHM; the user then sets the FWHM in the field, and the edges follow
+    it (at ±6 FWHM) until a knot is moved, added or removed (Q12.9 (ii)). The red
+    line is then a Gaussian of that FWHM, and the FWHM marked is the field's.
   - **The knots:** a knot is dragged (the edges sideways only; the centre not at
     all); a double-click on the plot adds a knot there; Delete knot (also the
     right-click menu and the Delete key) removes the selected inner knot. A drag stops
@@ -488,6 +591,9 @@ Q12.5).**
   - a double-click adds a knot, Delete knot removes it, and neither an edge nor the
     centre can be removed;
   - the FWHM shown is `lsfknots.fwhm`'s, and changes with the smoothing;
+  - Delta Function asks first: Cancel keeps the knots, and Confirm gives the five
+    knots of 12.9, whose FWHM shown is the field's (to 1%); a new FWHM moves the
+    edges to six times it, and after a knot is moved they stay;
   - Apply writes the line as one step, which one undo takes back; Cancel changes
     nothing;
   - the window's text has no design reference (D44).
@@ -497,12 +603,13 @@ Q12.5).**
   stylesheet. Screenshots at 1440×900 of:
   - a card's lists with 87Rb I, and a2 included in Ti II (12.1, 12.2);
   - a drag's readout on a column density that a link computes (12.3);
-  - the Regions tab's offer for pixels fitted twice, with its third choice (12.4);
+  - the Regions tab's offer for pixels fitted twice, with Ignore warning, and the
+    Snip box's Warnings ignored (12.4);
   - CLEAR's preview and the Data tab's row for an emptied unassigned dataset (12.5);
   - the zoom bar with ⌂x and ⌂y, and a view zoomed in y (12.7);
   - the Data tab's Keep a copy in the project, and Save a copy with spectra… (12.8);
-  - the Snip box with Set LSFSpline knots…, and the dialog on RJC's nine knots
-    (12.10).
+  - the Snip box with Set LSFSpline knots…, the dialog on RJC's nine knots, and
+    after Delta Function (12.10).
 
   Where a still cannot show it (the places kept, 12.6), the page names the test. It
   is published as a private page, and RJC's comments are applied.
@@ -513,9 +620,11 @@ Q12.5).**
 **12.12 — Close the stage.**
 - **The documents.** Bring `doc/ALIS_workflow.md` §4.3, `CHANGELOG.md`,
   `tests/README.md` and the `gui-component` skill (its "Stage 12 additions") up to
-  date. Record the decisions in `ALIS_v2_dashboard_prompts.md` (D129 onwards, from
-  Q12.1–Q12.8 and the review), saying which earlier decisions they refine: D8, D19
-  and Q1.8, D22 and D37, D38, D63 and D65, D64 and D79, D89, D114, D122, and F13.
+  date; `CHANGELOG.md` says that `lsfspline`'s smoothing is now a FWHM, and what
+  that does to a model written before. Record the decisions in
+  `ALIS_v2_dashboard_prompts.md` (D129 onwards, from Q12.1–Q12.10, Prompt 3 and the
+  review), saying which earlier decisions they refine: D8, D19 and Q1.8, D22 and
+  D37, D38, D48, D63 and D65, D64 and D79, D89, D114, D122, and F13.
   Update `dashboard_stage0.md`: Stage 12 done, and the "After v1" list. Update
   `deferred_work.md`: §1.4 (the GPU), §7.8 and §7.9 (Q12.1 (b)) stay, and anything
   this stage leaves undone is added.
@@ -530,7 +639,7 @@ Q12.5).**
     point 4 in 12.7, point 5 in 12.3, point 6 in 12.8, point 7 in 12.9 and 12.10,
     point 8 in 12.1, and item 2 in 12.5; items 1 and 3 are in `deferred_work.md` §7.8
     and §7.9.
-  - Q12.1–Q12.8, and any query raised while the tasks were built, are answered in the
+  - Q12.1–Q12.10, and any query raised while the tasks were built, are answered in the
     Queries section.
   - The review of 12.11 is applied.
   - The `unit`, `gui` and `fast` batches pass, also under CI's pytest. Their counts go
@@ -542,10 +651,11 @@ Q12.5).**
     most valuable tests are added.
   - The window's text has no design reference (D44), and pre-commit passes on every
     changed file.
-  - ALIS outside `alis/dashboard/` is unchanged (`git diff --stat 1e4c2f4 -- alis
-    ':!alis/dashboard'` is empty, against Stage 11's close). This stage's tests are
-    synthetic and need none of RJC's files; MWC137 is checked with scratch scripts,
-    logged.
+  - ALIS outside `alis/dashboard/` changes in `lsfspline` alone (`git diff --stat
+    1e4c2f4 -- alis ':!alis/dashboard'` lists `alis/functions/lsfspline.py` and
+    nothing else, against Stage 11's close), and the regression harness passes.
+    This stage's tests are synthetic and need none of RJC's files; MWC137 is
+    checked with scratch scripts, logged.
 
 ## Skills to use for this stage
 
@@ -576,7 +686,8 @@ Q12.5).**
 ## Queries
 
 *Raised by Claude: Q12.1 and Q12.2 with this document (2026-11-13), Q12.3–Q12.8 at
-Prompt 1 (2026-11-16). Each gives Claude's lean. A question that comes up while a
+Prompt 1 (2026-11-16), all answered by RJC and applied at Prompt 2; Q12.9 and Q12.10
+at Prompt 3 (2026-11-16). Each gives Claude's lean. A question that comes up while a
 task is built pauses the work; it is asked here, and its answer is logged here
 (Stage 11, Prompt 2).*
 
@@ -634,6 +745,13 @@ at, and the user's word is kept for the pairs they have.
 
 **Response:** Let's introduce a button that says "Ignore warning" that the user can click to remove the warning for that pair of SNIPs. This would allow the user to indicate that they are aware of the issue and have chosen to ignore it, without changing the underlying logic of how shared pixels are determined.
 
+*Applied (Prompt 2, 2026-11-16) in Task 12.4: the offer for pixels fitted twice has
+Ignore warning, for the pair, as one step. `shared_pixels` and ALIS find the pair as
+now; the dashboard's warnings (the hatching, the offer, the marker, the pre-flight
+note, ALIS's warning in the `.mod` panel) leave it out. The pair warns again if
+either snip's pixels or fit range change what it shares, and Warn again, in the
+Snip box's list of warnings ignored, or Undo, takes it back.*
+
 **Q12.4 — Places kept between sessions (point 3, Task 12.6).** Point 3 asks that
 scroll bars, zooms and the window's size be remembered. Within a session, Task 12.6
 keeps every place through every action. Between sessions, two ways:
@@ -648,6 +766,13 @@ look being taken; a project reopened days later starts from ⌂, while the tab,
 transition and ion it shows are kept as now.
 
 **Response:** I prefer option (b), to also store each view's zoom and each list's scroll in the project's `ui/view.json`. This would provide a more seamless user experience, allowing users to pick up exactly where they left off when reopening a project. The only concern I have is if this causes any lag in the interaction with the GUI. Provided no significant lag is introduced, I think this would be a valuable feature.
+
+*Applied (Prompt 2) in Task 12.6: the window's size and position in the
+preferences, and each view's ranges and each list's place in `ui/view.json`, kept by
+what each shows. A scroll or a zoom writes nothing; the places are read only at
+Save, a clean close or a recovery copy, and restored once when the project opens.
+The task's check times the reading (under 5 ms on 20 snips) and checks that zooming
+and scrolling write nothing.*
 
 **Q12.5 — The key that zooms the flux axis (point 4, Task 12.7).** Two ways:
 - **(a) Y held**, as point 4 suggests. Qt reports only modifier keys with a wheel
@@ -664,6 +789,8 @@ My lean: (b). ⌂x and ⌂y are as point 4 asks, either way.
 
 **Response:** I agree with option (b). Using ⇧ Shift held for zooming the flux axis is more intuitive and consistent with common user interface conventions. It also avoids potential conflicts with other keyboard shortcuts and ensures that the zoom functionality works seamlessly across different input devices, such as a mouse wheel and a trackpad.
 
+*Applied (Prompt 2): Task 12.7 as written.*
+
 **Q12.6 — A column density that a link computes (point 5, Task 12.3).** D65: links
 are written in the `.mod` panel only, and the Components tab never drags or types
 what they compute. Point 5 asks whether a drag could still change it. Three ways:
@@ -679,6 +806,8 @@ My lean: (a), with (b) where (a) has no single input to move. It refines D65 for
 drags only: links are still written in the `.mod` panel.
 
 **Response:** I agree with option (a) with the fallback to (b) when there is no single input to move. This approach allows for more intuitive interaction when adjusting column densities, while still providing clear feedback to the user when adjustments cannot be made due to the nature of the link. It maintains consistency with the existing behavior of links being written in the `.mod` panel, while enhancing the user experience during drags.
+
+*Applied (Prompt 2): Task 12.3 as written.*
 
 **Q12.7 — Source spectra in the project (point 6, Task 12.8).** D8 offers to embed a
 spectrum "for archiving". The project file can hold one, and the dashboard reads it,
@@ -697,6 +826,10 @@ on one computer, and Save a copy with spectra… serves the sharing that point 6
 for.
 
 **Response:** I agree with option (a), that the user should be able to choose if they wish to save a `.model` file with datasets, or without datasets.
+
+*Applied (Prompt 2): Task 12.8 as written. Save keeps a spectrum in the file only
+where the user chose Keep a copy in the project; Save a copy with spectra… writes a
+file with all of them.*
 
 **Q12.8 — Set LSFSpline knots… (point 7, Tasks 12.9 and 12.10).** Four points:
 - *(i) Where it is offered.*
@@ -724,7 +857,66 @@ My lean: (a) for all four.
 
 **Response:** I agree with option (a) for all four points. If the resolution is already specified for a dataset/snip, then we should use that value as an estimate. If the resolution is not available for a dataset/snip, the default value should be 5 km/s.
 
+*Applied (Prompt 2) in Tasks 12.9 and 12.10. The smoothing starts at the snip's or
+the dataset's resolution as a FWHM in km/s: `vfwhm` as it is, and `vsigma` and
+`Afwhm` converted at the snip's wavelength. Where none converts (`lsffile`, `lsf`,
+`apod`, another function of several parameters), or the value is hidden, it starts
+at 5 km/s. ALIS smooths with a Gaussian of σ = smoothing/√2 (FWHM 1.67 times the
+smoothing), so the kernel starts a little wider than the resolution before. The fit
+frees the smoothing, and the dialog shows the kernel's FWHM.*
+
+*Prompt 3 (ii) (2026-11-16): Task 12.9 makes the smoothing the Gaussian's FWHM, so
+the smoothing's start is the resolution before exactly.*
+
+**Q12.9 — The delta function (Prompt 3 (i), Tasks 12.9 and 12.10).** Two points:
+- *(i) The sub-pixels in spix.* ALIS has no fixed number of sub-pixels. For each
+  snip, it uses the most that any line or the resolution asks for, between `nsubmin`
+  (5) and `nsubmax` (21) (`load.load_subpixels`). The number comes from the model's
+  b and FWHM values, so it changes as they do, and during a fit with `renew_subpix`.
+  The knots at ±spix give ALIS one non-zero point only while no sub-pixel lies closer
+  than spix to the centre. If the sub-pixels later get finer, the delta function
+  becomes a narrow triangle.
+  - **(a) `nsubmax`:** spix is the snip's smallest pixel in km/s divided by
+    `nsubmax` (the model's, or 21), the finest sub-pixel ALIS can use. The kernel is
+    then a Gaussian of the FWHM whatever the sub-pixels become. The cost is ±spix
+    knots closer to the centre (0.1 km/s for a pixel of 2 km/s).
+  - **(b) The snip's sub-pixels now,** as ALIS works them out for the model as it is
+    (the number ALIS's log reports). The kernel is exact until a change to the
+    model asks for more sub-pixels.
+- *(ii) The edges when the FWHM changes after Confirm.* The edges are at six times
+  the FWHM.
+  - **(a) They follow the FWHM** while the knots are the delta function's five. Once
+    a knot is moved, added or removed, they stay where they are.
+  - **(b) They are placed once,** at Confirm, from the FWHM then; a new FWHM moves no
+    knot.
+
+My lean: (a) for both. (i) keeps the kernel exactly Gaussian, as Prompt 3 asks. With
+(ii), the user sets the FWHM after Confirm, and the knots stay as Prompt 3 defines
+them. The edges change nothing in the kernel (it is zero between ±spix and the
+edges), but they set the buffer each side needs.
+
+**Response:** For point (i), I actually think it makes more sense to adopt the value of nsubmin for spix. I think we want to avoid choosing a value that is finer than whatever the subpixellation value is. Otherwise, we will be trying to generate an LSF on a subpixellation scale that is finer than specified. We should probably reset the default nsubmin to be 10, so that the minimum subpixellation is 10 by default. For point (ii), I agree with option (a). The edges should follow the FWHM set by the user if they change it.
+
+**Q12.10 — lsfspline in the regression harness (Prompt 3 (ii), Task 12.9).** Prompt
+3 expects the change to move the regression harness's references. The harness has no
+case that uses `lsfspline`: `examples/lsf_spline` has no `.mod.out.reference` and no
+golden data, and no fit in `context/fitting_examples/` uses the function. So no
+reference moves, and nothing would catch a later change to the function. Two ways:
+- **(a) Unit tests of the function alone** (Task 12.9's check: the delta function
+  gives a Gaussian of the FWHM, and the knots' shape is unchanged).
+- **(b) As (a), and `examples/lsf_spline` becomes a case.** After the change, its
+  generated data goes to `reference_fits/` and its fit's `.mod.out.reference` is
+  written. The harness then checks `lsfspline` as it checks the other functions, in
+  CI's `examples` batch (a small fit of one spectrum).
+
+My lean: (b). It keeps the function covered as every other shipped example is.
+
+**Response:** I agree with option (b). Let's attempt to capture this in the regression harness. If we encounter problems with the regression harness, (e.g. the fit takes too long) then we can delay this to a future task, and just implement the unit tests for now.
+
 ## Prompts
 
 1. Please read the list of changes and bug fixes, and the work of Stages 0–11 (their documents and logs). I have drafted a list of bugs, improvements, and additions to the dashboard (see Section `Feedback`). Please review these suggestions, and if anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please write an ordered list of tasks. Please write all the tasks, each with a description of what it builds or fixes, and the check that will verify it. Each task should be numbered sequentially (12.1, 12.2, etc.). The final Task (currently labelled 12.N) should be to close the stage, and should include the checks that will verify that the stage is complete.
 2. I have responded to your queries. Please review my responses, and if you have any further queries, please ask them in the Queries section. When everything is clear, please check that the ordered list of tasks is correctly written. Each task should be numbered sequentially (12.1, 12.2, etc.), and should include a description of what it builds or fixes, and the check that will verify it. The final Task should be to close the stage, and should include the checks that will verify that the stage is complete. Please note that we can continue this thread provided we are below 75% context usage. If we exceed that, we will need to start a new thread to continue the discussion.
+3. Regarding Task 12.9 (Q12.8), there are two things to clarify: (i) We should introduce a button called `Delta Function`. By clicking this button, a warning should appear to warn the user that all knots are about to be cleared, and replaced by a delta function, with two options to "Confirm" or "Cancel". If "Confirm" is selected, all knots are removed, and there would be five knots automatically inserted. There will be three inner knots with y-values (0.0, 1.0, 0.0), and x-values equal to (-spix, 0.0, +spix), where spix is the subpixellation scale (i.e. the velocity of one pixel divided by the number of subpixels). Then, there will be two outer knots with y-values equal to (0.0, 0.0), and x-values equal to (-edge, +edge), where edge is six times the velocity FWHM. Note that the y-values at (-edge, 0.0, +edge) should all be fixed at (0.0, 1.0, 0.0), as before. In this case, the user should be able to set the FWHM. For a delta function defined in this way and convolved with a user-input FWHM (i.e. the smoothing scale) should produce a line spread function that is exactly a Gaussian with the user-input FWHM as the line's FWHM. (ii) The LSFSpline smoothing parameter is not currently the FWHM of a Gaussian when the knots are a delta function. We should modify the LSFSpline code so that the smoothing parameter is the FWHM of the smoothing function. This will change the gate, so we may need to regenerate that test and output. Please include this in Task 12.9. If you have any queries about these points, or anything else to be developed during this stage, please ask in the Queries section, and I will respond.
+4. I have responded to your queries. Please review my responses, and if you have any further queries, please ask them in the Queries section. When everything is clear, please check that the ordered list of tasks is correctly written. Each task should be numbered sequentially (12.1, 12.2, etc.), and should include a description of what it builds or fixes, and the check that will verify it. The final Task should be to close the stage, and should include the checks that will verify that the stage is complete. Please note that we can continue this thread provided we are below 75% context usage. If we exceed that, we will need to start a new thread to continue the discussion.
+5. Please execute the tasks in order. There's no need to pause between tasks, unless you have queries that require my thoughts and responses. Please check your context limit between tasks. If you reach 75% context, please pause and ask for my guidance on the next steps. If you have queries during development, please pause the development and log the queries and responses in the Queries section.
