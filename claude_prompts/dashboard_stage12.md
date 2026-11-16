@@ -22,7 +22,10 @@
 
 *Written by Claude on 2026-11-13 (Stage 11's Task 11.11). No code was changed. The
 Feedback section is RJC's to fill in; the design and the tasks are written once it
-is. The items carried over are what Stage 11 found and did not do.*
+is. The items carried over are what Stage 11 found and did not do. Prompt 1
+(2026-11-16) wrote the design and Tasks 12.1–12.12 from Feedback points 1–8 and the
+item carried over that joins (Q12.1: item 2), with Q12.3–Q12.8; items 1 and 3 wait
+in `deferred_work.md` §7.8 and §7.9. No code was changed.*
 
 ## Feedback
 
@@ -80,6 +83,123 @@ this stage (Q12.1).*
 in which modules, and what stays as it is. Points that need RJC's decision become
 queries below, each with a lean.*
 
+### How the feedback becomes tasks
+
+- **Read against what was decided.** Each point is read against the decisions
+  D1–D128 and the stage documents. A point that asks for what a decision ruled out
+  becomes a query that quotes the decision, not a task.
+- **A bug becomes a test first.** It is reproduced from the user's project where there
+  is one, then made into a synthetic test (`tests/dashboard_synthetic.py`,
+  `tests/dashboard_fits.py`) that fails before the fix and passes after it. The
+  user's files are checked with scratch scripts, logged (D99).
+- **Outside the dashboard.** A point about ALIS itself becomes a query: the
+  dashboard's stages change ALIS only where a query agrees. No point of this list
+  needs ALIS to change.
+- **Grouping and order.** Points are grouped by the part of the window they touch,
+  and a bug comes before the work that builds on it.
+- **Shown before it closes.** Every change a user sees is shown on a review page,
+  built by `doc/dashboard/stage12/` with the earlier pages' stylesheet, and RJC's
+  comments on it are applied before the stage closes.
+
+### 12.1–12.12 — The Feedback list and the item carried over
+
+*Written by Claude on 2026-11-16 (Prompt 1), from Feedback points 1–8, the item
+carried over that joins (Q12.1: item 2, with RJC's response), and the code at the
+start of the stage (292dba9). Each point's design is in its task below.*
+
+**What was found.** Each point was reproduced off-screen on RJC's
+`mwc137_relinked.model` (a copy in the session's scratchpad), with scratch scripts
+and scratch `gui` tests, before its task was written. No code was changed.
+- **Point 1** (specids 6 and 7 taken as overlapping).
+  - The two snips are `emsmwcs137_39K_I_7701.1_reg1.dat` (specid 6, in the dataset
+    "39KI7701 (unassigned)") and `…_reg2.dat` (specid 7, in emsmwcs137). They share
+    one wavelength grid, and their flux and error agree digit for digit at 297 of
+    reg1's 336 pixels: every pixel outside the line's core (7701.28–7702.10 Å), where
+    they differ.
+  - By the test of D19 and Q1.8 (the same wavelength and flux/error ratio, in runs
+    of three or more), the 147 pixels fitted in both outside the core are the same
+    pixels of the same data. The dashboard says so in four places: the hatching and
+    the offer to merge on the Regions tab, the tab's marker, a note of the pre-flight
+    check, and ALIS's own warning when it loads the data (line 32 of the `.mod`
+    panel).
+  - Two independent exposures on one grid agree nowhere, which is how Q1.8's test
+    tells them apart. These agree almost everywhere, so no test of the values can
+    tell them from one snip cut twice: only the user knows (Q12.3).
+- **Point 2** (a2 cannot be included). a2 is excluded from every ion: its Li I, Na I,
+  K I and Rb I lines are commented out, and its greyed card lists every ion of the
+  system under Excluded ions (D79). A click on one of those four brings its line
+  back. A click on Ti II, Ca I, Ca II or Fe I, which a2 never had, is refused:
+  "Component a2 is excluded from every ion: include it in one first." A new ion's
+  line copies z, b and T from the component's live line (`components.include`), and
+  a2 has none.
+- **Point 3** (the list scrolls to the top).
+  - Reproduced with a real click: a click on a card's Excluded ions link near the
+    bottom of the list moves the list to its top (scroll 1496 → 0). The click
+    selects the card's component, and the selected card is scrolled into view as
+    the cards are rebuilt, before they are laid out, while every card is still at
+    the top. The same include made without the click keeps the list's place.
+  - An audit of every tab: each scroll bar and view was moved, then one ordinary step
+    was made, on that tab or on another. The Data tab kept everything. The Regions
+    tab kept its spectra's ranges (D114), but its list of spectra, its transition
+    list (sideways) and the Snip box's table went back to their start. On the
+    Components tab, every panel went back to ⌂ (±200 km/s) after every step, a drag
+    included. Fit · Inspect's view and progress chart went back to ⌂. The drop-downs
+    kept their choices on every tab.
+  - The window opens at 1440 × 900 each time; its size is not kept between sessions.
+- **Point 4** (zooming in y). The wheel zooms the wavelength (or velocity) axis only,
+  and so do + and − (D38); ⌂ returns both axes. Qt reports only modifier keys with a
+  wheel event, so a held letter needs an event filter, as the Components tab's N and
+  B have (`DragKeys`): pressed while the pointer is over a panel, the key is the
+  panel's, and nothing else receives it (Q12.5).
+- **Point 5** (a7's K I column density). K I's log N in a7 is `ka`, computed by the
+  link `ka(lia,lika) = lia - lika`: Li I's log N in a7 less `lika`, a free `variable`
+  that only this link uses. Links are never dragged (D65), so the drag moves b alone,
+  and the readout names b alone without saying why (Q12.6).
+- **Point 6** (the source spectra).
+  - Embedding is built in the project file: `alis/bundle.py` keeps a copy of a
+    spectrum (`embed_source`, D8), and the dashboard reads an embedded copy and never
+    asks to relink it (`sources.EMBEDDED`, Stage 3). The window has no way to make
+    one, so every project references its spectra by path and checksum alone.
+  - RJC's two spectra would add about 15 MB to the 1.7 MB bundle (`emsmwcs137.dat`,
+    32 MB of text, compresses to 12.8 MB; `EM_MWC__137.dat` to 2.5 MB), and about a
+    second to each Save and to each minute's recovery copy (D48) (Q12.7).
+- **Point 7** (lsfspline's knots).
+  - The Snip box's resolution menu greys `lsfspline`, and so does the Data tab's: a
+    function of several parameters is set in the `.mod` panel (D89).
+  - ALIS's `lsfspline` (`alis/functions/lsfspline.py`): its first value is a
+    smoothing in km/s (at least 0), and each other value the kernel's height at a
+    knot, held within [0, 1] by ALIS; the knots' velocities are the keyword
+    `locations`. The kernel is the knots joined by straight lines, smoothed by a
+    Gaussian of σ = smoothing/√2, and normalised.
+  - RJC's `alis2.mod` uses nine knots from −10 to +10 km/s, the edges fixed at 0 and
+    the centre at 1 (`LFIX`, `CFIX`, `RFIX`), the smoothing and the other heights
+    free (Q12.8).
+- **Point 8** (Rb I twice).
+  - 87Rb I's lines being commented out is not the cause. The dashboard's table of
+    each element's main isotope (`project.MAIN_ISOTOPE`) stops at zinc, so
+    `ion_name` names both rubidium isotopes "Rb I": a1's Excluded ions read "Li I,
+    Rb I, Rb I".
+  - The same table groups an isotope under its element (D37) and checks that isotopes
+    share z, b and T (D22), so neither applies to rubidium either (from the code;
+    MWC137's 87Rb I has no live line). Rubidium is the only element with two
+    isotopes in ALIS's atomic data that the table lacks.
+- **Item 2** (Q12.1's response). CLEAR of an unassigned dataset's last snip leaves the
+  dataset ("0 snips · unassigned: no source spectrum"), as RJC's response wants.
+  Nothing tells the user that it is empty, and the Data tab's marker shows ✓. A snip
+  cannot be cut from it, since it has no source spectrum; Load snips… gives it
+  snips.
+
+**What stays as it is.**
+- The test for pixels fitted twice (D19, Q1.8), and ALIS's warning when `run_alis`
+  loads the data.
+- Links are written in the `.mod` panel (D65), whatever Q12.6 decides for the drag.
+- A project references its spectra by path and checksum, and Relink… is as now
+  (F13), whatever Q12.7 decides.
+- The other functions of several parameters (`voigtconv`, `multivfwhm`) are set in
+  the `.mod` panel (D89).
+- The Figure tab's preview, drawn by its script (D105), has no zoom bar.
+- ALIS outside `alis/dashboard/` does not change.
+
 ## Tasks
 
 > Complete in order; log each in `ALIS/claude_prompts/logs/dashboard_stage12_log.md`.
@@ -97,6 +217,335 @@ Each has:*
 
 *The last task is the review (a page built by `doc/dashboard/stage12/`), and the one
 after it closes the stage, as Stage 11's Tasks 11.10 and 11.11 did.*
+
+*Tasks 12.1–12.12 were written by Claude on 2026-11-16 (Prompt 1). Tasks 12.3, 12.4
+and 12.6–12.10 are written with the leans of Q12.3–Q12.8, and are revised where a
+response departs from them. The order puts a bug before the work that builds on it,
+and keeps work on one part of the window together:*
+- *the Components tab: point 8's names, point 2's include, point 5's drag
+  (12.1–12.3);*
+- *the Regions and Data tabs: point 1's pixels, and item 2's emptied dataset (12.4,
+  12.5);*
+- *every view: point 3's places, then point 4's zoom, which builds on them (12.6,
+  12.7);*
+- *the project file: point 6's spectra (12.8);*
+- *point 7, lsfspline's knots: the logic, then the dialog (12.9, 12.10);*
+- *the review (12.11), and the close (12.12).*
+
+**12.1 — Each isotope its own name (point 8, bug; `project.py`; D22, D37).**
+- **The bug.** `project.MAIN_ISOTOPE` has no rubidium, so `ion_name` names `85Rb_I`
+  and `87Rb_I` both "Rb I", and a card's lists read "Rb I, Rb I". The two isotopes
+  are neither grouped under their element (D37) nor checked for sharing z, b and T
+  (D22).
+- **The fix.** Rubidium's main isotope (85) joins the table, so that `87Rb_I` is
+  "87Rb I", as `13C_IV` is "13C IV". A test keeps the table complete: every element
+  with more than one isotope in ALIS's atomic data has its main isotope there.
+- **Check.** Made into tests first:
+  - in `test_dashboard_project.py`, `ion_name` gives "Rb I" and "87Rb I" (before the
+    fix, "Rb I" twice), and every element with two or more isotopes in
+    `alis/data/atomic.xml` is in the table (before, rubidium is not);
+  - in `test_dashboard_components.py`, on a synthetic system with 85Rb I and 87Rb I
+    lines, the navigator lists 87Rb I inside Rb I, and a component excluded from
+    both lists "Rb I, 87Rb I";
+  - in `test_dashboard_qt_components.py`, the card's lists name each once;
+  - RJC's MWC137 is checked with a scratch script (logged): each list names Rb I
+    once, and any notice that D22 now raises for the rubidium isotopes is named in
+    the log.
+
+**12.2 — Include an ion that a component never had, when it is excluded from every
+ion (point 2, bug; `components.py`; D62, D64, D79).**
+- **The bug.** A component excluded from every ion lists every ion of its system
+  under Excluded ions (D79), but a click on an ion it never had is refused ("…
+  include it in one first"): the new line would copy z, b and T from the
+  component's live line, and it has none. On MWC137, a2 takes back Li I, Na I, K I
+  and Rb I, and refuses Ti II, Ca I, Ca II and Fe I.
+- **The fix.** The new line takes the component's z, b and T, with their labels,
+  from its commented-out lines (the first of them in the model's order, whose values
+  its card shows), and a first guess of log N, as for any component (D62). The
+  component is then included in that ion and stays excluded from the others. The
+  refusals that remain keep their own reasons (a label of its now on a live line,
+  Q7.6).
+- **Check.** Made into tests first:
+  - in `test_dashboard_components.py`, on a synthetic system with a component
+    excluded from its two ions (as a2), including a third ion of the system gives a
+    live line with the component's z, b and T labels and values, and a first-guess
+    log N (before the fix, the refusal);
+  - its other ions stay excluded, ALIS reads the model, and one undo gives back the
+    text;
+  - in `test_dashboard_qt_components.py`, a click on that ion in the greyed card
+    includes it with no warning, and the card is no longer greyed.
+
+**12.3 — A column density that a link computes, in a drag (point 5;
+`components.py`, `qt/components.py`; D24, D63, D65; Q12.6).**
+- **What** (Q12.6's lean).
+  - **The link's own input moves.** Where the dragged ion's log N is computed by a
+    link with exactly one free input that no other line or link uses (`lika` in
+    `ka(lia,lika) = lia - lika`), a drag below the continuum moves that input so that
+    the link gives the log N the drag asks for. The input is found as ALIS evaluates
+    the link (`profile.values`), by a search on that one value within its limits; a
+    limit stops the drag, as log N's own bounds do (D63). The drag is one step, which
+    writes the input's value and b's.
+  - **The readout** names both: "log N 13.10 (lika −2.80) · b_turb 3.40 km/s".
+  - **Otherwise** (an input that other lines use, such as `lia`, no free input, or
+    several), log N stays, and the readout says why: "log N is computed by the link
+    ka = lia − lika". A hidden value shows only the change in χ², as now (D24).
+- **Check.** New `unit` tests in `test_dashboard_components.py`, on a synthetic fit
+  with a link of that form:
+  - a drag below the continuum moves the variable so that the link gives the dragged
+    log N (before, log N is unchanged), and b moves as before;
+  - the variable's limit stops the drag, and the readout says so;
+  - a link whose inputs are both other lines' column densities leaves log N, and the
+    readout gives the reason;
+  - a hidden variable shows only Δχ²;
+  - ALIS reads the model, and one undo gives back the text;
+  - a `gui` test in `test_dashboard_qt_components.py`: the readout during the drag.
+
+**12.4 — Snips the user says are different data (point 1, bug; `snips.py`,
+`markers.py`, `preflight.py`, `validate.py`, `qt/regions.py`; D19, D67, Q1.8;
+Q12.3).**
+- **What** (Q12.3's lean).
+  - **A third choice.** Beside Merge the snips… and Keep in one snip only, the
+    Regions tab's offer for pixels fitted twice has They are different data. It
+    records the pair in `ui/project.json` (the two snips' files and a digest of their
+    shared pixels, as D67 keeps a notice), as one step that Undo takes back.
+  - **What it silences, for that pair alone:** `snips.shared_pixels`, the hatching
+    and the Regions tab's marker, the pre-flight note, and ALIS's own warning among
+    the `.mod` panel's problems (matched by the two files). A change to either snip
+    that changes the digest (its pixels or fit range) brings the warning back.
+  - **Taking it back:** Undo, or Check again beside the pair in the Snip box.
+  - Every other pair is checked as now, and `run_alis` on its own still warns.
+- **Check.** Made into tests first, in `test_dashboard_snips.py` and
+  `test_dashboard_markers.py`, on two synthetic snips on one grid that agree outside
+  a core (the shape of RJC's specids 6 and 7):
+  - the pair is found as now; once recorded, `shared_pixels`, `markers.fitted_twice`,
+    the Regions tab's marker, the pre-flight check and `validate.check`'s problems
+    leave it out (before, each lists it);
+  - a wider fit range on one snip, which adds shared pixels, brings it back;
+  - one undo gives back `ui/project.json`, and the pair is found again;
+  - another pair of the same project is still found;
+  - in `test_dashboard_qt_regions.py`, the offer has the third choice, the hatching
+    goes, and Check again brings it back.
+
+**12.5 — An emptied unassigned dataset stays, and says so (item 2 carried over,
+Q12.1's response; `markers.py`, `snips.py`, `qt/data.py`, `qt/regions.py`; D122).**
+- **What.** A dataset is removed only by the user (Q12.1's response).
+  - **CLEAR's preview**, when it takes an unassigned dataset's last snip, says what
+    is left: "emsmwcs137 (unassigned) will hold no snips, and has no source spectrum:
+    remove it with Remove dataset… on the Data tab, or give it snips with Load
+    snips…".
+  - **The Data tab** marks such a dataset: its row's state reads "0 snips ·
+    unassigned: no source spectrum", with ! and the preview's advice as its tooltip,
+    and the tab's marker is ! with the same advice.
+  - Remove dataset… takes it away, as now.
+- **Check.** New tests:
+  - in `test_dashboard_markers.py`, the Data tab's marker after CLEAR of an
+    unassigned dataset's last snip is ! and names the dataset (before, ✓);
+  - in `test_dashboard_snips.py`, CLEAR's plan keeps the row and carries the advice;
+    the plan for a dataset with a source carries none;
+  - in `test_dashboard_qt_data.py`, the row's state and tooltip, then Remove
+    dataset…;
+  - the existing tests of CLEAR and of unassigned datasets pass unchanged.
+
+**12.6 — Every view keeps its place (point 3; `qt/components.py`, `qt/regions.py`,
+`qt/fit.py`, `qt/plots.py`, `qt/widgets.py`, `qt/window.py`; D114; Q12.4).**
+- **The rule.** Nothing the dashboard does moves a scroll bar or a view's ranges; only
+  the user does, with the bars, the mouse, ⌂, ← or →. A view that shows another
+  transition or snip on a wavelength axis starts at its home; views on a velocity axis
+  (the Components tab's panels, Inspect in velocity) keep their velocity range from
+  one ion or snip to the next. A view the user has not zoomed (the progress chart
+  during a fit) keeps following what it shows.
+- **The fixes**, where the audit found them (see the Design):
+  - **Components:** the card list keeps its place when the cards are rebuilt; a card
+    selected by a click on it is not scrolled to, and one selected elsewhere (a tick,
+    the `.mod` panel's cursor) is scrolled to once the cards are laid out. The panels
+    keep their ranges through every step, a drag's included, and their scroll.
+  - **Regions:** the list of spectra, the transition list and the Snip box's table
+    keep their places.
+  - **Fit · Inspect:** the view and the progress chart keep their ranges through
+    every step.
+  - One helper (in `qt/widgets.py`) keeps a scroll area's place across a rebuild,
+    restored after the layout pass, for every tab to use.
+- **Between sessions** (Q12.4's lean): the window's size and position are kept in the
+  preferences (`dashboard.json`, D48) and restored when the dashboard opens. Each
+  project's `ui/view.json` keeps what it keeps now.
+- **Check.** `gui` tests, one for each place, made from the audit's script (each fails
+  before the fix):
+  - in `test_dashboard_qt_components.py`, a click on a card's Excluded ions link near
+    the bottom of the list leaves the list where it was (before, at its top); the
+    panels' zoom survives a step and a drag (before, ⌂), and another ion keeps the
+    velocity range;
+  - in `test_dashboard_qt_regions.py`, the list of spectra and the transition list
+    keep their places through a step;
+  - in `test_dashboard_qt_fit.py`, Inspect's ranges survive a step, made on the Fit
+    tab or on another;
+  - in `test_dashboard_qt_window.py`, the window's size and position come back from
+    the preferences;
+  - ⌂ still returns each view home, and the existing tests of D114's ranges pass
+    unchanged.
+
+**12.7 — Zooming the flux axis, and ⌂ for each axis (point 4; `qt/plots.py`; D38;
+Q12.5).**
+- **What** (Q12.5's lean).
+  - **The wheel with ⇧ Shift held** zooms the flux axis about the cursor, in every
+    spectrum view: the Data, Regions and Components tabs, and Fit's Inspect and
+    Compare. Without it, the wheel zooms the wavelength (or velocity) axis about the
+    cursor, as now. The residual strips keep their own scale.
+  - **⌂x and ⌂y** beside ⌂ on every zoom bar: ⌂x returns the wavelength (or velocity)
+    axis home, and ⌂y the flux axis of each view the bar controls; ⌂ returns both, as
+    now. Each is a step of ← and →.
+  - The zoom bar's tooltips and the shortcut sheet (F10) say so.
+- **Check.** `gui` tests in `test_dashboard_qt_plots.py`:
+  - a wheel event with ⇧ held zooms y about the cursor and leaves x (before, x
+    zooms); without it, x zooms and y stays;
+  - ⌂x changes x alone and ⌂y y alone, and ← takes each back;
+  - each tab's zoom bar has the buttons, acting on every view it controls;
+  - the window's text has no design reference (D44).
+
+**12.8 — Source spectra kept in the project (point 6; `session.py`, `qt/data.py`,
+`qt/window.py`, `qt/dialogs.py`; D8, F13; Q12.7).**
+- **What** (Q12.7's lean).
+  - **For each spectrum**, the Data tab's row offers Keep a copy in the project, and
+    once kept, Remove the copy (`bundle.embed_source`, `unembed_source`); its Source
+    column says "kept in the project". As Relink… does, it changes where the spectrum
+    is read from and not the model, so it is not a step of the history; the project
+    has unsaved changes until Save.
+  - **File → Save a copy with spectra…** writes a copy of the project with every
+    spectrum kept in it, for sharing; the open project is unchanged. A spectrum that
+    is missing or changed cannot be kept, and the dialog says which.
+  - **A project with kept copies**, opened on another computer, reads them and asks
+    nothing about relinking them (as now, `sources.EMBEDDED`); SNIP, cutting again
+    and the faint source spectrum read the copy.
+  - **The relink question**, when a spectrum is missing, adds that a project saved
+    with Save a copy with spectra… needs no relinking.
+- **Check.** New tests:
+  - in `test_dashboard_session.py`, a kept copy survives Save and Open; with the
+    spectrum's path gone, the project reports it as kept and `sources.spectrum` reads
+    it; Remove the copy takes it out at the next Save;
+  - Save a copy with spectra… writes a bundle whose sources are all kept, and leaves
+    the open project's file and state as they were;
+  - in `test_dashboard_qt_data.py` and `test_dashboard_qt_relink.py`, the row's
+    actions, and no relink question for a kept spectrum whose path is gone;
+  - `test_bundle.py`'s tests of embedding pass unchanged.
+
+**12.9 — lsfspline's knots: the kernel and the step (point 7; `resolution.py`, a new
+`lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8).**
+- **What.** No Qt; used by the dialog of 12.10.
+  - **The knots** of a data line's `lsfspline` (`knots_of`): their velocities and
+    heights, and the smoothing. A line with another function starts from RJC's
+    three: (−10, 0), (0, 1) and (+10, 0) km/s, with the smoothing of Q12.8 (iii).
+  - **The rules** (`check_knots`): every height within [0, 1]; no two knots at one
+    velocity; every knot between the two edges; the edges at height 0, moved in
+    velocity only; the centre fixed at (0, 1) (Q12.8 (ii)); three knots at least.
+  - **The kernel** (`kernel`), as ALIS makes it: ALIS's own `lsfspline` function
+    applied to a spike on a fine grid at the snip's wavelength, so that the dialog
+    draws ALIS's kernel (as D60 draws ALIS's model); and its FWHM (`fwhm`), the width
+    at half its peak, interpolated between points.
+  - **The step** (`knots_step`): the data line's resolution becomes
+    `lsfspline(smoothing, heights…; locations:velocities…)`, for one snip (its own,
+    D89) or for a dataset (every line that takes the dataset's, with shared labels,
+    so that it is one kernel; Q12.8 (i)). What the fit frees is Q12.8 (iv)'s: the
+    smoothing and the inner heights free, the edges and the centre fixed (upper-case
+    labels, as in RJC's `alis2.mod`), the labels from the dataset's scheme
+    (`edit.new_row_labels`); `bintype=` where the model's differs (D92). One step.
+  - **The buffer:** the kernel's half width (its outer edge, plus three σ of the
+    smoothing) is what the Snip box's check of each side's buffer asks for
+    (`snips.buffers`), as other functions' widths are.
+- **Check.** New `unit` tests in a new `test_dashboard_lsfknots.py`:
+  - the nine knots of RJC's `lsfspline` line are read, and written back unchanged;
+  - a line with `vfwhm` starts from the three default knots;
+  - each rule refuses what breaks it, with its reason;
+  - the kernel equals ALIS's function on a spike; the three default knots with no
+    smoothing give a triangle of FWHM 10 km/s, and a smoothing widens it;
+  - the step for a snip and for a dataset: ALIS reads the model, and one undo gives
+    back the text;
+  - the buffer check takes the kernel's half width;
+  - a hidden lsfspline value refuses the knots, with the reason.
+
+**12.10 — Set LSFSpline knots… (point 7; `qt/dialogs.py`, `qt/regions.py`,
+`qt/data.py`; D2, D43, D89; Q12.8).**
+- **What.**
+  - **lsfspline is offered** in the Snip box's resolution menu, and in the Data
+    tab's (Q12.8 (i)), no longer greyed. With it chosen, **Set LSFSpline knots…**
+    appears beside the menu; choosing lsfspline opens the dialog at once.
+  - **The dialog** draws, with pyqtgraph (D2): the knots as squares; a thin, faint
+    black line joining them in order of velocity; the smoothed kernel as a red line
+    of normal weight; and its FWHM, marked at half the peak with its value ("FWHM
+    9.6 km/s"). Beside the plot, the Smoothing (km/s) field. The x axis is velocity
+    in km/s, signed (D43), and the y axis runs from 0 to 1.
+  - **The knots:** a knot is dragged (the edges sideways only; the centre not at
+    all); a double-click on the plot adds a knot there; Delete knot (also the
+    right-click menu and the Delete key) removes the selected inner knot. A drag stops
+    at 12.9's rules (heights within [0, 1], between the neighbouring knots), and the
+    line, the kernel and the FWHM follow during the drag.
+  - **Apply** makes 12.9's step; Cancel changes nothing. Values are shown through the
+    gate; while one is hidden, the button is greyed and its tooltip says why.
+- **Check.** `gui` tests in `test_dashboard_qt_regions.py` and
+  `test_dashboard_qt_data.py`:
+  - choosing lsfspline shows the button and opens the dialog with the three default
+    knots; a snip with RJC's nine knots shows nine;
+  - a knot dragged up stops at 1 and down at 0, and one dragged sideways stops before
+    its neighbour; an edge moves sideways only, and the centre does not move;
+  - a double-click adds a knot, Delete knot removes it, and neither an edge nor the
+    centre can be removed;
+  - the FWHM shown is `lsfknots.fwhm`'s, and changes with the smoothing;
+  - Apply writes the line as one step, which one undo takes back; Cancel changes
+    nothing;
+  - the window's text has no design reference (D44).
+
+**12.11 — The review.**
+- **What.** A review page built by `doc/dashboard/stage12/`, with the earlier pages'
+  stylesheet. Screenshots at 1440×900 of:
+  - a card's lists with 87Rb I, and a2 included in Ti II (12.1, 12.2);
+  - a drag's readout on a column density that a link computes (12.3);
+  - the Regions tab's offer for pixels fitted twice, with its third choice (12.4);
+  - CLEAR's preview and the Data tab's row for an emptied unassigned dataset (12.5);
+  - the zoom bar with ⌂x and ⌂y, and a view zoomed in y (12.7);
+  - the Data tab's Keep a copy in the project, and Save a copy with spectra… (12.8);
+  - the Snip box with Set LSFSpline knots…, and the dialog on RJC's nine knots
+    (12.10).
+
+  Where a still cannot show it (the places kept, 12.6), the page names the test. It
+  is published as a private page, and RJC's comments are applied.
+- **Check.** The page builds from screenshots of the `gui` tests' scenes (synthetic
+  projects, `tests/dashboard_fits.py`). Every task of 12.1–12.10 that a user sees has
+  its picture, or its test named. RJC's comments are applied and logged.
+
+**12.12 — Close the stage.**
+- **The documents.** Bring `doc/ALIS_workflow.md` §4.3, `CHANGELOG.md`,
+  `tests/README.md` and the `gui-component` skill (its "Stage 12 additions") up to
+  date. Record the decisions in `ALIS_v2_dashboard_prompts.md` (D129 onwards, from
+  Q12.1–Q12.8 and the review), saying which earlier decisions they refine: D8, D19
+  and Q1.8, D22 and D37, D38, D63 and D65, D64 and D79, D89, D114, D122, and F13.
+  Update `dashboard_stage0.md`: Stage 12 done, and the "After v1" list. Update
+  `deferred_work.md`: §1.4 (the GPU), §7.8 and §7.9 (Q12.1 (b)) stay, and anything
+  this stage leaves undone is added.
+- **Found and not done.** What was found during the stage and not built goes to Stage
+  13's "Carried over from Stage 12", with a query, as Stage 11's close did.
+- **What follows (Q12.2 (a)).** Write `claude_prompts/dashboard_stage13.md` for the
+  feedback that arrives after this list closes, as Stage 11's close wrote this
+  document.
+- **Check.**
+  - Every point of the Feedback list and the item carried over has its task logged
+    as done with its check passing: point 1 in 12.4, point 2 in 12.2, point 3 in 12.6,
+    point 4 in 12.7, point 5 in 12.3, point 6 in 12.8, point 7 in 12.9 and 12.10,
+    point 8 in 12.1, and item 2 in 12.5; items 1 and 3 are in `deferred_work.md` §7.8
+    and §7.9.
+  - Q12.1–Q12.8, and any query raised while the tasks were built, are answered in the
+    Queries section.
+  - The review of 12.11 is applied.
+  - The `unit`, `gui` and `fast` batches pass, also under CI's pytest. Their counts go
+    in the log, against Stage 11's close: 2235 unit tests passed with 119 skipped
+    (2234 and 120 under pytest 9.2.0), 301 `gui` tests, and 149 `fast` tests, the
+    regression harness and its `test_bundle` mode included.
+  - CI passes on both platforms, the `gui` job within its 90 minutes.
+  - `test-coverage` runs on what changed. The untested paths go in the log, and the
+    most valuable tests are added.
+  - The window's text has no design reference (D44), and pre-commit passes on every
+    changed file.
+  - ALIS outside `alis/dashboard/` is unchanged (`git diff --stat 1e4c2f4 -- alis
+    ':!alis/dashboard'` is empty, against Stage 11's close). This stage's tests are
+    synthetic and need none of RJC's files; MWC137 is checked with scratch scripts,
+    logged.
 
 ## Skills to use for this stage
 
@@ -126,7 +575,10 @@ after it closes the stage, as Stage 11's Tasks 11.10 and 11.11 did.*
 
 ## Queries
 
-*Raised by Claude. Each gives Claude's lean.*
+*Raised by Claude: Q12.1 and Q12.2 with this document (2026-11-13), Q12.3–Q12.8 at
+Prompt 1 (2026-11-16). Each gives Claude's lean. A question that comes up while a
+task is built pauses the work; it is asked here, and its answer is logged here
+(Stage 11, Prompt 2).*
 
 **Q12.1 — The items carried over from Stage 11.** For each, two ways:
 - **(a) It joins this stage**, after the feedback's tasks.
@@ -137,6 +589,12 @@ guess the user would have to check) and item 3 (RJC's wording fits every fit); (
 for item 2, a small fix that leaves no empty dataset behind.
 
 **Response:** I agree with your lean. For item 2, we need to make sure a dataset (even if it is unassigned and contains no SNIPs) is only removed explicitly by the user. A warning message could instead be displayed to the user so they know they can remove the dataset, as it currently contains no SNIPs and is unassigned. If they wish, they could alternatively cut a SNIP from this unassigned dataset.
+
+*Applied (Prompt 1, 2026-11-16): item 2 joins the stage as Task 12.5. CLEAR keeps the
+emptied dataset, as now, and the user is told that it holds no snips and has no
+source, and how to remove it or give it snips. A snip cannot be cut from it, since
+it has no source spectrum, so the advice names Load snips…, which gives it snips.
+Items 1 and 3 wait in `deferred_work.md` §7.8 and §7.9.*
 
 **Q12.2 — What follows this stage.** Two ways:
 - **(a) Another stage of feedback** (Stage 13) for what arrives after this list
@@ -149,6 +607,124 @@ My lean: (a), unless RJC names one of (b).
 
 **Response:** I agree with option (a), for now.
 
+*Applied (Prompt 1): Task 12.12 writes `dashboard_stage13.md` for the feedback that
+arrives after this list closes.*
+
+**Q12.3 — Two snips whose pixels agree, which the user says are different data
+(point 1, Task 12.4).** Specids 6 and 7 of MWC137 agree digit for digit at 297 of
+336 pixels, and differ only in K I 7701's core. By Q1.8's test, the 147 pixels both
+fit outside the core are the same pixels of the same data, and ALIS warns as the
+dashboard does. Q1.8's response says that pixels are shared "only if they are
+extracted from the same parent data"; the values of these two snips say they are,
+and the user says they are not. Three ways:
+- **(a) The user says so, for each pair.** The Regions tab's offer for pixels fitted
+  twice gains a third choice, They are different data, kept with the project. That
+  pair is then no longer warned about anywhere in the dashboard, until either snip's
+  pixels or fit range change. `run_alis` on its own still warns.
+- **(b) By dataset.** Two snips in different datasets are never taken as the same
+  pixels, unless the datasets share a source spectrum. MWC137's pair is cleared with
+  no click, since the dashboard put specid 6 in a dataset of its own when it loaded
+  the fit. But a snip loaded unassigned (with no source) would then never be checked
+  against another dataset's snips, though it may have been cut from the same
+  spectrum.
+- **(c) As now.** The warning stays, and the fit runs (QF.21 (c)).
+
+My lean: (a). The test keeps its protection for every pair the user has not looked
+at, and the user's word is kept for the pairs they have.
+
+**Response:** Let's introduce a button that says "Ignore warning" that the user can click to remove the warning for that pair of SNIPs. This would allow the user to indicate that they are aware of the issue and have chosen to ignore it, without changing the underlying logic of how shared pixels are determined.
+
+**Q12.4 — Places kept between sessions (point 3, Task 12.6).** Point 3 asks that
+scroll bars, zooms and the window's size be remembered. Within a session, Task 12.6
+keeps every place through every action. Between sessions, two ways:
+- **(a) The window's size and position**, kept in the preferences
+  (`~/.alis/dashboard.json`) and restored when the dashboard opens. Each project's
+  view is as now: its tab, transition, ion, Fit view and the `.mod` panel's width.
+- **(b) As (a), and each view's zoom and each list's scroll**, kept in the project's
+  `ui/view.json`, so that a project opens exactly where it was left.
+
+My lean: (a). The window's size belongs to the screen it is on, and a zoom to the
+look being taken; a project reopened days later starts from ⌂, while the tab,
+transition and ion it shows are kept as now.
+
+**Response:** I prefer option (b), to also store each view's zoom and each list's scroll in the project's `ui/view.json`. This would provide a more seamless user experience, allowing users to pick up exactly where they left off when reopening a project. The only concern I have is if this causes any lag in the interaction with the GUI. Provided no significant lag is introduced, I think this would be a valuable feature.
+
+**Q12.5 — The key that zooms the flux axis (point 4, Task 12.7).** Two ways:
+- **(a) Y held**, as point 4 suggests. Qt reports only modifier keys with a wheel
+  event, so a held Y needs the Components tab's way with N and B: pressed while the
+  pointer is over a spectrum, the key is the view's and nothing else receives it. A
+  "y" typed in the `.mod` panel while the pointer rests on a spectrum would be taken
+  by the view.
+- **(b) ⇧ Shift held.** Qt gives its state with each wheel event, so nothing is
+  taken from the keyboard, and it works the same with a mouse wheel and a trackpad
+  (on a Mac, ⇧ turns a mouse wheel's scroll sideways, which the view reads as the
+  same zoom).
+
+My lean: (b). ⌂x and ⌂y are as point 4 asks, either way.
+
+**Response:** I agree with option (b). Using ⇧ Shift held for zooming the flux axis is more intuitive and consistent with common user interface conventions. It also avoids potential conflicts with other keyboard shortcuts and ensures that the zoom functionality works seamlessly across different input devices, such as a mouse wheel and a trackpad.
+
+**Q12.6 — A column density that a link computes (point 5, Task 12.3).** D65: links
+are written in the `.mod` panel only, and the Components tab never drags or types
+what they compute. Point 5 asks whether a drag could still change it. Three ways:
+- **(a) The link's own input moves**, where there is exactly one: free, and used by
+  no other line or link (`lika` in `ka = lia − lika`, the log Li/K ratio). The drag
+  moves it so that the link gives the dragged log N, and Li I's log N stays. Where
+  there is not exactly one such input, as (b).
+- **(b) The readout only.** log N stays, and the readout says why ("log N is computed
+  by the link ka = lia − lika").
+- **(c) As now.**
+
+My lean: (a), with (b) where (a) has no single input to move. It refines D65 for
+drags only: links are still written in the `.mod` panel.
+
+**Response:** I agree with option (a) with the fallback to (b) when there is no single input to move. This approach allows for more intuitive interaction when adjusting column densities, while still providing clear feedback to the user when adjustments cannot be made due to the nature of the link. It maintains consistency with the existing behavior of links being written in the `.mod` panel, while enhancing the user experience during drags.
+
+**Q12.7 — Source spectra in the project (point 6, Task 12.8).** D8 offers to embed a
+spectrum "for archiving". The project file can hold one, and the dashboard reads it,
+but the window has no way to put one there. Three ways:
+- **(a) The user's choice, for each spectrum:** Keep a copy in the project, on the
+  Data tab; and File → Save a copy with spectra…, which writes a copy of the project
+  with every spectrum kept in it, for sharing, and leaves the open project as it is.
+- **(b) Always:** every spectrum is kept in the project as it is added, and those of
+  older projects at their next Save.
+- **(c) As (a), with a preference** to keep a copy of every spectrum added to a new
+  project (off to start with).
+
+My lean: (a). MWC137's two spectra would add about 15 MB to its 1.7 MB file, and
+about a second to each Save and to each minute's recovery copy. Most projects stay
+on one computer, and Save a copy with spectra… serves the sharing that point 6 asks
+for.
+
+**Response:** I agree with option (a), that the user should be able to choose if they wish to save a `.model` file with datasets, or without datasets.
+
+**Q12.8 — Set LSFSpline knots… (point 7, Tasks 12.9 and 12.10).** Four points:
+- *(i) Where it is offered.*
+  - **(a)** In the Snip box (a snip's own resolution, as point 7 asks) and in the Data
+    tab's Resolution (a dataset's: one kernel, shared by its snips).
+  - **(b)** In the Snip box only.
+- *(ii) The centre knot* (0 km/s, height 1).
+  - **(a)** Fixed: neither moved nor removed. ALIS normalises the kernel, so the
+    centre's height only sets the scale; and moving it sideways would shift the
+    line, which the dataset's shift already does.
+  - **(b)** Moved sideways, its height fixed at 1.
+- *(iii) The smoothing's starting value*, for a snip that had another function.
+  - **(a)** The snip's resolution before, in km/s (2.14 km/s for most of MWC137's
+    snips).
+  - **(b)** Zero: the knots' straight lines alone (from the three default knots, a
+    triangle of FWHM 10 km/s).
+  - **(c)** A value you name.
+- *(iv) What the fit frees.*
+  - **(a)** As your `alis2.mod`: the smoothing and the inner knots' heights free; the
+    edges and the centre fixed. The knots' velocities are fixed, since ALIS reads
+    them as a keyword.
+  - **(b)** Every height fixed, the smoothing free.
+
+My lean: (a) for all four.
+
+**Response:** I agree with option (a) for all four points. If the resolution is already specified for a dataset/snip, then we should use that value as an estimate. If the resolution is not available for a dataset/snip, the default value should be 5 km/s.
+
 ## Prompts
 
 1. Please read the list of changes and bug fixes, and the work of Stages 0–11 (their documents and logs). I have drafted a list of bugs, improvements, and additions to the dashboard (see Section `Feedback`). Please review these suggestions, and if anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please write an ordered list of tasks. Please write all the tasks, each with a description of what it builds or fixes, and the check that will verify it. Each task should be numbered sequentially (12.1, 12.2, etc.). The final Task (currently labelled 12.N) should be to close the stage, and should include the checks that will verify that the stage is complete.
+2. I have responded to your queries. Please review my responses, and if you have any further queries, please ask them in the Queries section. When everything is clear, please check that the ordered list of tasks is correctly written. Each task should be numbered sequentially (12.1, 12.2, etc.), and should include a description of what it builds or fixes, and the check that will verify it. The final Task should be to close the stage, and should include the checks that will verify that the stage is complete. Please note that we can continue this thread provided we are below 75% context usage. If we exceed that, we will need to start a new thread to continue the discussion.

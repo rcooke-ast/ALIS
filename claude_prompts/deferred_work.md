@@ -86,6 +86,9 @@ correctness first, then what users need next, then effort; RJC orders the work.
     (§5).
 22. The metal example's junk last pixel (`examples/metal_line_abs/data/OI_SiII.dat`,
     flux −10¹⁰, outside the fit range), found in dashboard Stage 6.
+23. Load snips… for a file that cannot be read or names no transition (§7.8), and
+    Open a fit's question in the singular for a fit of one dataset (§7.9), both
+    waiting for a user to ask (dashboard Stage 12, Q12.1 (b)).
 
 ### Not planned, or entries to close
 - **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
@@ -356,7 +359,8 @@ jobs fail. The **black** badge is deliberately *not* there yet; it goes up when
 
 Added 2026-10-07 (dashboard Stage 4). Here `Q4.n` is a query in
 `claude_prompts/dashboard_stage4.md`. §7.5 and §7.6 were added on 2026-10-18 (dashboard
-Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`.
+Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8 and
+§7.9 were added on 2026-11-16 (dashboard Stage 12, Q12.1 (b)).
 
 ### 7.1 Telluric flags in the transition list
 - **What:** flag a transition whose observed wavelength falls in a telluric band,
@@ -479,3 +483,34 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`.
   `generate data`, §7.5, or from a Fourier-transform spectrometer), with its reference
   outputs in the regression harness. Then check whether `apod`'s buffer is right for
   such data, and correct `getminmax` if it is not.
+
+### 7.8 Load snips…: a file that cannot be read, or names no transition
+
+- **What:** Load snips… (snips without a model) still stops the whole load when one
+  file cannot be read as a table of numbers, or when its name names no transition
+  (D122, Q7.4): such a file has no transition to be placed at. The dialog that assigns
+  snips could take it instead, on its right, if the transition were guessed from the
+  system's ions or chosen by the user.
+- **Why deferred:** RJC, Q12.1 (b) of `dashboard_stage12.md`: it waits for a user to
+  ask for it. A guessed transition is one the user would have to check, and a file
+  of `prepfit`'s names its transition.
+- **Where:** Stage 11's "Carried over" item 1 (`dashboard_stage12.md`), D122;
+  `alis/dashboard/loadfit.py` (the files' transitions), `alis/dashboard/qt/window.py`
+  (Load snips…).
+- **To finish:** a file whose name names no transition goes to the dialog's
+  right-hand list with a transition to choose (a menu of the system's ions'
+  transitions over its wavelengths); one that cannot be read is named and left out,
+  and the others load.
+
+### 7.9 Open a fit's question for a fit of one dataset
+
+- **What:** Open a fit asks every fit, in RJC's words, for "the full spectra" its
+  snips were cut from (D123), since their number cannot be known before they are
+  given. A fit whose snips all share one dataset was asked in the singular before
+  Stage 11.
+- **Why deferred:** RJC, Q12.1 (b) of `dashboard_stage12.md`: RJC's wording fits
+  every fit, and it waits for a user to ask for the singular back.
+- **Where:** Stage 11's "Carried over" item 3 (`dashboard_stage12.md`), D123;
+  `alis/dashboard/qt/window.py` (`open_fit`).
+- **To finish:** the question counts the `.mod`'s datasets (`loadfit.fit_datasets`)
+  and words itself for one or for several.
