@@ -152,3 +152,79 @@ FWHM 1.65–1.67 times the smoothing (2√(ln 2) = 1.665), as Prompt 3 (ii) says
 
 No code was changed. Waiting on RJC's responses to Q12.9 and Q12.10; Tasks 12.9 and
 12.10 are written with the leans.
+
+### 2026-11-16 (Prompt 4: the responses to Q12.9 and Q12.10, and Q12.11)
+
+**Read.** RJC's responses: Q12.9 (i) spix from `nsubmin`, never finer than ALIS's
+sub-pixels, and ALIS's default `nsubmin` raised from 5 to 10; (ii) (a), the edges
+following the FWHM. Q12.10 (b), `examples/lsf_spline` a regression case, deferred if
+it is too slow or does not reproduce. Also where `nsubmin` is named (`config.py`;
+`doc/ALIS_workflow.md`'s table; `doc/tex_files/description.tex`; nine
+`helium34` models set `run nsubmin 100`), and the dashboard's use of ALIS's
+sub-pixels (`profile.py` and `continuum.py` call `load.load_subpixels`).
+
+**Checked** with a scratch script
+(`/private/tmp/claude-501/-Users-rcooke-Software-ALIS/482188ad-3a54-42ff-be7f-241bdc95cabd/scratchpad/s12/spix_width.py`):
+for a FWHM of 2 km/s on 2 km/s pixels, `lsfspline` asks for 12 sub-pixels. With spix
+a tenth of a pixel (`nsubmin` 10), the delta function's kernel has FWHM 2.000 km/s
+on 10 sub-pixels and 2.010 km/s (+0.5%) on 12; with a fifth (`nsubmin` 5), 2.040
+km/s (+2.0%) on 12.
+
+**Applied** in Task 12.9: spix from the model's `nsubmin` (or ALIS's default); the
+default 10 in `config.py` and the two documents; the regression references that the
+new default moves regenerated and logged with their χ²; `examples/lsf_spline` a case
+of the `examples` batch, its data generated again, or deferred as RJC's response
+says; the kernel drawn on the sub-pixels ALIS uses for the snip with the dialog's
+smoothing, worked out again when the smoothing changes. Task 12.12's check: ALIS
+outside the dashboard changes in `lsfspline.py` and `config.py` alone; `CHANGELOG.md`
+gives the new default. Notes under the two responses, and the header's, the Tasks'
+and the Queries'.
+
+**Raised** Q12.11: (i) with spix from `nsubmin`, the kernel is exactly Gaussian only
+where ALIS uses `nsubmin` sub-pixels (lean: spix from ALIS's sub-pixels for the snip
+with the dialog's FWHM, which keeps both aims); (ii) the default of 10 changes every
+fit's sub-pixels, moves the harness's references and slows fits of broad lines, and
+the delta function does not need it (lean: keep 5). Task 12.9 is written with the
+responses, and is revised if Q12.11's response departs.
+
+**Checked** the list: Tasks 12.1–12.12 in order, each with what it builds or fixes
+and its check; 12.12 closes the stage. No code was changed.
+
+### 2026-11-16 (Prompt 4, run again: the response to Q12.11)
+
+**Read.** RJC's response to Q12.11: (i) the knots are as the user defines them, and
+never change with the sub-pixels during a fit; Delta Function sets their starting
+values; no two knots may be closer than one sub-pixel at `nsubmin`, the separation
+Delta Function gives; (ii) (a), ALIS's default `nsubmin` becomes 10.
+
+**Applied** in `dashboard_stage12.md`:
+- Task 12.9: spix is one sub-pixel at ALIS's coarsest, the snip's pixel as ALIS
+  sizes it (`get_binsize`, its largest) divided by `nsubmin`, and for a dataset its
+  snips' largest (changed from the smallest, so that no knot is finer than ALIS's
+  sub-pixels in any snip); the rules refuse two knots closer than spix; a line
+  written by hand that breaks a rule is read as it is; the knots never change with
+  the sub-pixels; the checks (closer than spix refused, exactly spix accepted).
+- Task 12.10: a drag stops spix from a neighbour; a double-click within spix adds no
+  knot; knots that break a rule are marked, and Apply greyed until they are apart;
+  their checks.
+- Task 12.12: `CHANGELOG.md` gives the default of 10. The note under the response;
+  the header's, the Tasks' and the Queries' notes.
+
+Read "at least `nsubmin` sub-pixels" as one sub-pixel at `nsubmin` (the pixel
+divided by `nsubmin`), the separation the response gives Delta Function's ±spix;
+the note under the response says so.
+
+**Checked** the list: Tasks 12.1–12.12 in order, each with what it builds or fixes
+and its check; 12.12 closes the stage. Every query, Q12.1–Q12.11, is answered. No
+further query was needed. No code was changed. The next prompt (5) starts Task 12.1.
+
+### 2026-11-16 (RJC's question: the knots at ±spix after Delta Function)
+
+RJC asked whether the Tasks make clear that the two knots at ±spix can still be
+dragged after Delta Function, which only sets a very narrow profile in place of the
+default triangle. It was intended (they are inner knots, dragged as any other, Task
+12.10), but only implied. Made explicit: Task 12.10's Delta Function says that the
+button sets the starting values only, and that the ±spix knots are dragged up,
+down, outwards and inwards (to spix from the centre), deleted, or joined by others;
+a new check drags and deletes them after Delta Function. Task 12.9's note on the
+delta function says the same. No code was changed.

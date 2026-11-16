@@ -29,7 +29,11 @@ in `deferred_work.md` §7.8 and §7.9. No code was changed. Prompt 2 (2026-11-16
 applied RJC's responses to Q12.3–Q12.8 to Tasks 12.4, 12.6 and 12.9, and checked the
 list; no further query was needed, and no code was changed. Prompt 3 (2026-11-16)
 added the delta function and lsfspline's smoothing as a FWHM to Tasks 12.9 and
-12.10, with Q12.9 and Q12.10; no code was changed.*
+12.10, with Q12.9 and Q12.10; no code was changed. Prompt 4 (2026-11-16) applied
+the responses to Q12.9 and Q12.10 to Task 12.9 (spix from `nsubmin`, its default 10;
+`examples/lsf_spline` a regression case), with Q12.11 on two consequences. Prompt
+4, run again (2026-11-16), applied the response to Q12.11 to Tasks 12.9 and 12.10;
+no further query was needed, and no code was changed.*
 
 ## Feedback
 
@@ -98,8 +102,8 @@ queries below, each with a lean.*
   user's files are checked with scratch scripts, logged (D99).
 - **Outside the dashboard.** A point about ALIS itself becomes a query: the
   dashboard's stages change ALIS only where a query agrees. No point of the Feedback
-  list needs ALIS to change; Prompt 3 asks for one change, lsfspline's smoothing as
-  a FWHM (Task 12.9).
+  list needs ALIS to change; Prompt 3 asks for lsfspline's smoothing as a FWHM, and
+  Q12.9's response for `nsubmin`'s default of 10 (Task 12.9).
 - **Grouping and order.** Points are grouped by the part of the window they touch,
   and a bug comes before the work that builds on it.
 - **Shown before it closes.** Every change a user sees is shown on a review page,
@@ -205,7 +209,7 @@ and scratch `gui` tests, before its task was written. No code was changed.
   the `.mod` panel (D89).
 - The Figure tab's preview, drawn by its script (D105), has no zoom bar.
 - ALIS outside `alis/dashboard/` does not change, except `lsfspline`'s smoothing
-  (Prompt 3 (ii), Task 12.9).
+  (Prompt 3 (ii)) and `nsubmin`'s default (Q12.9's response), in Task 12.9.
 
 ## Tasks
 
@@ -231,9 +235,13 @@ of Q12.3–Q12.8. They were revised at Prompt 2 (2026-11-16) with RJC's response
 ranges and each list's place kept in `ui/view.json`, with no lag) and 12.9 (Q12.8
 (iii): the smoothing starts at the resolution before, or 5 km/s); 12.3, 12.7, 12.8
 and 12.10 are as the leans. At Prompt 3 (2026-11-16), 12.9 took lsfspline's
-smoothing as a FWHM in ALIS, and 12.9 and 12.10 the delta function, written with the
-leans of Q12.9 and Q12.10. The order puts a bug before the work that builds on it,
-and keeps work on one part of the window together:*
+smoothing as a FWHM in ALIS, and 12.9 and 12.10 the delta function. At Prompt 4,
+12.9 took RJC's responses to Q12.9 and Q12.10: spix from `nsubmin`, ALIS's default
+`nsubmin` 10, and `examples/lsf_spline` a regression case. At the second Prompt 4,
+12.9 and 12.10 took the response to Q12.11: no two knots closer than spix, the
+knots never changed with the sub-pixels, and the default of 10 kept. The order puts
+a bug before the work that builds on it, and keeps work on one part of the window
+together:*
 - *the Components tab: point 8's names, point 2's include, point 5's drag
   (12.1–12.3);*
 - *the Regions and Data tabs: point 1's pixels, and item 2's emptied dataset (12.4,
@@ -473,7 +481,8 @@ Q12.5).**
 
 **12.9 — lsfspline's knots: the smoothing as a FWHM, the delta function, the kernel
 and the step (point 7, Prompt 3; `alis/functions/lsfspline.py`, `resolution.py`, a
-new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
+new `lsfknots.py`, `snips.py`, `alis/config.py`; D60, D89, D92;
+Q12.8–Q12.11).**
 - **ALIS's smoothing becomes a FWHM** (Prompt 3 (ii); ALIS outside the dashboard,
   as RJC asks). `lsfspline`'s first value is now the FWHM of the Gaussian that
   smooths the knots, in km/s.
@@ -484,41 +493,67 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
   - **Existing models.** A model written before gives a kernel smoothed 0.60 times
     as wide as it did. `CHANGELOG.md` and the function's docstring say so; nothing
     converts old models.
+  - **ALIS's fewest sub-pixels per pixel** (`run nsubmin`, Q12.9's response) goes
+    from 5 to 10 by default (`config.py`, `doc/ALIS_workflow.md`'s table,
+    `doc/tex_files/description.tex`), so that spix is a tenth of a pixel unless the
+    model says otherwise (Q12.11 (ii): the cost to every fit accepted).
   - **The regression harness.** No case uses `lsfspline` (`examples/lsf_spline` has
-    no references, and no fit of `context/fitting_examples/` uses it), so no
-    reference changes. Q12.10 asks whether `examples/lsf_spline` becomes a case.
+    no references, and no fit of `context/fitting_examples/` uses it). The new
+    `nsubmin` moves the references of every case with a snip that used fewer than
+    10 sub-pixels; each is regenerated with the change, and listed in the log with
+    its χ² before and after.
+  - **`examples/lsf_spline` becomes a case** (Q12.10 (b)): its data are generated
+    again with the new smoothing, the generated files' golden copies go in
+    `reference_fits/`, and the fit's `.mod.out.reference` is written. If the case is
+    too slow for CI's `examples` batch (over a minute), or does not reproduce, it
+    waits in `deferred_work.md`, and the unit tests stand (RJC's response).
 - **What the dashboard builds.** No Qt; used by the dialog of 12.10.
   - **The knots** of a data line's `lsfspline` (`knots_of`): their velocities and
     heights, and the smoothing. A line with another function starts from RJC's
     three: (−10, 0), (0, 1) and (+10, 0) km/s.
   - **The delta function** (`delta_knots`, Prompt 3 (i)): five knots, (−edge, 0),
     (−spix, 0), (0, 1), (+spix, 0) and (+edge, 0).
-    - spix is the velocity of one sub-pixel: the snip's smallest pixel in km/s,
-      divided by the most sub-pixels ALIS uses (`nsubmax`, Q12.9 (i)). Every
-      sub-pixel then lies at least spix from its neighbour, so the knots' lines give
-      ALIS one non-zero point, at the centre. For a dataset, it is the smallest
-      over its snips.
+    - spix is the velocity of one sub-pixel at ALIS's coarsest: the snip's pixel in
+      km/s (ALIS's `get_binsize`, its largest), divided by the fewest sub-pixels
+      ALIS uses (the model's `nsubmin`, or ALIS's default; Q12.9 (i)'s response).
+      For a dataset, it is the largest over its snips. No knot is then finer than
+      ALIS's sub-pixels in any snip, and spix is the closest that two knots may be
+      (the rules below, Q12.11 (i)).
+    - Where ALIS uses `nsubmin` sub-pixels for the snip, the knots' lines give it
+      one non-zero point, at the centre. Where it uses more, the knots stay as they
+      are (they are not changed with the sub-pixels, in the dialog or in a fit), and
+      the kernel ALIS makes is a little wider than the FWHM, as the dialog shows
+      (Q12.11 (i)).
     - edge is six times the FWHM (the smoothing), and at least twice spix, so that
       the five knots stay apart. The edges follow the smoothing while the knots are
       the delta function's five (Q12.9 (ii)).
     - The edges and the centre are fixed at heights 0, 1 and 0, as before; ±spix
       are inner knots, free in the fit (Q12.8 (iv)).
-    - With a smoothing f, ALIS's kernel is then a Gaussian of FWHM f, sampled on the
-      sub-pixels.
+    - With a smoothing f, and `nsubmin` sub-pixels, ALIS's kernel is then a
+      Gaussian of FWHM f, sampled on the sub-pixels. Delta Function sets the knots'
+      starting values, a very narrow profile in place of the default triangle; the
+      user may then move, add or remove knots within the rules, the two at ±spix
+      included (Task 12.10).
   - **The smoothing's start** (Q12.8 (iii) and its response): the snip's or the
     dataset's resolution before, as a FWHM in km/s (`resolution.convert`: `vfwhm` as
     it is, `vsigma` and `Afwhm` at the snip's wavelength converted); 5 km/s where it
     has none that converts (`lsffile`, `lsf`, `apod`, another function of several
     parameters) or where the value is hidden, so that the dialog shows nothing of
     it.
-  - **The rules** (`check_knots`): every height within [0, 1]; no two knots at one
-    velocity; every knot between the two edges; the edges at height 0, moved in
-    velocity only; the centre fixed at (0, 1) (Q12.8 (ii)); three knots at least.
+  - **The rules** (`check_knots`): every height within [0, 1]; no two knots closer
+    than spix, one sub-pixel at `nsubmin` (Q12.11 (i): a knot closer to its
+    neighbour may have no effect in the fit); every knot between the two edges; the
+    edges at height 0, moved in velocity only; the centre fixed at (0, 1) (Q12.8
+    (ii)); three knots at least. A line whose knots break a rule (two knots closer
+    than spix, written by hand) is read as it is, and the dialog names the rule.
   - **The kernel** (`kernel`), as ALIS makes it: ALIS's own `lsfspline` function
-    applied to a spike on the snip's finest sub-pixels (its pixels divided by
-    `nsubmax`) at its wavelength, so that the dialog draws ALIS's kernel (as D60
-    draws ALIS's model); and its FWHM (`fwhm`), the width at half its peak,
-    interpolated between points.
+    applied to a spike on the snip's sub-pixels at its wavelength, as many as ALIS
+    uses for the snip with the dialog's smoothing (the most of what the model's
+    lines ask, `profile`'s state, and what the smoothing asks, between `nsubmin` and
+    `nsubmax`), so that the dialog draws ALIS's kernel (as D60 draws ALIS's model);
+    and its FWHM (`fwhm`), the width at half its peak, interpolated between points.
+    The sub-pixels are worked out again when the smoothing changes, not during a
+    drag.
   - **The step** (`knots_step`): the data line's resolution becomes
     `lsfspline(smoothing, heights…; locations:velocities…)`, for one snip (its own,
     D89) or for a dataset (every line that takes the dataset's, with shared labels,
@@ -539,14 +574,20 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
     - `set_vars` asks for as many sub-pixels as `vfwhm` with the same FWHM;
     - RJC's nine knots with a smoothing f give the kernel that the old code gave with
       f / 2√(ln 2): only the smoothing's meaning changed;
-    - `test_function_interface.py`, the regression harness and its `test_bundle`
-      mode pass unchanged.
+    - `config`'s `nsubmin` is 10, and a model's `run nsubmin 5` still gives 5;
+    - `test_function_interface.py` passes; the regression harness and its
+      `test_bundle` mode pass, with the references that `nsubmin` moves regenerated
+      and logged, and `examples/lsf_spline` a case of the `examples` batch (or
+      deferred, as above).
   - **The dashboard's**, in a new `test_dashboard_lsfknots.py` (`unit`):
     - the nine knots of RJC's `lsfspline` line are read, and written back unchanged;
-    - the delta function for a snip: spix from its smallest pixel and `nsubmax`, the
-      edges at six times the FWHM (at least twice spix), the rules accept the five
-      knots, and the kernel's FWHM is the smoothing's; for a dataset, spix is its
-      snips' smallest;
+    - the delta function for a snip: spix from its pixel (`get_binsize`) and
+      `nsubmin` (the model's, or 10), the edges at six times the FWHM (at least
+      twice spix), the rules accept the five knots, and the kernel's FWHM is the
+      smoothing's where ALIS uses `nsubmin` sub-pixels, and wider where a narrow
+      line asks for more; for a dataset, spix is its snips' largest;
+    - two knots closer than spix are refused, and two exactly spix apart are
+      accepted;
     - a line with `vfwhm` starts from the three default knots, with that FWHM as the
       smoothing; one with `vsigma` or `Afwhm` with its FWHM in km/s; one with
       `lsffile`, or a hidden value, with 5 km/s;
@@ -572,28 +613,45 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
   - **Delta Function** (Prompt 3 (i)), a button beside the plot, asks first: "All
     the knots will be cleared, and replaced by a delta function." with Confirm and
     Cancel. Confirm puts 12.9's five knots in place of every knot, at the
-    smoothing's FWHM; the user then sets the FWHM in the field, and the edges follow
-    it (at ±6 FWHM) until a knot is moved, added or removed (Q12.9 (ii)). The red
-    line is then a Gaussian of that FWHM, and the FWHM marked is the field's.
+    smoothing's FWHM: a very narrow profile in place of the default triangle. The
+    red line is then a Gaussian of that FWHM, and the FWHM marked is the field's.
+    The button only sets the knots' starting values:
+    - the user sets the FWHM in the field, and the edges follow it (at ±6 FWHM)
+      until a knot is moved, added or removed (Q12.9 (ii));
+    - the two knots at ±spix are inner knots like any other. Each is dragged up and
+      down (heights within [0, 1]) and sideways (outwards, or inwards to spix from
+      the centre), or deleted, and knots are added beside them;
+    - once a knot is moved, the profile is the user's, and the red line and the
+      FWHM follow it.
   - **The knots:** a knot is dragged (the edges sideways only; the centre not at
     all); a double-click on the plot adds a knot there; Delete knot (also the
     right-click menu and the Delete key) removes the selected inner knot. A drag stops
-    at 12.9's rules (heights within [0, 1], between the neighbouring knots), and the
-    line, the kernel and the FWHM follow during the drag.
+    at 12.9's rules (heights within [0, 1], at least spix from the neighbouring
+    knots), and the line, the kernel and the FWHM follow during the drag. A
+    double-click within spix of a knot adds none, and the status line says why.
+  - **Knots that break a rule** when the dialog opens (written by hand) are marked
+    in red, the rule is named under the plot, and Apply is greyed until they are
+    apart.
   - **Apply** makes 12.9's step; Cancel changes nothing. Values are shown through the
     gate; while one is hidden, the button is greyed and its tooltip says why.
 - **Check.** `gui` tests in `test_dashboard_qt_regions.py` and
   `test_dashboard_qt_data.py`:
   - choosing lsfspline shows the button and opens the dialog with the three default
     knots; a snip with RJC's nine knots shows nine;
-  - a knot dragged up stops at 1 and down at 0, and one dragged sideways stops before
-    its neighbour; an edge moves sideways only, and the centre does not move;
+  - a knot dragged up stops at 1 and down at 0, and one dragged sideways stops spix
+    from its neighbour; an edge moves sideways only, and the centre does not move;
+  - a double-click within spix of a knot adds none; a line with two knots closer
+    than spix opens with them marked and Apply greyed, until one is moved;
   - a double-click adds a knot, Delete knot removes it, and neither an edge nor the
     centre can be removed;
   - the FWHM shown is `lsfknots.fwhm`'s, and changes with the smoothing;
   - Delta Function asks first: Cancel keeps the knots, and Confirm gives the five
     knots of 12.9, whose FWHM shown is the field's (to 1%); a new FWHM moves the
     edges to six times it, and after a knot is moved they stay;
+  - after Delta Function, the knot at +spix dragged up rises (the red line and the
+    FWHM change with it), dragged outwards moves, and dragged inwards stops at spix
+    from the centre; the knot at −spix is deleted with Delete knot; Apply writes
+    the knots as moved;
   - Apply writes the line as one step, which one undo takes back; Cancel changes
     nothing;
   - the window's text has no design reference (D44).
@@ -621,7 +679,8 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
 - **The documents.** Bring `doc/ALIS_workflow.md` §4.3, `CHANGELOG.md`,
   `tests/README.md` and the `gui-component` skill (its "Stage 12 additions") up to
   date; `CHANGELOG.md` says that `lsfspline`'s smoothing is now a FWHM, and what
-  that does to a model written before. Record the decisions in
+  that does to a model written before, and gives `nsubmin`'s new default of 10.
+  Record the decisions in
   `ALIS_v2_dashboard_prompts.md` (D129 onwards, from Q12.1–Q12.10, Prompt 3 and the
   review), saying which earlier decisions they refine: D8, D19 and Q1.8, D22 and
   D37, D38, D48, D63 and D65, D64 and D79, D89, D114, D122, and F13.
@@ -639,7 +698,7 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
     point 4 in 12.7, point 5 in 12.3, point 6 in 12.8, point 7 in 12.9 and 12.10,
     point 8 in 12.1, and item 2 in 12.5; items 1 and 3 are in `deferred_work.md` §7.8
     and §7.9.
-  - Q12.1–Q12.10, and any query raised while the tasks were built, are answered in the
+  - Q12.1–Q12.11, and any query raised while the tasks were built, are answered in the
     Queries section.
   - The review of 12.11 is applied.
   - The `unit`, `gui` and `fast` batches pass, also under CI's pytest. Their counts go
@@ -651,9 +710,10 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
     most valuable tests are added.
   - The window's text has no design reference (D44), and pre-commit passes on every
     changed file.
-  - ALIS outside `alis/dashboard/` changes in `lsfspline` alone (`git diff --stat
-    1e4c2f4 -- alis ':!alis/dashboard'` lists `alis/functions/lsfspline.py` and
-    nothing else, against Stage 11's close), and the regression harness passes.
+  - ALIS outside `alis/dashboard/` changes only as Task 12.9 says (`git diff --stat
+    1e4c2f4 -- alis ':!alis/dashboard'` lists `alis/functions/lsfspline.py`, and
+    `alis/config.py` for `nsubmin`, and nothing else, against Stage 11's close), and
+    the regression harness passes, its regenerated references logged.
     This stage's tests are synthetic and need none of RJC's files; MWC137 is
     checked with scratch scripts, logged.
 
@@ -687,9 +747,10 @@ new `lsfknots.py`, `snips.py`; D60, D89, D92; Q12.8–Q12.10).**
 
 *Raised by Claude: Q12.1 and Q12.2 with this document (2026-11-13), Q12.3–Q12.8 at
 Prompt 1 (2026-11-16), all answered by RJC and applied at Prompt 2; Q12.9 and Q12.10
-at Prompt 3 (2026-11-16). Each gives Claude's lean. A question that comes up while a
-task is built pauses the work; it is asked here, and its answer is logged here
-(Stage 11, Prompt 2).*
+at Prompt 3, answered and applied at Prompt 4; Q12.11 at Prompt 4, answered and
+applied when Prompt 4 was run again. Each gives Claude's lean. A question that comes
+up while a task is built pauses the work; it is asked here, and its answer is logged
+here (Stage 11, Prompt 2).*
 
 **Q12.1 — The items carried over from Stage 11.** For each, two ways:
 - **(a) It joins this stage**, after the feedback's tasks.
@@ -897,6 +958,12 @@ edges), but they set the buffer each side needs.
 
 **Response:** For point (i), I actually think it makes more sense to adopt the value of nsubmin for spix. I think we want to avoid choosing a value that is finer than whatever the subpixellation value is. Otherwise, we will be trying to generate an LSF on a subpixellation scale that is finer than specified. We should probably reset the default nsubmin to be 10, so that the minimum subpixellation is 10 by default. For point (ii), I agree with option (a). The edges should follow the FWHM set by the user if they change it.
 
+*Applied (Prompt 4, 2026-11-16) in Task 12.9. spix is the snip's smallest pixel
+divided by `nsubmin` (the model's, or ALIS's default, raised to 10); the kernel is
+drawn on the sub-pixels ALIS uses for the snip. The edges follow the FWHM while the
+five knots stand (Task 12.10, as written). Q12.11 asks RJC to confirm two
+consequences.*
+
 **Q12.10 — lsfspline in the regression harness (Prompt 3 (ii), Task 12.9).** Prompt
 3 expects the change to move the regression harness's references. The harness has no
 case that uses `lsfspline`: `examples/lsf_spline` has no `.mod.out.reference` and no
@@ -912,6 +979,59 @@ reference moves, and nothing would catch a later change to the function. Two way
 My lean: (b). It keeps the function covered as every other shipped example is.
 
 **Response:** I agree with option (b). Let's attempt to capture this in the regression harness. If we encounter problems with the regression harness, (e.g. the fit takes too long) then we can delay this to a future task, and just implement the unit tests for now.
+
+*Applied (Prompt 4, 2026-11-16) in Task 12.9: `examples/lsf_spline` becomes a case,
+its data generated again with the new smoothing. It waits in `deferred_work.md` if
+it takes over a minute in CI's `examples` batch or does not reproduce, and the unit
+tests stand.*
+
+**Q12.11 — Two consequences of `nsubmin` for spix (Q12.9's response, Task 12.9).**
+Q12.9's response takes spix from `nsubmin`, never finer than ALIS's sub-pixels, and
+raises ALIS's default `nsubmin` from 5 to 10. Task 12.9 is written so. Two
+consequences, for RJC to confirm:
+- *(i) The kernel is exactly Gaussian only where ALIS uses `nsubmin` sub-pixels.*
+  ALIS uses the most sub-pixels that any line or the resolution asks for, and
+  `lsfspline` asks for 2√(2 ln 2) · nsubpix · pixel / FWHM. For a FWHM of 2 km/s on
+  2 km/s pixels, that is 12. The knots at ±spix then span more than one sub-pixel,
+  and the kernel is the Gaussian smoothed by a narrow triangle. With `nsubmin` 10 it
+  is 0.5% wider than the FWHM; with 5, 2.0% wider (a scratch calculation, logged).
+  The dialog draws ALIS's kernel on ALIS's sub-pixels, so the FWHM it shows is the
+  width the fit uses.
+  - **(a) As the response:** spix from `nsubmin`. The kernel is the Gaussian where
+    ALIS uses `nsubmin` sub-pixels, and a little wider where it uses more.
+  - **(b) spix from ALIS's sub-pixels for the snip,** as ALIS works them out with
+    the dialog's FWHM (12 in the example). It is never finer than ALIS's sub-pixels,
+    and the kernel is exactly the Gaussian for the model as it is. It is fixed when
+    written: a later line that asks for more sub-pixels makes the kernel a little
+    wider, as in (a).
+- *(ii) The default `nsubmin` of 10 changes every fit.* Each snip's model is worked
+  out on at least 10 sub-pixels per pixel, not 5:
+  - the regression harness's references move wherever a snip used fewer than 10,
+    and are regenerated;
+  - a fit of broad lines, which used 5, takes up to twice as long to evaluate;
+  - the `lsfspline` delta function needs no new default, since `lsfspline` asks for
+    the sub-pixels its own FWHM needs (12 above).
+  - **(a) The default becomes 10,** as the response says, with `CHANGELOG.md`.
+  - **(b) The default stays 5;** spix uses the model's `nsubmin`, and a user who
+    wants finer sub-pixels sets `run nsubmin 10` in the model.
+
+My lean: (b) for both. (i)(b) keeps both aims of the response and Prompt 3: never
+finer than ALIS's sub-pixels, and exactly Gaussian. For (ii), the delta function
+does not need the new default, which would cost every user time and change every
+fit's references. (a) for (ii) remains if RJC wants finer sub-pixels for every fit
+in its own right.
+
+**Response:* For point (i) lsfspline should always use the knots as they are defined; the knots should not change with the sub-pixel scale during the fit. The "Delta Function" button just sets the initial values of the knots. In principle, the user is free to change these points, but any knot that differs by `nsubmin` sub-pixels from the nearest knot may not have any effect in the fit. Therefore, I propose that we keep every know separately by *at least* `nsubmin` sub-pixels. This is why I propose the "Delta Function" button to set the initial values of the knots to be this minimum allowable value. The user can then adjust the knots as they see fit, but any knot that is closer than `nsubmin` sub-pixels to another knot should not be allowed. For point (ii), I agree with option (a).
+
+*Applied (Prompt 4, run again, 2026-11-16) in Tasks 12.9 and 12.10. The closest two
+knots may be is spix, read as one sub-pixel at `nsubmin`: the pixel divided by
+`nsubmin`, the separation that Delta Function gives ±spix. spix is taken from the
+snip's pixel as ALIS sizes it (`get_binsize`, its largest), and for a dataset from
+its snips' largest, so that no knot is finer than ALIS's sub-pixels in any snip. The
+knots are what the user sets, and never change with the sub-pixels, in the dialog or
+in a fit. A drag stops spix from a neighbour, and a double-click within spix adds
+no knot. A line written by hand with knots closer than spix opens with them marked,
+and Apply is greyed until they are apart. ALIS's default `nsubmin` becomes 10.*
 
 ## Prompts
 
