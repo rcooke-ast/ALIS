@@ -10,7 +10,14 @@ msgs = logger.msgs()
 
 class SplineLSF(base.Base) :
     """
-    Returns a Spline version of the Line Spread Function
+    Returns a Spline version of the Line Spread Function.
+
+    The first parameter is the FWHM, in km/s, of the Gaussian that smooths the
+    knots' straight lines; the others are the kernel's heights at the knots, whose
+    velocities are the keyword ``locations``. Until dashboard Stage 12 (2026-11)
+    the smoothing Gaussian had sigma = value/sqrt(2), a FWHM 1.665 times the
+    value, and the kernel sat one sub-pixel to the red of its line: a model
+    written before smooths 0.60 times as wide now, centred on its line.
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'lsfspline'																				# ID string for this class
@@ -69,8 +76,8 @@ class SplineLSF(base.Base) :
         iysize = smth.size
         idf = int(iysize / 2 - 1)
         if vFWHM > 0.0:
-            # Smooth by the b-value
-            isigd = (vFWHM / np.sqrt(2)) / 2.99792458E5
+            # Smooth by a Gaussian of this FWHM (dashboard Stage 12)
+            isigd = (vFWHM / FWHM_to_SIGMA) / 2.99792458E5
             ifsigd = 6.0 * isigd
             idwav = 0.5 * (x[2:] - x[:-2]) / x[1:-1]
             idwav = np.append(np.append(idwav[0], idwav), idwav[-1])
@@ -94,7 +101,11 @@ class SplineLSF(base.Base) :
         conv *= np.fft.fft(smth / smth.sum(), fsize)
         ret = np.fft.ifft(conv).real.copy()
         del conv
-        return ret[idf:idf + ysize]
+        # The kernel is centred at index iysize//2 (splx = 0 there): sliced from it,
+        # the model is centred on its line, as vfwhm's is (dashboard Stage 12; it was
+        # sliced from idf, one sub-pixel to the red)
+        cen = iysize // 2
+        return ret[cen:cen + ysize]
 
     def load(self, instr, cntr, mp, specid):
         """
@@ -302,7 +313,8 @@ class SplineLSF(base.Base) :
             if ddpid not in parinf: return []
         if nexbin is not None:
             if params[0] == 0.0: return params, 1
-            if nexbin[0] == "km/s": return params, int(round(np.sqrt(2.0)*nexbin[1]/params[0] + 0.5))
+            # As many sub-pixels as vfwhm asks for a Gaussian of this FWHM
+            if nexbin[0] == "km/s": return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*nexbin[1]/params[0] + 0.5))
             elif nexbin[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
             elif nexbin[0] == "Hz" : msgs.error("bintype is set to 'Hz' for Hertz, when FWHM is specified as a velocity.")
             else:

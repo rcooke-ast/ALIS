@@ -896,3 +896,35 @@ def test_inspect_draws_the_continuum_when_asked(window, qtbot, tmp_path):
     action.trigger()
     assert inspect.selected("scale") == FV.NORMALISED
     assert inspect.panel_widgets[0].view._norm is not None
+
+
+def test_inspect_keeps_its_view_through_a_step(window, qtbot, tmp_path):
+    # Stage 12, point 3: Inspect's view went back to ⌂ after any step, made on the
+    # Fit tab or on another
+    open_metal(window, qtbot, tmp_path)
+    inspect = show_inspect(window, qtbot)
+    view = inspect.panel_widgets[0].view
+    (x0, x1), (y0, y1) = view.view_range()
+    zoomed = ((x0 + 0.3 * (x1 - x0), x1 - 0.3 * (x1 - x0)), (0.2, 1.1))
+    view.box.setXRange(*zoomed[0], padding=0)
+    view.box.setYRange(*zoomed[1], padding=0)
+    zoomed = view.view_range()
+    # A step while Inspect is shown, then one while another tab is
+    for num in range(2):
+        pm = window.session.project.parsed
+        par = pm.function_lines("voigt")[0].param("bturb")
+        window.session.history.do(
+            window.session.project.step(E.set_value(pm, par, par.start + 0.1))
+        )
+        if num:
+            window.tabs.setCurrentIndex(2)
+            window.refresh()
+            show_inspect(window, qtbot)
+        window.refresh()
+        view = inspect.panel_widgets[0].view
+        assert np.allclose(np.ravel(view.view_range()), np.ravel(zoomed)), num
+    # ⌂ still goes home
+    window.fit_tab.inspect.zoom.home()
+    assert not np.allclose(
+        np.ravel(inspect.panel_widgets[0].view.view_range()), np.ravel(zoomed)
+    )

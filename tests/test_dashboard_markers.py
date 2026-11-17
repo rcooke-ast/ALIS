@@ -171,6 +171,25 @@ def test_regions_need_attention_when_pixels_are_fitted_twice(home, tmp_path, reg
     assert snip.specid == "0"
 
 
+def test_a_pair_whose_warning_is_ignored_leaves_the_marker(registry, tmp_path):
+    # Stage 12, point 1: Ignore warning
+    from dashboard_synthetic import write_twin_snips
+
+    from alis.dashboard import history as H
+    from alis.dashboard import project as P
+    from alis.dashboard import snips as SN
+
+    path = write_twin_snips(tmp_path)
+    project = P.Project.import_model(str(path), registry=registry)
+    hist = H.History(project)
+    (pair,) = SN.shared_pixels(project)
+    assert MK.fitted_twice(project) == [("0", "1", pair.count)]
+    assert MK.regions_marker(project).state == MK.ATTENTION
+    hist.do(SN.ignore_step(project, [pair]))
+    assert MK.fitted_twice(project) == []
+    assert "fitted twice" not in MK.regions_marker(project).tip
+
+
 def tidy(project):
     """Apply the fixes of the notices (metal_line_abs has O I and Si II untied)."""
     for _ in range(5):

@@ -1059,6 +1059,87 @@ Prompts 4 and 7, and his review of the stage's page.*
   b_turb be read as the redshift, and made systems that are not real.) A saved
   project keeps the systems it recorded; they are removed as any system (Q11.12).
 
+*Stage 12 decisions (users' feedback after Stage 11's list, and the item carried
+over). Added by Claude on 2026-11-17 from Q12.1–Q12.17, the work of the stage, RJC's
+Prompt 3 and his review of the stage's page.*
+- **D129. Each isotope its own name** (point 8; refines D22, D37): rubidium's main
+  isotope (85) joins the table of main isotopes, so 87Rb I is named apart from Rb I,
+  grouped under it and checked with it as other isotopes are. Every element with
+  several isotopes in ALIS's atomic data has its main isotope in the table.
+- **D130. An ion a component never had** (point 2; refines D64, D79): a component
+  excluded from every ion takes an ion it never had; the new line takes z, b and T,
+  with their labels, from the component's first commented-out line, and a first
+  guess of log N (D62). It stays excluded from its other ions.
+- **D131. A drag on a column density that a link computes** (point 5, Q12.6 (a)
+  with (b); refines D63, D65): where the link has exactly one free input that no
+  other line or link names, the drag moves that input so that the link gives the
+  log N dragged; its bounds stop the drag, and the readout names both ("log N 14.62
+  (dh -4.62) · b_turb …"). Otherwise log N stays and the readout gives the link; a
+  hidden value shows only Δχ² (D24). Links are still written in the `.mod` panel.
+- **D132. Ignore warning** (point 1, Q12.3, Q12.14; refines D19, Q1.8, D67): beside
+  Merge the snips… and Keep them in this snip only, Ignore warning, for the pair, as
+  one step, recorded in `ui/project.json` with the two snips' files and a digest of
+  each one's fitted pixels. How shared pixels are found does not change; the
+  dashboard's warnings (the hatching, the offer, the marker, the pre-flight note,
+  ALIS's warning in the `.mod` panel) leave the pair out until either snip's shared
+  pixels change; Warn again, in the Snip box, takes it back; the snips table keeps
+  the count, marked "(ignored)". `run_alis` on its own still warns.
+- **D133. Every dataset keeps its data** (item 2 carried over, Q12.1, RJC's review,
+  Q12.15–Q12.17; refines D12, D122, Q11.9): a dataset is removed only by the user. A
+  snip loaded unassigned, and each dataset of a fit opened without its spectrum,
+  keeps its snips' pixels as its dataset's data: a source marked as its snips'
+  pixels, kept in the project with no file (several snips joined in wavelength
+  order, the first in the model kept where they overlap; a bad-pixel mask kept).
+  CLEAR and commenting a snip out leave the data, and SNIP cuts from them, as from
+  any dataset; the dataset is still labelled unassigned. A project saved before
+  opens as it is (Q12.17's response). A dataset with neither snips nor data (one
+  emptied before) shows ! with its advice: Remove…, or Load snips….
+- **D134. Every view keeps its place** (point 3, Q12.4 (b); refines D48, D114):
+  nothing the dashboard does moves a scroll bar or a view's ranges; only the user
+  does (the bars, the mouse, ⌂, ←, →). A wavelength view of another transition
+  starts at home; velocity views keep their velocity range. Each view's ranges and
+  each list's place are kept in `ui/view.json` by what they show (a list by the item
+  at its top), read only at Save, a clean close or a recovery copy (never as they
+  move, so nothing lags), and restored once as the project opens; what the project
+  no longer has opens at ⌂. The window's size and position are a preference (on the
+  main screen when no screen shows them).
+- **D135. Zooming the flux axis** (point 4, Q12.5 (b), RJC's review; refines D38):
+  the wheel with ⇧ Shift held zooms the flux axis about the pointer in every
+  spectrum view; ↔ and ↕ beside ⌂ on every zoom bar take the wavelength (or
+  velocity) axis and the flux axis home (⌂x and ⌂y at first, which read like Δx
+  and Δy); each is a step of ← and →. The residual strips keep their own scale.
+- **D136. Spectra kept in the project** (point 6, Q12.7 (a); refines D8, F13): a
+  dataset's right-click menu offers Keep a copy in the project, or Remove the copy
+  (refused while its file is not found); neither is a step, and the project has
+  unsaved changes until Save. File → Save a copy with spectra… writes a copy with
+  every spectrum kept in it, the open project unchanged, naming any it could not
+  keep. A kept spectrum whose file is gone is read from the copy and never asks to
+  be relinked; the relink question names Save a copy with spectra….
+- **D137. `lsfspline`'s smoothing is a FWHM, and its kernel is centred** (Prompt 3
+  (ii), Q12.10, Q12.12 (a), Q12.13 (b); ALIS outside the dashboard): the first value
+  is the FWHM of the smoothing Gaussian (σ = FWHM/2√(2 ln 2)), and the sub-pixels it
+  asks for are `vfwhm`'s; a model written before is smoothed 0.60 times as wide. The
+  kernel is centred on its line (it was one sub-pixel to the red). ALIS's default
+  `nsubmin` stays 5 (`deferred_work.md` §7.10); `examples/lsf_spline` as a
+  regression case waits (§7.11), its data generated again.
+- **D138. Set LSFSpline knots…** (point 7, Prompt 3 (i), Q12.8–Q12.11; refines D89):
+  `lsfspline` is offered in the Snip box's and the Data tab's resolution menus (the
+  other functions of several parameters are still set in the `.mod` panel), with Set
+  LSFSpline knots… beside them. The dialog draws the knots (grey fixed, blue free),
+  a faint line joining them, ALIS's kernel on ALIS's sub-pixels in red, and its FWHM
+  marked; the Smoothing, FWHM field starts at the resolution before as a FWHM in
+  km/s, or 5 km/s. Rules: heights within [0, 1]; no two knots closer than spix (the
+  snip's pixel over `nsubmin`; a dataset's largest); the edges at height 0, moved
+  sideways only; the centre fixed at (0, 1); three knots at least. A drag stops at
+  the rules, a double-click adds a knot, Delete knot (the right-click menu, the
+  Delete key) removes an inner one; knots written breaking a rule are marked, the
+  rule named, Apply greyed. Delta Function, after a question (Confirm, Cancel),
+  gives five knots (±6 FWHM, ±spix, the centre): a Gaussian of the FWHM on `nsubmin`
+  sub-pixels, the edges following the FWHM until a knot moves. Apply writes
+  `lsfspline(smoothing, heights…; locations:…)` as one step for a snip or a dataset,
+  the smoothing and inner heights free, the edges and the centre fixed; the buffer
+  check takes the kernel's reach.
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

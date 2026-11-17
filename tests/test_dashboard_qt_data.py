@@ -247,7 +247,9 @@ def test_q1243_tie_reaches_the_model_and_undo_removes_it(window, qtbot):
     tab = window.tab_widgets[0]
     rows = table_text(tab)
     assert [r[1] for r in rows] == ["HIRES", "PROCHASKA", "KIRKMAN"]
-    assert all("no source spectrum" in r[2] for r in rows)
+    # Each keeps its snips' pixels as its data (Stage 12, Q12.16 (ii))
+    assert all(r[2].startswith("wave, flux, error · ") for r in rows)
+    assert all(r[6] == "kept in the project · its snips' pixels" for r in rows)
     assert tab.coverage.isVisible() and tab.grid.rowCount() == 16
     before = window.session.project.text
     kirkman = window.session.project.row("KIRKMAN")
@@ -505,3 +507,64 @@ def test_the_resolution_column_sets_the_dataset_s_function(window, qtbot, tmp_pa
     done = len(window.session.history.done)
     tab.set_function(row, "voigtconv", 7.0)
     assert len(window.session.history.done) == done
+
+
+def test_an_emptied_unassigned_dataset_keeps_its_data(window, qtbot, tmp_path):
+    # Stage 12, RJC's comment on the review (Q12.15, Q12.16): before, the row read
+    # "0 snips · unassigned: no source spectrum !", and SNIP could not cut it again
+    from dashboard_fits import SII, noisy_copy, prepfit_snip
+    from qtpy import QtCore, QtWidgets
+
+    from alis.dashboard import loadfit as LF
+    from alis.dashboard import markers as MK
+    from alis.dashboard.qt import data as DT
+
+    tab = new_project(window, tmp_path, z=0.0)
+    project = window.session.project
+    spectra = {r.id: sources.spectrum(project, r) for r in project.rows}
+    theirs = prepfit_snip(
+        tmp_path / "data",
+        noisy_copy(tmp_path),
+        SII,
+        name="other_28Si_II_1304.4_reg.dat",
+    )
+    plan = LF.load_snips_plan(project, [str(theirs)], spectra)
+    window.session.history.do(plan.step)
+    project = window.session.project
+    window.session.history.do(
+        SN.clear_plan(project, project.snip("SiII_1304")).step(project)
+    )
+    window.refresh()
+    rows = table_text(tab)
+    assert [r[1] for r in rows] == ["OI_SiII", "other (unassigned)"]
+    assert rows[1][2].startswith("wave, flux, error · 120 px · 1304–1305 Å")
+    assert "!" not in rows[1][2] and tab.table.item(1, 2).toolTip() == ""
+    assert rows[1][6] == "kept in the project · its snips' pixels"
+    assert window.markers["Data"].state == MK.COMPLETE
+    # Its data have no file: no Keep a copy, no Remove the copy
+    shown = []
+
+    def grab():
+        menu = QtWidgets.QApplication.activePopupWidget()
+        shown.extend(a.text() for a in menu.actions())
+        menu.close()
+
+    QtCore.QTimer.singleShot(200, grab)
+    tab._row_menu(tab.table.visualItemRect(tab.table.item(1, 1)).center())
+    assert "Remove…" in shown
+    assert DT.KEEP_COPY not in shown and DT.REMOVE_COPY not in shown
+    # SNIP on the Regions tab cuts it again from them
+    regions = window.tab_widgets[1]
+    window.tabs.setCurrentIndex(1)
+    regions.show_transition("a", SII[0], SII[1])
+    window.on_dialog = lambda dialog: 1
+    count = len(window.session.history.done)
+    regions.do_snip()
+    assert len(window.session.history.done) == count + 1
+    project = window.session.project
+    assert len(project.rows[1].snips) == 1
+    # Remove… takes it away, as before
+    window.tabs.setCurrentIndex(0)
+    tab._act("Remove…", lambda: tab.remove_row(project.rows[1]))
+    assert [r[1] for r in table_text(tab)] == ["OI_SiII"]
+    assert design_references(ui_strings(window)) == []

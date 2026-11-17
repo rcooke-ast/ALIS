@@ -519,9 +519,8 @@ class SnipsPlan:
                 )
             elif item.fate == UNASSIGNED:
                 out.append(
-                    "{0} is loaded unassigned, with no source, in {1}.".format(
-                        item.old.name, item.row.name
-                    )
+                    "{0} is loaded unassigned in {1}, its pixels kept as the"
+                    " dataset's data.".format(item.old.name, item.row.name)
                 )
         return out
 
@@ -840,6 +839,8 @@ def load_snips_plan(
 
     makers = [add_rows] + [_clear_maker(s.specid) for s, _ in replaced]
     makers += SN.add_snip_makers(news, max_order, line_kms, clip)
+    # An unassigned dataset keeps its snips' pixels as its data (Stage 12, Q12.16)
+    makers.append(DS.keep_data_step)
     try:
         step = SN.compose(project, "", makers)
     except CO.ContinuumError as err:
@@ -1881,7 +1882,8 @@ def load_mod_plan(project, modfile, spectra, assignment=None, fit=None, holders=
         data[P.GUESSED] = True
         return proj.set_ui(data)
 
-    step = SN.compose(project, description, [replace, guessed])
+    # An unassigned dataset keeps its snips' pixels as its data (Stage 12, Q12.16)
+    step = SN.compose(project, description, [replace, guessed, DS.keep_data_step])
     step.description = description
     # The preview: the lines of the model that go, and what comes
     lines = []
@@ -1931,9 +1933,8 @@ def load_mod_plan(project, modfile, spectra, assignment=None, fit=None, holders=
         )
     for label, specids in unassigned_rows:
         notes.append(
-            "Loaded unassigned, with no source, in {0}: {1}.".format(
-                label, ", ".join(fit.file_name(s) for s in specids)
-            )
+            "Loaded unassigned in {0}, their pixels kept as the dataset's data:"
+            " {1}.".format(label, ", ".join(fit.file_name(s) for s in specids))
         )
     if gone:
         deleted = [e.line for e in removal.lines if e.action == R.DELETE]

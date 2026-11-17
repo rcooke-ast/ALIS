@@ -690,6 +690,86 @@ def test_merge_first_when_the_overlap_is_large(project, registry):
     assert not S.merge_first(pairs, threshold=0.99)
 
 
+def twins(registry, folder, third=False):
+    """MWC137's specids 6 and 7: two files on one grid, alike but in a core."""
+    from dashboard_synthetic import write_twin_snips
+
+    path = write_twin_snips(folder, third=third)
+    project = P.Project.import_model(str(path), registry=registry)
+    return project, H.History(project)
+
+
+def warnings_of(project):
+    """Where pixels fitted twice are warned about: the marker, the pre-flight
+    check and ALIS's own warning."""
+    from alis.dashboard import markers as MK
+    from alis.dashboard import preflight as PF
+
+    return {
+        "marker": "fitted twice" in MK.regions_marker(project).tip,
+        "preflight": "fitted_twice" in PF.check(project).codes(),
+        "alis": any(V.FITTED_TWICE in p.message for p in V.check(project)),
+    }
+
+
+def test_ignore_warning_keeps_the_test_and_leaves_the_pair_unwarned(registry, tmp_path):
+    # Stage 12, point 1 (Q12.3): Ignore warning; the test is unchanged
+    project, hist = twins(registry, tmp_path)
+    (pair,) = S.shared_pixels(project)
+    assert pair.count > 100
+    assert warnings_of(project) == {"marker": True, "preflight": True, "alis": True}
+    before = state(project)
+    step = S.ignore_step(project, [pair])
+    assert step.description == "Ignore the warning for 0 and 1"
+    hist.do(step)
+    # Found as before; warned about nowhere
+    (again,) = S.shared_pixels(project)
+    assert (again.a.specid, again.b.specid, again.count) == ("0", "1", pair.count)
+    assert S.warned_pixels(project) == [] and len(S.ignored_pixels(project)) == 1
+    assert warnings_of(project) == {
+        "marker": False,
+        "preflight": False,
+        "alis": False,
+    }
+    assert project.ui[S.IGNORED_SHARED][0]["files"] == [
+        project.snip("0").member,
+        project.snip("1").member,
+    ]
+    # One undo gives back ui/project.json and the warnings
+    hist.undo()
+    assert state(project) == before
+    assert len(S.warned_pixels(project)) == 1 and warnings_of(project)["alis"]
+
+
+def test_a_wider_fit_range_warns_again(registry, tmp_path):
+    project, hist = twins(registry, tmp_path)
+    hist.do(S.ignore_step(project, S.shared_pixels(project)))
+    assert S.warned_pixels(project) == []
+    hist.do(S.add_region_step(project, project.snip("0"), 4253.0, 4254.5))
+    (pair,) = S.warned_pixels(project)
+    assert warnings_of(project)["alis"]
+    # Warn again takes the record out
+    hist.undo()
+    hist.do(S.warn_again_step(project, S.ignored_pixels(project)))
+    assert S.IGNORED_SHARED not in project.ui
+    assert len(S.warned_pixels(project)) == 1
+
+
+def test_ignoring_one_pair_leaves_the_others_warned(registry, tmp_path):
+    project, hist = twins(registry, tmp_path, third=True)
+    pairs = S.shared_pixels(project)
+    assert sorted((p.a.specid, p.b.specid) for p in pairs) == [
+        ("0", "1"),
+        ("0", "2"),
+        ("1", "2"),
+    ]
+    first = next(p for p in pairs if (p.a.specid, p.b.specid) == ("0", "1"))
+    hist.do(S.ignore_step(project, [first]))
+    warned = sorted((p.a.specid, p.b.specid) for p in S.warned_pixels(project))
+    assert warned == [("0", "2"), ("1", "2")]
+    assert warnings_of(project)["alis"]
+
+
 def test_j1358_ly7_shares_pixels_with_ly8_and_ly6(registry):
     if not J1358.exists():
         pytest.skip("J1358p6522 is not present")

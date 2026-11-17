@@ -70,12 +70,13 @@ class Function:
     unit: str = ""
     default: str = ""
     bins: str = "km/s"
+    knots: bool = False
 
     @property
     def offered(self):
-        """Whether the Snip box and the Data tab can set it (not several
-        parameters)."""
-        return self.kind != SEVERAL
+        """Whether the Snip box and the Data tab can set it: not several parameters,
+        but ``lsfspline``, whose knots a dialog sets (Stage 12, point 7)."""
+        return self.kind != SEVERAL or self.knots
 
 
 FUNCTIONS = (
@@ -92,12 +93,15 @@ FUNCTIONS = (
     Function("apod", KEYWORDS, "an apodisation", default="kind:uniform", bins="Hz"),
     Function("voigtconv", SEVERAL, "a Voigt profile"),
     Function("multivfwhm", SEVERAL, "several Gaussians"),
-    Function("lsfspline", SEVERAL, "a spline"),
+    Function("lsfspline", SEVERAL, "a spline", knots=True),
 )
 BY_NAME = {f.name: f for f in FUNCTIONS}
 
 # What a user is told of a function of several parameters (Q8.8)
 SEVERAL_NOTE = "{0} has several parameters: set them in the .mod panel"
+# lsfspline's knots are set in their dialog (Stage 12, point 7; Q12.8 (i))
+KNOTS_TEXT = "Set LSFSpline knots…"
+KNOTS_NOTE = "lsfspline's knots are set with " + KNOTS_TEXT
 # What a user is told of lsf where linetools is not installed (Q8.8's response)
 LINETOOLS_MARK = "needs linetools"
 LINETOOLS_NOTE = (

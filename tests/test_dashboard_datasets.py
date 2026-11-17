@@ -699,7 +699,11 @@ def test_a_resolution_of_several_parameters_is_kept_as_written(registry, tmp_pat
         D.snip_function_step(project, row.snips[1], "voigtconv", 7.0)
     with pytest.raises(D.DatasetError, match="several parameters"):
         D.resolution_step(project, row, "multivfwhm", 7.0)
-    assert not RS.function("lsfspline").offered and RS.function("lsf").offered
+    assert RS.function("lsf").offered
+    # lsfspline is offered (Stage 12, point 7), through its knots' dialog alone
+    assert RS.function("lsfspline").offered
+    with pytest.raises(D.DatasetError, match="Set LSFSpline knots"):
+        D.resolution_step(project, row, "lsfspline")
 
 
 def test_the_keywords_are_checked_as_alis_reads_them(registry):

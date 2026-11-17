@@ -52,13 +52,16 @@ from alis.dashboard import datasets as DS
 from alis.dashboard import edit as E
 from alis.dashboard import lines as L
 from alis.dashboard import loadfit as LF
+from alis.dashboard import lsfknots as LK
 from alis.dashboard import profile as PR
 from alis.dashboard import project as P
 from alis.dashboard import resolution as RN
 from alis.dashboard import results as RS
+from alis.dashboard import session as SE
 from alis.dashboard import snips as SN
 from alis.dashboard import sources as SR
 from alis.dashboard.qt import dialogs as D
+from alis.dashboard.qt import knots as KN
 from alis.dashboard.qt import plots as PL
 from alis.dashboard.qt import widgets as W
 
@@ -113,6 +116,12 @@ NO_SOURCE = (
     " the source."
 )
 NO_REDSHIFT = "Set the redshift on the Data tab first."
+# The snips table's shared pixels of a pair whose warning is ignored (Q12.14)
+IGNORED_TIP = (
+    "Pixels this snip shares with other snips, counted as they are now. The"
+    " warning for those marked ignored is not shown: Warn again shows it, and a"
+    " change to the pixels the snips share shows it again."
+)
 
 
 def swatch(kind, size=14):
@@ -604,8 +613,19 @@ class RegionsTab(W.Tab):
         self.merge_button.clicked.connect(
             lambda: self._act("regions.merge", self.merge_shared)
         )
+        # Ignore warning (Stage 12, point 1; Q12.3): the test is unchanged
+        self.ignore_button = QtWidgets.QPushButton("Ignore warning")
+        self.ignore_button.setObjectName("ignore_shared")
+        self.ignore_button.setToolTip(
+            "Stop warning that these snips fit the same pixels, until either snip's"
+            " pixels or fit range change"
+        )
+        self.ignore_button.clicked.connect(
+            lambda: self._act("regions.ignore", self.ignore_shared)
+        )
         self.fix_buttons.addWidget(self.keep_button)
         self.fix_buttons.addWidget(self.merge_button)
+        self.fix_buttons.addWidget(self.ignore_button)
         self.fix_buttons.addStretch(1)
         shared.addLayout(self.fix_buttons)
         self.fix_all = QtWidgets.QCheckBox("Apply the fix to all datasets")
@@ -613,6 +633,23 @@ class RegionsTab(W.Tab):
         shared.addWidget(self.fix_all)
         self.shared_box.hide()
         box.addWidget(self.shared_box)
+        # The pairs whose warning the user ignored, each with Warn again
+        self.ignored_box = QtWidgets.QFrame()
+        self.ignored_box.setObjectName("ignored_shared")
+        ignored = QtWidgets.QHBoxLayout(self.ignored_box)
+        ignored.setContentsMargins(0, 0, 0, 0)
+        self.ignored_label = W.muted("")
+        self.ignored_label.setWordWrap(True)
+        ignored.addWidget(self.ignored_label, 1)
+        self.warn_button = QtWidgets.QPushButton("Warn again")
+        self.warn_button.setObjectName("warn_again")
+        self.warn_button.setToolTip("Warn again that these snips fit the same pixels")
+        self.warn_button.clicked.connect(
+            lambda: self._act("regions.warn_again", self.warn_again)
+        )
+        ignored.addWidget(self.warn_button)
+        self.ignored_box.hide()
+        box.addWidget(self.ignored_box)
         self.datasets = QtWidgets.QTableWidget(0, 4)
         self.datasets.setObjectName("snip_datasets")
         self.datasets.setHorizontalHeaderLabels(
@@ -761,6 +798,11 @@ class RegionsTab(W.Tab):
         )
         self.res_file.clicked.connect(lambda: self.choose_lsf_file())
         line.addWidget(self.res_file)
+        # lsfspline's knots, in their dialog (Stage 12, point 7; Q12.8 (i))
+        self.res_knots = QtWidgets.QPushButton(RN.KNOTS_TEXT)
+        self.res_knots.setObjectName("snip_lsf_knots")
+        self.res_knots.clicked.connect(lambda: self.set_lsf_knots())
+        line.addWidget(self.res_knots)
         self.res_column = QtWidgets.QComboBox()
         self.res_column.setObjectName("snip_resolution_column")
         self.res_column.setToolTip("The kernel of the file that the fit uses")
@@ -810,6 +852,7 @@ class RegionsTab(W.Tab):
             self.res_badge,
             self.res_keywords,
             self.res_file,
+            self.res_knots,
             self.res_column,
         ):
             widget.setVisible(False)
@@ -832,6 +875,17 @@ class RegionsTab(W.Tab):
                 self.res_badge.setToolTip(
                     "{0}; {1}: click to change it".format(func.unit, state)
                 )
+            elif func is not None and func.knots:
+                self.res_knots.setVisible(True)
+                try:
+                    LK.knots_of(project, snip, gate)
+                    self.res_knots.setEnabled(True)
+                    self.res_knots.setToolTip(
+                        "Draw the knots of this snip's lsfspline, and its kernel"
+                    )
+                except LK.KnotsError as error:
+                    self.res_knots.setEnabled(False)
+                    self.res_knots.setToolTip(str(error))
             elif kind == RN.KEYWORDS:
                 self.res_keywords.setVisible(True)
                 self.res_keywords.setText(RN.keywords_of(call))
@@ -855,7 +909,7 @@ class RegionsTab(W.Tab):
                         for num in range(kernels.count):
                             self.res_column.addItem("Column {0}".format(num + 1))
                         self.res_column.setCurrentIndex(min(index, kernels.count - 1))
-        if kind == RN.SEVERAL and call is not None:
+        if kind == RN.SEVERAL and call is not None and not func.knots:
             # Kept as written: set in the .mod panel (Q8.8)
             notes.append(
                 RN.SEVERAL_NOTE.format(call.name) + ' · <a href="mod">show its line</a>'
@@ -982,6 +1036,10 @@ class RegionsTab(W.Tab):
         project = self.session.project
         func = RN.function(name)
         if func is None or not func.offered:
+            return
+        if func.knots:
+            # lsfspline: its knots, in their dialog (Stage 12, point 7)
+            self.set_lsf_knots(snip)
             return
         if name == "lsf" and not RN.linetools_installed():
             if anyway is None:
@@ -1347,7 +1405,14 @@ class RegionsTab(W.Tab):
             self.selected_snip = None
             self._context = {}
             self._shown_key = None
+            self._listed = None
             self._compared = set()
+            # Where the project was left: restored once (Stage 12, point 3)
+            stored = (session.view.get(SE.PLACES) or {}) if session else {}
+            self._stored_raw = stored.get("regions")
+            self._stored_places = self._stored_raw
+            self._stored_list = (self._stored_raw or {}).get("list")
+            self._stored_table = (self._stored_raw or {}).get("table")
         self.session = session
         if session is None or session.project.paused:
             return
@@ -1567,6 +1632,24 @@ class RegionsTab(W.Tab):
         self.ion_box.setCurrentIndex(stages.index(stage))
 
     def _fill_list(self):
+        # The list keeps its place, sideways too, while it lists the same
+        # transitions (Stage 12, point 3)
+        listed = (
+            self.state.get("system"),
+            self.state.get("element"),
+            self.state.get("stage"),
+            self._list_order(),
+        )
+        place = W.scroll_place(self.listing, pending=True)
+        stored, self._stored_list = getattr(self, "_stored_list", None), None
+        self._fill_transitions()
+        if listed == getattr(self, "_listed", None):
+            W.restore_place(self.listing, place)
+        elif stored:
+            W.restore_place(self.listing, tuple(stored))
+        self._listed = listed
+
+    def _fill_transitions(self):
         system = self._system()
         self.listing.clear()
         self._list = []
@@ -1670,6 +1753,24 @@ class RegionsTab(W.Tab):
         kept = None
         if self.strips and self._shown_key == self._key():
             kept = {s.key: s.view.view_range() for s in self.strips}
+        # The list of spectra keeps its place too (Stage 12, point 3)
+        place = W.scroll_place(self.scroll, pending=True)
+        stored, self._stored_places = getattr(self, "_stored_places", None), None
+        if kept is None and stored and tuple(stored.get("key") or ()) == self._key():
+            # A project opened where it was left: its spectra's ranges, and the
+            # spectrum at the top of the list
+            try:
+                kept = {
+                    tuple(k): (tuple(r[0]), tuple(r[1])) for k, r in stored["strips"]
+                }
+            except (KeyError, TypeError, ValueError, IndexError):
+                kept = None
+            top = stored.get("top")
+            if kept and top:
+                place = (
+                    0,
+                    W.item_place(lambda: [(list(s.key), s) for s in self.strips], *top),
+                )
         self._clear_strips()
         project = self.session.project
         line = self.current_line()
@@ -1756,6 +1857,7 @@ class RegionsTab(W.Tab):
                     if had is not None:
                         y0, y1 = had[1]
                         strip.view.box.setYRange(y0, y1, padding=0)
+                W.restore_place(self.scroll, place)
             self.zoom.remember()
         self._shown_key = self._key()
         self._apply_mode()
@@ -1906,7 +2008,7 @@ class RegionsTab(W.Tab):
         """The pixels the snip shares with another, as wavelength spans."""
         spans = []
         wave = snip.pixels.wave
-        for pair in SN.shared_pixels(self.session.project, snip):
+        for pair in SN.warned_pixels(self.session.project, snip):
             mask = np.zeros(wave.size, dtype=bool)
             mask[pair.pixels_of(snip)] = True
             spans += P.mask_regions(wave, mask)
@@ -2155,6 +2257,36 @@ class RegionsTab(W.Tab):
         self.share_label.setText(" ".join(notes))
 
     def _fill_snip(self):
+        # Its table of datasets keeps its place (Stage 12, point 3)
+        place = W.scroll_place(self.datasets, pending=True)
+        stored, self._stored_table = getattr(self, "_stored_table", None), None
+        self._fill_snip_box()
+        W.restore_place(self.datasets, tuple(stored) if stored else place)
+
+    def places(self):
+        """
+        Where the tab is, for ``ui/view.json`` (Stage 12, point 3; Q12.4 (b)): the
+        transition shown, each spectrum's ranges, the spectrum at the top of the
+        list, and the transition list's and the Snip box's places; read only as the
+        project is saved or closed. What was stored, before the tab is drawn.
+
+        Generated by RJC and Claude.
+        """
+        if not self.strips or self._shown_key is None:
+            return getattr(self, "_stored_raw", None)
+        top = W.top_item(self.scroll, [(list(s.key), s) for s in self.strips])
+        return {
+            "key": list(self._shown_key),
+            "strips": [
+                [list(s.key), [list(r) for r in s.view.view_range()]]
+                for s in self.strips
+            ],
+            "top": list(top) if top else None,
+            "list": list(W.scroll_place(self.listing)),
+            "table": list(W.scroll_place(self.datasets)),
+        }
+
+    def _fill_snip_box(self):
         project = self.session.project
         snip = self.current_snip()
         line = self.current_line()
@@ -2162,6 +2294,7 @@ class RegionsTab(W.Tab):
         parts = ["Snip"] + ([line.name] if line else []) + ([name] if name else [])
         self.snip.title.setText(" · ".join(parts))
         self.shared_box.hide()
+        self.ignored_box.hide()
         several = len(self._rows) > 1
         self.datasets.setVisible(several)
         self.copy_button.setVisible(several)
@@ -2211,7 +2344,25 @@ class RegionsTab(W.Tab):
                 "No fit region yet: choose Adjust fit regions to draw one."
             )
         self.buffer_label.setText(self._buffer_text(snip, facts["buffers"]))
-        pairs = SN.shared_pixels(project, snip)
+        ignored = SN.ignored_pixels(project, snip)
+        if ignored:
+            self.ignored_box.show()
+            self.ignored_label.setText(
+                "Warnings ignored: "
+                + "; ".join(
+                    "{0} pixels shared with snip {1}{2}".format(
+                        p.count,
+                        p.other(snip).specid,
+                        (
+                            " ({0})".format(p.other(snip).row.name)
+                            if p.other(snip).row is not None
+                            else ""
+                        ),
+                    )
+                    for p in ignored
+                )
+            )
+        pairs = SN.warned_pixels(project, snip)
         if not pairs:
             return
         self.shared_box.show()
@@ -2271,6 +2422,7 @@ class RegionsTab(W.Tab):
             name = self._name_of(row, one)
             key = (row.id, one.specid if one is not None else None)
             one = project.snip(one.specid) if one is not None else None
+            tips = {}
             if one is None or one.pixels is None:
                 cells = [name, "—", "—", "no snip"]
             else:
@@ -2278,17 +2430,37 @@ class RegionsTab(W.Tab):
                 cells = [
                     name,
                     str(int(SN.fitted(one).sum())),
-                    str(shared),
+                    self._shared_cell(project, one, shared),
                     SN.origin(project, one),
                 ]
+                if cells[2] != str(shared):
+                    tips[2] = IGNORED_TIP
             for col, text in enumerate(cells):
                 item = QtWidgets.QTableWidgetItem(text)
                 if col == 0:
                     # A dataset and a snip's file can be wider than the column
                     item.setToolTip(text)
+                elif col in tips:
+                    item.setToolTip(tips[col])
                 self.datasets.setItem(num, col, item)
             if key == (self.selected, self.selected_snip):
                 self.datasets.selectRow(num)
+
+    @staticmethod
+    def _shared_cell(project, snip, shared):
+        """
+        A snip's shared pixels, counted as they are now, with those whose warning
+        is ignored marked (Stage 12, point 1; Q12.14): "401 (ignored)", or
+        "450 (401 ignored)" where another pair is still warned about.
+
+        Generated by RJC and Claude.
+        """
+        ignored = sum(p.count for p in SN.ignored_pixels(project, snip))
+        if not ignored:
+            return str(shared)
+        if ignored == shared:
+            return "{0} (ignored)".format(shared)
+        return "{0} ({1} ignored)".format(shared, ignored)
 
     def _update_snip(self, found=()):
         """SNIP: while a dataset whose source covers the transition has no snip."""
@@ -3193,6 +3365,62 @@ class RegionsTab(W.Tab):
             return
         also = self._fix_others(snip, pairs[0])
         self._do(SN.keep_all_step(self.session.project, snip, also))
+
+    def ignore_shared(self):
+        """
+        Ignore warning (Stage 12, point 1; Q12.3): the pairs this snip is warned
+        about are no longer, until either snip's pixels or fit range change. One
+        step; the test for shared pixels is unchanged.
+
+        Generated by RJC and Claude.
+        """
+        snip = self.current_snip()
+        if snip is None:
+            return
+        pairs = SN.warned_pixels(self.session.project, snip)
+        if pairs:
+            self._do(SN.ignore_step(self.session.project, pairs))
+
+    def warn_again(self):
+        """Warn again: the pairs of this snip whose warning was ignored. One step."""
+        snip = self.current_snip()
+        if snip is None:
+            return
+        pairs = SN.ignored_pixels(self.session.project, snip)
+        if pairs:
+            self._do(SN.warn_again_step(self.session.project, pairs))
+
+    def set_lsf_knots(self, target=None):
+        """
+        Set LSFSpline knots… (Stage 12, point 7): the selected snip's own
+        ``lsfspline`` (or the knots it starts from, Q12.8 (iii)), in their dialog;
+        Apply makes one step, Cancel changes nothing.
+
+        Generated by RJC and Claude.
+        """
+        project = self.session.project
+        snip = self.current_snip()
+        target = target or snip
+        if target is None:
+            return
+        try:
+            knots = LK.knots_of(project, target, BL.Gate(project))
+            dialog = KN.KnotsDialog(project, target, knots, self.main.ask, self)
+        except LK.KnotsError as error:
+            self._warn(RN.KNOTS_TEXT, str(error))
+            self._fill_own(project, snip)
+            return
+        if not self.main.run_dialog(dialog):
+            self._fill_own(project, snip)
+            return
+
+        def do():
+            try:
+                self._do(dialog.step_of())
+            except LK.KnotsError as error:
+                self._warn(RN.KNOTS_TEXT, str(error))
+
+        self._act("regions.lsf_knots", do)
 
     def merge_shared(self):
         """

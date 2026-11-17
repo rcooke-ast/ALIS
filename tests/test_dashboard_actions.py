@@ -55,6 +55,8 @@ def test_the_menus_of_the_design():
         "Load snips…",
         "Save",
         "Save as…",
+        # A copy with every source spectrum kept in it (Stage 12, point 6)
+        "Save a copy with spectra…",
         "Export…",
         "Relink spectra…",
         "Preferences…",

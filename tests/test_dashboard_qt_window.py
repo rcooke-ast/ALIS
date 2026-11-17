@@ -405,3 +405,64 @@ def test_every_button_keeps_its_ellipsis(window, qtbot, tmp_path):
         assert text in kept
     # The menus are unchanged
     assert window.qactions["file.open"].text() == "Open…"
+
+
+def test_the_window_opens_where_it_was_closed(qtbot, home):
+    # Stage 12, point 3 (Q12.4): the window's size and position, in the preferences
+    from qtpy import QtGui
+
+    from alis.dashboard import preferences as PR
+    from alis.dashboard.qt import style
+    from alis.dashboard.qt import window as WN
+
+    style.apply(QtWidgets.QApplication.instance())
+    prefs = PR.Preferences(str(home))
+    prefs.set("window.geometry", [40, 30, 1100, 700, 0])
+    window = WN.MainWindow(prefs, str(home))
+    qtbot.addWidget(window)
+    assert (window.width(), window.height()) == (1100, 700)
+    assert (window.x(), window.y()) == (40, 30)
+    # Kept as it closes
+    window.resize(1000, 650)
+    window._keep_geometry()
+    saved = PR.Preferences.load(str(home))["window.geometry"]
+    assert saved[2:] == [1000, 650, 0]
+    # A place on no screen now (a display unplugged): the main screen
+    prefs.set("window.geometry", [20000, 20000, 400, 300, 0])
+    other = WN.MainWindow(prefs, str(home))
+    qtbot.addWidget(other)
+    screen = QtGui.QGuiApplication.primaryScreen().availableGeometry()
+    assert screen.intersects(other.frameGeometry())
+    assert (other.width(), other.height()) == (400, 300)
+    # Not a preference the Preferences dialog shows
+    assert "window.geometry" not in [s.key for s in PR.SHOWN]
+    with pytest.raises(PR.PreferenceError):
+        prefs.set("window.geometry", [0, 0, 10, 10, 0])
+
+
+def test_every_zoom_bar_has_a_home_for_each_axis(window, qtbot, tmp_path):
+    # Stage 12, point 4: ↔ and ↕ beside ⌂, on every tab's zoom bar
+    from alis.dashboard import actions as A
+    from alis.dashboard.qt import dialogs as D
+    from alis.dashboard.qt import plots as PL
+
+    path = tmp_path / "metal.model"
+    B.pack_to(str(METAL), str(path), with_outputs=False)
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    bars = window.findChildren(PL.ZoomBar)
+    owners = {
+        "data": window.tab_widgets[0].zoom,
+        "regions": window.tab_widgets[1].zoom,
+        "components": window.tab_widgets[2].zoom,
+        "inspect": window.fit_tab.inspect.zoom,
+        "compare": window.fit_tab.compare.zoom,
+    }
+    assert all(bar in bars for bar in owners.values())
+    for bar in bars:
+        assert bar.buttons["home_x"].text() == "↔"
+        assert bar.buttons["home_y"].text() == "↕"
+    sheet = D.ShortcutsDialog(window.qactions, window)
+    texts = [w.text() for w in sheet.findChildren(QtWidgets.QLabel)]
+    assert A.MOUSE_NOTE in texts and "⇧ Shift" in A.MOUSE_NOTE
+    assert design_references(ui_strings(window) + texts) == []

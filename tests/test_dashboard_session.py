@@ -288,6 +288,38 @@ def test_save_as_moves_the_recovery_copy_and_keeps_the_runs(
     assert B.LATEST + "run.json" in B.read(target).members
 
 
+def test_a_fit_opened_without_its_spectrum_keeps_its_data(home, tmp_path, registry):
+    # Stage 12 (Q12.16 (ii)): its dataset is given its snip's pixels as its data;
+    # Save writes them, and the project opens again with them, clean
+    from alis.dashboard import sources as SR
+
+    session = S.Session.import_model(str(METAL), registry=registry)
+    (row,) = session.project.rows
+    assert SR.from_snips(row.source)
+    assert list(SR.spectrum(session.project, row).wave) == list(
+        row.snips[0].pixels.wave
+    )
+    assert session.history.done == [] and session.project.inferred
+    path = tmp_path / "metal.model"
+    session.save(str(path))
+    saved = B.read(str(path))
+    (entry,) = saved.sources
+    assert entry["from_snips"] and entry["embedded"] in saved.members
+    session.discard_recovery()
+    again = S.Session.open(str(path), registry=registry)
+    assert again.project.bundle.sources == saved.sources and not again.dirty
+    again.discard_recovery()
+
+
+def test_a_project_saved_before_opens_as_it_is(home, path, registry):
+    # Q12.17's response: a project saved before is not given data as it opens
+    assert B.read(path).sources == []
+    session = S.Session.open(path, registry=registry)
+    assert [r.source for r in session.project.rows] == [None]
+    assert not session.dirty and session.check_disk() == S.SAME
+    session.discard_recovery()
+
+
 def test_close_keeps_the_view(home, path, registry):
     session = S.Session.open(path, registry=registry)
     session.set_view("tab", "Fit")
@@ -301,3 +333,116 @@ def test_the_history_pauses_as_the_preferences_say(home, path, registry):
     prefs.set("editor.typing_pause", 2.5)
     session = S.Session.open(path, prefs=prefs, registry=registry)
     assert session.history.pause == 2.5
+
+
+# The places of a project's views and lists (Stage 12, point 3; Q12.4 (b))
+PLACES = {
+    "components": {"half": 200.0, "x": [-60.0, 50.0], "cards": ["a5", 128]},
+    "regions": {"list": [0, 12], "table": [0, 0]},
+}
+
+
+def test_the_places_survive_save_close_and_a_recovery_copy(home, path, registry):
+    session = S.Session.open(path, registry=registry)
+    assert S.PLACES not in session.view
+    session.set_view(S.PLACES, PLACES)
+    # Places alone leave no unsaved changes
+    assert not session.dirty and session.view_changed
+    session.save()
+    assert S.Session.open(path, registry=registry).view[S.PLACES] == PLACES
+    # A clean close keeps new places, as it keeps a changed tab
+    moved = dict(PLACES, data={"row": "r1", "range": [[1300.0, 1306.0], [0.0, 1.2]]})
+    session.set_view(S.PLACES, moved)
+    session.close()
+    session = S.Session.open(path, registry=registry)
+    assert session.view[S.PLACES] == moved
+    # A recovery copy holds them with the changes it keeps
+    set_value(session, 14.25)
+    session.set_view(S.PLACES, PLACES)
+    assert session.autosave()
+    note = S.find_recovery(path)
+    recovered = S.Session.open(path, recover=note, registry=registry)
+    assert recovered.view[S.PLACES] == PLACES
+    recovered.discard_recovery()
+
+
+# -- Source spectra kept in the project (Stage 12, point 6; Q12.7 (a)) -------------
+
+
+def spectrum_session(tmp_path, registry):
+    """A new project of one spectrum, its source referenced by path."""
+    import shutil
+
+    spec = tmp_path / "spectra" / "spec.dat"
+    spec.parent.mkdir(parents=True)
+    shutil.copy(ROOT / "examples/metal_line_abs/data/OI_SiII.dat", spec)
+    session, _ = S.Session.new(
+        str(tmp_path / "test.model"), [str(spec)], z=0.0, registry=registry
+    )
+    return session, spec
+
+
+def test_a_copy_kept_in_the_project_is_read_when_the_file_is_gone(
+    home, tmp_path, registry
+):
+    from alis.dashboard import sources as SR
+
+    session, spec = spectrum_session(tmp_path, registry)
+    ident = session.project.bundle.sources[0]["id"]
+    assert not session.dirty
+    session.keep_copy(ident)
+    # Not a step of the history; the project has unsaved changes until Save
+    assert session.dirty and not session.history.done
+    session.save()
+    assert not session.dirty
+    # On another computer: the file is gone, and the copy is read
+    spec.unlink()
+    other = S.Session.open(session.path, registry=registry)
+    ((entry, state),) = SR.states(other.project.bundle, other.path)
+    assert state == SR.EMBEDDED and SR.problems(other.project.bundle, other.path) == []
+    row = other.project.rows[0]
+    assert SR.spectrum(other.project, row, other.path) is not None
+    # Remove the copy is refused while the file is gone
+    with pytest.raises(S.SessionError, match="relink"):
+        other.remove_copy(ident)
+
+
+def test_remove_the_copy_takes_it_out_at_the_next_save(home, tmp_path, registry):
+    session, spec = spectrum_session(tmp_path, registry)
+    ident = session.project.bundle.sources[0]["id"]
+    session.keep_copy(ident)
+    session.save()
+    kept = [m for m in B.read(session.path).members if m.startswith(B.EMBEDDED)]
+    assert len(kept) == 1
+    session.remove_copy(ident)
+    assert session.dirty
+    session.save()
+    bundle = B.read(session.path)
+    assert [m for m in bundle.members if m.startswith(B.EMBEDDED)] == []
+    assert bundle.sources[0]["embedded"] is None
+
+
+def test_save_a_copy_with_spectra_leaves_the_open_project_as_it_was(
+    home, tmp_path, registry
+):
+    from alis.dashboard import sources as SR
+
+    session, spec = spectrum_session(tmp_path, registry)
+    before = (session.path, session.dirty, open(session.path, "rb").read())
+    target = tmp_path / "share" / "copy.model"
+    target.parent.mkdir()
+    assert session.save_copy_with_spectra(str(target)) == []
+    assert (session.path, session.dirty, open(session.path, "rb").read()) == before
+    assert session.project.bundle.sources[0]["embedded"] is None
+    copy_ = B.read(str(target))
+    assert all(e["embedded"] in copy_.members for e in copy_.sources)
+    # The copy opens with no relinking, its spectra gone from disk
+    spec.unlink()
+    assert SR.problems(copy_, str(target)) == []
+    # A spectrum that has changed cannot be kept, and is named
+    session2, spec2 = spectrum_session(tmp_path / "second", registry)
+    spec2.write_text(spec2.read_text() + "\n")
+    skipped = session2.save_copy_with_spectra(str(tmp_path / "second" / "c.model"))
+    assert [e["path"] for e in skipped] == [str(spec2)]
+    with pytest.raises(S.SessionError, match="another file"):
+        session2.save_copy_with_spectra(session2.path)

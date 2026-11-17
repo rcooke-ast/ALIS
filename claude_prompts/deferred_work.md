@@ -89,6 +89,9 @@ correctness first, then what users need next, then effort; RJC orders the work.
 23. Load snips… for a file that cannot be read or names no transition (§7.8), and
     Open a fit's question in the singular for a fit of one dataset (§7.9), both
     waiting for a user to ask (dashboard Stage 12, Q12.1 (b)).
+24. ALIS's default `nsubmin` of 10 (§7.10), and `lsfspline` written into a
+    `.mod.out` without its `locations`, with `examples/lsf_spline` as a regression
+    case (§7.11): dashboard Stage 12, Q12.13 (b) and Q12.10's response.
 
 ### Not planned, or entries to close
 - **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
@@ -360,7 +363,8 @@ jobs fail. The **black** badge is deliberately *not* there yet; it goes up when
 Added 2026-10-07 (dashboard Stage 4). Here `Q4.n` is a query in
 `claude_prompts/dashboard_stage4.md`. §7.5 and §7.6 were added on 2026-10-18 (dashboard
 Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8 and
-§7.9 were added on 2026-11-16 (dashboard Stage 12, Q12.1 (b)).
+§7.9 were added on 2026-11-16 (dashboard Stage 12, Q12.1 (b)), §7.10 and §7.11 on
+2026-11-17 (Task 12.9, Q12.13 (b) and Q12.10's response).
 
 ### 7.1 Telluric flags in the transition list
 - **What:** flag a transition whose observed wavelength falls in a telluric band,
@@ -514,3 +518,40 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
   `alis/dashboard/qt/window.py` (`open_fit`).
 - **To finish:** the question counts the `.mod`'s datasets (`loadfit.fit_datasets`)
   and words itself for one or for several.
+
+### 7.10 ALIS's default `nsubmin` of 10
+
+- **What:** raising ALIS's default fewest sub-pixels per pixel from 5 to 10, so that
+  every model is worked out on at least 10 sub-pixels (RJC, Q12.9's response).
+- **Why deferred:** RJC, Q12.13 (b) of `dashboard_stage12.md`. With the default at
+  10, the regression harness's `fast` batch failed 27 of its 149 tests: 15 fits
+  (9 shipped examples, each as a bundle too, and 6 context fits), 2 evaluations at
+  the reference's best fit, and `examples/generate`'s data. Some fits changed their
+  result (J0903p2628: a parameter 143.6 → 128.2, 3.5σ; HS0105p1619: χ² 2086.3 →
+  2137.0; `splineabs` linear: a 1σ error 113.2 → 6.2). The `lsfspline` delta
+  function does not need it: a model sets `run nsubmin 10` where it wants finer
+  sub-pixels, and the dashboard's spix follows the model's `nsubmin`.
+- **Where:** `alis/config.py` (`nsubmin`), `doc/ALIS_workflow.md`'s table,
+  `doc/tex_files/description.tex`; the log of dashboard Stage 12 (Task 12.9).
+- **To finish:** a stage of its own: the 16 cases refitted, each new fit checked by
+  eye, their references regenerated with their χ² before and after, and
+  `CHANGELOG.md`.
+
+### 7.11 `lsfspline` in a `.mod.out`, and `examples/lsf_spline` as a regression case
+
+- **What:** ALIS writes an `lsfspline` resolution into the `.mod.out` without its
+  `locations` keyword (`SplineLSF.parout` writes the values only), so the output
+  model cannot be read back: "locations must be set". The regression harness's
+  evaluation at the reference's best fit (mode (b)) rereads it, so
+  `examples/lsf_spline` cannot be a case until then.
+- **Why deferred:** RJC, Q12.10's response of `dashboard_stage12.md`: if the
+  harness has problems with the case, it waits, and the unit tests stand
+  (`tests/test_lsfspline.py`). Its data were generated again in Task 12.9, with
+  the smoothing as a FWHM and the kernel centred; its fit takes 9 s (0.002 h), and
+  modes (a) and the bundle passed with references written from it.
+- **Where:** `alis/functions/lsfspline.py` (`parout`); `examples/lsf_spline/`.
+- **To finish:** `parout` writes `;locations:…` (and the other keywords given),
+  checked by reading a `.mod.out` back; then the case's references
+  (`model/fit_spectra.mod.out.reference`, `data/reference_fits/OI_SiII_fit.dat`)
+  from a fit, and the harness on it, CI's `examples` batch included.
+

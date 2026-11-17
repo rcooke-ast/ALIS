@@ -17,7 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from dashboard_synthetic import write_linked_fit, write_ratio_fit
+from dashboard_synthetic import write_linked_fit, write_ratio_fit, write_rubidium_fit
 
 from alis.dashboard import blinding as BL
 from alis.dashboard import components as C
@@ -403,11 +403,23 @@ def test_a_drag_is_one_step_and_moves_the_model(metal):
     assert state(project) == before
 
 
-def test_a_linked_parameter_cannot_be_dragged(registry):
+def test_a_linked_log_n_moves_its_link_s_one_free_input(registry):
+    # Stage 12, point 5 (Q12.6 (a)): na = log10(10**nf - ...), nf a variable that
+    # only this link names; before, the drag was refused (D65)
     project = P.Project.import_model(str(SUMMED), registry=registry)
     comp = [c for c in project.components if c.label == "ra"][0]
+    inp, why = C.link_input(project, comp, "1H_I")
+    assert inp.label == "nf" and why.startswith("log N is computed by the link na =")
+    assert C.draggable(comp, "1H_I", project)["logn"]
+    assert not C.draggable(comp, "1H_I")["logn"]
+    ((par, value),) = C.drag(project, comp, "1H_I", logn=12.2)
+    assert par is inp and value != inp.start
+    target = C.linked_coldens(comp, "1H_I")
+    assert C.link_logn(project, target, [(par, value)]) == pytest.approx(12.2)
+    # A redshift that a link computes is still not dragged
+    comp_b = [c for c in project.components if c.label == "rb"][0]
     with pytest.raises(C.DragError, match="link"):
-        C.drag(project, comp, "1H_I", logn=12.0)
+        C.drag(project, comp_b, "1H_I", z=0.0002)
 
 
 @pytest.mark.parametrize(
@@ -1764,3 +1776,143 @@ def test_the_renumber_plan_lists_the_lines_that_change(registry, tmp_path):
     assert reasons[first] == "na3h1 → na2h1, za3 → za2, ba3 → ba2"
     assert all(e.action == R.EDIT for e in plan.lines)
     assert "13.8na2h1" in next(e.after for e in plan.lines if e.line == first)
+
+
+def rubidium_fit(registry, folder):
+    """Two components, each with 85Rb I and 87Rb I lines (MWC137's point 8)."""
+    path = write_rubidium_fit(folder)
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    return project, H.History(project)
+
+
+def test_rubidium_s_isotopes_are_named_apart(registry, tmp_path):
+    # Stage 12, point 8: a card's lists read "Rb I, Rb I"
+    project, hist = rubidium_fit(registry, tmp_path)
+    system = project.systems[0]
+    (row,) = C.navigator_ions(project, system)
+    assert (row.ion, row.ions) == ("85Rb_I", ["85Rb_I", "87Rb_I"])
+    assert row.name == "Rb I" and row.detail.endswith("with 87Rb I")
+    for ion in ("85Rb_I", "87Rb_I"):
+        hist.do(C.exclude(project, project.component("a1"), ion))
+        assert errors(project) == [], ion
+    a1 = project.component("a1")
+    ions = C.system_ions(project, a1.system)
+    excluded = [i for i, kind, _ in C.card_ions(a1, ions) if kind == C.EXCLUDED]
+    assert [P.ion_name(i) for i in excluded] == ["Rb I", "87Rb I"]
+
+
+# A third ion of the system, which a1 never had: O I in a2 (Stage 12, point 2)
+O1_IN_A2 = "voigt ion=16O_I 13.0 2.50420rb 10.0doppb 10000.0tempb specid=0"
+
+
+def test_an_ion_never_had_is_included_in_a_component_excluded_from_every_ion(
+    registry, tmp_path
+):
+    # Stage 12, point 2: MWC137's a2 refused Ti II, Ca I, Ca II and Fe I
+    project, hist = linked_fit(registry, tmp_path, extra=[O1_IN_A2])
+    exclude_both(project, hist)
+    before = project.text
+    a1 = project.component("a1")
+    assert a1.everywhere_excluded
+    assert C.system_ions(project, a1.system) == ["1H_I", "2H_I", "16O_I"]
+    step, guess = C.include(project, a1, "16O_I")
+    hist.do(step)
+    assert errors(project) == []
+    assert step.description == "Include O I in a1"
+    a1 = project.component("a1")
+    assert not a1.everywhere_excluded
+    (line,) = a1.lines_of("16O_I")
+    z, b, t = (line.param(n) for n in ("redshift", "bturb", "temperature"))
+    # The component's z, b_turb and T, with their labels, from its commented lines
+    assert (z.label, b.label, t.label) == ("ra", "doppa", "tempa")
+    assert (z.start, b.start, t.start) == pytest.approx((2.5036, 25.0, 1.0e4))
+    assert line.param("ColDens").start == pytest.approx(guess.logn)
+    assert guess.note == "no data"
+    # Its other ions stay excluded, and one undo gives back the text
+    assert C.is_excluded(a1, "1H_I") and C.is_excluded(a1, "2H_I")
+    hist.undo()
+    assert project.text == before
+    assert project.component("a1").everywhere_excluded
+
+
+# D I's log N computed from H I's and a free variable that no other line names
+# (MWC137's ka = lia - lika, Stage 12, point 5)
+FREE_LINK_LINES = [
+    "voigt ion=1H_I 14.5nha 2.50360ra 25.0doppa 10000.0tempa specid=0",
+    "voigt ion=1H_I 13.5nhb 2.50420rb 10.0doppb 10000.0tempb specid=0",
+    "voigt ion=2H_I 10.0nda 2.50360ra 25.0doppa 10000.0tempa specid=0",
+    "variable -4.6dh specid=0",
+]
+
+
+def free_link_fit(registry, folder, extra=()):
+    path = write_ratio_fit(folder, FREE_LINK_LINES, extra, ["nda(nha,dh) = nha + dh"])
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    return project, H.History(project)
+
+
+def test_a_drag_moves_a_link_s_input_so_the_link_gives_the_log_n(registry, tmp_path):
+    project, hist = free_link_fit(registry, tmp_path)
+    text = project.text
+    a1 = project.component("a1")
+    changes = C.drag(project, a1, "2H_I", logn=10.2, b=30.0)
+    (inp, value), (bpar, bvalue) = changes
+    assert (inp.label, bpar.name) == ("dh", "bturb")
+    assert value == pytest.approx(10.2 - 14.5)
+    target = C.linked_coldens(a1, "2H_I")
+    assert C.link_logn(project, target, changes) == pytest.approx(10.2)
+    hist.do(C.drag_step(project, a1, changes))
+    assert errors(project) == []
+    dh = project.parsed.labels["dh"].params[0]
+    assert dh.start == pytest.approx(-4.3)
+    a1 = project.component("a1")
+    target = C.linked_coldens(a1, "2H_I")
+    assert C.linked_values(project)[target.index] == pytest.approx(10.2)
+    # H I's log N stays, and one undo gives back the text
+    assert a1.lines_of("1H_I")[0].param("ColDens").start == 14.5
+    hist.undo()
+    assert project.text == text
+
+
+def test_a_limit_on_the_link_s_input_stops_the_drag(registry, tmp_path):
+    project, hist = free_link_fit(registry, tmp_path)
+    dh = project.parsed.labels["dh"].params[0]
+    hist.do(project.step(E.set_limits(project.parsed, dh, -4.5, -4.4)))
+    assert errors(project) == []
+    a1 = project.component("a1")
+    ((inp, value),) = C.drag(project, a1, "2H_I", logn=10.5)
+    assert value == pytest.approx(-4.4)
+    assert value in C.bounds(inp)
+    target = C.linked_coldens(a1, "2H_I")
+    assert C.link_logn(project, target, [(inp, value)]) == pytest.approx(10.1)
+
+
+@pytest.mark.parametrize(
+    "lines, links",
+    [
+        # Its other input is fixed: nothing free to move (J013301m400628's shape)
+        (None, None),
+        # Its free input is named by another link too
+        (
+            FREE_LINK_LINES[:3]
+            + ["voigt ion=2H_I 9.0ndb 2.50420rb 10.0doppb 10000.0tempb specid=0"]
+            + FREE_LINK_LINES[3:],
+            ["nda(nha,dh) = nha + dh", "ndb(nhb,dh) = nhb + dh"],
+        ),
+    ],
+)
+def test_a_link_with_no_single_input_leaves_log_n(registry, tmp_path, lines, links):
+    from dashboard_synthetic import LINKED_LINES, LINKS
+
+    path = write_ratio_fit(tmp_path, lines or LINKED_LINES, (), links or LINKS)
+    project = P.Project.import_model(str(path), registry=registry)
+    assert errors(project) == []
+    a1 = project.component("a1")
+    inp, why = C.link_input(project, a1, "2H_I")
+    expected = "nha + FIXDH" if lines is None else "nha + dh"
+    assert inp is None and why == "log N is computed by the link nda = " + expected
+    assert not C.draggable(a1, "2H_I", project)["logn"]
+    with pytest.raises(C.DragError, match="computed by the link nda"):
+        C.drag(project, a1, "2H_I", logn=10.2)

@@ -997,6 +997,40 @@ run_alis myfit.model     # fits the project from the command line, as before
     a system's numbers in order of redshift.
   - A commented-out line that names its redshift (`redshift=…`) is read as ALIS
     reads it.
+- **Since Stage 12** (2026-11-17), from users' feedback:
+  - **Every view keeps its place.** A step never moves a scroll bar or a zoom: the
+    Components tab's cards and panels, the Regions tab's lists, and Fit · Inspect
+    and Compare stay where you left them (⌂ still goes home). A project opens where
+    it was left: each view's ranges and each list's place are kept with it, and the
+    window's size and position in the preferences.
+  - **Zooming the flux axis.** The wheel with ⇧ Shift held zooms the flux axis
+    about the pointer, in every spectrum view. Beside ⌂ on every zoom bar, ↔ takes
+    the wavelength (or velocity) axis home and ↕ the flux axis.
+  - **Components tab.** Each rubidium isotope has its own name (Rb I, 87Rb I). A
+    component excluded from every ion can be included in an ion it never had (its
+    z, b and T come from its commented-out lines). A drag on a column density that a
+    link computes moves the link's one free input (`ka = lia − lika` moves `lika`);
+    where there is no single such input, the readout says why log N stays.
+  - **Ignore warning.** Two snips that share pixels, and that you know to be
+    different data, can be left unwarned: Ignore warning, beside Merge the snips…,
+    until either snip's shared pixels change; Warn again, in the Snip box, takes it
+    back. The snips table marks their shared pixels "(ignored)".
+  - **Every dataset keeps its data.** A snip loaded unassigned keeps its pixels as
+    its dataset's data, kept in the project, and so do the datasets of a fit opened
+    without its spectrum: CLEAR (or commenting a snip out) leaves the data, and SNIP
+    cuts from them. A project saved before opens as it is.
+  - **Spectra kept in the project.** A dataset's right-click menu offers Keep a copy
+    in the project, so that the project opens on another computer with no
+    relinking; **File → Save a copy with spectra…** writes a copy with every spectrum
+    kept in it, for sharing.
+  - **Set LSFSpline knots…** (the Snip box, and the Data tab's Resolution, once
+    `lsfspline` is chosen): drag, add and delete the knots of the line spread
+    function, with the kernel ALIS makes and its FWHM drawn; **Delta Function**
+    starts from five knots that give a Gaussian of the smoothing's FWHM.
+  - **`lsfspline` itself** (ALIS): its first value is now the FWHM of the Gaussian
+    that smooths the knots (it was σ√2), and its kernel is centred on its line (it
+    was one sub-pixel to the red). A model written before gets a kernel smoothed
+    0.60 times as wide; multiply its smoothing by 1.665 to keep it.
 
 #### Preparing a fit: the Data and Regions tabs
 

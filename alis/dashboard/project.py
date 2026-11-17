@@ -61,7 +61,8 @@ KEPT_NOTICES = "kept_notices"
 # imported, by specid: its default for Reset FWHM (Stage 6.6, Q6.21)
 IMPORTED_FWHM = "imported_fwhm"
 # The most abundant isotope of each element, by mass number: the isotope whose
-# labels the others take when isotopes are tied (D22)
+# labels the others take when isotopes are tied (D22). Every element with several
+# isotopes in ALIS's atomic data is here (rubidium joined in Stage 12, point 8)
 MAIN_ISOTOPE = {
     "H": 1,
     "He": 4,
@@ -91,6 +92,7 @@ MAIN_ISOTOPE = {
     "Ni": 58,
     "Cu": 63,
     "Zn": 64,
+    "Rb": 85,
 }
 # The emission functions that make a continuum (D17); a constant is a snip's
 # continuum only when it has no polynomial
@@ -1118,6 +1120,13 @@ class Project:
                 old.members[PROJECT_JSON] = new.members[PROJECT_JSON]
             else:
                 old.members.pop(PROJECT_JSON, None)
+            # The source spectra, and the copies kept in the project (Stage 12)
+            old.sources = copy.deepcopy(new.sources)
+            for member in [m for m in old.members if m.startswith(B.EMBEDDED)]:
+                del old.members[member]
+            old.members.update(
+                {m: c for m, c in new.members.items() if m.startswith(B.EMBEDDED)}
+            )
 
         if os.path.exists(path):
             B.update(path, change)
@@ -1187,10 +1196,13 @@ class Project:
         if step.text is not None:
             self.text = step.text.apply(self.text)
         for member, (_, new) in step.files.items():
+            # A dataset's data kept in the project as its source go with the
+            # bundle's sources, not the model's files (Stage 12, Q12.16)
+            where = self.bundle.members if member.startswith(B.EMBEDDED) else self.files
             if new is None:
-                self.files.pop(member, None)
+                where.pop(member, None)
             else:
-                self.files[member] = new
+                where[member] = new
         if step.ui is not None:
             self.ui = copy.deepcopy(step.ui[1])
         if step.hidden is not None:

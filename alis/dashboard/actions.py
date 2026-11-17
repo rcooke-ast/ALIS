@@ -128,6 +128,15 @@ ACTIONS = (
         section=1,
     ),
     Action(
+        "file.save_with_spectra",
+        "Save a copy with spectra…",
+        "File",
+        "",
+        "Write a copy of the project with every source spectrum kept in it, to share;"
+        " the open project is unchanged",
+        section=1,
+    ),
+    Action(
         "file.export",
         "Export…",
         "File",
@@ -637,6 +646,14 @@ def in_menu(menu):
     return [action for action in ACTIONS if action.menu == menu]
 
 
+# What the shortcut sheet says of the mouse in a spectrum (D38; Stage 12, point 4)
+MOUSE_NOTE = (
+    "In a spectrum, the wheel zooms the wavelength (or velocity) axis about the"
+    " pointer, and with ⇧ Shift held the flux axis. ⌂ takes both axes home, ↔ the"
+    " wavelength axis and ↕ the flux axis; ← and → step through the views."
+)
+
+
 def shortcut_sheet():
     """
     The shortcut sheet: every action, by menu, with its shortcut and what it does.
@@ -695,6 +712,7 @@ def scoped(tab):
 
 __all__ = [
     "Action",
+    "MOUSE_NOTE",
     "scoped",
     "DATA_TAB",
     "REGIONS_TAB",

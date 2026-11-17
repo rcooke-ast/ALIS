@@ -179,6 +179,90 @@ def test_the_wheel_zooms_wavelength_only(view, qtbot):
     assert y_after == pytest.approx(y_before)
 
 
+def test_shift_and_the_wheel_zoom_the_flux_axis(view, qtbot):
+    # Stage 12, point 4 (Q12.5 (b)): ⇧ Shift held, about the cursor
+    from qtpy import QtCore
+
+    widget, _ = view
+    widget.box.enableAutoRange(y=False)
+    (x0, x1), (y0, y1) = widget.view_range()
+
+    class Wheel:
+        def __init__(self, mods):
+            self.mods = mods
+
+        def delta(self):
+            return 120
+
+        def modifiers(self):
+            return self.mods
+
+        def pos(self):
+            return QtCore.QPointF(400.0, 120.0)
+
+        def accept(self):
+            pass
+
+    shift = QtCore.Qt.KeyboardModifier.ShiftModifier
+    centre = widget.box.mapToView(QtCore.QPointF(400.0, 120.0)).y()
+    widget.box.wheelEvent(Wheel(shift))
+    (a0, a1), (b0, b1) = widget.view_range()
+    # Before, the wavelength axis zoomed
+    assert (a0, a1) == pytest.approx((x0, x1))
+    assert (b1 - b0) < (y1 - y0)
+    # About the cursor: the flux under it stays where it was
+    assert widget.box.mapToView(QtCore.QPointF(400.0, 120.0)).y() == pytest.approx(
+        centre, rel=1e-6
+    )
+    # Without it, the wavelength axis, as before
+    widget.box.wheelEvent(Wheel(QtCore.Qt.KeyboardModifier.NoModifier))
+    (c0, c1), (d0, d1) = widget.view_range()
+    assert (c1 - c0) < (a1 - a0) and (d0, d1) == pytest.approx((b0, b1))
+
+
+def test_home_x_and_home_y_take_one_axis_home(view, qtbot):
+    widget, bar = view
+    home = widget.view_range()
+    assert [bar.buttons[k].text() for k in ("home", "home_x", "home_y")] == [
+        "⌂",
+        "↔",
+        "↕",
+    ]
+    assert "⇧ Shift" in bar.buttons["home_y"].toolTip()
+    widget.box.setXRange(4030.0, 4040.0, padding=0)
+    widget.box.setYRange(0.95, 1.05, padding=0)
+    bar.remember()
+    zoomed = widget.view_range()
+    bar.home_x()
+    x, y = widget.view_range()
+    assert x == pytest.approx(home[0]) and y == pytest.approx(zoomed[1])
+    bar.back()
+    assert np.allclose(np.ravel(widget.view_range()), np.ravel(zoomed))
+    bar.home_y()
+    x, y = widget.view_range()
+    assert x == pytest.approx(zoomed[0]) and y[1] - y[0] > 0.2
+    bar.back()
+    assert np.allclose(np.ravel(widget.view_range()), np.ravel(zoomed))
+
+
+def test_home_y_acts_on_every_view_of_its_bar(qtbot):
+    views = []
+    for _ in range(2):
+        widget = PL.SpectrumView()
+        qtbot.addWidget(widget)
+        wave = np.linspace(4000.0, 4100.0, 2001)
+        widget.set_data(wave, 1.0 + 0.1 * np.sin(wave / 3.0), np.full_like(wave, 0.05))
+        widget.home()
+        views.append(widget)
+    bar = PL.ZoomBar()
+    qtbot.addWidget(bar)
+    bar.attach(*views)
+    for widget in views:
+        widget.box.setYRange(0.98, 1.02, padding=0)
+    bar.home_y()
+    assert all(w.view_range()[1][1] - w.view_range()[1][0] > 0.2 for w in views)
+
+
 def test_j1358_draws_in_under_half_a_second(qtbot):
     if not J1358.exists():
         pytest.skip("J1358p6522's spectrum is not present")

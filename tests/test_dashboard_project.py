@@ -418,6 +418,27 @@ def test_ion_names():
     assert P.split_ion("odd") == (None, "odd", "")
 
 
+def test_each_rubidium_isotope_has_its_own_name():
+    # Stage 12, point 8: both were "Rb I"
+    assert P.ion_name("85Rb_I") == "Rb I"
+    assert P.ion_name("87Rb_I") == "87Rb I"
+
+
+def test_every_element_with_isotopes_has_its_main_one(registry):
+    """Each element with several isotopes in ALIS's atomic data is in the table."""
+    from alis.dashboard import lines as L
+
+    masses = {}
+    for line in L.atomic(registry).lines:
+        mass, elem, _ = P.split_ion(line.ion)
+        masses.setdefault(elem, set()).add(mass)
+    several = {e for e, found in masses.items() if len(found) > 1}
+    assert "Rb" in several
+    assert sorted(several - set(P.MAIN_ISOTOPE)) == []
+    for elem in several:
+        assert P.MAIN_ISOTOPE[elem] in masses[elem], elem
+
+
 def test_saving_over_a_bundle_keeps_its_runs(registry, tmp_path):
     project = imported(METAL, registry)
     path = tmp_path / "metal.model"

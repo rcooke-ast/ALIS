@@ -9,6 +9,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Dashboard Stage 12 (users' feedback): every view keeps its scroll and zoom through
+  each step, and a project opens where it was left (the window's size and position
+  in the preferences); ⇧ Shift with the wheel zooms the flux axis, and ↔ and ↕ beside
+  ⌂ take one axis home; Ignore warning for two snips that share pixels but are
+  different data; a drag on a column density that a link computes moves the link's
+  one free input; a component excluded from every ion can take an ion it never had;
+  Keep a copy in the project, and File → Save a copy with spectra…, so that a project
+  opens elsewhere with no relinking; Set LSFSpline knots…, with Delta Function, for
+  `lsfspline` in the Snip box and the Data tab. A snip loaded unassigned, and each
+  dataset of a fit opened without its spectrum, keeps its pixels as the dataset's
+  data, so that CLEAR leaves them and SNIP cuts from them.
 - Dashboard Stage 11 (a fit of several spectra): Open a fit (.mod)… and Load snips…
   show where each snip goes, in a dialog that assigns them; a snip that no spectrum
   holds is cut again from the spectrum it is given, loaded with no source
@@ -210,6 +221,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does. It keeps working, and says so once when it starts.
 
 ### Fixed
+- Dashboard Stage 12: each rubidium isotope has its own name (87Rb I was shown as
+  Rb I); Save writes the spectra kept in a project.
+- `lsfspline`'s kernel is centred on its line: the model was one sub-pixel to the red
+  of it (0.2 km/s for 2 km/s pixels on 10 sub-pixels), which a fit absorbed in a free
+  shift or redshift, and which biased them when they were fixed.
 - Dashboard Stage 11: a loaded `.mod` now decides the reference dataset; an imported
   fit's second snip of a transition in one dataset is shown on the Regions tab; every
   button keeps the "…" of its action; a commented-out voigt line that names its
@@ -261,6 +277,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   rather than stopping.
 
 ### Changed
+- `lsfspline`'s first value, its smoothing, is now the FWHM in km/s of the Gaussian
+  that smooths the knots (it was σ√2: a Gaussian of σ = smoothing/√2, a FWHM 1.665
+  times the value), and the sub-pixels it asks for follow `vfwhm`'s. A model written
+  before gets a kernel smoothed 0.60 times as wide; multiply its smoothing by 1.665
+  to keep the kernel it had. Nothing converts old models.
 - `run_alis --extract` writes a blinded project's hidden values as `BLIND`
   (`blindseed`, `blindrange` and the `.mod.out`'s copy of the input model too),
   as the dashboard's Export… does, rather than its hidden starting values in plain

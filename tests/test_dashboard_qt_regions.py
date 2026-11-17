@@ -166,18 +166,25 @@ def test_keys_only_while_the_tab_has_the_focus(window, qtbot, tmp_path):
     assert editor.toPlainText() != before
 
 
-def test_without_a_source_only_snipped_transitions(window, qtbot):
+def test_a_fit_opened_without_its_spectrum_lists_the_transitions_on_its_data(
+    window, qtbot
+):
+    # Stage 12 (Q12.16 (ii)): its dataset keeps its snips' pixels as its data, so
+    # the transitions on them are listed, as for any dataset; before, the snipped
+    # ones alone (D12)
     need(J1358)
     window.import_path(str(J1358))
     wait_idle(qtbot, window)
     tab = regions(window)
     tab.order_menu.setCurrentIndex(tab.order_menu.findData(L.STRENGTH))
     rows = listed(tab)
-    assert rows and all(r[0] == "●" for r in rows)
     assert [r[1].split()[0] for r in rows[:2]] == ["Lyα", "Lyβ"]
+    snipped = [r for r in rows if r[0] == "●"]
+    assert len(snipped) == 8 and len(rows) > len(snipped)
+    assert any(r[1].startswith("Ly9 ") and r[0] == "" for r in rows)
+    # Lyα has its snip
     assert not tab.actions_["regions.snip"].isEnabled()
-    # Loaded snips are checked against a source spectrum, so there is nothing to load
-    assert not window.qactions["file.load_snips"].isEnabled()
+    assert window.qactions["file.load_snips"].isEnabled()
     # Snips of this system (Stage 10, point 5): each snipped transition of the
     # primary once, in order of rest wavelength, with its one dataset
     project = window.session.project
@@ -191,7 +198,7 @@ def test_without_a_source_only_snipped_transitions(window, qtbot):
     assert all(e.endswith("· 1 dataset") for e in entries)
     rests = [tab.snips_menu.itemData(n)[1] for n in range(tab.snips_menu.count())]
     assert rests == sorted(rests)
-    assert "No source spectrum" in tab.list_note.text()
+    assert tab.list_note.text().startswith("The transitions on the data")
     # Its snip is drawn, with the continuum
     strip = tab.strips[0]
     assert strip.snip is not None and strip.curve is not None
@@ -617,6 +624,33 @@ def test_the_view_stays_where_the_user_put_it(window, qtbot, tmp_path, count):
     show(tab, "Si", "II", "Si II 1304")
     show(tab, "O", "I", "O I 1302")
     assert_same_ranges(tab, home)
+
+
+def test_the_lists_keep_their_places_through_a_step(window, qtbot, tmp_path):
+    # Stage 12, point 3: the list of spectra and the transition list (sideways) went
+    # back to their start after every step
+    spectra = [SPECTRUM]
+    for num in range(1, 5):
+        copy = tmp_path / "copy{0}.dat".format(num)
+        copy.write_bytes(SPECTRUM.read_bytes())
+        spectra.append(copy)
+    tab = new_project(window, tmp_path, z=0.0, spectra=spectra)
+    show(tab, "O", "I", "O I 1302")
+    tab.actions_["regions.snip"].trigger()
+    down = tab.scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: down.maximum() > 0)
+    down.setValue(down.maximum())
+    end = down.value()
+    tab.listing.setColumnWidth(1, 1500)
+    side = tab.listing.horizontalScrollBar()
+    qtbot.waitUntil(lambda: side.maximum() > 0)
+    side.setValue(side.maximum())
+    across = side.value()
+    tab.draw(tab.strips[0].row_id, 1301.9, 1302.4)
+    window.refresh()
+    qtbot.wait(100)
+    assert down.value() == end > 0
+    assert side.value() == across > 0
 
 
 def test_two_datasets_and_regions_copied_on_drawing(window, qtbot, tmp_path):
@@ -1151,6 +1185,77 @@ def test_j1358_ly7_shares_36_pixels_and_keep_clears_them(window, qtbot):
     assert window.markers["Regions"].state == MK.COMPLETE
 
 
+def test_ignore_warning_for_two_snips_alike_but_in_a_core(window, qtbot, tmp_path):
+    # Stage 12, point 1 (Q12.3): MWC137's specids 6 and 7
+    from dashboard_synthetic import write_twin_snips
+
+    window.import_path(str(write_twin_snips(tmp_path / "fit")))
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    show(tab, "H", "I", "Lyα")
+    snip = tab.current_snip()
+    assert not tab.shared_box.isHidden() and tab.ignored_box.isHidden()
+    assert tab.ignore_button.text() == "Ignore warning"
+    assert tab._shared_spans(snip)
+    assert window.markers["Regions"].state == MK.ATTENTION
+    before = window.session.project.ui
+    count = len(window.session.history.done)
+    tab.ignore_button.click()
+    assert len(window.session.history.done) == count + 1
+    # The warning goes; the Snip box lists the pair, with Warn again
+    assert tab.shared_box.isHidden() and not tab.ignored_box.isHidden()
+    assert tab.ignored_label.text().startswith("Warnings ignored: ")
+    assert "pixels shared with snip " in tab.ignored_label.text()
+    assert tab._shared_spans(tab.current_snip()) == []
+    assert "fitted twice" not in window.markers["Regions"].tip
+    assert len(SN.shared_pixels(window.session.project)) == 1
+    tab.warn_button.click()
+    assert not tab.shared_box.isHidden() and tab.ignored_box.isHidden()
+    assert tab._shared_spans(tab.current_snip())
+    window.qactions["edit.undo"].trigger()
+    window.qactions["edit.undo"].trigger()
+    assert window.session.project.ui == before
+    assert design_references(ui_strings(window)) == []
+
+
+def test_the_snips_table_counts_an_ignored_pair_s_pixels(window, qtbot, tmp_path):
+    # Q12.14 (RJC, on the review page): the count stays, marked, and follows the
+    # pixels the snips share
+    from dashboard_synthetic import write_twin_snips
+
+    from alis.dashboard.qt import regions as RG
+
+    window.import_path(str(write_twin_snips(tmp_path / "fit")))
+    wait_idle(qtbot, window)
+    tab = regions(window)
+    show(tab, "H", "I", "Lyα")
+
+    def shared():
+        cells = [tab.datasets.item(r, 2) for r in range(tab.datasets.rowCount())]
+        return [c.text() for c in cells], [c.toolTip() for c in cells]
+
+    assert shared() == (["401", "401"], ["", ""])
+    tab.ignore_button.click()
+    assert shared() == (["401 (ignored)"] * 2, [RG.IGNORED_TIP] * 2)
+    # Both snips fit more of the grid: more pixels shared, counted, and warned again
+    session = window.session
+    for specid in ("0", "1"):
+        project = session.project
+        session.history.do(
+            SN.add_region_step(project, project.snip(specid), 4253.0, 4254.5)
+        )
+    window.refresh()
+    texts, _ = shared()
+    assert texts[0] == texts[1] and int(texts[0]) > 401
+    assert not tab.shared_box.isHidden() and tab.ignored_box.isHidden()
+    # Warn again: the count, unmarked
+    window.qactions["edit.undo"].trigger()
+    window.qactions["edit.undo"].trigger()
+    assert shared()[0] == ["401 (ignored)"] * 2
+    tab.warn_button.click()
+    assert shared() == (["401", "401"], ["", ""])
+
+
 def test_q1243_merge_is_offered_first_and_made_in_three_datasets(window, qtbot):
     need(Q1243)
     window.import_path(str(Q1243))
@@ -1463,7 +1568,8 @@ def test_open_a_fit_with_no_project_asks_first(window, qtbot, tmp_path):
     window.qactions["file.import"].trigger()
     wait_idle(qtbot, window)
     assert window.session is not None and window.session.path is None
-    assert not any(r.source for r in window.session.project.rows)
+    # Its datasets keep their snips' pixels as their data (Stage 12, Q12.16 (ii))
+    assert all(SR.from_snips(r.source) for r in window.session.project.rows)
     window.session.discard_recovery()
     window.show_start()
     # With its spectrum: the New project dialog in the snips' folder, with the
@@ -1578,14 +1684,15 @@ def test_a_snip_s_own_resolution_in_the_snip_box(window, qtbot, tmp_path):
     assert tab.res_function.isVisible() and tab.res_function.currentData() == "vfwhm"
     assert tab.res_value.text() == "7" and tab.res_unit.text() == "km/s"
     assert tab.res_badge.text() == "■"
-    # The functions of several parameters are greyed (Q8.8)
+    # The functions of several parameters are greyed (Q8.8), but lsfspline, whose
+    # knots its dialog sets (Stage 12, point 7)
     model = tab.res_function.model()
     greyed = [
         tab.res_function.itemData(n)
         for n in range(tab.res_function.count())
         if not model.item(n).isEnabled()
     ]
-    assert greyed == ["voigtconv", "multivfwhm", "lsfspline"]
+    assert greyed == ["voigtconv", "multivfwhm"]
     # Afwhm starts from the same width in Å, with the bins ALIS needs
     tab.choose_function("Afwhm")
     word = resolution_word(window, "SiII_1304")

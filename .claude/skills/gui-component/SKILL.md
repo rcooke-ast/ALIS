@@ -290,3 +290,31 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
   shared one when the view is loaded (`session.view_of`).
 - **Buttons in a narrow pane** stack (a `QVBoxLayout`), each expanding to its width,
   so that every name reads in full.
+
+## Stage 12 additions
+
+- **Never move what the user placed.** A rebuild keeps a scroll area's place with
+  `widgets.scroll_place` / `restore_place` (or `held_place`), restored after the
+  layout pass; a list is kept by the item at its top (`top_item`, `item_place`), so
+  it reopens on the same item in a window of another size. A selection made by a
+  click is not scrolled to; one made elsewhere is, on a zero timer after layout.
+- **Places between sessions** go in `ui/view.json` under `session.PLACES`, read from
+  the views only by `window.keep_places` (before Save, a clean close, a recovery
+  copy), never as they move, so a scroll or a zoom writes nothing; each tab applies
+  its stored places once, on its first drawing. The window's geometry is a hidden
+  preference (`Spec.shown` False).
+- **A wheel with a modifier** reads Qt's modifiers from the event (⇧ Shift zooms
+  flux in `SpectrumBox.wheelEvent`); no key is taken from the keyboard. A
+  `ZoomBar` button acts on every view it controls (`home_x`, `home_y`).
+- **A step that adds kept data** puts `sources/` members in `step.files`:
+  `Project.apply` routes them to the bundle's members (not the model's files), so
+  Undo takes the copy back with `step.sources`. A source marked `from_snips` is read
+  from the bundle alone (`sources.from_snips`).
+- **A dialog of its own plot** (`qt/knots.py`): a `ViewBox` subclass turns drags,
+  double-clicks and right-clicks into signals, as `SpectrumBox` does; the dialog
+  holds the rules' outcome (`move_knot`, `add_knot`, `delete_knot`) so tests drive
+  them directly, and its `ask` is looked up at call time by the caller that needs
+  to answer it.
+- **Off-screen screenshots of a menu opened with `QMenu.exec`**: grab the
+  `activePopupWidget()` from a timer while it is open, then close it; patching the
+  PySide class's `exec` does not take.

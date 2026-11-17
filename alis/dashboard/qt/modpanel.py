@@ -669,7 +669,9 @@ class ModPanel(QtWidgets.QWidget):
         if self.session is None:
             return
         gate = self.gate()
-        shown = [gate.problem(p) for p in self.problems]
+        # Without the warnings the user chose to ignore (Stage 12, point 1)
+        problems = V.without_ignored(self.project, self.problems)
+        shown = [gate.problem(p) for p in problems]
         marks = {}
         for prob in shown:
             if prob.line is not None and marks.get(prob.line) != V.ERROR:

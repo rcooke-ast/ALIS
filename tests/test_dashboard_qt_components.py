@@ -24,7 +24,7 @@ from dashboard_qt_helpers import (
     ui_strings,
     wait_idle,
 )
-from dashboard_synthetic import write_linked_fit, write_ratio_fit
+from dashboard_synthetic import write_linked_fit, write_ratio_fit, write_rubidium_fit
 
 pytestmark = pytest.mark.gui
 
@@ -46,6 +46,7 @@ from alis.dashboard.qt.components import (  # noqa: E402
     BADGES,
     EXCLUDED_IONS,
     INCLUDED_IONS,
+    NORMALISED_Y,
 )
 
 COLUMNS = {str(SPECTRUM): {"wave": 0, "flux": 1, "error": 2}}
@@ -709,6 +710,57 @@ def test_a_drag_stops_at_its_bounds(window, qtbot, tmp_path):
     assert line.param("ColDens").start == 23.0
 
 
+# H I's log N computed from D I's and a free variable that no other line names, as
+# MWC137's K I in a7 is by ka = lia - lika (Stage 12, point 5)
+FREE_LINK = [
+    "voigt ion=1H_I 14.5nha 2.50360ra 25.0doppa 10000.0tempa specid=0",
+    "voigt ion=2H_I 10.0nda 2.50360ra 25.0doppa 10000.0tempa specid=0",
+    "variable -4.5dh specid=0",
+]
+
+
+def h1_drag(window, qtbot, folder, lines, link):
+    """A drag below the continuum in a1's H I panel, left unfinished."""
+    tab = imported(window, qtbot, write_ratio_fit(folder, lines, (), [link]))
+    choose(tab, "H I")
+    widget = tab.panel_widgets[0]
+    view = widget.view
+    x = next(t.value() for t in view.ticks() if t.key == ("component", "a1"))
+    drag(view, (x + 5.0, 0.6), (x + 8.0, 0.4), state="move")
+    return widget, view, x
+
+
+def test_a_drag_of_a_linked_log_n_moves_the_link_s_input(window, qtbot, tmp_path):
+    # Stage 12, point 5: MWC137's a7, K I's log N computed by ka = lia - lika
+    link = "nha(nda,dh) = nda - dh"
+    widget, view, x = h1_drag(window, qtbot, tmp_path / "fit", FREE_LINK, link)
+    text = widget.readout.text()
+    assert re.match(r"log N 14\.\d\d \(dh -4\.\d\d\) · b_turb ", text), text
+    one_step(window, lambda: view.dragged.emit(x + 5.0, 0.6, x + 8.0, 0.4, "finish"))
+    project = window.session.project
+    # Deeper: log N rises, so dh falls; D I's log N stays
+    assert project.parsed.labels["dh"].params[0].start < -4.5
+    assert project.component("a1").lines_of("2H_I")[0].param("ColDens").start == 10.0
+
+
+def test_a_drag_of_a_log_n_its_link_holds_says_why(window, qtbot, tmp_path):
+    # Q12.6 (b): the link's other input is fixed, so only b moves
+    lines = FREE_LINK[:2] + ["variable -4.5FIXDH specid=0"]
+    link = "nha(nda,FIXDH) = nda - FIXDH"
+    widget, _, _ = h1_drag(window, qtbot, tmp_path / "fit", lines, link)
+    text = widget.readout.text()
+    assert text.startswith("b_turb ")
+    assert text.endswith(" · log N is computed by the link nha = nda - FIXDH")
+
+
+def test_a_drag_of_a_hidden_link_input_shows_only_dchi2(window, qtbot, tmp_path):
+    lines = FREE_LINK[:2] + ["variable -4.5dh specid=0 blind=True"]
+    link = "nha(nda,dh) = nda - dh"
+    widget, _, _ = h1_drag(window, qtbot, tmp_path / "fit", lines, link)
+    assert widget.readout.text().startswith("Δχ²")
+    assert "4.5" not in widget.readout.text()
+
+
 def test_a_blinded_drag_shows_no_value(window, qtbot):
     from test_dashboard_blinding import forbidden, leaks
 
@@ -918,6 +970,116 @@ def test_d_i_is_excluded_after_h_i_and_both_come_back(window, qtbot, tmp_path):
     one_step(window, lambda: click_ion(card, "1H_I"))
     one_step(window, lambda: click_ion(tab.card_widgets["a1"], "2H_I"))
     assert window.session.project.text == before
+
+
+def many_components(window, qtbot, folder, count=12):
+    """A fit of many H I components, D I in the first only (the list scrolls)."""
+    lines = [
+        "voigt ion=1H_I 13.0 {0:.5f}r{1} 10.0b{1} 10000.0t{1} specid=0".format(
+            2.5036 + 0.00012 * num, num
+        )
+        for num in range(count)
+    ]
+    lines.append("voigt ion=2H_I 9.0 2.50360r0 10.0b0 10000.0t0 specid=0")
+    tab = imported(window, qtbot, write_ratio_fit(folder, lines))
+    choose(tab, "H I")
+    return tab
+
+
+def test_a_click_on_a_card_s_list_keeps_the_list_where_it_is(window, qtbot, tmp_path):
+    # Stage 12, point 3: MWC137's list went back to its top (1496 to 0) when an ion
+    # was included near its bottom, a real click selecting the card
+    from qtpy.QtTest import QTest
+
+    tab = many_components(window, qtbot, tmp_path / "fit")
+    bar = tab.card_scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: bar.maximum() > 0)
+    bar.setValue(bar.maximum())
+    end = bar.value()
+    last = sorted(tab.card_widgets)[-1]
+    card = tab.card_widgets[last]
+    assert plain(card.excluded) == "D I"
+    count = len(window.session.history.done)
+    QTest.mouseClick(
+        card.excluded,
+        QtCore.Qt.MouseButton.LeftButton,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+        QtCore.QPoint(6, card.excluded.height() // 2),
+    )
+    qtbot.waitUntil(lambda: len(window.session.history.done) == count + 1)
+    qtbot.wait(100)
+    assert "D I" in plain(tab.card_widgets[last].included)
+    assert tab.selected_component().id == last
+    # Before, 0: the selected card was scrolled to before the cards were laid out
+    assert bar.value() == end > 0
+
+
+def test_the_panels_keep_their_zoom_through_a_step_and_a_drag(window, qtbot, tmp_path):
+    # Stage 12, point 3: every panel went back to ⌂ after every step
+    tab = fit_ready(window, tmp_path)
+    choose(tab, "O I")
+    added(window, tab)
+    view = tab.panel_widgets[0].view
+    view.box.setXRange(-40.0, 40.0, padding=0)
+    view.box.setYRange(0.2, 1.1, padding=0)
+    zoomed = view.view_range()
+    # A step made elsewhere: the panels are drawn again where they were
+    card = tab.card_widgets["a1"]
+    one_step(window, lambda: card.included.linkActivated.emit("28Si_II"))
+    one_step(
+        window, lambda: tab.card_widgets["a1"].excluded.linkActivated.emit("28Si_II")
+    )
+    view = tab.panel_widgets[0].view
+    assert np.allclose(np.ravel(view.view_range()), np.ravel(zoomed))
+    # A drag's step too
+    one_step(window, lambda: drag(view, (10.0, 0.5), (13.0, 0.3)))
+    view = tab.panel_widgets[0].view
+    assert np.allclose(np.ravel(view.view_range()), np.ravel(zoomed))
+    # Another ion keeps the velocity range; its flux range starts at home
+    choose(tab, "Si II")
+    x, y = tab.panel_widgets[0].view.view_range()
+    assert np.allclose(x, zoomed[0]) and np.allclose(y, NORMALISED_Y, atol=0.05)
+    # ⌂ still goes home
+    tab.zoom.home()
+    x, _ = tab.panel_widgets[0].view.view_range()
+    assert x[0] < -100.0
+
+
+def test_a_greyed_card_includes_an_ion_it_never_had(window, qtbot, tmp_path):
+    # Stage 12, point 2: MWC137's a2 refused Ti II ("include it in one first")
+    o1 = "voigt ion=16O_I 13.0 2.50420rb 10.0doppb 10000.0tempb specid=0"
+    tab = imported(window, qtbot, write_linked_fit(tmp_path / "fit", [o1]))
+    choose(tab, "H I")
+    window.on_dialog = lambda dialog: 1
+    one_step(window, lambda: click_ion(tab.card_widgets["a1"], "1H_I"))
+    one_step(window, lambda: click_ion(tab.card_widgets["a1"], "2H_I"))
+    card = tab.card_widgets["a1"]
+    assert not card.title.isEnabled()
+    assert plain(card.excluded) == "H I, D I, O I"
+    asked = len(window.answers.asked)
+    one_step(window, lambda: click_ion(card, "16O_I"))
+    assert len(window.answers.asked) == asked
+    assert not window.session.project.component("a1").everywhere_excluded
+    # Greyed now only for H I, which it is still excluded from; not for O I
+    card = tab.card_widgets["a1"]
+    assert card.best is not None and not card.body.isEnabled()
+    assert plain(card.included) == "O I" and plain(card.excluded) == "H I, D I"
+    choose(tab, "O I")
+    card = tab.card_widgets["a1"]
+    assert card.title.isEnabled() and card.body.isEnabled()
+
+
+def test_each_rubidium_isotope_is_listed_once(window, qtbot, tmp_path):
+    # Stage 12, point 8: MWC137's cards read "Rb I, Rb I"
+    tab = imported(window, qtbot, write_rubidium_fit(tmp_path / "fit"))
+    choose(tab, "Rb I")
+    card = tab.card_widgets["a1"]
+    assert plain(card.included) == "Rb I, 87Rb I" and plain(card.excluded) == "none"
+    window.on_dialog = lambda dialog: 1
+    one_step(window, lambda: click_ion(card, "85Rb_I"))
+    one_step(window, lambda: click_ion(tab.card_widgets["a1"], "87Rb_I"))
+    card = tab.card_widgets["a1"]
+    assert plain(card.included) == "none" and plain(card.excluded) == "Rb I, 87Rb I"
 
 
 def test_excluding_from_an_unlabelled_component_shows_its_preview(

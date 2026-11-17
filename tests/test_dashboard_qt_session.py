@@ -192,3 +192,149 @@ def test_the_preferences_dialog(setup, qtbot):
     saved = json.loads((window.prefs.path and open(window.prefs.path).read()))
     assert saved["autosave"]["interval"] == 120.0
     assert saved["new_project"]["settings"] == [["run", "ncpus", "4"]]
+
+
+# -- Places kept between sessions (Stage 12, point 3; Q12.4 (b)) ---------------------
+
+
+def twenty_snips(folder, ncomp=12):
+    """
+    A fit of 20 snips of Lyα (independent noise, so no pixel is shared) and
+    ``ncomp`` H I components in all of them: the Components tab's panels and cards
+    both scroll.
+    """
+    import numpy as np
+
+    folder.mkdir(parents=True, exist_ok=True)
+    wave = np.arange(4252.0, 4266.0, 0.02)
+    data, continua = [], []
+    for num in range(20):
+        rng = np.random.default_rng(100 + num)
+        flux = 1.0 + 0.01 * rng.standard_normal(wave.size)
+        np.savetxt(
+            folder / "s{0}.dat".format(num),
+            np.column_stack([wave, flux, np.full(wave.size, 0.01)]),
+            fmt="%.6f",
+        )
+        data.append(
+            "  s{0}.dat  specid={0}  fitrange=all  resolution=vfwhm(6.285VFIX)"
+            "  columns=[wave,flux,error]\n".format(num)
+        )
+        continua.append("  legendre 1.0 0.0 specid={0} scale=1.0,1.0\n".format(num))
+    specids = ",".join(str(n) for n in range(20))
+    lines = [
+        "  voigt ion=1H_I 13.0 {0:.5f}r{1} 10.0b{1} 10000.0t{1} specid={2}\n".format(
+            2.5036 + 0.00012 * num, num, specids
+        )
+        for num in range(ncomp)
+    ]
+    text = (
+        "run blind False\nchisq miniter 1\nchisq maxiter 1\n\ndata read\n"
+        + "".join(data)
+        + "data end\n\nmodel read\n emission\n"
+        + "".join(continua)
+        + " absorption\n"
+        + "".join(lines)
+        + "model end\n"
+    )
+    path = folder / "twenty.mod"
+    path.write_text(text)
+    return path
+
+
+def shown_tab(window, qtbot, index, sub=None):
+    window.tabs.setCurrentIndex(index)
+    if sub is not None:
+        window.fit_tab.subtabs.setCurrentIndex(sub)
+    qtbot.wait(50)
+    return window.fit_tab.inspect if sub == 0 else window.tab_widgets[index]
+
+
+def test_a_project_opens_where_it_was_left(setup, qtbot, tmp_path):
+    import time
+
+    import numpy as np
+
+    from alis.dashboard.qt import widgets as W
+
+    window, _ = setup
+    window.import_path(str(twenty_snips(tmp_path / "fit")))
+    wait_idle(qtbot, window, timeout=30000)
+    target = tmp_path / "twenty.model"
+    window.chosen["save"] = str(target)
+    assert window.save()
+    tab = shown_tab(window, qtbot, 2)
+    assert len(tab.panel_widgets) == 20
+    session = window.session
+    calls = []
+    session.set_view = lambda key, value: calls.append(key)
+    # Zoom a panel, scroll the panels and the cards; zoom Inspect's first panel
+    tab.panel_widgets[0].view.box.setXRange(-60.0, 50.0, padding=0)
+    tab.panel_widgets[0].view.box.setYRange(0.3, 1.2, padding=0)
+    cards = tab.card_scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: cards.maximum() > 0)
+    cards.setValue(cards.maximum() // 2)
+    panels = tab.scroll.verticalScrollBar()
+    qtbot.waitUntil(lambda: panels.maximum() > 0)
+    panels.setValue(panels.maximum())
+    top = W.top_item(tab.card_scroll, list(tab.card_widgets.items()))
+    ranges = [np.ravel(w.view.view_range()) for w in tab.panel_widgets]
+    assert calls == []
+    inspect = shown_tab(window, qtbot, 3, 0)
+    calls.clear()
+    inspect.panel_widgets[0].view.box.setXRange(4258.0, 4260.0, padding=0)
+    inspect.panel_widgets[0].view.box.setYRange(0.5, 1.1, padding=0)
+    shown = np.ravel(inspect.panel_widgets[0].view.view_range())
+    # Zooming and scrolling write nothing, and leave no unsaved changes
+    assert calls == [] and not session.dirty
+    del session.set_view
+    # Reading every place is quick (RJC's condition: no lag)
+    start = time.perf_counter()
+    window.keep_places()
+    assert time.perf_counter() - start < 0.005
+    assert set(session.view[S.PLACES]) >= {"components", "inspect"}
+    assert not session.dirty
+    # Closed, and opened again in a window of another size
+    assert window.close_session()
+    window.resize(1180, 820)
+    window.open_path(str(target))
+    wait_idle(qtbot, window, timeout=30000)
+    tab = shown_tab(window, qtbot, 2)
+    now = [np.ravel(w.view.view_range()) for w in tab.panel_widgets]
+    assert np.allclose(now, ranges)
+    qtbot.waitUntil(
+        lambda: W.top_item(tab.card_scroll, list(tab.card_widgets.items()))[0] == top[0]
+    )
+    assert tab.scroll.verticalScrollBar().value() > 0
+    inspect = shown_tab(window, qtbot, 3, 0)
+    assert np.allclose(np.ravel(inspect.panel_widgets[0].view.view_range()), shown)
+
+
+def test_what_the_project_no_longer_has_opens_at_home(setup, qtbot, tmp_path):
+    import numpy as np
+
+    window, path = setup
+    window.open_path(path)
+    wait_idle(qtbot, window)
+    inspect = shown_tab(window, qtbot, 3, 0)
+    view = inspect.panel_widgets[0].view
+    view.home()
+    home = np.ravel(view.view_range())
+    (x0, x1), _ = view.view_range()
+    view.box.setXRange(x0 + 0.3 * (x1 - x0), x1 - 0.3 * (x1 - x0), padding=0)
+    assert window.close_session()
+    # The snip it showed is gone from the places kept: it opens at ⌂
+    data = B.read(path)
+    view_json = json.loads(data.members[S.VIEW_JSON].decode("utf-8"))
+    for item in view_json[S.PLACES]["inspect"]["ranges"]:
+        item[0][0] = "gone"
+    B.update(
+        path,
+        lambda b: b.members.__setitem__(
+            S.VIEW_JSON, json.dumps(view_json).encode("utf-8")
+        ),
+    )
+    window.open_path(path)
+    wait_idle(qtbot, window)
+    inspect = shown_tab(window, qtbot, 3, 0)
+    assert np.allclose(np.ravel(inspect.panel_widgets[0].view.view_range()), home)

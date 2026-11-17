@@ -82,3 +82,57 @@ def test_relink_from_the_file_menu_with_nothing_to_relink(setup, qtbot):
     dialog = window.dialogs[-1]
     assert dialog.table.rowCount() == 0
     assert "present and unchanged" in dialog.message.text()
+
+
+def test_a_kept_spectrum_asks_no_relinking(setup, qtbot, tmp_path):
+    # Stage 12, point 6 (Q12.7 (a)): Keep a copy in the project, on the Data tab
+    window, path, spectrum = setup
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    tab = window.tab_widgets[0]
+    row = window.session.project.rows[0]
+    assert tab.table.item(0, 6).text() == "✓ unchanged"
+    count = len(window.session.history.done)
+    tab._act("Keep a copy in the project", lambda: tab.keep_copy(row))
+    assert window.session.dirty and len(window.session.history.done) == count
+    assert tab.table.item(0, 6).text() == "✓ unchanged · kept in the project"
+    assert window.save()
+    assert window.close_session()
+    # On another computer: the file is gone; the copy is read, and nothing asked
+    spectrum.unlink()
+    window.answers.asked.clear()
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    assert not any(a[0] == "relink" for a in window.answers.asked)
+    assert window.markers["Data"].state == MK.COMPLETE
+    text = window.tab_widgets[0].table.item(0, 6).text()
+    assert text == "kept in the project (its file is not found)"
+    # Remove the copy is refused while the file is gone
+    tab = window.tab_widgets[0]
+    tab._act("Remove the copy", lambda: tab.remove_copy(window.session.project.rows[0]))
+    assert "relink it" in window.answers.asked[-1][2]
+
+
+def test_the_relink_question_names_save_a_copy_with_spectra(setup, qtbot, tmp_path):
+    window, path, spectrum = setup
+    spectrum.rename(tmp_path / "moved.dat")
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    kind, _, text = window.answers.asked[0]
+    assert kind == "relink" and "Save a copy with spectra…" in text
+
+
+def test_save_a_copy_with_spectra_from_the_file_menu(setup, qtbot, tmp_path):
+    from alis import bundle as B
+
+    window, path, spectrum = setup
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    target = tmp_path / "share.model"
+    window.chosen["save_copy"] = str(target)
+    window.qactions["file.save_with_spectra"].trigger()
+    copy_ = B.read(str(target))
+    assert all(e["embedded"] in copy_.members for e in copy_.sources)
+    assert "was written to" in window.answers.asked[-1][2]
+    assert not window.session.dirty
+    assert window.session.project.bundle.sources[0]["embedded"] is None
