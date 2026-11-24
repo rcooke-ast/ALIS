@@ -523,7 +523,17 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
                     # apod, multivfwhm) all undo this with
                     # instr.replace(":", "=") on the way in. Purely numeric
                     # parameters contain no '=', so this is a no-op for them.
-                    cpars = ",".join(cspl[1:]).replace("=", ":")
+                    cpars = ",".join(cspl[1:])
+                    # A function whose keywords follow its values after a ';'
+                    # (lsfspline's locations) has them written so, or the line
+                    # cannot be read back (dashboard Stage 13, Task 13.2)
+                    sep = getattr(slf._funcarray[2].get(cspl[0]), "_kwsep", ",")
+                    if sep != ",":
+                        vals = [w for w in cspl[1:] if "=" not in w]
+                        kws = [w for w in cspl[1:] if "=" in w]
+                        # Each keyword after its own separator
+                        cpars = ",".join(vals) + "".join(sep + k for k in kws)
+                    cpars = cpars.replace("=", ":")
                     datspl[j] = "resolution={0:s}({1:s})".format(cspl[0],cpars)
                     gotres = True
                 elif dspl[0] == "shift":

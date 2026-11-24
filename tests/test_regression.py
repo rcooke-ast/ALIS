@@ -69,9 +69,15 @@ _GEN_CASES = [c for c in _CASES if c.kind == "generate"]
 #   giving a ~14x-the-error model jump at the edge pixel, far beyond
 #   any sane error fraction (RJC was content to drop it; Q0.15). Its
 #   minimisation test (mode a) still runs.
+# - "sub-pixels": lsf_spline's .mod.out is evaluated on other sub-pixels than its
+#   fit used (ALIS sets them at load from the starting values: 6 from the fit's
+#   4 km/s smoothing, 21 from its best fit's 0.12 km/s), so its model differs by up
+#   to 2.3x the error. Recording them in the .mod.out waits in deferred_work.md
+#   sec. 7.10 (dashboard Stage 13, Q13.7 (b)); its fit and bundle run.
 FIXEDPARAM_EXCLUDE = {
     "examples/brokenpowerlaw/model/fit_spectra": "reference point (chi2 374.98 vs recorded 338.15); Q0.12",
     "examples/tophat/model/fit_spectra": "sharp edge (~14x error at edge pixel); Q0.15",
+    "examples/lsf_spline/model/fit_spectra": "sub-pixels set from the starting smoothing (6 in the fit, 21 at the best fit); Q13.7, deferred_work 7.10",
 }
 
 # Fixed-parameter evals normally all run on every commit (batch

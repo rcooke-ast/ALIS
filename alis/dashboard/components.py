@@ -56,6 +56,7 @@ from alis.dashboard import preferences as PF
 from alis.dashboard import profile as PR
 from alis.dashboard import project as P
 from alis.dashboard import remove as R
+from alis.dashboard import resolution as RN
 from alis.dashboard import snips as S
 from alis.dashboard import text as T
 
@@ -208,6 +209,9 @@ def fwhm_kms(project, snip, wave):
     if name == "lsffile":
         width = lsf_fwhm(project, item.resolution)
         if width:
+            # In the file's unit: km/s with unit:kms (Stage 13, point 4), else Å
+            if RN.kernel_unit(item.resolution) == "kms":
+                return width
             return C_KMS * width / float(wave)
     if par is not None:
         if name == "vfwhm":
@@ -223,7 +227,8 @@ def fwhm_kms(project, snip, wave):
 
 def lsf_fwhm(project, call):
     """
-    The FWHM of an ``lsffile`` kernel in Angstroms, read as ALIS reads it, from the
+    The FWHM of an ``lsffile`` kernel in its file's unit (Å, or km/s with
+    ``unit:kms``), read as ALIS reads it, from the
     project's files (Stage 8, Q8.7): the kernel ``index:`` names, the first when it
     names none; None when the file cannot be read.
 

@@ -1666,6 +1666,38 @@ def resolution_word(window, specid):
     return window.session.project.snip(specid).data.keyword("resolution")
 
 
+def test_an_lsf_file_in_km_s_in_the_snip_box(window, qtbot, tmp_path):
+    # Stage 13, point 4 (Q13.6 (a)): the drop-down beside Choose a file…
+    from test_dashboard_datasets import _kms_file
+
+    tab = two_snipped(window, tmp_path)
+    hist = window.session.history
+    tab.res_choice.setCurrentIndex(1)
+    tab.res_choice.activated.emit(1)
+    tab.choose_function("lsffile", path=str(_kms_file(tmp_path)))
+    word = "lsffile(name:../lsf/kms_lsf.dat)"
+    assert resolution_word(window, "SiII_1304") == word
+    assert tab.res_file.isVisible() and tab.res_lsf_unit.isVisible()
+    assert tab.res_lsf_unit.currentData() == "A"
+    # Read as Å, a 6.3 km/s kernel is far too wide: the note shows it at once
+    assert tab.res_note.text() == "kms_lsf.dat · FWHM 6.27 Å (1441 km/s)"
+    done = len(hist.done)
+    tab.res_lsf_unit.setCurrentIndex(1)
+    tab.res_lsf_unit.activated.emit(1)
+    assert len(hist.done) == done + 1
+    assert resolution_word(window, "SiII_1304") == word[:-1] + ",unit:kms)"
+    assert tab.res_lsf_unit.currentData() == "kms"
+    assert tab.res_note.text().startswith("kms_lsf.dat · FWHM 6.27 km/s (0.027")
+    # A new file keeps the line's unit; one undo takes the unit back
+    (tmp_path / "again").mkdir()
+    tab.choose_lsf_file(path=str(_kms_file(tmp_path / "again")))
+    assert resolution_word(window, "SiII_1304").endswith(",unit:kms)")
+    hist.undo()
+    hist.undo()
+    assert resolution_word(window, "SiII_1304") == word
+    assert not design_references(ui_strings(window))
+
+
 def test_a_snip_s_own_resolution_in_the_snip_box(window, qtbot, tmp_path):
     from alis.dashboard import resolution as RN
 

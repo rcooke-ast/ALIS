@@ -1177,7 +1177,15 @@ class DataTab(W.Tab):
         return text
 
     def set_function(
-        self, row, name, value=None, keywords=None, path=None, index=0, anyway=None
+        self,
+        row,
+        name,
+        value=None,
+        keywords=None,
+        path=None,
+        index=0,
+        anyway=None,
+        unit=None,
     ):
         """
         Set a dataset's resolution function (Q8.6): a value is asked for in its unit
@@ -1251,7 +1259,21 @@ class DataTab(W.Tab):
             except RN.ResolutionError as error:
                 self.main.tell("LSF file", str(error), icon="warning")
                 return
-            kwargs["index"] = index
+            if unit is None:
+                # The unit of its first column, and its kernel, with its FWHM in
+                # both units (Stage 13, point 4; ``unit`` gives it: tests)
+                dialog = D.LsfFileDialog(
+                    "Resolution of {0}".format(row.name),
+                    kwargs["kernels"],
+                    DS.resolution_wave(row),
+                    unit=RN.kernel_unit(call),
+                    index=index,
+                    parent=self,
+                )
+                if not self.main.run_dialog(dialog):
+                    return
+                unit, index = dialog.unit(), dialog.index()
+            kwargs.update(index=index, unit=unit)
         else:
             if keywords is None:
                 start = (

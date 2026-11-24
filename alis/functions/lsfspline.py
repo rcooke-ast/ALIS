@@ -32,6 +32,9 @@ class SplineLSF(base.Base) :
         self._limits  = [ [0.0,0.0], [0.0,1.0] ]		# What should these limiting values be
         self._svfmt   = [ "{0:.7g}", "{0:.7g}"]			# Specify the format used to print or save output
         self._prekw   = []																			# Specify the keywords to print out before the parameters
+        # The keywords follow the values after a ';' on a data line, as load reads
+        # them: save.py writes them so in a .mod.out (dashboard Stage 13, Task 13.2)
+        self._kwsep   = ';'
         # DON'T CHANGE THE FOLLOWING --- it tells ALIS what parameters are provided by the user.
         tempinput = self._parid+list(self._keych.keys())                             #
         self._keywd['input'] = dict(zip((tempinput),([0]*np.size(tempinput)))) #
@@ -251,6 +254,9 @@ class SplineLSF(base.Base) :
                 else:
                     msgs.error("I don't understand the format on line:"+msgs.newline()+self._idstr+"   "+instr)
             cpy_keych[kwspl[0]] = 0 # Set keych for this keyword to zero to show that this has been changed
+            # Given, so that parout writes it into the .mod.out (as lsf and apod do):
+            # without its locations the output model could not be read back (Stage 13)
+            self._keywd['input'][kwspl[0]] = 1
         # Check that all required keywords were changed
         for i in range(len(keywdk)):
             if cpy_keych[keywdk[i]] == 1 and pnumr != 1: # Only check locations if it's not a column density ratio (i.e. when pnumr==1)

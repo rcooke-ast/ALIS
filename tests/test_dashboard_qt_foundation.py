@@ -145,3 +145,32 @@ def test_qt_available_here_when_the_extra_is_installed():
     pytest.importorskip("qtpy.QtWidgets")
     pytest.importorskip("pyqtgraph")
     assert script.qt_available()
+
+
+# The kinds of file dialog the window's ``choose`` knows (dashboard Stage 13, point 3
+# (ii)): Save a copy with spectra… asked for "save_copy", which it took as "open"
+CHOOSER_KINDS = {"open", "save", "folder", "open_many"}
+
+
+def _choose_calls():
+    """Every call ``….choose(kind, …)`` in the window's code, with its kind."""
+    out = []
+    for path in sorted(QT.glob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "choose"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, str)
+            ):
+                out.append((path.name, node.lineno, node.args[0].value))
+    return out
+
+
+def test_every_file_dialog_asks_for_a_kind_the_chooser_knows():
+    calls = _choose_calls()
+    assert len(calls) >= 10
+    assert [c for c in calls if c[2] not in CHOOSER_KINDS] == []

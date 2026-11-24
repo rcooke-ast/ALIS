@@ -91,7 +91,9 @@ correctness first, then what users need next, then effort; RJC orders the work.
     waiting for a user to ask (dashboard Stage 12, Q12.1 (b)).
 24. ALIS's default `nsubmin` of 10 (§7.10), and `lsfspline` written into a
     `.mod.out` without its `locations`, with `examples/lsf_spline` as a regression
-    case (§7.11): dashboard Stage 12, Q12.13 (b) and Q12.10's response.
+    case (§7.11): dashboard Stage 12, Q12.13 (b) and Q12.10's response. *§7.11 done
+    in dashboard Stage 13; §7.10, with the sub-pixels a `.mod.out` is evaluated on,
+    is the key item of dashboard Stage 14, next (Q13.7's response).*
 
 ### Not planned, or entries to close
 - **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
@@ -519,7 +521,10 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
 - **To finish:** the question counts the `.mod`'s datasets (`loadfit.fit_datasets`)
   and words itself for one or for several.
 
-### 7.10 ALIS's default `nsubmin` of 10
+### 7.10 ALIS's sub-pixels: the default `nsubmin` of 10, and the sub-pixels a `.mod.out` is evaluated on
+
+*The key item of dashboard Stage 14, which comes next (RJC, Q13.7's response of
+`dashboard_stage13.md`, 2026-11-24).*
 
 - **What:** raising ALIS's default fewest sub-pixels per pixel from 5 to 10, so that
   every model is worked out on at least 10 sub-pixels (RJC, Q12.9's response).
@@ -536,8 +541,29 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
 - **To finish:** a stage of its own: the 16 cases refitted, each new fit checked by
   eye, their references regenerated with their χ² before and after, and
   `CHANGELOG.md`.
+- **And the sub-pixels a `.mod.out` is evaluated on** (dashboard Stage 13, Task 13.2,
+  Q13.7 (b)). ALIS sets each snip's sub-pixels when it loads a model, from the
+  starting values (`load.py`, each function's `set_vars`), so a `.mod.out` run again
+  or evaluated from its best fit can use other sub-pixels than the fit did, where a
+  width moved far in the fit. `examples/lsf_spline`: the fit started at a smoothing of
+  4 km/s on 6 sub-pixels; its `.mod.out` starts at 0.12 km/s and takes ALIS's most,
+  21, and its model differs at 15 of 460 pixels, by up to 2.3 times the error (pinned
+  at 6, it agrees exactly). The dashboard is not affected: it draws a run with the
+  run's own input model. The case's evaluation at the best fit (the harness's mode
+  (b)) is left out until this is done (`FIXEDPARAM_EXCLUDE` in
+  `tests/test_regression.py`).
+  - **To finish:** ALIS records each snip's sub-pixels in the `.mod.out`, as a
+    data-line keyword (as Stage 5.4's `bufferpix` records the pixels loaded), and uses
+    them when given; `examples/lsf_spline`'s mode (b) back in the gate; with the
+    default `nsubmin` above, every reference that moves regenerated.
 
 ### 7.11 `lsfspline` in a `.mod.out`, and `examples/lsf_spline` as a regression case
+
+*Done in dashboard Stage 13 (Task 13.2, Q13.3 (a), 2026-11-24): `lsfspline` keeps its
+`locations` in the `.mod.out`, the dashboard reads a run stored before, and
+`examples/lsf_spline` is a case of the harness (its fit and its bundle); its
+evaluation at the best fit waits in §7.10 (Q13.7 (b)). Kept below as it was
+written.*
 
 - **What:** ALIS writes an `lsfspline` resolution into the `.mod.out` without its
   `locations` keyword (`SplineLSF.parout` writes the values only), so the output

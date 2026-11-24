@@ -1031,6 +1031,32 @@ run_alis myfit.model     # fits the project from the command line, as before
     that smooths the knots (it was σ√2), and its kernel is centred on its line (it
     was one sub-pixel to the red). A model written before gets a kernel smoothed
     0.60 times as wide; multiply its smoothing by 1.665 to keep it.
+- **Since Stage 13** (2026-11-24), from users' feedback:
+  - **A fit no longer ends in "Python quit unexpectedly".** The fitting process
+    aborted as it ended, after storing its result; it now ends cleanly, and closing
+    the window with Keep it running no longer waits for the fit's next iteration.
+  - **A fit with `lsfspline` shows its best fit.** ALIS keeps `lsfspline`'s
+    `locations` in the `.mod.out` (they were left out, so the run's model could not
+    be read back), and a run stored before is read with the copy of the input model
+    at the end of its `.mod.out`. A run whose outputs do not read says why, on
+    Inspect, Results and the status bar, and Results still shows its statistics.
+  - **Warnings and options to resolve…** A fit that stopped at `chisq maxiter`, or
+    whose convergence check found parameters not converged, shows "Stopped because"
+    and "Convergence" in red in Fit statistics, ⚠ in the run history, and a sentence
+    in the status bar. The red button **Warnings and options to resolve…**, between
+    Fit statistics and Correlations, lists each warning of the run with a suggestion
+    to resolve it, ALIS's own warnings during the run included (kept with the run).
+  - **An LSF file in km/s.** `lsffile(name:k.dat,unit:kms)` reads the file's first
+    column as Δv in km/s. The Snip box has a drop-down beside Choose a file…, First
+    column: Δλ (Å) or Δv (km/s), and the Data tab asks once a file is chosen; both
+    show the kernel's FWHM in its unit and in the other, so a wrong unit shows.
+  - **Keys and mouse.** Help → Keyboard shortcuts (F10) has a second page, **Keys
+    and mouse in the views**, listing every key and gesture outside the menus (N and
+    B held during a drag, Esc, =, Delete, the wheel with ⇧, drags, double-clicks and
+    right-clicks). **Keys…**, at the right of the tabs, lists the tab shown.
+  - **Names.** A dataset worked out from a fit takes a name no other has, its
+    number in parentheses ("39KI7701 (2)"), as Load snips… does. **File → Save a copy
+    with spectra…** opens the Save dialog.
 
 #### Preparing a fit: the Data and Regions tabs
 

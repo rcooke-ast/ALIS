@@ -475,3 +475,56 @@ def test_a_mask_written_as_integers_keeps_its_style(registry):
     assert all(len(a) == len(b) for a, b in zip(old, new))
     assert {line.split()[3] for line in new} == {"0", "1"}
     assert len(project.snip("A").regions) == 1
+
+
+# -- Each dataset its own name (Stage 13, item 1 carried over from Stage 12) ---------
+
+
+def _one_label(tmp_path, resolutions):
+    """Data lines that share ``label=K7701`` and differ in resolution label, as
+    MWC137's specids 6 and 7 (``va``, ``vab``) do."""
+    from dashboard_synthetic import write_twin_snips
+
+    path = write_twin_snips(tmp_path, third=len(resolutions) > 2)
+    text = path.read_text()
+    for num, label in enumerate(resolutions):
+        text = text.replace(
+            "specid={0}  fitrange".format(num),
+            "specid={0}  label=K7701  fitrange".format(num),
+            1,
+        )
+        old = "resolution=vfwhm(6.285VFIX)  columns=[wave,flux,error]\n"
+        start = text.index("specid={0}  label".format(num))
+        at = text.index(old, start)
+        new = "resolution=vfwhm(6.285{0})  columns=[wave,flux,error]\n".format(label)
+        text = text[:at] + new + text[at + len(old) :]
+    path.write_text(text)
+    return path
+
+
+def test_two_datasets_of_one_label_are_named_apart(registry, tmp_path):
+    path = _one_label(tmp_path, ["va", "vab"])
+    project = P.Project.import_model(str(path), registry=registry)
+    # Grouped apart by their resolution labels; before, both "K7701"
+    assert [r.name for r in project.rows] == ["K7701", "K7701 (2)"]
+    assert [r.specids for r in project.rows] == [["0"], ["1"]]
+
+
+def test_a_third_dataset_of_one_label_takes_the_next_number(registry, tmp_path):
+    path = _one_label(tmp_path / "three", ["va", "vab", "vac"])
+    project = P.Project.import_model(str(path), registry=registry)
+    assert [r.name for r in project.rows] == ["K7701", "K7701 (2)", "K7701 (3)"]
+
+
+def test_rows_saved_with_one_name_keep_it(registry, tmp_path):
+    # A project saved before keeps its rows as they are (Q12.17's response)
+    path = _one_label(tmp_path, ["va", "vab"])
+    project = P.Project.import_model(str(path), registry=registry)
+    ui = dict(project.ui)
+    ui["rows"] = [
+        {"id": "r1", "name": "K7701", "specids": ["0"], "reference": True},
+        {"id": "r2", "name": "K7701", "specids": ["1"]},
+    ]
+    project.ui = ui
+    project._build_rows()
+    assert [r.name for r in project.rows] == ["K7701", "K7701"]

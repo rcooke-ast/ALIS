@@ -162,6 +162,14 @@ def test_messages_that_mention_hidden_values_are_masked(dh_project):
     assert gate.message("Nothing hidden: 3.0672542409") == (
         "Nothing hidden: 3.0672542409"
     )
+    # A word that ends in "line" is not a line reference (Stage 13, Task 13.3):
+    # "lsfspline -4.5873,…" in ALIS's words kept the value it quotes
+    assert gate.message("must be set for - lsfspline 3.25,0.0LF in -4.5873") == (
+        "must be set for - lsfspline {0},{0}.0LF in {0}".format(BL.MASK)
+    )
+    assert gate.message("lines 47 and 48 give -4.5873") == (
+        "lines 47 and {0} give {0}".format(BL.MASK)
+    )
 
 
 # -- Writing back, and typing over a mask ------------------------------------------

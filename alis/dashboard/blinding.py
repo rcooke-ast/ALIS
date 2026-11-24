@@ -43,7 +43,9 @@ OFFSET_KEYWORDS = ("blindrange", "blindseed")
 # Keywords that are never values, even on a hidden line
 NAME_KEYWORDS = ("specid", "ion", "blind", "logN", "continuum", "freq")
 _NUMBER = re.compile(r"(?<![\w.▒])[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?(?![\w▒])")
-_LINE_REF = re.compile(r"(lines? )(\d+)")
+# A line number a message gives ("line 47"), kept; "line" as a word, so that the
+# number after "lsfspline" or "spline" is masked like any other (Stage 13, Task 13.3)
+_LINE_REF = re.compile(r"(\blines? )(\d+)")
 _WORD = re.compile(r"\S+")
 # A number anywhere in a word, as a keyword's value may hold several
 _ANY_NUMBER = re.compile(r"[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?")

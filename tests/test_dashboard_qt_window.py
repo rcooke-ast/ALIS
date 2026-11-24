@@ -466,3 +466,57 @@ def test_every_zoom_bar_has_a_home_for_each_axis(window, qtbot, tmp_path):
     texts = [w.text() for w in sheet.findChildren(QtWidgets.QLabel)]
     assert A.MOUSE_NOTE in texts and "⇧ Shift" in A.MOUSE_NOTE
     assert design_references(ui_strings(window) + texts) == []
+
+
+# -- Keys and mouse in the views (Stage 13, point 1; Q13.5 (a) and (c)) --------------
+
+
+def test_the_sheet_lists_every_key_and_gesture_at_the_tab_shown(window, qtbot):
+    from alis.dashboard.qt import dialogs as D
+
+    window.tabs.setCurrentIndex(2)
+    window.qactions["help.shortcuts"].trigger()
+    sheet = window.dialogs[-1]
+    assert isinstance(sheet, D.ShortcutsDialog)
+    rows = sheet.key_rows()
+    # Before, the menus' shortcuts and a note on the wheel alone: no N or B
+    assert rows == [(r.place, r.keys, r.what) for r in A.VIEW_KEYS]
+    assert ("Components", "N held while dragging", "Change log N alone") in rows
+    assert ("Components", "B held while dragging", "Change b alone") in rows
+    assert sheet.pages.tabText(0) == "Menus" and sheet.pages.tabText(1) == D.KEYS_PAGE
+    assert len(sheet.rows()) == len(A.ACTIONS)
+    # Opened at the rows of the tab shown
+    first = next(n for n, r in enumerate(rows) if r[0] == "Components")
+    assert sheet.keys.currentRow() == first
+    texts = [cell for row in rows for cell in row]
+    assert design_references(ui_strings(window) + texts) == []
+
+
+def test_each_tab_s_button_lists_its_keys_and_gestures(window, qtbot):
+    from alis.dashboard.qt import dialogs as D
+
+    assert window.tabs.cornerWidget() is window.tab_keys
+    assert window.tab_keys.toolTip() == "Keys and mouse on this tab"
+    for index, tab in enumerate(A.TABS):
+        if not window.tabs.isTabEnabled(index):
+            # The Figure tab is greyed without a run (Q9.1): its list, directly
+            dialog = D.TabKeysDialog(tab, lambda: None, window)
+            qtbot.addWidget(dialog)
+        else:
+            window.tabs.setCurrentIndex(index)
+            window.tab_keys.click()
+            dialog = window.dialogs[-1]
+            assert isinstance(dialog, D.TabKeysDialog) and dialog.tab == tab
+        wanted = [(r.place, r.keys, r.what) for r in A.view_keys(tab)]
+        assert dialog.key_rows() == wanted
+        assert dialog.windowTitle() == "Keys and mouse · {0} tab".format(tab)
+    # Show all: the sheet, on its second page, at the tab's rows
+    window.tabs.setCurrentIndex(1)
+    window.tab_keys.click()
+    window.dialogs[-1].show_all_button.click()
+    sheet = window.dialogs[-1]
+    assert isinstance(sheet, D.ShortcutsDialog) and sheet.pages.currentIndex() == 1
+    rows = sheet.key_rows()
+    assert sheet.keys.currentRow() == next(
+        n for n, r in enumerate(rows) if r[0] == "Regions"
+    )

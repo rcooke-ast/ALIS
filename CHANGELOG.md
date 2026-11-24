@@ -9,6 +9,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `lsffile` reads an LSF file whose first column is Δv in km/s, with `unit:kms`
+  (`lsffile(name:k.dat,unit:kms)`): its kernel is sampled at each sub-pixel's
+  velocity offset from the centre one, as `vfwhm`'s Gaussian is, and its buffer is
+  its width taken to Å at each end of the fit range. Without the keyword, or with
+  `unit:A`, the first column is Δλ in Å, as before. The dashboard sets it with a
+  drop-down beside Choose a file… in the Snip box, and when a file is chosen on the
+  Data tab, showing the kernel's FWHM in both units.
+- Dashboard Stage 13 (users' feedback): Warnings and options to resolve… on the
+  Fit tab's Results, listing a run's warnings (stopped at chisq maxiter, a failed
+  convergence check, ALIS's own warnings, now kept in `run.json`) with a suggestion
+  for each, and those warnings in red in Fit statistics, ⚠ in the run history and in
+  the status bar; a second page of Help → Keyboard shortcuts listing every key and
+  gesture outside the menus, and Keys… beside the tabs for the tab shown; an LSF
+  file in km/s (below); a run whose outputs do not read says why, and shows its
+  statistics.
 - Dashboard Stage 12 (users' feedback): every view keeps its scroll and zoom through
   each step, and a project opens where it was left (the window's size and position
   in the preferences); ⇧ Shift with the wheel zooms the flux axis, and ↔ and ↕ beside
@@ -221,6 +236,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does. It keeps working, and says so once when it starts.
 
 ### Fixed
+- An `lsfspline` resolution keeps its `locations` in the `.mod.out`
+  (`lsfspline(values…;locations:…)`): they were left out, so the output model could
+  not be read back ("locations must be set"), by `run_alis` or by the dashboard,
+  which then showed no best fit and no Results for the run. The dashboard reads a
+  run stored before the fix by taking the `locations` from the copy of the input
+  model at the end of its `.mod.out`.
+- Dashboard Stage 13: a dataset worked out from a fit takes a name no other has,
+  its number in parentheses ("K7701 (2)"), as Load snips… now does too; File → Save a
+  copy with spectra… opens the Save dialog (it opened the Open dialog); an LSF file
+  chosen for a fit whose `.mod` is kept beside its data goes inside the project
+  (it went outside it, where neither the dashboard nor ALIS found it); a hidden value
+  quoted after a word ending in "line" ("lsfspline 8000") is masked like any other.
+- Dashboard Stage 13: the fitting process no longer aborts as it ends ("Python quit
+  unexpectedly", SIGABRT once its result was stored): its thread for Stop waited on
+  the standard input through Python's buffered reader, whose lock Python's shutdown
+  could not take. Closing the window with Keep it running no longer waits for the
+  fit's next iteration.
 - Dashboard Stage 12: each rubidium isotope has its own name (87Rb I was shown as
   Rb I); Save writes the spectra kept in a project.
 - `lsfspline`'s kernel is centred on its line: the model was one sub-pixel to the red

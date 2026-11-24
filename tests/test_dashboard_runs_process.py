@@ -116,6 +116,8 @@ def test_a_run_gives_what_run_alis_gives(home, tmp_path, registry):
     assert got.progress[-1][1] == got.chi2
     assert job.progress == got.progress[: len(job.progress)]
     assert len(job.values) == len(got.values(registry))
+    # The process ended as it should, not aborted at Python's shutdown (Stage 13)
+    assert job.process.wait(timeout=60) == 0
     # Nothing written but the project's file
     assert os.listdir(cwd) == []
     assert set(os.listdir(tmp_path)) <= {
@@ -230,6 +232,101 @@ def test_stop_keeps_an_interrupted_run_and_cancel_keeps_nothing(
         os.killpg(group, 0)
     assert B.read(path).members[B.LATEST + "run.json"] == before
     assert not job.take(session)
+
+
+def _runner(path, after=b""):
+    """The fitting process started as the dashboard starts it, handed a project with
+    ``after`` written straight after it; its standard input is left open."""
+    data = open(path, "rb").read()
+    header = {
+        "protocol": R.PROTOCOL,
+        "size": len(data),
+        "path": None,
+        "settings": SETTINGS,
+        "command": "test",
+    }
+    proc = subprocess.Popen(
+        [sys.executable, "-m", R.RUNNER],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    proc.stdin.write(json.dumps(header).encode("utf-8") + b"\n" + data + after)
+    proc.stdin.flush()
+    return proc
+
+
+def _finished(proc):
+    """The process's messages, up to ``finished``."""
+    out = []
+    for line in proc.stdout:
+        out.append(json.loads(line.decode("utf-8")))
+        if out[-1]["event"] == "finished":
+            break
+    return out
+
+
+def test_a_run_ends_without_an_abort_with_its_input_held_open(home, tmp_path):
+    # Stage 13, point 2: the thread for Stop waited on the standard input, holding
+    # the lock of Python's buffered reader, and Python's shutdown aborted on it
+    # ("Python quit unexpectedly"; −6, SIGABRT) whenever the dashboard had not yet
+    # closed the pipe
+    proc = _runner(packed(tmp_path))
+    try:
+        messages = _finished(proc)
+        assert messages[-1]["status"] == R.COMPLETED, messages[-1]
+        assert proc.wait(timeout=60) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+        proc.stdin.close()
+        proc.stdout.close()
+
+
+def test_a_stop_handed_over_with_the_project_stops_the_fit(home, tmp_path):
+    # A stop that arrives in the same read as the project's end is kept for the
+    # command thread, not lost in a buffer
+    proc = _runner(packed(tmp_path), after=b"stop\n")
+    try:
+        messages = _finished(proc)
+        assert messages[-1]["status"] == R.INTERRUPTED, messages[-1]
+        assert messages[-1]["iterations"] == 1
+        assert proc.wait(timeout=60) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+        proc.stdin.close()
+        proc.stdout.close()
+
+
+def test_keep_it_running_lets_go_of_the_process_at_once(home, tmp_path, registry):
+    # detach() (closing the window with Keep it running) waited for the reader
+    # thread's lock until the process's next message: one iteration of the fit
+    session = S.Session.open(packed(tmp_path), registry=registry)
+    job = R.Run(session, settings=SETTINGS)
+    job.start()
+    try:
+        wait_for_iteration(job)
+        start = time.time()
+        job.process.detach()
+        assert time.time() - start < 0.1
+    finally:
+        job.process.cancel()
+        job.process.wait(timeout=60)
+
+
+def test_alis_s_warnings_are_kept_with_the_run(home, tmp_path, registry):
+    # Stage 13, Task 13.10 (Q13.8 (iii)): Warnings and options to resolve… lists
+    # them for a run opened later, so they are kept in run.json
+    session = S.Session.open(packed(tmp_path), registry=registry)
+    job = run(session, settings=SETTINGS + ["run warn_subpix 1"])
+    assert job.status == R.COMPLETED, job.message
+    assert job.take(session)
+    kept = R.latest(session.project.bundle).info.get("warnings")
+    assert kept and any("sub-pixellation" in w for w in kept)
+    assert len(kept) == len(set(kept))
+    assert job.warnings and job.warnings[0] in kept
 
 
 def test_a_project_with_no_file_keeps_the_run_until_saved(home, tmp_path, registry):

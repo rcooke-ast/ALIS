@@ -476,7 +476,12 @@ def test_the_resolution_column_sets_the_dataset_s_function(window, qtbot, tmp_pa
         name, value, keywords, path = (args + (None, None))[:4]
         done = len(window.session.history.done)
         tab.set_function(
-            window.session.project.rows[0], name, value, keywords, path=path
+            window.session.project.rows[0],
+            name,
+            value,
+            keywords,
+            path=path,
+            unit="A" if path else None,
         )
         assert len(window.session.history.done) == done + 1
         assert table_text(tab)[0][3] == cell
@@ -568,3 +573,63 @@ def test_an_emptied_unassigned_dataset_keeps_its_data(window, qtbot, tmp_path):
     tab._act("Remove…", lambda: tab.remove_row(project.rows[1]))
     assert [r[1] for r in table_text(tab)] == ["OI_SiII"]
     assert design_references(ui_strings(window)) == []
+
+
+def test_two_datasets_of_one_label_are_named_apart_on_every_tab(
+    window, qtbot, tmp_path
+):
+    # Stage 13, item 1 carried over from Stage 12: MWC137 opened without its
+    # spectra showed "39KI7701" twice on the Data tab, the strips and the menus
+    from test_dashboard_project import _one_label
+
+    window.import_path(str(_one_label(tmp_path, ["va", "vab"])))
+    wait_idle(qtbot, window)
+    names = [r.name for r in window.session.project.rows]
+    assert names == ["K7701", "K7701 (2)"]
+    cells = [row[1] for row in table_text(window.tab_widgets[0])]
+    # Its number in parentheses (RJC's comment on the review), never "K77012"
+    assert cells == ["K7701", "K7701 (2)"]
+    window.tabs.setCurrentIndex(1)
+    qtbot.wait(50)
+    titles = [s.title.text() for s in window.tab_widgets[1].strips]
+    assert titles and len(titles) == len(set(titles)), titles
+
+
+def test_an_lsf_file_in_km_s_on_the_data_tab(window, qtbot, tmp_path):
+    # Stage 13, point 4 (Q13.6 (a)): its unit asked when the file is chosen, the
+    # kernel's FWHM shown in both units as the unit changes
+    from test_dashboard_datasets import _kms_file
+
+    tab = new_project(window, tmp_path, z=0.0)
+    project = window.session.project
+    spec = {r.id: sources.spectrum(project, r) for r in project.rows}
+    atom = L.atomic(project.registry)
+    line = next(
+        ln for ln in atom.ion_lines("16O_I") if abs(ln.rest - 1302.16849) < 0.01
+    )
+    window.session.history.do(SN.snip_step(project, project.systems[0], line, spec))
+    window.refresh()
+    seen = []
+
+    def answer(dialog):
+        seen.append(dialog.note.text())
+        dialog.units.setCurrentIndex(1)
+        seen.append(dialog.note.text())
+        return 1
+
+    window.on_dialog = answer
+    tab.set_function(
+        window.session.project.rows[0], "lsffile", path=str(_kms_file(tmp_path))
+    )
+    window.on_dialog = None
+    assert seen[0].startswith("kms_lsf.dat · FWHM 6.27 Å (14")
+    assert seen[1].startswith("kms_lsf.dat · FWHM 6.27 km/s (0.027")
+    word = window.session.project.rows[0].snips[0].data.keyword("resolution")
+    assert word == "lsffile(name:../lsf/kms_lsf.dat,unit:kms)"
+    assert table_text(tab)[0][3] == "file kms_lsf.dat"
+    # Cancel changes nothing
+    done = len(window.session.history.done)
+    tab.set_function(
+        window.session.project.rows[0], "lsffile", path=str(_kms_file(tmp_path))
+    )
+    assert len(window.session.history.done) == done

@@ -328,6 +328,65 @@ def test_without_the_recorded_buffer_the_pixels_would_move(modelfile, atomic_dat
     assert second._wavefull[0].size != first._wavefull[0].size
 
 
+# The resolutions that take keywords (dashboard Stage 13, Task 13.2): the written
+# line must keep them, or the .mod.out cannot be read back. lsfspline's locations
+# were left out, so a run's best fit could not be shown (RJC's MWC137_02)
+LSF_SPLINE = (
+    "lsfspline(4.0,0.0LFIX,0.5,1.0CFIX,0.5,0.0RFIX;locations:-10.0,-3.0,0.0,3.0,10.0)"
+)
+KEYWORD_RESOLUTIONS = {
+    "lsfspline": LSF_SPLINE,
+    # Each keyword after its own ';', as lsfspline reads them
+    "lsfspline with two keywords": LSF_SPLINE[:-1] + ";blind:False)",
+    "lsffile": "lsffile(name:{lsf})",
+    "lsffile with index": "lsffile(name:{lsf},index:0)",
+    # Its kernel in km/s (Stage 13, point 4)
+    "lsffile in km/s": "lsffile(name:{lsf},unit:kms)",
+    "apod": "apod(kind:hanning)",
+}
+
+
+def _convolution(state):
+    """The data line's resolution: its function, keywords and starting values."""
+    mp = state._modpass
+    i = mp["emab"].index("cv")
+    keys = {k: v for k, v in mp["mkey"][i].items() if k != "input"}
+    return mp["mtyp"][i], keys
+
+
+@pytest.mark.parametrize("name", sorted(KEYWORD_RESOLUTIONS))
+def test_a_resolution_s_keywords_are_written_and_read_back(
+    name, modelfile, atomic_data, tmp_path
+):
+    lsf = tmp_path / "kernel.dat"
+    offsets = np.linspace(-1.0, 1.0, 201)
+    np.savetxt(
+        str(lsf), np.column_stack([offsets, np.exp(-0.5 * (offsets / 0.05) ** 2)])
+    )
+    resolution = KEYWORD_RESOLUTIONS[name].format(lsf=lsf)
+    first = build(
+        modelfile(name="kw.mod", replace=("vfwhm(7.0)", resolution)), atomic_data
+    )
+    text = written(first)
+    saved = modelfile(name="kw.mod.out", text=text)
+    second = build(saved, atomic_data)
+    assert _convolution(second) == _convolution(first)
+    assert np.allclose(second._modpass["p0"], first._modpass["p0"])
+    # Written again, the line is the same: nothing more is lost
+    assert data_line(written(second)) == data_line(text)
+
+
+def test_lsfspline_is_written_with_its_locations_after_a_semicolon(
+    modelfile, atomic_data
+):
+    state = build(
+        modelfile(name="spline.mod", replace=("vfwhm(7.0)", LSF_SPLINE)), atomic_data
+    )
+    line = data_line(written(state))
+    token = [t for t in line.split() if t.startswith("resolution=")][0]
+    assert token.endswith(";locations:-10.0,-3.0,0.0,3.0,10.0)"), token
+
+
 def test_the_round_trip_preserves_the_free_parameter_count(modelfile, atomic_data):
     first = build(modelfile(), atomic_data)
     saved = modelfile(name="fit.mod.out", text=written(first))

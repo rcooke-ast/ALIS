@@ -645,7 +645,9 @@ def _unassigned_rows(project, groups, taken_ids=(), taken_names=()):
             num += 1
         ident, label, more = "r{0}".format(num), group, 2
         while label in names:
-            label, more = "{0} {1}".format(group, more), more + 1
+            # Its number in parentheses, so that it is not read as part of the
+            # name: "K7701 (2)", not "K7701 2" (RJC, Stage 13 review)
+            label, more = "{0} ({1})".format(group, more), more + 1
         ids.add(ident)
         names.add(label)
         entry = {
@@ -1811,7 +1813,9 @@ def load_mod_plan(project, modfile, spectra, assignment=None, fit=None, holders=
             num += 1
         ident, label, more = "r{0}".format(num), group, 2
         while label in names:
-            label, more = "{0} {1}".format(group, more), more + 1
+            # Its number in parentheses, so that it is not read as part of the
+            # name: "K7701 (2)", not "K7701 2" (RJC, Stage 13 review)
+            label, more = "{0} ({1})".format(group, more), more + 1
         ids.add(ident)
         names.add(label)
         entries.append(

@@ -31,6 +31,7 @@ from alis.dashboard import preferences as PR
 from alis.dashboard import project as P
 from alis.dashboard import runs as R
 from alis.dashboard import session as S
+from alis.dashboard import text as T
 
 pytestmark = pytest.mark.unit
 
@@ -180,6 +181,42 @@ def test_a_blind_run_s_mod_out_is_read(registry):
     # An input that does not give one hidden line for each: read as it was
     bare = blind.replace("blind=True", "")
     assert R.readable(bare) == (bare, frozenset())
+    assert R.readable(plain) == (plain, frozenset())
+
+
+def _spline_mod_out():
+    """metal_line_abs's ``.mod.out`` with an ``lsfspline`` resolution, written as ALIS
+    wrote it before Stage 13 (Task 13.2): without its ``locations``, which only the
+    copy of the input model at its end keeps."""
+    text = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
+    written = "resolution=lsfspline(4.0000000VA,0.0000000LFIX,1.0000000CFIX,0.0RFIX)"
+    given = (
+        "resolution=lsfspline(4.0VA,0.0LFIX,1.0CFIX,0.0RFIX;locations:-10.0,0.0,10.0)"
+    )
+    text = text.replace("resolution=vfwhm(7.000VA)", written, 1)
+    return text.replace("resolution=vfwhm(7.0VA)", given, 1), written, given
+
+
+def test_a_run_s_lsfspline_without_its_locations_is_read(registry):
+    # RJC's MWC137_02 (Stage 13, point 3 (i)): the run's .mod.out did not read,
+    # "locations must be set", so it gave none of its best-fit values
+    text, written, given = _spline_mod_out()
+    assert text.count(written) == 1 and text.count(given) == 1
+    pm = M.ParsedModel(T.ModelText(R.readable(text)[0]), registry)
+    assert not [p for p in pm.problems if p.severity == "error"]
+    # Every free parameter's best-fit value (before, none)
+    values = R.out_values(text, registry)
+    free = [p.index for p in pm.params if p.index >= 0 and p.free]
+    assert len(free) > 4 and all(i in values for i in free)
+    line = next(ln for ln in R.readable(text)[0].splitlines() if "lsfspline" in ln)
+    assert ";locations:-10.0,0.0,10.0)" in line
+    # Put back only where it was left out: a line that has them keeps its own
+    again, _ = R.readable(R.readable(text)[0])
+    assert again == R.readable(text)[0]
+
+
+def test_a_mod_out_with_nothing_left_out_is_read_as_it_is(registry):
+    plain = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
     assert R.readable(plain) == (plain, frozenset())
 
 

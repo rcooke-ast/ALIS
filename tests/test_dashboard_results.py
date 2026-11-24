@@ -452,6 +452,145 @@ def test_correlations_and_statistics(j1358):
     assert stats.reason.startswith("Both actual and predicted")
 
 
+def _broken_mod_out():
+    """metal_line_abs's ``.mod.out`` with its resolution broken, as an ``lsfspline``
+    with no ``locations`` and no input to take them from (Stage 13, point 3 (i))."""
+    text = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
+    return text.replace(
+        "resolution=vfwhm(7.000VA)", "resolution=lsfspline(4.0VA,0.0LF,1.0CF,0.0RF)", 1
+    ).replace("resolution=vfwhm(7.0VA)", "resolution=lsfspline(4.0VA,0.0,1.0,0.0)", 1)
+
+
+def test_a_run_whose_outputs_do_not_read_says_why(registry):
+    project = imported(METAL, registry)
+    store_run(
+        project,
+        METAL,
+        mod_out=_broken_mod_out(),
+        chi2_final=357.874162,
+        chi2_initial=420.0,
+        dof=360,
+        iterations=1000,
+        status_code=5,
+        reason="The maximum number of iterations has been reached",
+    )
+    view = RS.View.latest(project)
+    assert not view.has_best_fit
+    why = view.why_not()
+    # Before, "The latest run has no best-fit values."
+    assert why.startswith("The outputs of the latest run do not read: ")
+    assert "locations must be set" in why
+    # Its statistics are the run's, all the same
+    stats = view.statistics()
+    assert stats.chi2 == pytest.approx(357.874162)
+    assert (stats.dof, stats.iterations) == (360, 1000)
+    assert stats.reason == "The maximum number of iterations has been reached"
+
+
+# -- A fit that may not have converged warns (Stage 13, point 3 (i); Q13.4 (b)) -------
+
+
+def _stored(metal, **info):
+    fields = dict(chi2_final=357.874162, dof=360, iterations=7)
+    fields.update(info)
+    store_run(metal, METAL, **fields)
+    return RS.View.latest(metal).statistics()
+
+
+def test_a_fit_stopped_at_its_maximum_number_of_iterations_warns(metal):
+    stats = _stored(metal, iterations=1000, status_code=5, reason=RS.MAXITER_REASON)
+    assert stats.at_maxiter and not stats.not_converged
+    rows = dict(RS.statistics_rows(stats))
+    # Before, the reason alone, in plain text
+    assert rows["Stopped because"] == RS.MAXITER_REASON
+    assert RS.statistics_warnings(stats) == {"Stopped because"}
+    # What to do is in Warnings and options to resolve… (Task 13.10, Q13.8 (ii))
+    assert "What to do" not in rows
+    maxiter = metal.parsed.argflag["chisq"]["maxiter"]
+    assert RS.fit_warnings(stats) == [
+        RS.FitWarning(
+            "The fit stopped at chisq maxiter ({0}), before it converged.".format(
+                maxiter
+            ),
+            RS.MAXITER_ADVICE,
+        )
+    ]
+    assert "Continue from best fit…, then Run" in RS.MAXITER_ADVICE
+    assert "maximum number of iterations" in RS.warning_text(stats)
+    [row] = RS.history(metal)
+    # Without the model's maxiter, which Fit statistics gives
+    assert row.warning == (
+        "It stopped at the maximum number of iterations, before it converged."
+    )
+    assert row.tip.endswith("⚠ " + row.warning)
+
+
+@pytest.mark.parametrize("code", [1, 2, 3, 4])
+def test_a_fit_that_converged_does_not_warn(metal, code):
+    stats = _stored(metal, status_code=code, reason="The relative reduction …")
+    assert not stats.at_maxiter and not stats.not_converged
+    assert "What to do" not in dict(RS.statistics_rows(stats))
+    assert RS.statistics_warnings(stats) == set() and RS.warning_text(stats) == ""
+    assert RS.fit_warnings(stats) == []
+    assert RS.history(metal)[0].warning == ""
+
+
+def test_a_plain_run_stopped_at_its_maximum_is_known_by_its_reason(metal):
+    # A run of run_alis or an imported fit, with no status: its .mod.out's words
+    text = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
+    head = next(ln for ln in text.splitlines() if "Convergence Reason" in ln)
+    text = text.replace(head, "#   Convergence Reason  = " + RS.MAXITER_REASON)
+    store_run(metal, METAL, mod_out=text, status="imported", started=None)
+    stats = RS.View.latest(metal).statistics()
+    assert stats.at_maxiter
+    assert RS.history(metal)[0].warning
+
+
+def test_a_convergence_check_that_failed_warns(metal):
+    found = {"converged": False, "failed": 3, "total": 41}
+    stats = _stored(metal, convergence=found)
+    assert stats.not_converged and not stats.at_maxiter
+    rows = dict(RS.statistics_rows(stats))
+    assert rows["Convergence"] == "Not converged for 3 of 41 parameters"
+    assert RS.statistics_warnings(stats) == {"Convergence"}
+    assert RS.fit_warnings(stats) == [
+        RS.FitWarning(
+            "The convergence check: not converged for 3 of 41 parameters.",
+            RS.NOT_CONVERGED_ADVICE,
+        )
+    ]
+    assert "3 of 41" in RS.warning_text(stats)
+    stats = _stored(metal, convergence={"converged": True, "failed": 0, "total": 41})
+    assert not stats.not_converged and RS.statistics_warnings(stats) == set()
+
+
+def test_alis_s_warnings_during_a_run_are_listed_with_no_suggestion(metal):
+    # Task 13.10, Q13.8 (iii): kept in run.json by the fitting process
+    text = "sub-pixellation scale (30) has exceeded the warning level of: 10"
+    stats = _stored(metal, iterations=1000, status_code=5, warnings=[text, "Another"])
+    found = RS.fit_warnings(stats)
+    assert [w.warning for w in found[1:]] == [
+        "ALIS warned: " + text,
+        "ALIS warned: Another",
+    ]
+    assert [w.suggestion for w in found[1:]] == ["", ""]
+    # A run with no warnings of ALIS's lists none of them
+    assert all(
+        not w.warning.startswith("ALIS") for w in RS.fit_warnings(_stored(metal))
+    )
+
+
+def test_a_hidden_value_in_alis_s_warning_is_masked(blinded):
+    gate = BL.Gate(blinded)
+    hidden = max((v for v in gate.hidden_values() if v not in ("0.0", "1.0")), key=len)
+    store_run(
+        blinded, METAL, warnings=["the value {0} is near its limit".format(hidden)]
+    )
+    stats = RS.View.latest(blinded).statistics()
+    [warning] = RS.fit_warnings(stats)
+    assert hidden not in warning.warning and BL.MASK in warning.warning
+
+
 def test_copy_as_table(j1358):
     groups = RS.View.latest(j1358).table()
     text = RS.copy_text(groups)
@@ -949,6 +1088,27 @@ def test_offsets_are_taken_away_before_the_best_fit_is_drawn(blinded):
     mine = np.isin(curve.wave, ref[window, 0])
     diff = np.abs(curve.model[mine] - ref[window, -1]) / curve.error[mine]
     assert np.nanmax(diff) < 0.05
+
+
+def test_why_a_run_does_not_read_is_masked_by_the_gate(blinded):
+    # Stage 13, point 3 (i): ALIS's reason quotes the line it could not read; one
+    # that carries a hidden value is masked before it is shown
+    gate = BL.Gate(blinded)
+    reference = Path(str(METAL)[:-4] + ".mod.out.reference").read_text()
+    for hidden in sorted(gate.hidden_values()):
+        broken = reference.replace(
+            "resolution=vfwhm(7.000VA)",
+            "resolution=lsfspline({0},0.0LF,1.0CF,0.0RF)".format(hidden),
+            1,
+        )
+        store_run(blinded, METAL, mod_out=broken)
+        why = RS.View.latest(blinded).why_not()
+        assert why.startswith("The outputs of the latest run do not read:")
+        assert "lsfspline {0},".format(hidden) in why
+        shown = gate.message(why)
+        # Before the gate's fix, "lsfspline 8000" was kept as if a line number
+        assert "lsfspline {0},".format(BL.MASK) in shown, (hidden, shown)
+        assert "locations must be set" in shown
 
 
 def test_no_blinded_value_is_shown(blinded):

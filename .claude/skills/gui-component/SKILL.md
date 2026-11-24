@@ -318,3 +318,30 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
 - **Off-screen screenshots of a menu opened with `QMenu.exec`**: grab the
   `activePopupWidget()` from a timer while it is open, then close it; patching the
   PySide class's `exec` does not take.
+
+## Stage 13 additions
+
+- **A key or a gesture outside the menus** has its row in `actions.VIEW_KEYS`
+  (where, the key, what it does, and the Qt key names the code handles): the F10
+  sheet's second page and each tab's Keys… list are built from it, the Components
+  tab takes N and B from `actions.DRAG_KEYS`, and a test reads every `Key_…`,
+  `QKeySequence("…")` and `StandardKey.…` in `qt/` and requires its row.
+- **A file dialog** goes through `window.choose(kind, …)` with a kind of
+  `CHOOSER_KINDS` (`open`, `save`, `folder`, `open_many`); any other raises. Tests
+  replace `choose` by kind, so a wrong kind passes them unseen; a test drives the
+  real `choose` with `QFileDialog`'s functions replaced.
+- **A process the dashboard starts** never reads a pipe through Python's buffered
+  reader on a waiting thread: that thread holds the reader's lock, and Python's
+  shutdown (or a `close` from another thread) waits on it, or aborts. Read the
+  descriptor with `os.read` (`runner.Input`, `runs.Process._read`, the latter on a
+  copy of the descriptor so that `detach` can close the original).
+- **A run's warnings**: `results.fit_warnings(stats)` (each a `FitWarning` with its
+  suggestion, `""` where none); ALIS's own are kept in `run.json`'s `warnings` by the
+  runner, as sent (masked), and pass the gate in `View.statistics`. Results' red
+  button shows only while there is one.
+- **Numbers in names**: a name made unique takes its number in parentheses,
+  "K7701 (2)" (`project._build_rows`, `loadfit`).
+- **The gate keeps "line 47" unmasked** only where "line" is a word (`_LINE_REF`):
+  test a message that quotes a hidden value after a word like "lsfspline".
+- **Off-screen glyphs**: a symbol outside the off-screen font (⌨) draws as a dash in
+  the screenshots; prefer words on buttons ("Keys…").

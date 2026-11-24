@@ -129,10 +129,52 @@ def test_save_a_copy_with_spectra_from_the_file_menu(setup, qtbot, tmp_path):
     window.open_path(str(path))
     wait_idle(qtbot, window)
     target = tmp_path / "share.model"
-    window.chosen["save_copy"] = str(target)
+    window.chosen["save"] = str(target)
     window.qactions["file.save_with_spectra"].trigger()
     copy_ = B.read(str(target))
     assert all(e["embedded"] in copy_.members for e in copy_.sources)
     assert "was written to" in window.answers.asked[-1][2]
     assert not window.session.dirty
     assert window.session.project.bundle.sources[0]["embedded"] is None
+
+
+def test_save_a_copy_with_spectra_asks_where_to_save(
+    setup, qtbot, tmp_path, monkeypatch
+):
+    # Stage 13, point 3 (ii): the window's own chooser, with the system's dialogs
+    # replaced. The action asked for "save_copy", a kind it took as "open", and the
+    # Open dialog came up
+    import types
+
+    from qtpy import QtWidgets
+
+    from alis import bundle as B
+
+    window, path, spectrum = setup
+    window.open_path(str(path))
+    wait_idle(qtbot, window)
+    target = tmp_path / "share.model"
+    asked = []
+
+    def save(parent, title, start="", filters=""):
+        asked.append(("save", title, start))
+        return str(target), filters
+
+    def open_(parent, title, start="", filters=""):
+        asked.append(("open", title, start))
+        return "", ""
+
+    monkeypatch.setattr(QtWidgets.QFileDialog, "getSaveFileName", staticmethod(save))
+    monkeypatch.setattr(QtWidgets.QFileDialog, "getOpenFileName", staticmethod(open_))
+    window.choose = types.MethodType(type(window).choose, window)
+    window.qactions["file.save_with_spectra"].trigger()
+    [(kind, title, start)] = asked
+    assert (kind, title) == ("save", "Save a copy with spectra")
+    assert start.endswith("_with_spectra.model")
+    assert all(
+        e["embedded"] in B.read(str(target)).members
+        for e in B.read(str(target)).sources
+    )
+    # A kind it does not know is refused, rather than taken as "open"
+    with pytest.raises(ValueError):
+        window.choose("save_copy", "Save a copy with spectra")

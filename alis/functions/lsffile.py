@@ -7,17 +7,27 @@ import astropy.units as u
 msgs = logger.msgs()
 
 
+# The units of an LSF file's first column (dashboard Stage 13, point 4): Angstroms,
+# the default, or km/s
+UNITS = ("A", "kms")
+C_KMS = 2.99792458E5
+
+
 class LSFFile(base.Base) :
     """
-    Convolves the spectrum with a line spread function from linetools.
+    Convolves the spectrum with a line spread function read from a file: its first
+    column the offsets, then one kernel per column (``name``, ``index``). The
+    offsets are in Angstroms, or with ``unit:kms`` in km/s, sampled at each
+    sub-pixel's velocity offset from the centre one, as ``vfwhm`` makes its Gaussian
+    (dashboard Stage 13, point 4).
     The only input parameter is a dummy parameter at this moment.
     """
     def __init__(self, prgname="", getinst=False, atomic=None, verbose=2):
         self._idstr   = 'lsffile'			# ID string for this class
         self._pnumr   = 1				# Total number of parameters fed in
-        self._keywd   = dict({'name':'', 'index':-1, 'blind':False, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
-        self._keych   = dict({'name':1,  'index':0,  'blind':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
-        self._keyfm   = dict({'name':"", 'index':"", 'blind':"", 'blindseed':"",  'blindrange':""})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keywd   = dict({'name':'', 'index':-1, 'unit':'A', 'blind':False, 'blindseed':0,  'blindrange':[]})		# Additional arguments to describe the model --- 'input' cannot be used as a keyword
+        self._keych   = dict({'name':1,  'index':0,  'unit':0, 'blind':0, 'blindseed':0,  'blindrange':0})			# Require keywd to be changed (1 for yes, 0 for no)
+        self._keyfm   = dict({'name':"", 'index':"", 'unit':"", 'blind':"", 'blindseed':"",  'blindrange':""})			# Require keywd to be changed (1 for yes, 0 for no)
         self._parid   = ['scale']		# Name of each parameter
         self._defpar  = [ 1.0 ]			# Default values for parameters that are not provided
         self._fixpar  = [ True ]		# By default, should these parameters be fixed?
@@ -89,7 +99,7 @@ class LSFFile(base.Base) :
     def fwhm(self):
         """
         The full width at half maximum of the kernel loaded, in the units of the
-        file's first column (Angstroms)
+        file's first column (Angstroms, or km/s with ``unit:kms``)
         """
         w = np.where(self._lsf_kernel >= 0.5 * np.max(self._lsf_kernel))
         return np.max(self._lsf_wave[w]) - np.min(self._lsf_wave[w])
@@ -109,7 +119,13 @@ class LSFFile(base.Base) :
             ysize = y.size
             df = ysize//2 - 1
             lsfk = np.zeros(2*df+1)
-            lsfk[:2*df+1] = np.interp(x[:2*df+1]-x[df], self._lsf_wave, self._lsf_kernel)
+            if mkey.get('unit', 'A') == 'kms':
+                # Each sub-pixel's velocity offset from the centre one, as vfwhm
+                # makes its Gaussian (dashboard Stage 13, point 4)
+                offsets = C_KMS*(x[:2*df+1]/x[df] - 1.0)
+            else:
+                offsets = x[:2*df+1]-x[df]
+            lsfk[:2*df+1] = np.interp(offsets, self._lsf_wave, self._lsf_kernel)
             size = ysize + lsfk.size - 1
             fsize = 2 ** int(np.ceil(np.log2(size))) # Use this size for a more efficient computation
             conv = np.fft.fft(y, fsize)
@@ -140,11 +156,14 @@ class LSFFile(base.Base) :
         # file (dashboard Stage 8), so a kernel loaded for another is not used
         name = None
         index = -1
+        unit = 'A'
         for pp in par:
             if pp.split(":")[0] == 'name':
                 name = pp.split(":")[1]
             elif pp.split(":")[0] == 'index':
                 index = int(pp.split(":")[1])
+            elif pp.split(":")[0] == 'unit':
+                unit = pp.split(":")[1]
         if name is None:
             msgs.error("LSF file not found")
         if self._lsf_kernel is None or name != self._lsf_name:
@@ -154,6 +173,10 @@ class LSFFile(base.Base) :
         # the buffer is Nsig of its sigma either side of the fitrange (dashboard
         # Stage 8, Q8.13; it used to be taken as a velocity at a fixed 1309 A)
         sigw = self.fwhm() / (2.0*np.sqrt(2.0*np.log(2.0)))
+        if unit == 'kms':
+            # A width in km/s, taken to Angstroms at each end of the fit range,
+            # as vfwhm's (dashboard Stage 13, point 4)
+            return fitrng[0]*(1.0 - Nsig*sigw/C_KMS), fitrng[1]*(1.0 + Nsig*sigw/C_KMS)
         # Calculate the min and max extraction wavelengths
         wmin = fitrng[0] - Nsig*sigw
         wmax = fitrng[1] + Nsig*sigw
@@ -242,7 +265,9 @@ class LSFFile(base.Base) :
         mp['mlim'].append([])
         for i in range(self._pnumr):
             mp = check_tied_param(param[i], cntr, mp, i)
-        # Now load the keywords:
+        # Now load the keywords. The unit is each line's own: Angstroms unless the
+        # line says otherwise (the keywords are kept on the instance between lines)
+        self._keywd['unit'] = 'A'
         for i in range(len(kywrd)):
             kwspl = kywrd[i].split('=')
             ksspl = kwspl[1].split(',')
@@ -276,6 +301,8 @@ class LSFFile(base.Base) :
         # Check that all required keywords were changed
         for i in range(len(keywdk)):
             if self._keych[keywdk[i]] == 1: msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
+        if self._keywd['unit'] not in UNITS:
+            msgs.error("unit must be A (the first column in Angstroms) or kms (in km/s) for -"+msgs.newline()+self._idstr+"   "+instr)
         # Append the final set of keywords
         mp['mkey'].append(self._keywd.copy())
         return mp, parid

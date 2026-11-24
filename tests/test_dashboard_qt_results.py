@@ -44,7 +44,7 @@ pytest.importorskip("pyqtgraph")
 
 from qtpy import QtCore, QtWidgets  # noqa: E402
 from test_dashboard_blinding import renderings  # noqa: E402
-from test_dashboard_results import _blind_out, store_run  # noqa: E402
+from test_dashboard_results import _blind_out, _broken_mod_out, store_run  # noqa: E402
 
 from alis import bundle as B  # noqa: E402
 from alis.dashboard import blinding as BL  # noqa: E402
@@ -172,6 +172,135 @@ def test_j1358s_results_as_in_the_mockup(window, qtbot):
 J1939 = ROOT / (
     "context/fitting_examples/Temperature/J193957m100241/model/J193957m100241.model"
 )
+
+
+def _unreadable_run(window, qtbot, tmp_path):
+    """metal_line_abs with a run whose .mod.out does not read (Stage 13, point 3 (i)),
+    stopped at its maximum number of iterations."""
+    open_metal(
+        window,
+        qtbot,
+        tmp_path,
+        mod_out=_broken_mod_out(),
+        chi2_initial=420.0,
+        iterations=1000,
+        status_code=5,
+        reason="The maximum number of iterations has been reached",
+    )
+
+
+def test_a_run_whose_outputs_do_not_read_shows_why_and_its_statistics(
+    window, qtbot, tmp_path
+):
+    _unreadable_run(window, qtbot, tmp_path)
+    results = show_results(window, qtbot)
+    note = results.table_note.text()
+    assert note.startswith("The outputs of the latest run do not read:")
+    assert "locations must be set" in note
+    # The run's statistics, from run.json (before, none)
+    rows = dict(results.statistics_rows)
+    assert rows["Iterations"] == "1000"
+    assert rows["χ²"].startswith("357.8742 (initial 420.0000)")
+    assert rows["Stopped because"].startswith("The maximum number of iterations")
+    assert results.stats_pane.title.text() == "Fit statistics · the latest run"
+
+
+def test_the_end_of_a_run_that_cannot_be_shown_says_why(window, qtbot, tmp_path):
+    from types import SimpleNamespace
+
+    _unreadable_run(window, qtbot, tmp_path)
+    window.fit.job = SimpleNamespace(kind="run", warnings=[], message="")
+    window.fit.session = window.session
+    window._fit_ended(R.COMPLETED)
+    text = window.statusBar().currentMessage()
+    # Before, "The fit has finished; the Fit tab shows its best fit."
+    assert text.startswith("The fit has finished, but its best fit cannot be shown.")
+    assert "locations must be set" in text
+
+
+def test_a_fit_stopped_at_its_maximum_warns_in_red(window, qtbot, tmp_path):
+    # Stage 13, point 3 (i), Q13.4 (b): Fit statistics, the run history and the end
+    # of the run
+    from types import SimpleNamespace
+
+    from alis.dashboard.qt import style as STY
+
+    open_metal(
+        window,
+        qtbot,
+        tmp_path,
+        iterations=1000,
+        status_code=5,
+        reason=RS.MAXITER_REASON,
+        convergence={"converged": False, "failed": 2, "total": 9},
+        warnings=["sub-pixellation scale (30) has exceeded the warning level of: 10"],
+    )
+    results = show_results(window, qtbot)
+    rows = dict(results.statistics_rows)
+    # What to do went to the dialog (Task 13.10, Q13.8 (ii)): no scrolling
+    assert "What to do" not in rows
+    assert results.statistics_warned == {"Stopped because", "Convergence"}
+    red = STY.SEVERITY_COLOURS["error"].lower()
+    for num in range(results.stats.rowCount()):
+        name = results.stats.item(num, 0).text()
+        for col in (0, 1):
+            colour = results.stats.item(num, col).foreground().color().name()
+            assert (colour == red) == (name in results.statistics_warned), name
+    # The run history: ⚠ on the run, the reason in its tooltip
+    first = results.history.item(0, 0)
+    assert first.text().endswith(" ⚠")
+    assert first.foreground().color().name() == red
+    assert "maximum number of iterations" in results.history.item(0, 2).toolTip()
+    # Warnings and options to resolve…: red, between Fit statistics and Correlations
+    button = results.warnings_button
+    assert button.isVisible() and button.text() == RS.WARNINGS_BUTTON
+    assert red in button.styleSheet().lower()
+    column = button.parentWidget().layout()
+    assert (
+        column.indexOf(results.stats_pane)
+        < column.indexOf(button)
+        < column.indexOf(results.corr_pane)
+    )
+    button.click()
+    dialog = window.dialogs[-1]
+    assert isinstance(dialog, D.WarningsDialog)
+    found = dialog.rows()
+    assert found[0][0].startswith("The fit stopped at chisq maxiter (")
+    assert found[0][1] == RS.MAXITER_ADVICE
+    assert found[1] == (
+        "The convergence check: not converged for 2 of 9 parameters.",
+        RS.NOT_CONVERGED_ADVICE,
+    )
+    # ALIS's own warning, with no suggestion (Q13.8 (iii))
+    assert found[2] == (
+        "ALIS warned: sub-pixellation scale (30) has exceeded the warning level of:"
+        " 10",
+        "",
+    )
+    # The end of the run
+    window.fit.job = SimpleNamespace(kind="run", warnings=[], message="")
+    window.fit.session = window.session
+    window._fit_ended(R.COMPLETED)
+    text = window.statusBar().currentMessage()
+    maxiter = window.session.project.parsed.argflag["chisq"]["maxiter"]
+    assert text.startswith("The fit has finished; the Fit tab shows its best fit. ⚠")
+    assert "(chisq maxiter {0})".format(maxiter) in text
+    assert "found 2 of 9 parameters not converged" in text
+    assert text.endswith(
+        "Warnings and options to resolve…, on Results, says what to do."
+    )
+    texts = [cell for row in found for cell in row]
+    assert not design_references(ui_strings(window) + [text] + texts)
+
+
+def test_a_fit_that_converged_shows_no_warning(window, qtbot, tmp_path):
+    open_metal(window, qtbot, tmp_path, status_code=1)
+    results = show_results(window, qtbot)
+    assert results.statistics_warned == set()
+    assert "What to do" not in dict(results.statistics_rows)
+    assert not results.history.item(0, 0).text().endswith("⚠")
+    # No warning: no button (Q13.8 (i))
+    assert results.warnings_button.isHidden()
 
 
 def test_every_shift_and_zero_level_is_shown(window, qtbot, tmp_path):

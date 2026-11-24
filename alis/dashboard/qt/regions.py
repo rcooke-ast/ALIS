@@ -793,11 +793,21 @@ class RegionsTab(W.Tab):
         self.res_file = QtWidgets.QPushButton("Choose a file…")
         self.res_file.setObjectName("snip_resolution_file")
         self.res_file.setToolTip(
-            "An LSF file: a column of wavelength offsets (Å), then one kernel per"
-            " column. It is copied into the project."
+            "An LSF file: a column of offsets (Δλ in Å, or Δv in km/s, as chosen"
+            " beside), then one kernel per column. It is copied into the project."
         )
         self.res_file.clicked.connect(lambda: self.choose_lsf_file())
         line.addWidget(self.res_file)
+        # The unit of an LSF file's first column (Stage 13, point 4; Q13.6 (a))
+        self.res_lsf_unit = QtWidgets.QComboBox()
+        self.res_lsf_unit.setObjectName("snip_resolution_lsf_unit")
+        for unit, text in RN.LSF_UNITS:
+            self.res_lsf_unit.addItem("First column: " + text, unit)
+        self.res_lsf_unit.setToolTip(
+            "The unit of the LSF file's first column: Δλ in Å, or Δv in km/s"
+        )
+        self.res_lsf_unit.activated.connect(self._res_lsf_unit_chosen)
+        line.addWidget(self.res_lsf_unit)
         # lsfspline's knots, in their dialog (Stage 12, point 7; Q12.8 (i))
         self.res_knots = QtWidgets.QPushButton(RN.KNOTS_TEXT)
         self.res_knots.setObjectName("snip_lsf_knots")
@@ -854,6 +864,7 @@ class RegionsTab(W.Tab):
             self.res_file,
             self.res_knots,
             self.res_column,
+            self.res_lsf_unit,
         ):
             widget.setVisible(False)
         self.res_dataset.setVisible(not own)
@@ -891,6 +902,11 @@ class RegionsTab(W.Tab):
                 self.res_keywords.setText(RN.keywords_of(call))
             elif kind == RN.FILE:
                 self.res_file.setVisible(True)
+                unit = RN.kernel_unit(call)
+                self.res_lsf_unit.setVisible(True)
+                self.res_lsf_unit.setCurrentIndex(
+                    max(self.res_lsf_unit.findData(unit), 0)
+                )
                 kernels = RN.project_kernels(project, call)
                 name = RN.file_of(call) or "?"
                 if kernels is None:
@@ -899,10 +915,8 @@ class RegionsTab(W.Tab):
                     index = RN.kernel_index(call)
                     width = kernels.fwhm[min(index, kernels.count - 1)]
                     wave = DS.resolution_wave(snip)
-                    text = "{0} · FWHM {1:.4g} Å".format(kernels.name, width)
-                    if wave:
-                        text += " ({0:.3g} km/s)".format(RN.kernel_kms(width, wave))
-                    notes.append(text)
+                    # In its unit, and in the other: a wrong unit shows at once
+                    notes.append(RN.kernel_text(kernels.name, width, unit, wave))
                     if kernels.count > 1:
                         self.res_column.setVisible(True)
                         self.res_column.clear()
@@ -1020,7 +1034,7 @@ class RegionsTab(W.Tab):
             return
         self.choose_function(name)
 
-    def choose_function(self, name, path=None, index=0, anyway=None):
+    def choose_function(self, name, path=None, index=0, anyway=None, unit=None):
         """
         Set the function of the selected snip's own resolution (Q8.6, Q8.8): a value
         starts from the snip's present width in the function's unit; ``lsffile``
@@ -1064,7 +1078,10 @@ class RegionsTab(W.Tab):
             if kernels is None:
                 self._fill_own(project, snip)
                 return
-            kwargs.update(kernels=kernels, index=index)
+            if unit is None:
+                # The line's own unit, kept with a new file (Stage 13, point 4)
+                unit = RN.kernel_unit(snip.data.resolution)
+            kwargs.update(kernels=kernels, index=index, unit=unit)
         else:
             kwargs["keywords"] = func.default
 
@@ -1125,11 +1142,45 @@ class RegionsTab(W.Tab):
         def do():
             self._do(
                 DS.snip_function_step(
-                    project, snip, "lsffile", kernels=kernels, index=index
+                    project,
+                    snip,
+                    "lsffile",
+                    kernels=kernels,
+                    index=index,
+                    unit=RN.kernel_unit(call),
                 )
             )
 
         self._act("regions.snip_resolution_column", do)
+
+    def _res_lsf_unit_chosen(self, index):
+        """The unit of the LSF file's first column, Å or km/s (Stage 13, point 4):
+        one step."""
+        snip = self.current_snip()
+        if snip is None:
+            return
+        call = snip.data.resolution
+        unit = self.res_lsf_unit.itemData(index)
+        if call is None or call.name != "lsffile" or unit == RN.kernel_unit(call):
+            return
+        project = self.session.project
+        kernels = RN.project_kernels(project, call)
+        if kernels is None:
+            return
+
+        def do():
+            self._do(
+                DS.snip_function_step(
+                    project,
+                    snip,
+                    "lsffile",
+                    kernels=kernels,
+                    index=RN.kernel_index(call),
+                    unit=unit,
+                )
+            )
+
+        self._act("regions.snip_resolution_lsf_unit", do)
 
     def _res_keywords_typed(self):
         """The keywords of lsf or apod, typed: one step, checked as ALIS reads

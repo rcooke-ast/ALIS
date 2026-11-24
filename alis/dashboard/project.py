@@ -1383,6 +1383,12 @@ class Project:
                 name = stems.pop()
             else:
                 name = "Dataset {0}".format(len(self.rows) + 1)
+            # A name no other row has, as Load snips… gives (Stage 13): two groups
+            # of data lines may share a label (MWC137's specids 6 and 7). Its
+            # number in parentheses, "K7701 (2)", not to be read as "K77012"
+            taken, base, more = {r.name for r in self.rows}, name, 2
+            while name in taken:
+                name, more = "{0} ({1})".format(base, more), more + 1
             self.rows.append(Row("r{0}".format(len(self.rows) + 1), name, snips))
         if self.rows and not any(r.reference for r in self.rows):
             self._infer_reference()

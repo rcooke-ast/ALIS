@@ -1140,6 +1140,53 @@ Prompt 3 and his review of the stage's page.*
   the smoothing and inner heights free, the edges and the centre fixed; the buffer
   check takes the kernel's reach.
 
+*Stage 13 decisions (users' feedback after Stage 12's list, and the item carried
+over). Added by Claude on 2026-11-24 from Q13.1–Q13.8, the work of the stage and
+RJC's comments on the stage's page.*
+- **D139. The fitting process ends cleanly** (point 2; refines F6, Q7.17): the
+  process reads its standard input from the descriptor (the header, the project, the
+  commands), never through Python's buffered reader on a waiting thread, whose lock
+  Python's shutdown could not take (every run ended with SIGABRT once its result was
+  stored). The dashboard closes the process's input at `finished`, and reads its
+  messages from a copy of the descriptor, so that Keep it running lets go at once.
+- **D140. A run's `.mod.out` reads back** (point 3 (i), Q13.3 (a), Q13.7 (b); ALIS):
+  `lsfspline` keeps its keywords in the `.mod.out`, each after a `;`; a run stored
+  before is read by taking them from the input model's copy at the end of its
+  `.mod.out`. `examples/lsf_spline` is a case of the harness (its fit and its
+  bundle); its evaluation at the best fit, which meets ALIS's sub-pixels set from the
+  starting values, waits in `deferred_work.md` §7.10, the key item of Stage 14.
+- **D141. A run that cannot be shown says why** (point 3 (i); refines S19, S31): its
+  outputs' problem in ALIS's words, through the gate, on Inspect, Results and the
+  status bar at the end of the run; Results shows its statistics from its record.
+  The gate keeps a line number only after "line" as a word.
+- **D142. A fit that may not have converged warns** (point 3 (i), Q13.4 (b), Q13.8,
+  RJC's comment on the review; refines S19): stopped at `chisq maxiter` (status 5,
+  or ALIS's words for a run with no status) or a convergence check that failed:
+  "Stopped because" and "Convergence" in red in Fit statistics, ⚠ in the run
+  history, a sentence in the status bar; the red button Warnings and options to
+  resolve…, between Fit statistics and Correlations, shown only while the run has a
+  warning, lists each warning with a suggestion (blank where none), ALIS's own
+  warnings during the run included, which are kept in `run.json`.
+- **D143. Save a copy with spectra… asks where to save** (point 3 (ii); refines
+  Q12.7): the window's chooser opens a dialog of a kind it knows, and refuses any
+  other.
+- **D144. Each dataset its own name** (item 1 carried over, Q13.1; RJC's comment on
+  the review; refines Q2.4): a dataset worked out from a fit, or loaded by Load
+  snips…, whose name is taken takes its number in parentheses, "K7701 (2)"; a
+  project saved with two datasets of one name keeps them.
+- **D145. An LSF file in km/s** (point 4, Q13.6 (a); refines D89, Q8.7, Q8.13;
+  ALIS): `lsffile`'s keyword `unit:kms` reads the first column as Δv in km/s,
+  sampled at each sub-pixel's velocity offset as `vfwhm` samples its Gaussian, its
+  buffer taken to Å at each end; without it, Å. The Snip box's drop-down beside
+  Choose a file… and the Data tab's LSF file dialog set it, each showing the
+  kernel's FWHM in both units. An LSF file of a model at the root of the project's
+  files goes inside them.
+- **D146. Every key and gesture in one list** (point 1, Q13.5 (a) and (c); refines
+  F10): Help → Keyboard shortcuts has a second page, Keys and mouse in the views,
+  built from `actions.VIEW_KEYS`, from which the code takes its held keys; Keys…,
+  in the tabs' corner, lists the tab shown (with every spectrum's rows where it
+  draws spectra), Show all opening the sheet there.
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

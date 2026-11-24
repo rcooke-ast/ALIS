@@ -36,7 +36,8 @@ stage may be split when its document is written, as Stage 3.5 was in the refacto
 | 10 | Feedback from users that arrived after Stage 8's list closed (Q8.4, D99), and on the Figure tab: `dashboard_stage10.md` (Stage 9's Prompt 6), 13 points and three items carried over from Stage 9, each a task with its check (Q10.1–Q10.10). **Done 2026-11-09 (D113–D119, D118 and D119 from RJC's Prompts 5 and 6).** | as each needs; `alis/plotscript.py`'s labels (Q10.8) |
 | 11 | A fit of several spectra (Feedback point 2), the bug found on the way, and the three items carried over from Stage 10: `dashboard_stage11.md` (Task 10.17; Q11.1–Q11.12), each a task with its check; point 1 (the GPU) deferred (`deferred_work.md` §1.4). **Done 2026-11-13 (D120–D128, D128 from RJC's Prompt 7).** | `alis/dashboard/` |
 | 12 | Feedback from users that arrived after Stage 11's list closed (Q11.2 (a)): `dashboard_stage12.md` (Task 11.11), eight points on RJC's MWC137 project and one item carried over from Stage 11, each a task with its check (Q12.1–Q12.17), with RJC's review adding Task 12.12 (every dataset keeps its data). **Done 2026-11-17 (D129–D138).** | `alis/dashboard/`; `alis/functions/lsfspline.py` (Prompt 3) |
-| 13 | Feedback from users that arrives after Stage 12's list closed (Q12.2 (a)): `dashboard_stage13.md` (Task 12.13), its Feedback section for RJC to fill. | as each needs |
+| 13 | Feedback from users that arrived after Stage 12's list closed (Q12.2 (a)): `dashboard_stage13.md` (Task 12.13), four points (a crash at a fit's end, RJC's MWC137_02, the keys, LSF files in km/s) and one item carried over from Stage 12, each a task with its check (Q13.1–Q13.8), with RJC's review adding Task 13.10 (Warnings and options to resolve…). **Done 2026-11-24 (D139–D146).** | `alis/dashboard/`; `alis/functions/lsfspline.py`, `alis/functions/lsffile.py`, `alis/save.py` (Q13.3, Q13.6) |
+| 14 | ALIS's sub-pixels (`deferred_work.md` §7.10: the default `nsubmin` of 10, and the sub-pixels a `.mod.out` is evaluated on), with the related deferred items and any feedback that arrives (Q13.2, Q13.7): `dashboard_stage14.md` (Task 13.11), a draft for RJC to review and prioritise. Next, before the documentation. | ALIS's loader and writer, its references |
 | Later | Orders mode (with PypeIt spec1d input, and the stacked spectrum of a transition from every dataset, also in QSO Abs Line mode: Q4.20), and the later items below. | |
 
 ### After v1
@@ -63,9 +64,13 @@ dashboard. What follows, for RJC to order (Q6.13(a)):
 5a. **Stage 12:** the feedback that arrived after Stage 11's list closed (Q11.2 (a)):
    `dashboard_stage12.md`, done 2026-11-17 (D129–D138), with `lsfspline`'s smoothing
    made a FWHM and its kernel centred in ALIS (Prompt 3).
-5b. **Stage 13:** the feedback that arrives after Stage 12's list closed (Q12.2 (a)):
-   `dashboard_stage13.md`, its Feedback section for RJC to fill in, unless RJC names
-   another item below to come first.
+5b. **Stage 13:** the feedback that arrived after Stage 12's list closed (Q12.2 (a)):
+   `dashboard_stage13.md`, done 2026-11-24 (D139–D146), with `lsfspline`'s
+   `.mod.out` and `lsffile`'s `unit:kms` in ALIS (Q13.3, Q13.6).
+5c. **Stage 14:** ALIS's sub-pixels (`deferred_work.md` §7.10), its key item (RJC,
+   Q13.7's response), with the related deferred items and any feedback that arrives:
+   `dashboard_stage14.md`, a draft for RJC to review and prioritise. It comes next;
+   the documentation (item 7) follows it (Q13.2's and Q13.7's responses).
 6. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
    (F6), command search (F10), the `link` editor and its templates (S15),
    reproducing an imported fit (S28); Orders mode, PypeIt spec1d input
