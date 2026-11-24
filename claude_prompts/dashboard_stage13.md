@@ -40,6 +40,13 @@ it arrives. For each point:*
 *A point already on the list is not added twice: a note goes under the first, saying
 how many users raised it. Claude reads this list and does not add to it.*
 
+1. Add a help list that show's all of the keys that can be used. A bit like the Help menu keyboard shortcuts, but there's no 'b' and 'n' for b-value and column density.
+2. When a fit has finished, some users have experienced a "Python has quit unexpectedly" error. I have attached the report as context. Please see the file `context/feedback01/alis_crash_report_01.txt` for the full report. This is a bug that needs to be fixed. Note that the GUI did not crash. I have also included the .model file that was used that caused the crash. Please see the file `context/feedback01/alis_crash_report_01.model` for the model file.
+3. I have included another context file in `context/feedback01/MWC137_02/` that reveals several issues:
+   (i) Running `alis alis2.mod` on the command line asks to load the datasets. I load the datasets (dataset 1 is `emsmwcs137.dat` with vFWHM resolution 2.14 km/s, change the fourth column of the data to `Ignore`, and dataset 2 is `EM_MWC__137.dat` with vFWHM resolution 2.72 km/s, change the fourth column of data to `Ignore`). The unassigned snips are then loaded into a single unassigned spectrum. If I now go to the `Fit` tab and select `Run`, the fit runs and finishes, but there is no `Final` model to display in the panels. The run finishes at the maximum number of chi-squared steps. Is there a reason the fits are not able to be displayed? There is also no option to inspect the Results. I was also not presented with a warning that the fit ended because the maximum number of chi-squared steps was reached. I think the user should be warned that the fit has ended because the maximum number of chi-squared steps was reached, perhaps in the "Fit Statistics" panel (possibly in red, so that this is seen as a warning).
+   (ii) When I select "File" ==> "Save a copy with spectra...", a dialog appears where I can *open* a `.model` file, not *save* a `.model` file with spectra. This is a bug that needs to be fixed. The dialog should allow the user to save a copy of the model with spectra, not open a model file.
+
+
 ## Carried over from Stage 12
 
 *Found by Claude during Stage 12 and not done there. RJC decides whether each joins
@@ -124,7 +131,7 @@ My lean: (a) for item 1, a small fix that tells two datasets apart wherever they
 are named; (b) for item 2, which only a project saved before Task 12.12 can meet,
 and which Q12.17's response leaves as it is.
 
-**Response:**
+**Response:** I think item 1 should join this stage. We can ignore item 2.
 
 **Q13.2 — What follows this stage.** Two ways:
 - **(a) Another stage of feedback** (Stage 14) for what arrives after this list
@@ -135,6 +142,8 @@ and which Q12.17's response leaves as it is.
 
 My lean: (a), unless RJC names one of (b).
 
-**Response:**
+**Response:** We should create a stage 14 document that builds on this feedback. I will likely pause the dashboard development between stages 13 and 14 to focus on the documentation.
 
 ## Prompts
+1. Please read the list of changes and bug fixes, and the work of Stages 0–12 (their documents and logs). I have drafted a list of bugs, improvements, and additions to the dashboard (see Section `Feedback`). Please review these suggestions, and if anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please write an ordered list of tasks. Please write all the tasks, each with a description of what it builds or fixes, and the check that will verify it. Each task should be numbered sequentially (13.1, 13.2, etc.). The final Task (currently labelled 13.N) should be to close the stage, and should include the checks that will verify that the stage is complete.
+2. I have responded to your queries. Please review my responses, and if you have any further queries, please ask them in the Queries section. When everything is clear, please check that the ordered list of tasks is correctly written. Each task should be numbered sequentially (13.1, 13.2, etc.), and should include a description of what it builds or fixes, and the check that will verify it. The final Task should be to close the stage, and should include the checks that will verify that the stage is complete. Please note that we can continue this thread provided we are below 75% context usage. If we exceed that, we will need to start a new thread to continue the discussion.
