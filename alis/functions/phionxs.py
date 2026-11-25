@@ -292,7 +292,7 @@ class PhotIon_CrossSection(base.Base):
             msgs.error("Function "+self._idstr+" is badly defined in definition parin.")
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Phionxs function to be used by 'call'
         """
@@ -329,10 +329,10 @@ class PhotIon_CrossSection(base.Base):
         params[-1] = 6.62606957E-34 * 299792458.0 / (np.min(self._atomic['Wavelength'][nv])*1.0E-10 * 1.60217657E-19)
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
-            if nexbin[0] == "km/s": return params, 1
-            elif nexbin[0] == "A" : return params, 1
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+        if sampling is not None:
+            if sampling[0] == "km/s": return params, 1
+            elif sampling[0] == "A" : return params, 1
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params
 

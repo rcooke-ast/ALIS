@@ -42,6 +42,11 @@ correctness first, then what users need next, then effort; RJC orders the work.
    deferred until v2.0.0 is ready to release, which is now the next milestone.
    `doc/tex_files/` is out of date.
 
+25. **Local minima, and how sensitive a fit is to its sub-pixels** (§1.5; added at
+    dashboard Stage 14, Q14.10's response): RJC's "even bigger issue". With
+    `nsubpixel_min` 10, three of the harness's fits reach a worse minimum from their
+    own starting values. A series of its own, independent of the dashboard.
+
 ### Medium priority
 5. **Wavelength-dependent resolution** (§2.1). Restore the per-pixel Gaussian
    convolution, with a test against a hand-computed result. A non-Gaussian line
@@ -70,6 +75,11 @@ correctness first, then what users need next, then effort; RJC orders the work.
     the GPU for the whole fit, explored as a series of its own that measures before
     it builds (dashboard Stage 11, Feedback point 1 and Q11.3). It speeds up the
     largest fits only, such as DH_orders; smaller fits are faster on the CPU.
+26. **Three faults of the resolution functions' keywords** (§7.12; found in
+    dashboard Stage 14, Task 14.1): `apod` cannot be evaluated at all, `lsf`'s buffer
+    is that of COS G130M at 1309 Å whatever the line names, and a model loaded again
+    starts each line from the last line's keywords. Offered to dashboard Stage 15
+    (its items 12–14, Q15.4–Q15.6).
 
 ### Low priority
 14. The link editor and its templates (S15). Links can already be typed in the
@@ -93,7 +103,8 @@ correctness first, then what users need next, then effort; RJC orders the work.
     `.mod.out` without its `locations`, with `examples/lsf_spline` as a regression
     case (§7.11): dashboard Stage 12, Q12.13 (b) and Q12.10's response. *§7.11 done
     in dashboard Stage 13; §7.10, with the sub-pixels a `.mod.out` is evaluated on,
-    is the key item of dashboard Stage 14, next (Q13.7's response).*
+    is the key item of dashboard Stage 14, next (Q13.7's response).* ***Done:** §7.10
+    in dashboard Stage 14 (2026-11-25, D148–D152).*
 
 ### Not planned, or entries to close
 - **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
@@ -188,11 +199,75 @@ correctness first, then what users need next, then effort; RJC orders the work.
   The CPU path stays bitwise-identical throughout. Refactor Task 4.9 closes as taken
   over by the series.
 
+### 1.5 Local minima, and how sensitive the minimisation is to the sub-pixels (dashboard Stage 14, Q14.10)
+- **What:** ways to tell when a fit has settled in a local minimum rather than the
+  best one, and to measure how far a fit's minimum depends on its sub-pixels. A
+  series of its own, independent of the dashboard (RJC, Q14.10's response,
+  2026-11-25): `claude_prompts/minimisation_stage0.md` first, on its own branches.
+- **What was found** (Task 14.6 of `dashboard_stage14.md`, and its log): with
+  `nsubpixel_min` 10 instead of 5, the harness's fits of DH/HS0105p1619,
+  VMP_DLA/J0903p2628 and DH/J1419p0829 reach, from their own starting values, a
+  minimum with χ² higher by 50.7, 21.6 and 4.7 than their old best fit evaluated at
+  10. Fitted at 10 from the old best fit, or from starts drawn about it from its
+  covariance, they return to it: both are minima, and which one the
+  Levenberg–Marquardt minimiser reaches from a given start changed with the
+  sub-pixels. HS0105p1619 and J0903p2628 were already sensitive to their start at
+  refactor Q0.17. Doubling the sub-pixels also moved the model column of
+  J0903p2628's best fit by up to 23 times the error: at 5, its narrowest profiles
+  were not integrated to within the noise.
+- **Why deferred:** a question of the minimiser and of the model's numerics, larger
+  than the dashboard's stage; Stage 14 started the three cases from their old best
+  fits (or starts about them) so that their references are the better minimum.
+- **Techniques to try** (Claude's suggestions):
+  - *Restarts as a routine check.* Starts drawn about the best fit from its
+    covariance exist (`sim perturb` after `sim beginfrom`; the dashboard's Random
+    restarts…). Run them by default after a fit, or in a nightly batch for the cases
+    known to be sensitive, and report the lowest χ² found, flagging a restart that
+    beats the fit (the dashboard already offers to continue from one). §7.6 (where
+    `sim perturb` draws) comes first.
+  - *Wider starts.* The covariance only explores the basin the fit is in. Sample the
+    parameters most likely to be multimodal (the column densities, b and redshifts of
+    blended components) within their limits: a Sobol or Latin-hypercube design, each
+    start fitted with the local minimiser; or basin hopping (perturb, fit, accept by
+    a Metropolis rule), as `scipy.optimize.basinhopping` does, with ALIS's minimiser
+    as the local step.
+  - *Sampling the posterior.* An ensemble MCMC (emcee) or nested sampling (dynesty,
+    UltraNest) on ALIS's χ², started about the best fit. Separate modes show as
+    separate clusters of samples, and nested sampling also gives the evidence. It is
+    costly for the largest models (DH_orders' 300-odd parameters): try it on
+    sub-models first, and with the GPU series (§1.4).
+  - *Coarse to fine in the sub-pixels.* Fit at few sub-pixels, then refit at more from
+    each solution, so the minimum is followed as the grid refines rather than
+    jumped. `nsubpixel_renew` already lets the grid follow the fit.
+  - *The sensitivity to the sub-pixels, measured.* For each harness case, evaluate
+    and refit its best fit at `nsubpixel_min` 5, 7, 10, 15, 21 and 41, and plot χ²
+    and each parameter against it. A well-sampled fit is flat beyond some N; report
+    the N past which no parameter moves by more than 0.1σ. It could become a check
+    (`run_alis --check-subpixels`, or a report in the dashboard) and a test of the
+    harness. Beside it: the error of integrating a profile of width σ on N
+    sub-pixels against a very fine integration, in units of a pixel's error, which
+    gives the sub-pixels the data need (the `nsubsigma` rule, checked).
+  - *The local minimiser itself.* Compare against another (`scipy.optimize.
+    least_squares`'s trust-region reflective, with bounds); check the stopping rules
+    (`atol` against `ftol`, §2.4's rejected step); analytic derivatives where they
+    are cheap; a final Newton step to polish the minimum.
+  - *In the harness.* The start-sensitive cases (the three above, and Q1243p307
+    newstart76) gain a nightly test that N starts about the reference return to it.
+- **Where:** `dashboard_stage14.md` Q14.10 and its response; its log, Task 14.6
+  (every case that moved, with its figures; scratch scripts named there);
+  `refactor_code_stage0.md` Q0.17; `alis/minimise.py`, `alis/simulate.py`,
+  `alis/dashboard/restarts.py`.
+- **To finish:** `minimisation_stage0.md`, the series' design document: measure the
+  sensitivity first (the sweep in N above, on every harness case), then choose and
+  prototype the techniques, each against the cases where a better minimum is known.
+
 ---
 
 ## 2. Features that do not work
 
 ### 2.1 Wavelength-dependent resolution
+
+*Not taken in dashboard Stage 14 (Q14.1); offered to Stage 15 (its candidate 3).*
 - **What:** convolving each pixel with its own sigma, read from the
   `resolution` data column, for data whose line spread function is Gaussian
   everywhere but varies with wavelength.
@@ -228,6 +303,10 @@ correctness first, then what users need next, then effort; RJC orders the work.
   out (two DH context models), so nobody is using it.
 
 ### 2.4 `examples/brokenpowerlaw` — excluded from the fixed-parameter gate
+
+*Not taken in dashboard Stage 14 (Q14.1); offered to Stage 15 as its key item
+(candidate 1). Its reference was regenerated with `nsubpixel_min` 10 (χ² 3503.07 →
+3499.95) and it stays out of the gate.*
 - **What:** its reference evaluates to chi-squared 374.98 against a recorded
   338.15, so it is in `FIXEDPARAM_EXCLUDE`.
 - **Suspected cause:** the writer may emit a final *rejected* trial step rather
@@ -336,6 +415,9 @@ leaving it implicit made the gate depend on which ruff happened to be installed.
 ---
 
 ## 5. Testing gaps
+
+*The `context/` fits in CI were not taken in dashboard Stage 14 (Q14.1); offered to
+Stage 15 (its candidate 5).*
 
 - **`plot.py` and `prepfit/specplot.py` are not reached by the Stage 0 gate.**
   The harness exercises fitting, not plotting. `plot dims 0` is now covered by
@@ -473,6 +555,9 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
 
 ### 7.7 `apod`: example data in frequency, and its buffer
 
+*Not taken in dashboard Stage 14 (Q14.1); offered to Stage 15 (its candidate 4). Stage
+14 found that `apod` cannot be evaluated by ALIS at all (§7.12).*
+
 - **What:** ALIS's `apod` resolution function (an apodisation of the kind named, for
   spectra in frequency) has no example in `examples/`, and nothing in the test suite
   uses data in frequency. Its `getminmax` reads its value as a FWHM in Hz, so on a
@@ -522,6 +607,13 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
   and words itself for one or for several.
 
 ### 7.10 ALIS's sub-pixels: the default `nsubmin` of 10, and the sub-pixels a `.mod.out` is evaluated on
+
+*Done in dashboard Stage 14 (2026-11-25, D148–D152): the default is 10
+(`nsubpixel_min`, every name of the sub-pixels by one convention); a `.mod.out`
+records the sub-pixels its fit used (`nsubpixel=N`) and is evaluated on them;
+`examples/lsf_spline`'s evaluation at the best fit is back in the gate; the 22 fits
+whose references moved were refitted, checked and regenerated. Three of them reached a
+worse minimum from their own start, which is §1.5. Kept below as it was written.*
 
 *The key item of dashboard Stage 14, which comes next (RJC, Q13.7's response of
 `dashboard_stage13.md`, 2026-11-24).*
@@ -581,3 +673,24 @@ written.*
   (`model/fit_spectra.mod.out.reference`, `data/reference_fits/OI_SiII_fit.dat`)
   from a fit, and the harness on it, CI's `examples` batch included.
 
+### 7.12 Three faults of the resolution functions' keywords
+
+*Found in dashboard Stage 14 (Task 14.1, 2026-11-25), while each data line's `lsffile`,
+`apod` and `lsf` keywords were made its own; offered to Stage 15 (its items 12–14,
+with Q15.4–Q15.6).*
+
+- **`apod` cannot be evaluated by ALIS.** `model_eval` calls every resolution's
+  `call_CPU` with `mkey=`, and `apod.call_CPU(self, x, y, p, ncpus=1)` takes none
+  ("TypeError: APOD.call_CPU() got an unexpected keyword argument 'mkey'"). Nothing
+  tests a fit with `apod` (§7.7).
+- **`lsf`'s buffer.** `lsf.getminmax`, which sizes a data line's buffer, reads the
+  instance's keywords, not the line's, and `load_data` calls it before any `lsf` line
+  is loaded: every `lsf` buffer is worked out for COS G130M at 1309 Å
+  (`examples/lsf_hst` is STIS E140H). Its evaluation is right. Fixing it moves
+  `examples/lsf_hst`'s loaded pixels, so its reference.
+- **A model loaded again** on the same instances (`sim repeat`, `iterate model`;
+  `main.py`) starts each line from the keywords of the last line evaluated
+  (`_keywd = mkey[i]`), in any function's loader, `base.Base`'s included. A fix gives
+  every load fresh defaults in `load.call_function_load`.
+- **Where:** `alis/functions/apod.py`, `alis/functions/lsf.py`, `alis/load.py`
+  (`load_data`, `call_function_load`), `alis/main.py`.

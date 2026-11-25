@@ -177,8 +177,16 @@ Every setting of `alis/config.py`, by section:
 
 - **run** — atomic, backend, bintype, blind, cache, capvalue, convcriteria,
   convergence, convnostop, datadirc, datatype, gputhresh, last_update, limpar, logn,
-  modname, ncpus, ngpus, nsubmax, nsubmin, nsubpix, renew_subpix, shmem,
-  warn_subpix.
+  modname, ncpus, ngpus, nsubpixel_max, nsubpixel_min (10 since dashboard Stage 14),
+  nsubpixel_renew, nsubsigma, shmem. The names of the sub-pixels follow one convention
+  (dashboard Stage 14, D148): a name that counts sub-pixels per pixel begins
+  `nsubpixel`, one that counts them across a profile's standard deviation begins
+  `nsubsigma`, and `_min` and `_max` bound them; the old names (`nsubpix`, `nsubmin`,
+  `nsubmax`, `renew_subpix`) and the removed `warn_subpix` and `nsubsigma_min` are
+  refused, and the pages give the new names alone. A data line takes `nsubsigma=N`
+  (its own target) and `nsubpixel=N` (its sub-pixels per pixel, used as given; ALIS
+  writes it on each data line of a `.mod.out`, D149), and ALIS warns where a profile
+  has fewer than its snip's `nsubsigma` across its standard deviation (D150).
 - **chisq** — atol, fstep, ftol, gtol, maxiter, miniter, xtol.
 - **plot** — dims, fitregions, fits, labels, only, pages, residuals, ticklabels,
   ticks, xaxis.

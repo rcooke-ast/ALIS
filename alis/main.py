@@ -196,7 +196,7 @@ class ClassMain:
         # Load parameter influence
         self._pinfl = load.load_par_influence(self, self._modpass['p0'])
         # Sub-pixellate the spectrum
-        self._wavespx, self._contspx, self._zerospx, self._posnspx, self._nexbins = load.load_subpixels(self, self._modpass['p0'])
+        self._wavespx, self._contspx, self._zerospx, self._posnspx, self._nsubpixel = load.load_subpixels(self, self._modpass['p0'], warn=True)
         # If there are some linked parameters, apply the links here
         npar = len(self._modpass['p0'])
         self._ptied = []
@@ -315,7 +315,7 @@ class ClassMain:
                     # Reload parameter influence
                     self._pinfl = load.load_par_influence(self, self._modpass['p0'])
                     # Re-sub-pixellate the spectrum
-                    self._wavespx, self._contspx, self._zerospx, self._posnspx, self._nexbins = load.load_subpixels(self, self._modpass['p0'])
+                    self._wavespx, self._contspx, self._zerospx, self._posnspx, self._nsubpixel = load.load_subpixels(self, self._modpass['p0'], warn=True)
                     # Update the parameter dictionary
                     fa['state'] = model_eval.FitState.from_orchestrator(self)
                     iternum += 1
@@ -365,6 +365,9 @@ class ClassMain:
                 msgs.info("Reason for convergence:"+msgs.newline()+utils.getreason(m.status,verbose=self._argflag['out']['verbose']),verbose=self._argflag['out']['verbose'])
             # Create the best-fitting model, this generates some arrays that are now required
             msgs.info("Best-fitting model parameters found",verbose=self._argflag['out']['verbose'])
+            # A best fit that asks for more sub-pixels than the fit used (dashboard
+            # Stage 14, Task 14.4)
+            load.best_fit_subpixel_warnings(self, m.params)
             # If the user just wants to fit the data and return, do so.
             if self._fitonly:
                 self._fitresults = m

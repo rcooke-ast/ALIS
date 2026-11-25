@@ -202,42 +202,47 @@ class APOD(base.Base) :
         mp['mlim'].append([])
         for i in range(self._pnumr):
             mp = check_tied_param(param[i], cntr, mp, i)
-        # Now load the keywords:
+        # Now load the keywords. Each line starts from a copy of the defaults, and of
+        # which keywords it must give: one instance loads every line of the function,
+        # and nothing may reach a line from the line before (Stage 14, Task 14.1; as
+        # base.Base does)
+        cpy_keywd = self._keywd.copy()
+        cpy_keych = self._keych.copy()
         for i in range(len(kywrd)):
             kwspl = kywrd[i].split('=')
             ksspl = kwspl[1].split(',')
             for j in range(len(ksspl)):
-                if type(self._keywd[kwspl[0]]) is int:
+                if type(cpy_keywd[kwspl[0]]) is int:
                     typeval='integer'
-                    self._keywd[kwspl[0]] = int(kwspl[1])
-                elif type(self._keywd[kwspl[0]]) is str:
+                    cpy_keywd[kwspl[0]] = int(kwspl[1])
+                elif type(cpy_keywd[kwspl[0]]) is str:
                     typeval='string'
-                    self._keywd[kwspl[0]] = kwspl[1]
-                elif type(self._keywd[kwspl[0]]) is float:
+                    cpy_keywd[kwspl[0]] = kwspl[1]
+                elif type(cpy_keywd[kwspl[0]]) is float:
                     typeval='float'
-                    self._keywd[kwspl[0]] = float(kwspl[1])
-                elif type(self._keywd[kwspl[0]]) is list:
+                    cpy_keywd[kwspl[0]] = float(kwspl[1])
+                elif type(cpy_keywd[kwspl[0]]) is list:
                     typeval='list'
-                    self._keywd[kwspl[0]].append(kwspl[1])
-                elif type(self._keywd[kwspl[0]]) is bool:
+                    cpy_keywd[kwspl[0]] = cpy_keywd[kwspl[0]] + [kwspl[1]]
+                elif type(cpy_keywd[kwspl[0]]) is bool:
                     if kwspl[1] in ['True', 'False']:
                         typeval='boolean'
-                        self._keywd[kwspl[0]] = kwspl[1] in ['True']
+                        cpy_keywd[kwspl[0]] = kwspl[1] in ['True']
                     else:
                         typeval='string'
-                        self._keywd[kwspl[0]] = kwspl[1]
+                        cpy_keywd[kwspl[0]] = kwspl[1]
                         msgs.warn(kwspl[0]+" should be of type boolean (True/False)", verbose=self._verbose)
-                elif self._keywd[kwspl[0]] is None:
+                elif cpy_keywd[kwspl[0]] is None:
                     typeval='None'
-                    self._keywd[kwspl[0]] = None
+                    cpy_keywd[kwspl[0]] = None
                 else:
                     msgs.error("I don't understand the format on line:"+msgs.newline()+self._idstr+"   "+instr)
-            self._keych[kwspl[0]] = 0 # Set keych for this keyword to zero to show that this has been changed
+            cpy_keych[kwspl[0]] = 0 # Set keych for this keyword to zero to show that this has been changed
         # Check that all required keywords were changed
         for i in range(len(keywdk)):
-            if self._keych[keywdk[i]] == 1: msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
+            if cpy_keych[keywdk[i]] == 1: msgs.error(keywdk[i]+" must be set for -"+msgs.newline()+self._idstr+"   "+instr)
         # Append the final set of keywords
-        mp['mkey'].append(self._keywd.copy())
+        mp['mkey'].append(cpy_keywd)
         return mp, parid
 
     def parin(self, i, par):
@@ -253,7 +258,7 @@ class APOD(base.Base) :
         if   i == 0: pin = par
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False, getstdd=None):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False, getstdd=None):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
@@ -286,12 +291,12 @@ class APOD(base.Base) :
                 params[i] = lnkprm
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
+        if sampling is not None:
             if params[0] == 0: return params, 1
-            if nexbin[0] == "km/s": msgs.error("bintype is set to 'km/s', when FWHM is specified in Hz.")
-            elif nexbin[0] == "A" : msgs.error("bintype is set to 'A', when FWHM is specified in Hz.")
-            elif nexbin[0] == "Hz" : return params, nexbin[1]
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+            if sampling[0] == "km/s": msgs.error("bintype is set to 'km/s', when FWHM is specified in Hz.")
+            elif sampling[0] == "A" : msgs.error("bintype is set to 'A', when FWHM is specified in Hz.")
+            elif sampling[0] == "Hz" : return params, sampling[1]
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getstdd is not None:
             fact = 2.0*np.sqrt(2.0*np.log(2.0))
             return getstdd[1]*(1.0+getstdd[0]*self.getfwhm()/fact), getstdd[2]*(1.0-getstdd[0]*self.getfwhm()/fact)

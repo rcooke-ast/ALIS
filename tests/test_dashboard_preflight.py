@@ -20,6 +20,7 @@ from alis.dashboard import preflight as PF
 from alis.dashboard import project as P
 from alis.dashboard import settings as ST
 from alis.dashboard import text as T
+from alis.dashboard import validate as V
 
 pytestmark = pytest.mark.unit
 
@@ -320,3 +321,44 @@ def test_no_hidden_value_in_a_message(registry, prefs):
         assert finding.line != secret.line or finding.code not in ("at_limit", "low_b")
         for value in BL.Gate(project).hidden_values():
             assert value not in finding.message
+
+
+# -- A data line that records too few sub-pixels (Stage 14, Task 14.5) -------------
+
+DATA_END = "label=OI_SiII"
+
+
+def recorded(project, n):
+    """metal_line_abs with ``nsubpixel=n`` on its data line, as a .mod.out has it."""
+    return rewrite(project, DATA_END, DATA_END + "   nsubpixel={0}".format(n))
+
+
+def test_a_line_that_records_too_few_sub_pixels_is_noted_with_a_fix(project):
+    # Its lines ask for 8 sub-pixels per pixel to have nsubsigma (5) across
+    # their σ (the .mod.out of its fit records nsubpixel=8)
+    recorded(project, 3)
+    report = PF.check(project)
+    assert report.ok
+    (note,) = [f for f in report.notes if f.code == "recorded_subpixels"]
+    assert note.message == (
+        "The snip 0 is worked out on 3 sub-pixels per pixel, from nsubpixel=3 on"
+        " its data line; its lines ask for at least 8."
+    )
+    assert note.fix == PF.RECORDED_FIX == "Work them out again"
+    assert note.line == project.parsed.data[0].line and note.snip == "0"
+    # The fix: nsubpixel= removed, one step that ALIS reads, and one undo
+    before = project.text
+    step = PF.fix_step(project, note)
+    project.apply(step)
+    assert "nsubpixel" not in project.text
+    assert [p for p in V.check(project) if p.severity == V.ERROR] == []
+    assert "recorded_subpixels" not in PF.check(project).codes()
+    project.revert(step)
+    assert project.text == before
+
+
+def test_a_line_that_records_enough_is_not_noted(project):
+    recorded(project, 8)
+    assert "recorded_subpixels" not in PF.check(project).codes()
+    other = PF.Finding(PF.NOTE, "x", code="no_continuum")
+    assert PF.fix_step(project, other) is None

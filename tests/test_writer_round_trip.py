@@ -186,3 +186,55 @@ def test_an_explicit_default_damping_would_be_caught(atomic):
         "an explicit suffixless damping should add a free parameter; if it does "
         "not, the round-trip test above can no longer detect the 5.4 regression"
     )
+
+
+# -- The sub-pixels a reference records (dashboard Stage 14, Task 14.7) ---------------
+
+# The references regenerated with nsubpixel_min 10 (Task 14.7); each records the
+# sub-pixels its fit used on every data line, so that the harness's evaluation at the
+# best fit uses them. The context/ ones are checked where they are present.
+REGENERATED = (
+    "examples/brokenpowerlaw/model/fit_spectra",
+    "examples/lls/model/fit_spectra",
+    "examples/lsf_hst/model/fit_spectra",
+    "examples/lsf_spline/model/fit_spectra",
+    "examples/powerlaw/model/fit_spectra",
+    "examples/spline/model/fit_spectra_splineContAbs",
+    "examples/splineabs/model/fit_spectra",
+    "examples/splineabs/model/fit_spectra_linear",
+    "examples/tophat/model/fit_spectra",
+    "examples/voigtconv/model/fit_spectra",
+    "context/fitting_examples/DH/HS0105p1619/model/HS0105p1619",
+    "context/fitting_examples/DH/J0814p5029/model/J0814p5029",
+    "context/fitting_examples/DH/J1358p0349/model/J1358p0349",
+    "context/fitting_examples/DH/J1358p6522/model/J1358p6522_original",
+    "context/fitting_examples/DH/J1419p0829/model/J1419p0829",
+    "context/fitting_examples/DH/J1558m0031/model/J1558m0031_FINAL_MODEL",
+    "context/fitting_examples/DH/Q0913p072/model/Q0913p072",
+    "context/fitting_examples/DH/Q1243p307/model/Q1243p307_converge_newstart76",
+    "context/fitting_examples/DH_orders/Q1243p307/model_orders/Q1243p307_orders",
+    "context/fitting_examples/VMP_DLA/J0035m0918/model/J0035m0918_all_data",
+    "context/fitting_examples/VMP_DLA/J0903p2628/model/J0903p2628",
+    "context/fitting_examples/VMP_DLA/J1358p6522/model/J1358p6522",
+)
+
+
+def _data_lines(text):
+    """The live data lines of a saved model (its copy of the input left out)."""
+    lines = text.split("\n####")[0].splitlines()
+    first = next(i for i, ln in enumerate(lines) if ln.strip().startswith("data read"))
+    last = next(i for i, ln in enumerate(lines) if ln.strip().startswith("data end"))
+    return [ln for ln in lines[first + 1 : last] if ln.strip() and ln.strip()[0] != "#"]
+
+
+@pytest.mark.parametrize("stem", REGENERATED)
+def test_a_regenerated_reference_records_its_sub_pixels(stem):
+    ref = REPO_ROOT / (stem + ".mod.out.reference")
+    if not ref.is_file():
+        pytest.skip("reference not present: " + stem)
+    lines = _data_lines(ref.read_text())
+    assert lines
+    for line in lines:
+        words = [w for w in line.split() if w.startswith("nsubpixel=")]
+        # Before Stage 14 no reference recorded them
+        assert len(words) == 1 and int(words[0].split("=")[1]) >= 10, line

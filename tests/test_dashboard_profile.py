@@ -87,7 +87,7 @@ def _alis_state(path):
                 self._contspx,
                 self._zerospx,
                 self._posnspx,
-                self._nexbins,
+                self._nsubpixel,
             ) = load.load_subpixels(self, self._modpass["p0"])
             self._ptied = []
             count = 0

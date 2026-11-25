@@ -68,9 +68,15 @@ dashboard. What follows, for RJC to order (Q6.13(a)):
    `dashboard_stage13.md`, done 2026-11-24 (D139–D146), with `lsfspline`'s
    `.mod.out` and `lsffile`'s `unit:kms` in ALIS (Q13.3, Q13.6).
 5c. **Stage 14:** ALIS's sub-pixels (`deferred_work.md` §7.10), its key item (RJC,
-   Q13.7's response), with the related deferred items and any feedback that arrives:
-   `dashboard_stage14.md`, a draft for RJC to review and prioritise. It comes next;
-   the documentation (item 7) follows it (Q13.2's and Q13.7's responses).
+   Q13.7's response), and the item carried over from Stage 13: `dashboard_stage14.md`,
+   done 2026-11-25 (D147–D152): a `.mod.out` records the sub-pixels its fit used,
+   every name of the sub-pixels follows one convention, ALIS warns only of too few,
+   and `nsubpixel_min` is 10, with the references that moved regenerated. Local
+   minima and the sub-pixels wait in `deferred_work.md` §1.5, a series of its own.
+   **Next: the documentation** (item 7: Documentation Stages 1–5,
+   `documentation_stage0.md`, whose queries DQ.1–DQ.7 wait for RJC); **then Stage
+   15** (`dashboard_stage15.md`, a draft whose candidates and queries Q15.1–Q15.7
+   wait for RJC).
 6. **The items marked "Later" below:** re-attaching to a run after the dashboard closed
    (F6), command search (F10), the `link` editor and its templates (S15),
    reproducing an imported fit (S28); Orders mode, PypeIt spec1d input

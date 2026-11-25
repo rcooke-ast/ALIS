@@ -298,13 +298,13 @@ def test_an_unchanged_grid_is_uploaded_once(monkeypatch):
 
 
 def test_a_rebuilt_grid_invalidates_the_device_buffers(monkeypatch):
-    # 'run renew_subpix' rebuilds the sub-pixel grid, so load_subpixels returns
+    # 'run nsubpixel_renew' rebuilds the sub-pixel grid, so load_subpixels returns
     # a fresh list; a changed identity is exactly the staleness signal.
     disp = gpu_dispatch.enable(threshold=0)
     _fake_upload(disp, monkeypatch)
     wave = np.linspace(1200.0, 1300.0, 64)
     for _ in range(3):
-        disp.note_grid([wave])  # a new list each time, as renew_subpix does
+        disp.note_grid([wave])  # a new list each time, as nsubpixel_renew does
         disp.wave_device((0, 0, "vshift", b"\x00"), wave)
     assert disp.nwave_upload == 3
     assert disp.nwave_reuse == 0

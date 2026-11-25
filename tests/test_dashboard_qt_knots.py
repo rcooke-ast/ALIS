@@ -200,7 +200,7 @@ def test_delta_function(window, qtbot, tmp_path):
     dialog.delta.click()
     step = dialog.step
     assert dialog.knots.velocities == pytest.approx([-18.0, -step, 0.0, step, 18.0])
-    # A Gaussian of the field's FWHM (on nsubmin sub-pixels here, to 1%)
+    # A Gaussian of the field's FWHM (on nsubpixel_min sub-pixels here, to 1%)
     assert dialog.fwhm_shown == pytest.approx(3.0, rel=0.01)
     dialog.smoothing.setValue(4.0)
     assert dialog.knots.velocities[-1] == pytest.approx(24.0)

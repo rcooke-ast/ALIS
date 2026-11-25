@@ -332,7 +332,7 @@ run  ncpus        4          # CPUs to use (-1 = all bar one, -2 = all bar two)
 run  backend      auto       # Jacobian backend: cpu, gpu, or auto (time both)
 run  ngpus        0          # GPUs to use (0 = CPU backend; see below)
 run  gputhresh    10000      # Smallest model group worth sending to a GPU
-run  nsubpix      5          # Sub-pixels per 1σ for profile integration
+run  nsubsigma    5          # Sub-pixels across 1σ of the narrowest profile
 run  blind        False      # Global blind analysis flag
 run  convergence  False      # Run convergence checker
 run  convcriteria 0.2        # Convergence criterion (in units of param 1σ)
@@ -360,11 +360,18 @@ Key `run` sub-settings:
 | `ngpus` | 0 | GPU count; 0 keeps the CPU backend (see *Fitting on GPUs*) |
 | `gputhresh` | 10000 | Smallest model group (sub-pixels × profiles) sent to a GPU |
 | `shmem` | True | Share the workers' read-only arrays via `/dev/shm` (see *Memory during a fit*) |
-| `nsubpix` | 5 | Sub-pixel oversampling (fixed count) |
-| `nsubmin`/`nsubmax` | 5/21 | Min/max sub-pixel oversampling (adaptive) |
+| `nsubsigma` | 5 | Sub-pixels across one standard deviation of a snip's narrowest profile: the target from which each snip's `nsubpixel` is worked out (`nsubsigma` · pixel / σ). ALIS warns where a profile is left with fewer: a data line's `nsubpixel=` that records too few, a best fit that asks for more than its fit used (at the end of the fit), and snips that `nsubpixel_max` caps |
+| `nsubpixel_min`/`nsubpixel_max` | 10/21 | The fewest and the most sub-pixels per pixel that a snip is given (`nsubpixel_min` 5 before dashboard Stage 14) |
+| `nsubpixel_renew` | False | Work out each snip's `nsubpixel` again at every evaluation |
 | `blind` | False | Global blind analysis: True blinds the whole fit |
 | `convergence` | False | Enable convergence testing |
 | `datatype` | default | Data format: `default`, `HIRESredux`, `UVESpopler` |
+
+The names of the sub-pixels follow one convention (since dashboard Stage 14): a name
+that counts sub-pixels per pixel begins `nsubpixel`, and one that counts them across
+a profile's standard deviation begins `nsubsigma`; `_min` and `_max` bound them.
+ALIS refuses the names used before (`nsubpix`, `nsubmin`, `nsubmax`, `renew_subpix`,
+and `warn_subpix`, which was removed), each with a message that names its new one.
 
 #### Fitting on GPUs
 
@@ -473,7 +480,8 @@ properties. All properties must be specified on a single line (no line continuat
 | `loadrange=all` | Load all pixels in the file |
 | `bintype=km/s` | Pixels have constant velocity width (default) |
 | `bintype=A` | Pixels have constant wavelength width |
-| `nsubpix=N` | Override global sub-pixel setting for this file |
+| `nsubsigma=N` | `run nsubsigma` for this file alone |
+| `nsubpixel=N` | This file's sub-pixels per pixel, used as given (whatever `nsubpixel_min`, `nsubpixel_max` and `nsubpixel_renew` say). ALIS writes it on each data line of a `.mod.out`: the sub-pixels its fit used, so that the `.mod.out` is evaluated as the fit was. ALIS warns when it leaves a profile with fewer than its `nsubsigma` across its standard deviation; remove it to work them out again |
 | `plotone=True/False` | Plot in its own panel, not grouped with `plot dims` |
 | `label=<str>` | Label shown on the plot panel |
 | `yrange=[lo,hi]` | Override automatic y-axis range |
@@ -1057,6 +1065,24 @@ run_alis myfit.model     # fits the project from the command line, as before
   - **Names.** A dataset worked out from a fit takes a name no other has, its
     number in parentheses ("39KI7701 (2)"), as Load snips… does. **File → Save a copy
     with spectra…** opens the Save dialog.
+- **Since Stage 14** (2026-11-25), ALIS's sub-pixels:
+  - **A `.mod.out` is evaluated on the sub-pixels its fit used.** ALIS writes
+    `nsubpixel=N` on each data line of a `.mod.out`, and uses a data line's
+    `nsubpixel=N` as given. The dashboard keeps it as written through every edit,
+    Export… and the bundle, and never adds one: Continue from best fit… copies the
+    values alone, so the next fit works its sub-pixels out from the best fit.
+  - **Too few sub-pixels.** Where a data line records fewer than its lines ask for,
+    the pre-flight check notes it (Run stays enabled), and a right-click on the note,
+    **Work them out again**, removes the keyword in one step. **Warnings and options
+    to resolve…** lists ALIS's warnings of too few sub-pixels (a recorded
+    `nsubpixel`, a best fit that asks for more than its fit used, and the cap at
+    `nsubpixel_max`), each with what resolves it.
+  - **Names.** The sub-pixels' settings follow one convention (§2.1): All settings…
+    lists `nsubsigma`, `nsubpixel_min` (now 10), `nsubpixel_max` and
+    `nsubpixel_renew`. An old name typed in the `.mod` panel is a problem that names
+    the new one, and a right-click renames it in one step.
+  - **Set LSFSpline knots…** draws the kernel on a data line's recorded `nsubpixel`,
+    and its knots may come as close as one sub-pixel at `nsubpixel_min`.
 
 #### Preparing a fit: the Data and Regions tabs
 

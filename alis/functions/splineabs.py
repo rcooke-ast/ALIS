@@ -348,7 +348,7 @@ class SplineAbs(base.Base) :
             msgs.error("Function "+self._idstr+" is badly defined in definition parin.")
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Voigt function to be used by 'call'
         """
@@ -405,7 +405,7 @@ class SplineAbs(base.Base) :
             nv = np.where(self._atomic['Ion'] == self._keywd['ion'])[0]
             nw = np.where( (self._atomic['Wavelength'][nv]*(1.0+pt[1]) >= wvmin) & (self._atomic['Wavelength'][nv]*(1.0+pt[1]) <= wvmax) )
             if self._atomic['Wavelength'][nv][nw].size == 0:
-                if nexbin is not None: return [], None
+                if sampling is not None: return [], None
                 elif getinfl: return [], []
                 else: return []
             params = np.zeros((self._atomic['Wavelength'][nv][nw].size,2+2*pt.size-3))
@@ -491,17 +491,17 @@ class SplineAbs(base.Base) :
                 else: params = np.append(params, paramst, axis=0)
                 tsize += self._atomic['Wavelength'][nv][nw].size
             if tsize == 0:
-                if nexbin is not None: return [], None
+                if sampling is not None: return [], None
                 elif getinfl: return [], []
                 else: return []
-        if nexbin is not None:
+        if sampling is not None:
             if params[:,2].min() == 0.0:
-                msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, int(round(np.sqrt(2.0)*nexbin[1]/params[:,2].min() + 0.5))
-            elif nexbin[0] == "A" : return params, int(round(np.sqrt(2.0)*299792.458*nexbin[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
-            elif nexbin[0] == "Hz" : return params, int(round(np.sqrt(2.0)*299792.458*nexbin[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
+                msgs.error("Cannot work out nsubpixel for "+self._idstr+": a profile's width is 0.0")
+            if sampling[0] == "km/s": return params, int(round(np.sqrt(2.0)*sampling[1]/params[:,2].min() + 0.5))
+            elif sampling[0] == "A" : return params, int(round(np.sqrt(2.0)*299792.458*sampling[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
+            elif sampling[0] == "Hz" : return params, int(round(np.sqrt(2.0)*299792.458*sampling[1]/((1.0+params[:,1])*params[:,3]*params[:,2]).min() + 0.5))
             else:
-                msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+                msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
                 msgs.error("Cannot proceed until this bug is fixed")
         elif getinfl: return params, parinf
         else: return params
@@ -717,7 +717,7 @@ class SplineAbs(base.Base) :
 
 
     def tick_info(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None):
-        # Removed: nexbin=None, ddpid=None, getinfl=False
+        # Removed: sampling=None, ddpid=None, getinfl=False
         """
         For a given model, determine the wavelengths that
         tick marks should be plotted, and the label that

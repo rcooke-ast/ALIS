@@ -700,7 +700,7 @@ class MultiVFWHM(base.Base) :
                 levadd += 1
         return pinfo, add
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, getinfl=False, ddpid=None, getstdd=None):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, getinfl=False, ddpid=None, getstdd=None):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
@@ -738,12 +738,12 @@ class MultiVFWHM(base.Base) :
         minwid = params[0]
         for gg in range(ngauss):
             if (params[3 + gg * 3] < minwid) and params[3 + gg * 3] != 0: minwid = params[3 + gg * 3]
-        if nexbin is not None:
+        if sampling is not None:
             if minwid == 0: return params, 1
-            if nexbin[0] == "km/s":
-                return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*nexbin[1]/minwid + 0.5))
-            elif nexbin[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+            if sampling[0] == "km/s":
+                return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*sampling[1]/minwid + 0.5))
+            elif sampling[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getstdd is not None:
             fact = 2.0*np.sqrt(2.0*np.log(2.0))
             return getstdd[1]*(1.0+getstdd[0]*minwid/(fact*299792.458)), getstdd[2]*(1.0-getstdd[0]*minwid/(fact*299792.458))

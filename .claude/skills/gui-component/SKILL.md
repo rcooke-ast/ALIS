@@ -345,3 +345,26 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
   test a message that quotes a hidden value after a word like "lsfspline".
 - **Off-screen glyphs**: a symbol outside the off-screen font (⌨) draws as a dash in
   the screenshots; prefer words on buttons ("Keys…").
+
+## Stage 14 additions
+
+- **A fix on a right-click**: a pre-flight `Finding` that can be fixed carries
+  `fix` (the action's text, e.g. `preflight.RECORDED_FIX`), stored on its list item
+  under `qt.fit.FIX_ROLE`; the item's tooltip ends "Right-click: <fix>."; the step
+  comes from a function of the model (`preflight.fix_step`), one step, never from
+  the widget. The `.mod` panel does the same for a problem (`ModPanel.fixes(line)`,
+  `renameRequested`, `settings.rename_step`), and works on the text, so the fix is
+  offered while the model does not read.
+- **An old or removed name of a setting** goes in `config.RENAMED_SETTINGS` (a
+  removed one maps to None, with its reason in `config.REMOVED_SETTINGS`): ALIS
+  refuses it with the message, and the dashboard shows the same message as the
+  model's problem and offers the rename (or removes the line).
+- **A data-line keyword the dashboard does not set** (`nsubpixel=`) is kept as
+  written by every edit of the line, by Export… and by the bundle: add it to
+  `model.DATA_KEYWORDS`, and test the line byte for byte after each.
+- **ALIS's warnings in the dashboard** are shown on one line (whitespace
+  collapsed), so each part of a warning ALIS writes must be a sentence: end it with
+  a full stop, and begin a list's line with a capital.
+- **A menu off-screen**: `QMenu.exec` blocks; for a screenshot, build the menu as
+  the window builds it (the action's text from the same function) and draw it with
+  `popup` (`doc/dashboard/stage12/take_screenshots.py`'s `shoot_menu`).

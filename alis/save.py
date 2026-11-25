@@ -569,6 +569,15 @@ def save_model(slf,params,errors,info,printout=True,extratxt=["",""],filename=No
                     nleft = int(np.sum(lwave < fitlo))
                     nright = int(np.sum(lwave > fithi))
                     datspl.append("bufferpix=[{0:d},{1:d}]".format(nleft, nright))
+            # Record the sub-pixels per pixel that the fit used (dashboard Stage 14,
+            # Task 14.3), as bufferpix records its pixels: ALIS works them out from
+            # the starting values, and a .mod.out starts from the best fit, which
+            # can ask for others. A line that gave its own keeps it as written.
+            # With nsubpixel_renew they follow the fit, so none is written.
+            nsubpixel = getattr(slf, "_nsubpixel", None)
+            if (nsubpixel is not None and not slf._argflag['run']['nsubpixel_renew']
+                    and not any(t.split("=")[0] == "nsubpixel" for t in datspl[1:])):
+                datspl.append("nsubpixel={0:d}".format(int(nsubpixel[sp][sn])))
             sn += 1
             cnum += 1
             snum += 1

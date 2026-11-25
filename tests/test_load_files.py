@@ -764,3 +764,23 @@ def test_the_fit_output_carries_the_badpix_column(tmp_path):
     table = np.loadtxt(str(tmp_path / "out.dat"))
     assert np.array_equal(table[:, 4], bad.astype(float))
     assert np.array_equal(table[:, 3], (~bad).astype(float))
+
+
+@pytest.mark.parametrize("bad", ["0", "-2", "6.5", "x"])
+def test_load_data_refuses_an_nsubpixel_it_cannot_use(state, spectrum, bad, logmsgs):
+    # Dashboard Stage 14, Task 14.3: a data line's sub-pixels per pixel, as a
+    # .mod.out records them, is a whole number of at least 1
+    path, _wave = spectrum
+    with pytest.raises(SystemExit):
+        load_one(state, path, nsubpixel=bad)
+    assert any(
+        "nsubpixel must be a whole number of at least 1, not '{0}'".format(bad) in msg
+        for msg in logmsgs
+    )
+
+
+def test_load_data_keeps_a_data_line_s_nsubpixel(state, spectrum):
+    path, _wave = spectrum
+    load_one(state, path, nsubpixel="6")
+    assert state._datopt["nsubpixel"] == [[6]]
+    assert load_one(_State(state._atomic), path)._datopt["nsubpixel"] == [[None]]

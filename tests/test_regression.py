@@ -77,7 +77,8 @@ _GEN_CASES = [c for c in _CASES if c.kind == "generate"]
 FIXEDPARAM_EXCLUDE = {
     "examples/brokenpowerlaw/model/fit_spectra": "reference point (chi2 374.98 vs recorded 338.15); Q0.12",
     "examples/tophat/model/fit_spectra": "sharp edge (~14x error at edge pixel); Q0.15",
-    "examples/lsf_spline/model/fit_spectra": "sub-pixels set from the starting smoothing (6 in the fit, 21 at the best fit); Q13.7, deferred_work 7.10",
+    # examples/lsf_spline came back in dashboard Stage 14 (Task 14.7): its reference
+    # records the sub-pixels its fit used (nsubpixel=), and is evaluated on them
 }
 
 # Fixed-parameter evals normally all run on every commit (batch

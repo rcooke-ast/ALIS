@@ -148,6 +148,21 @@ def test_alis_blind_offsets_are_taken_away():
     assert R.blind_offset({"blindrange": [], "blindseed": 3}) == 0.0
 
 
+def test_a_mod_out_that_records_its_sub_pixels_is_read(registry):
+    # Stage 14, Task 14.3: ALIS writes nsubpixel=N on each data line of a .mod.out
+    plain = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
+    lines = plain.splitlines(keepends=True)
+    num = next(i for i, ln in enumerate(lines) if "OI_SiII.dat" in ln and "#" not in ln)
+    lines[num] = lines[num].rstrip("\n") + "  nsubpixel=8\n"
+    recorded = "".join(lines)
+    pm = M.ParsedModel(recorded, registry)
+    # Before Stage 14: "Unknown keyword on a data line: 'nsubpixel'", and no values
+    assert [p for p in pm.problems if p.severity == "error"] == []
+    assert pm.data[0].keywords["nsubpixel"].value == "8"
+    values = R.out_values(recorded, registry)
+    assert values and values == R.out_values(plain, registry)
+
+
 def test_a_blind_run_s_mod_out_is_read(registry):
     # Stage 8, Task 8.9: a plain ALIS run writes BLIND MODEL for its blinded Si II
     blind = (ROOT / "examples/blind/model/fit_spectra.mod.out.reference").read_text()

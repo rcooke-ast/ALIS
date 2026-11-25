@@ -534,3 +534,64 @@ def test_the_writer_strips_a_previous_block_from_the_settings_it_echoes():
         "plot dims 0   {0:s} was 3x3\n".format(load.CLI_OVERRIDE_MARK),
     ]
     assert save.strip_cli_override_block(parlines) == ["run blind False\n"]
+
+
+# -- the sub-pixels the fit used (dashboard Stage 14, Task 14.3) -----------------
+
+
+def with_subpixels(state, warn=False):
+    """The snips' sub-pixels per pixel, as ``ClassMain`` works them out at load."""
+    _parinfo, state._levadd = load.load_parinfo(state)
+    state._nsubpixel = load.load_subpixels(state, state._modpass["p0"], warn=warn)[4]
+    return state
+
+
+# A broad resolution, so that the voigt lines set the sub-pixels: b_turb = 10 km/s
+# at 8000 K (b = 10.4 km/s) on pixels of 11.5 km/s asks for 8 (√2 · 5 · 11.5 / b,
+# rounded), so the snip takes nsubpixel_min (10 since Task 14.6); b_turb = 1 km/s
+# asks for more than nsubpixel_max (21)
+BROAD = ("5.0da", "10.0da")
+WIDE_LSF = ("vfwhm(7.0)", "vfwhm(40.0)")
+
+
+def narrowed(state):
+    """Best-fit values whose b is 1 km/s: a profile narrower than at the start."""
+    params = np.array(state._modpass["p0"], dtype=float)
+    params[list(params).index(10.0)] = 1.0
+    return params
+
+
+def broad(modelfile):
+    text = modelfile().read_text().replace(*BROAD).replace(*WIDE_LSF)
+    return modelfile(name="broad.mod", text=text)
+
+
+def test_the_writer_records_the_sub_pixels_the_fit_used(modelfile, atomic_data):
+    first = with_subpixels(build(broad(modelfile), atomic_data))
+    assert first._nsubpixel == [[10]]
+    text = written(first, narrowed(first))
+    # Before Stage 14 the data line carried no nsubpixel
+    assert "nsubpixel=10" in data_line(text)
+    second = with_subpixels(
+        build(modelfile(name="fit.mod.out", text=text), atomic_data)
+    )
+    assert second._nsubpixel == [[10]]
+    # Without it, the best fit's narrower profile would ask for 21
+    stripped = text.replace("nsubpixel=10", "")
+    third = with_subpixels(build(modelfile(name="x.mod", text=stripped), atomic_data))
+    assert third._nsubpixel == [[21]]
+
+
+def test_a_line_s_own_nsubpixel_is_kept_and_used(modelfile, atomic_data):
+    state = with_subpixels(build(modelfile(extra="  nsubpixel=3"), atomic_data))
+    assert state._nsubpixel == [[3]]
+    line = data_line(written(state))
+    assert line.count("nsubpixel=") == 1 and "nsubpixel=3" in line
+
+
+def test_with_nsubpixel_renew_none_is_written(modelfile, atomic_data):
+    path = modelfile(
+        replace=("run shmem False", "run shmem False\nrun nsubpixel_renew True")
+    )
+    state = with_subpixels(build(path, atomic_data))
+    assert "nsubpixel=" not in data_line(written(state))

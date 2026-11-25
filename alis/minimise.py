@@ -1517,7 +1517,7 @@ class alfit(object):
         disp = gpu_dispatch.active()
         if disp is not None:
             # Stage 4.3: refresh the per-iteration read-only device data. The
-            # sub-pixel wave grid can change between iterations (renew_subpix),
+            # sub-pixel wave grid can change between iterations (nsubpixel_renew),
             # so its device buffers are released here, at the iteration
             # boundary, and re-uploaded on first use below.
             disp.begin_iteration()

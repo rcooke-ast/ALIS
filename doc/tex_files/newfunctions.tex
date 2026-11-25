@@ -60,17 +60,17 @@ should use the \texttt{parb} variable which is specified in
 function for an example of passing both a keyword [\texttt{wave}]
 and a parameter [the redshift]).
 
-You may also need to change the \texttt{nexbin} parameters (see
+You may also need to change the \texttt{sampling} parameters (see
 the example provided on lines 86--90 of the \texttt{gaussian} model
 function) if you want to make sure any subpixellation that's applied
-(where \texttt{nexbin[0]}$\equiv$\texttt{run+bintype} and
-\texttt{nexbin[1]}$\equiv$\texttt{run+nsubpix}) samples your
+(where \texttt{sampling[0]}$\equiv$\texttt{run+bintype} and
+\texttt{sampling[1]}$\equiv$\texttt{run+nsubsigma} times the width of a pixel) samples your
 model function accurately. For the \texttt{gaussian} model function
 that we are using as our example here, two arguments are returned:
 The first argument is \texttt{params}, and this should not be changed.
 The second argument is the number of subpixels to use for this model.
-The definition of \texttt{run+nsubpix} is the number of subpixels per
-standard deviation, so \texttt{nexbin[1]/params[2]}, with some corrections
+The definition of \texttt{run+nsubsigma} is the number of subpixels per
+standard deviation, so \texttt{sampling[1]/params[2]}, with some corrections
 to rounding, gives the desired return value. If you don't wish to implement
 this for your function, you can simply return the integer value 1 after
 \texttt{params} (i.e. \texttt{return params, 1}).

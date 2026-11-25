@@ -1187,6 +1187,61 @@ RJC's comments on the stage's page.*
   in the tabs' corner, lists the tab shown (with every spectrum's rows where it
   draws spectra), Show all opening the sheet there.
 
+*Stage 14 decisions (ALIS's sub-pixels, and the item carried over). Added by Claude
+on 2026-11-25 from Q14.1–Q14.12, the work of the stage and RJC's comments on the
+stage's page.*
+- **D147. Each data line keeps its own resolution keywords** (item carried over,
+  Q14.2, Q14.5; refines D145; ALIS): `lsffile`, `apod` and `lsf` read a line's
+  keywords into a copy of their defaults, as every other function does, a list
+  keyword taking a new list. A line that names no file (`lsffile`, `lsf`) or no
+  `kind` (`apod`) is refused; a keyword a line does not name takes its default; a
+  line with no `index` draws a kernel at random, as it does alone.
+- **D148. One convention for the names of the sub-pixels** (Q14.4 (i), Q14.6,
+  Q14.8, Q14.9, Q14.12; refines F9, Q12.13; ALIS): a name that counts sub-pixels per
+  pixel begins `nsubpixel`, one that counts them across a profile's standard
+  deviation begins `nsubsigma`, and `_min` and `_max` bound them. The settings are
+  `run nsubsigma` (5), `nsubpixel_min` (10), `nsubpixel_max` (21) and
+  `nsubpixel_renew`; the data-line keywords `nsubsigma=` and `nsubpixel=`; inside
+  ALIS, each snip's `nsubpixel`, `datopt['nsubsigma_width']` and `set_vars`'
+  `sampling=`. The documentation and later code follow it. No old name is read: each
+  is refused with a message that names its new one, and a removed one
+  (`warn_subpix`; `nsubsigma_min`, added at Task 14.2 and removed at Q14.12) with
+  why; the dashboard shows the message as the model's problem, and a right-click
+  renames it (or removes the line), one step. Every model that named one, in the
+  repository and RJC's `context/` (archived first there), is rewritten.
+- **D149. A `.mod.out` records the sub-pixels its fit used** (`deferred_work.md`
+  §7.10 (a), Q14.3 (a), Q14.4 (i) and (ii); refines D140, Q13.7; ALIS): `nsubpixel=N`
+  on each data line (none with `nsubpixel_renew`), and a data line's `nsubpixel=N`
+  used as given, whatever `nsubpixel_min` and `nsubpixel_max` say, so that a
+  `.mod.out` gives its fit's model. `examples/lsf_spline`'s evaluation at its best
+  fit is in the harness's mode (b).
+- **D150. ALIS warns only of too few sub-pixels** (Q14.4 (ii), Q14.7, Q14.11,
+  Q14.12, RJC's comments on the review; refines D142, Q13.8; ALIS): where a profile
+  is left with fewer than its snip's `nsubsigma` across its standard deviation, on
+  a recorded `nsubpixel` (at load), under `nsubpixel_max` (at load) and at a best fit
+  narrower than its start (at the end of a fit), naming each snip and what it asks
+  for; `warn_subpix` and its warning of too many are removed. Each part of a warning
+  is a sentence, so that it reads on one line. Warnings and options to resolve…
+  lists them, each with what resolves it.
+- **D151. The dashboard keeps a recorded `nsubpixel`** (Q14.4 (iii); refines S17,
+  S20, Q12.9, Q12.11): every edit of the line, Export… and the bundle keep it as
+  written, and the dashboard never adds one; Continue from best fit copies the
+  best-fit values alone, so that the next fit works its sub-pixels out again. The
+  pre-flight check notes a line that records too few (Run stays enabled), with a fix
+  on a right-click, Work them out again, that removes the keyword in one step. Set
+  LSFSpline knots… draws the kernel on a recorded `nsubpixel`, and its spix is one
+  sub-pixel at `nsubpixel_min`.
+- **D152. `nsubpixel_min` is 10** (Q12.13 (b), Q14.3, Q14.10; refines D137, Q12.13):
+  5 left broad profiles on too few sub-pixels. The references that moved were
+  refitted, checked against their old best fit evaluated with 10, and regenerated
+  once, with their sub-pixels; a fit whose new minimum is worse than its old best fit
+  is put to RJC before its reference changes. For those, starts are drawn about the
+  old best fit from its covariance: where all return to it, the first is the case's
+  start; otherwise its old best fit's values are (RJC's response to Q14.10). How to
+  tell a local minimum from the best one, and how sensitive a fit is to the
+  sub-pixels, is `deferred_work.md` §1.5, a series of its own
+  (`minimisation_stage0.md`).
+
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30
   (QF.34).

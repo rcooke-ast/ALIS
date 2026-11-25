@@ -109,8 +109,9 @@ def test_the_delta_function(registry, tmp_path):
     snip = project.snips[0]
     pixel = LK.pixel_kms(snip)
     step = LK.spix(project, snip)
-    # One sub-pixel at ALIS's coarsest: the largest pixel over nsubmin (5)
-    assert step == pytest.approx(pixel / 5.0)
+    # One sub-pixel at ALIS's coarsest: the largest pixel over nsubpixel_min (10
+    # since Stage 14's Task 14.6; before, 5)
+    assert step == pytest.approx(pixel / 10.0)
     knots = LK.delta_knots(2.0, step)
     assert knots.velocities == pytest.approx([-12.0, -step, 0.0, step, 12.0])
     assert knots.heights == [0.0, 0.0, 1.0, 0.0, 0.0]
@@ -123,7 +124,7 @@ def test_the_delta_function(registry, tmp_path):
     moved = knots.copy()
     moved.heights[3] = 0.2
     assert LK.with_smoothing(moved, 3.0, step).velocities[-1] == pytest.approx(12.0)
-    # On nsubmin sub-pixels, ALIS's kernel is a Gaussian of the FWHM
+    # On nsubpixel_min sub-pixels, ALIS's kernel is a Gaussian of the FWHM
     v, k = LK.kernel(knots, 4258.0, pixel, 5)
     assert LK.fwhm(v, k) == pytest.approx(2.0, rel=0.01)
     # Where a line asks for more sub-pixels, it is a little wider (Q12.11 (i))
@@ -136,7 +137,8 @@ def test_a_dataset_s_spix_is_its_snips_largest(registry, tmp_path):
     project = P.Project.import_model(str(path), registry=registry)
     for row in project.rows:
         sizes = [LK.pixel_kms(s) for s in row.snips]
-        assert LK.spix(project, row) == pytest.approx(max(sizes) / 5.0)
+        # nsubpixel_min 10 since Stage 14 (before, 5)
+        assert LK.spix(project, row) == pytest.approx(max(sizes) / 10.0)
 
 
 @pytest.mark.parametrize(
@@ -200,7 +202,7 @@ def test_the_sub_pixels_alis_uses():
 
     class Project:
         class parsed:
-            argflag = {"run": {"nsubmin": 5, "nsubmax": 21, "nsubpix": 5}}
+            argflag = {"run": {"nsubpixel_min": 5, "nsubpixel_max": 21, "nsubsigma": 5}}
 
     pixel = LK.pixel_kms(Snip())
     asked = int(round(LK.FWHM_SIGMA * 5 * pixel / 2.0 + 0.5))
@@ -208,6 +210,25 @@ def test_the_sub_pixels_alis_uses():
     assert LK.subpixels(Project(), Snip(), 50.0) == 5
     assert LK.subpixels(Project(), Snip(), 50.0, asked=9) == 9
     assert LK.subpixels(Project(), Snip(), 0.01) == 21
+
+    # Stage 14, Task 14.5: a data line that records its sub-pixels (nsubpixel=6,
+    # from a .mod.out) is drawn on them, as ALIS evaluates it (before: on 21)
+    class Line:
+        def __init__(self, value):
+            self.value = value
+
+        def keyword(self, name):
+            return self.value if name == "nsubpixel" else None
+
+    class Recorded(Snip):
+        data = Line("6")
+
+    assert LK.recorded_subpixels(Recorded()) == 6
+    assert LK.subpixels(Project(), Recorded(), 0.01) == 6
+    assert LK.subpixels(Project(), Recorded(), 50.0, asked=9) == 6
+    Recorded.data = Line(None)
+    assert LK.recorded_subpixels(Recorded()) is None
+    assert LK.subpixels(Project(), Recorded(), 0.01) == 21
 
 
 def test_the_step_for_a_snip_of_its_own_and_for_a_dataset(registry, tmp_path):

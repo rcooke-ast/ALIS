@@ -284,7 +284,7 @@ class SplineLSF(base.Base) :
         """
         return par
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Voigt function to be used by 'call'
         """
@@ -317,14 +317,14 @@ class SplineLSF(base.Base) :
                 params[i] = lnkprm
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
+        if sampling is not None:
             if params[0] == 0.0: return params, 1
             # As many sub-pixels as vfwhm asks for a Gaussian of this FWHM
-            if nexbin[0] == "km/s": return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*nexbin[1]/params[0] + 0.5))
-            elif nexbin[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
-            elif nexbin[0] == "Hz" : msgs.error("bintype is set to 'Hz' for Hertz, when FWHM is specified as a velocity.")
+            if sampling[0] == "km/s": return params, int(round(2.0*np.sqrt(2.0*np.log(2.0))*sampling[1]/params[0] + 0.5))
+            elif sampling[0] == "A" : msgs.error("bintype is set to 'A' for Angstroms, when FWHM is specified as a velocity.")
+            elif sampling[0] == "Hz" : msgs.error("bintype is set to 'Hz' for Hertz, when FWHM is specified as a velocity.")
             else:
-                msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+                msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
                 msgs.error("Cannot proceed until this bug is fixed")
         elif getinfl: return params, parinf
         else: return params

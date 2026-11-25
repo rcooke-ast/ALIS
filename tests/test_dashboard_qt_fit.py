@@ -51,6 +51,7 @@ from alis.dashboard import profile as PR  # noqa: E402
 from alis.dashboard import results as RS  # noqa: E402
 from alis.dashboard import runs as R  # noqa: E402
 from alis.dashboard import settings as SE  # noqa: E402
+from alis.dashboard import text as T  # noqa: E402
 from alis.dashboard.qt import dialogs as D  # noqa: E402
 from alis.dashboard.qt.fit import marks_html as fit_marks  # noqa: E402
 
@@ -536,6 +537,38 @@ def test_run_is_refused_with_a_problem(window, qtbot, tmp_path):
     line, _ = item.data(QtCore.Qt.ItemDataRole.UserRole)
     inspect._finding_clicked(item)
     assert window.panel.editor.textCursor().blockNumber() == line
+
+
+def test_a_line_that_records_too_few_sub_pixels_is_noted_and_fixed(
+    window, qtbot, tmp_path
+):
+    # Stage 14, Task 14.5: nsubpixel=3 on metal_line_abs's data line (its lines ask
+    # for 8); Run stays enabled, and a right-click on the note works them out again
+    open_metal(window, qtbot, tmp_path)
+    inspect = window.fit_tab.inspect
+    project = window.session.project
+    notes = len(inspect.report.notes)
+    text = project.text.replace("label=OI_SiII", "label=OI_SiII   nsubpixel=3")
+    window.session.history.do(
+        project.step(T.Change((T.Patch(0, project.text, text),)), "Typed")
+    )
+    window.refresh()
+    assert inspect.report.ok and len(inspect.report.notes) == notes + 1
+    assert window.qactions["fit.run"].isEnabled()
+    inspect.show_findings()
+    texts = [inspect.findings.item(n).text() for n in range(inspect.findings.count())]
+    (num,) = [n for n, t in enumerate(texts) if "nsubpixel=3" in t]
+    item = inspect.findings.item(num)
+    assert "Right-click: Work them out again." in item.toolTip()
+    finding = item.data(QtCore.Qt.ItemDataRole.UserRole + 1)
+    inspect.fix_finding(finding)
+    assert "nsubpixel" not in project.text and project.text != text
+    assert len(inspect.report.notes) == notes
+    assert (
+        window.qactions["edit.undo"].text() == "Undo Work out the sub-pixels of 0 again"
+    )
+    window.qactions["edit.undo"].trigger()
+    assert project.text == text
 
 
 # -- Blinding (D24, D49) -------------------------------------------------------------------

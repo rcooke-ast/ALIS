@@ -65,7 +65,7 @@ class Random(base.Base):
         return pin
 
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False, start=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False, start=False):
         levadd=0
         params=np.zeros(self._pnumr)
         parinf=[]
@@ -87,10 +87,10 @@ class Random(base.Base):
             if mp['mfix'][ival][i] == 0: parinf.append(getid)
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
-            if params[1] == 0.0: msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, 1
-            elif nexbin[0] == "A" : return params, 1
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+        if sampling is not None:
+            if params[1] == 0.0: msgs.error("Cannot work out nsubpixel for "+self._idstr+": a profile's width is 0.0")
+            if sampling[0] == "km/s": return params, 1
+            elif sampling[0] == "A" : return params, 1
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params

@@ -114,7 +114,7 @@ def test_a_delta_function_peaks_at_its_line():
     assert int(np.argmax(out)) == x.size // 2
 
 
-def nexbins(func, params, binsize, nsubpix=5):
+def asked(func, params, binsize, nsubsigma=5):
     """The sub-pixels a resolution function asks for (ALIS's ``load_subpixels``)."""
     num = len(params)
     mp = {
@@ -125,13 +125,13 @@ def nexbins(func, params, binsize, nsubpix=5):
         "tpar": [],
     }
     _, nbn = func.set_vars(
-        np.array(params, dtype=float), 0, mp, 0, nexbin=["km/s", nsubpix * binsize]
+        np.array(params, dtype=float), 0, mp, 0, sampling=["km/s", nsubsigma * binsize]
     )
     return nbn
 
 
 @pytest.mark.parametrize("fwhm", [1.0, 2.14, 5.0, 20.0])
 def test_it_asks_for_as_many_sub_pixels_as_vfwhm(fwhm):
-    spline = nexbins(SplineLSF(getinst=True), [fwhm, 0.0, 1.0, 0.0], 2.0)
-    gauss = nexbins(vFWHM(getinst=True), [fwhm], 2.0)
+    spline = asked(SplineLSF(getinst=True), [fwhm, 0.0, 1.0, 0.0], 2.0)
+    gauss = asked(vFWHM(getinst=True), [fwhm], 2.0)
     assert spline == gauss

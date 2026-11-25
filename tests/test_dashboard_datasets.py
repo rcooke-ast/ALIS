@@ -23,6 +23,7 @@ from alis.dashboard import project as P
 from alis.dashboard import remove as R
 from alis.dashboard import snips as S
 from alis.dashboard import sources
+from alis.dashboard import text as T
 from alis.dashboard import validate as V
 
 pytestmark = pytest.mark.unit
@@ -867,3 +868,33 @@ def test_what_a_resolution_shows_and_the_kernels_a_project_holds(registry, tmp_p
         C_KMS * 0.03 / 1302.0 / RS.FWHM_SIGMA
     )
     assert RS.convert("lsffile", 1.0, "vfwhm", 1302.0) is None
+
+
+def test_a_recorded_nsubpixel_is_kept_through_every_edit_of_its_line(
+    registry, tmp_path
+):
+    # Stage 14, Task 14.5 (Q14.4 (iii)): an nsubpixel=N on a data line, from a
+    # .mod.out, is kept as written, as bufferpix is; the dashboard never adds one
+    project, hist = two_snips(registry, tmp_path)
+    snip = project.rows[0].snips[0]
+    mtext = project.parsed.text
+    words = mtext[snip.data.line].text + "  nsubpixel=6"
+    hist.do(project.step(T.Change((T.replace_line(mtext, snip.data.line, words),))))
+    assert errors(project) == []
+
+    def kept():
+        return project.rows[0].snips[0].data.keyword("nsubpixel")
+
+    assert kept() == "6"
+    hist.do(D.resolution_step(project, project.rows[0], "vfwhm", 6.0))
+    assert kept() == "6" and errors(project) == []
+    hist.do(D.snip_resolution_step(project, project.rows[0].snips[0], True))
+    hist.do(D.snip_function_step(project, project.rows[0].snips[0], "vsigma", 2.5))
+    assert kept() == "6" and errors(project) == []
+    # The snip cut again, inwards
+    one = project.rows[0].snips[0]
+    low, high = one.extent
+    hist.do(S.edges_step(project, one, low + 0.2, high - 0.2))
+    assert kept() == "6" and errors(project) == []
+    # A new snip is not given one
+    assert all(s.data.keyword("nsubpixel") is None for s in project.rows[1].snips)

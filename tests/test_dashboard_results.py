@@ -379,8 +379,8 @@ def test_the_lya_forest_b_rows_are_unconstrained_not_at_limit(j1358):
     groups = RS.View.latest(j1358).table()
     forest = {r.name: r for r in groups[1].rows}
     one = forest["Lyα z=2.1783 b"]
-    assert (one.value, one.error, one.flags) == ("1.09", "10.78", ["unconstrained"])
-    # 0.29 ± 60.5, its bound 0.2: on no bound, so not "at limit" (Q6.12)
+    assert (one.value, one.error, one.flags) == ("1.09", "10.71", ["unconstrained"])
+    # 0.29 ± 60.3, its bound 0.2: on no bound, so not "at limit" (Q6.12)
     two = forest["Lyα z=2.1786 b"]
     assert two.value == "0.29" and two.flags == ["unconstrained"]
     assert not any("at limit" in f for g in groups for r in g.rows for f in r.flags)
@@ -444,11 +444,11 @@ def test_correlations_and_statistics(j1358):
     every = view.correlations(RS.ALL, groups)
     assert len(every.names) > len(corr.names)
     stats = view.statistics()
-    assert stats.chi2 == pytest.approx(3790.570655)
-    assert stats.chi2_initial == pytest.approx(4002.709893)
+    assert stats.chi2 == pytest.approx(3790.538798)
+    assert stats.chi2_initial == pytest.approx(4002.792235)
     assert (stats.dof, stats.iterations, stats.origin) == (4146, 14, R.IMPORTED)
-    assert stats.reduced == pytest.approx(0.914272, abs=1e-6)
-    assert stats.seconds == pytest.approx(0.004288 * 3600)
+    assert stats.reduced == pytest.approx(0.914264, abs=1e-6)
+    assert stats.seconds == pytest.approx(0.004521 * 3600)
     assert stats.reason.startswith("Both actual and predicted")
 
 
@@ -566,7 +566,7 @@ def test_a_convergence_check_that_failed_warns(metal):
 
 def test_alis_s_warnings_during_a_run_are_listed_with_no_suggestion(metal):
     # Task 13.10, Q13.8 (iii): kept in run.json by the fitting process
-    text = "sub-pixellation scale (30) has exceeded the warning level of: 10"
+    text = "You don't have 100000 CPUs!"
     stats = _stored(metal, iterations=1000, status_code=5, warnings=[text, "Another"])
     found = RS.fit_warnings(stats)
     assert [w.warning for w in found[1:]] == [
@@ -578,6 +578,61 @@ def test_alis_s_warnings_during_a_run_are_listed_with_no_suggestion(metal):
     assert all(
         not w.warning.startswith("ALIS") for w in RS.fit_warnings(_stored(metal))
     )
+
+
+# ALIS's warnings of too few sub-pixels, as alis/load.py writes them (Stage 14)
+SUBPIXEL_WARNINGS = [
+    "Too few sub-pixels are recorded for 1 snip to give each profile nsubsigma"
+    " (5) across its standard deviation.\n  Spectrum 0, segment 0: nsubpixel=3 on"
+    " its data line; its lines ask for 8.\n  Remove nsubpixel= from a data line to"
+    " work its sub-pixels out again.",
+    "The best fit asks for more sub-pixels than the fit used for 1 snip, to give"
+    " each profile nsubsigma (5) across its standard deviation.\n  Spectrum 0,"
+    " segment 0: the fit used 6; its best fit asks for 23.\n  A fit started from"
+    " this best fit, with its sub-pixels worked out again (nsubpixel= removed from"
+    " the .mod.out's data lines), uses them.",
+    "nsubpixel_max (21) leaves 2 snips with too few sub-pixels to give each profile"
+    " nsubsigma (5) across its standard deviation.\n  Spectrum 0, segment 0:"
+    " its lines ask for 34.\n  Spectrum 1, segment 0: its lines ask for 25.\n  Raise"
+    " 'run nsubpixel_max' to 34 to give them.",
+]
+
+
+def test_alis_s_sub_pixel_warnings_are_listed_with_what_resolves_them(metal):
+    # Stage 14, Task 14.5 (Q14.4 (ii)'s response): before, "ALIS warned: …" with
+    # no suggestion
+    stats = _stored(metal, warnings=SUBPIXEL_WARNINGS)
+    found = RS.fit_warnings(stats)
+    # Each on one line, as the dialog shows it
+    assert [w.warning for w in found] == [
+        "ALIS warned: " + " ".join(w.split()) for w in SUBPIXEL_WARNINGS
+    ]
+    # On one line, its parts read as sentences (RJC's review of Stage 14)
+    assert "its lines ask for 8. Remove nsubpixel= from a data line" in found[0].warning
+    assert [w.suggestion for w in found] == [
+        "Work them out again, on the pre-flight check, removes nsubpixel= from these"
+        " data lines.",
+        "Continue from best fit…, then Run: the next fit works its sub-pixels out"
+        " from this best fit.",
+        "Raise nsubpixel_max (All settings…) to 34.",
+    ]
+
+
+def test_continue_from_a_fit_that_records_its_sub_pixels_copies_values_alone(registry):
+    # Stage 14, Task 14.5 (Q14.4 (iii)): the run's .mod.out records nsubpixel=8; the
+    # project's data lines stay as they are, byte for byte
+    project = imported(METAL, registry)
+    text = Path(str(METAL)[: -len(".mod")] + ".mod.out.reference").read_text()
+    text = text.replace(
+        "label=OI_SiII  bufferpix", "label=OI_SiII  nsubpixel=8  bufferpix"
+    )
+    assert "nsubpixel=8" in text
+    store_run(project, METAL, mod_out=text, chi2_final=357.874162, dof=360)
+    data = [project.text.splitlines()[d.line] for d in project.parsed.data]
+    plan = RS.continue_plan(project, RS.View.latest(project))
+    project.apply(plan.step)
+    assert [project.text.splitlines()[d.line] for d in project.parsed.data] == data
+    assert "nsubpixel" not in project.text and plan.changed
 
 
 def test_a_hidden_value_in_alis_s_warning_is_masked(blinded):
@@ -720,9 +775,9 @@ def test_an_imported_fits_history_and_statistics(j1358):
     [row] = RS.history(j1358)
     assert row.where == "imported" and row.reduced == "0.914"
     rows = dict(RS.statistics_rows(RS.View.latest(j1358).statistics()))
-    assert rows["χ²"] == "3790.5707 (initial 4002.7099)"
+    assert rows["χ²"] == "3790.5388 (initial 4002.7922)"
     assert rows["Degrees of freedom"] == "4146" and rows["χ²ν"] == "0.9143"
-    assert rows["Iterations"] == "14" and rows["Run time"] == "15 s"
+    assert rows["Iterations"] == "14" and rows["Run time"] == "16 s"
     assert rows["Stopped because"].startswith("Both actual and predicted")
     assert rows["Run from"].startswith("imported with the model")
     assert RS.convergence_text({"converged": False, "failed": 3, "total": 41}) == (

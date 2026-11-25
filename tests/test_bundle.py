@@ -624,3 +624,20 @@ def test_an_extracted_bundle_runs_as_a_plain_model_and_matches_the_reference(tmp
         )
         == []
     )
+
+
+@UNIT
+def test_a_recorded_nsubpixel_is_kept_in_the_bundle(tmp_path, monkeypatch):
+    # Dashboard Stage 14, Task 14.5: a data line's nsubpixel=N, from a .mod.out, is
+    # packed, stored and extracted as written
+    model = _stage(tmp_path, "metal_line_abs")
+    text = model.read_text().replace("label=OI_SiII", "label=OI_SiII   nsubpixel=8")
+    model.write_text(text)
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "x.model"
+    bundle.write(bundle.pack(str(model), with_outputs=False), str(path))
+    stored = bundle.read(str(path))
+    assert stored.model_text(restore=True) == text
+    written, _ = bundle.extract(stored, str(tmp_path / "out"))
+    out = tmp_path / "out" / "model" / "fit_spectra.mod"
+    assert out.read_text() == text and "nsubpixel=8" in out.read_text()

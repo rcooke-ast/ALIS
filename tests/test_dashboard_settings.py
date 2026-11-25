@@ -24,6 +24,8 @@ from alis.dashboard import model as M
 from alis.dashboard import preferences as PR
 from alis.dashboard import project as P
 from alis.dashboard import settings as ST
+from alis.dashboard import text as T
+from alis.dashboard import validate as V
 
 pytestmark = pytest.mark.unit
 
@@ -116,8 +118,8 @@ def test_the_settings_you_changed(project):
     assert "chisq maxiter" in names
     assert "out covar" in names
     # A setting written at its default is not "changed"
-    project.apply(ST.set_step(project, "run", "nsubpix", "5"))
-    assert "run nsubpix" not in [c.setting.name for c in ST.changed(project)]
+    project.apply(ST.set_step(project, "run", "nsubsigma", "5"))
+    assert "run nsubsigma" not in [c.setting.name for c in ST.changed(project)]
 
 
 def test_what_a_run_is_given(project, prefs):
@@ -153,3 +155,93 @@ def test_command_line_only_settings_are_written_like_any_other(project):
     assert len(ST.command_line_only(project)) == 2
     project.apply(ST.set_step(project, "generate", "data", "False"))
     assert len(ST.command_line_only(project)) == 1
+
+
+# -- The names of the sub-pixels (Stage 14, Task 14.2; Q14.6, Q14.8 (ii)) ------------
+
+NEW_NAMES = {
+    "nsubsigma": "10",
+    "nsubpixel_min": "10",
+    "nsubpixel_max": "30",
+    "nsubpixel_renew": "True",
+}
+
+
+@pytest.mark.parametrize("key", sorted(NEW_NAMES))
+def test_each_new_name_is_offered_set_and_cleared(project, key):
+    item = ST.setting("run", key)
+    assert item.owner == ST.MODEL and item.help
+    original = project.text
+    step = ST.set_step(project, "run", key, NEW_NAMES[key])
+    project.apply(step)
+    assert ST.model_settings(project)[("run", key)][0] == NEW_NAMES[key]
+    project.apply(ST.clear_step(project, "run", key))
+    assert project.text == original
+
+
+def _edited(project, patch):
+    """The project with one patch of its text, as typing would make it."""
+    project.apply(project.step(T.Change((patch,), "typed")))
+    return project.text
+
+
+@pytest.mark.parametrize(
+    "line, new, fixed",
+    [
+        ("run nsubmin 10", "'run nsubpixel_min'", "run nsubpixel_min 10"),
+        ("run nsubpix 8", "'run nsubsigma'", "run nsubsigma 8"),
+        ("run nsubmax 30", "'run nsubpixel_max'", "run nsubpixel_max 30"),
+        ("run renew_subpix True", "'run nsubpixel_renew'", "run nsubpixel_renew True"),
+    ],
+)
+def test_an_old_setting_is_a_problem_and_its_fix_renames_it(project, line, new, fixed):
+    before = _edited(project, T.insert_lines(project.parsed.text, 0, [line]))
+    # Before Stage 14 it was read; now the model does not read, and the problem on
+    # its line names the new name
+    assert project.paused
+    assert any(
+        p.line == 0 and new in p.message and p.severity == "error"
+        for p in project.parsed.problems
+    )
+    [old] = ST.old_names(project.parsed.text)
+    assert old.line == 0 and old.action == "Rename to {0}".format(new)
+    step = ST.rename_step(project, 0)
+    project.apply(step)
+    assert not project.paused
+    assert project.text.splitlines()[0] == fixed
+    assert ST.old_names(project.parsed.text) == []
+    project.revert(step)
+    assert project.text == before
+
+
+def test_a_removed_setting_s_fix_removes_its_line(project):
+    original = project.text
+    _edited(project, T.insert_lines(project.parsed.text, 0, ["run warn_subpix 50"]))
+    assert project.paused
+    [old] = ST.old_names(project.parsed.text)
+    assert old.new is None and old.action == "Remove the line"
+    assert "was removed" in old.message
+    project.apply(ST.rename_step(project, 0))
+    assert project.text == original and not project.paused
+
+
+def test_the_old_data_line_keyword_is_a_problem_and_its_fix_renames_it(project):
+    num = project.parsed.data[0].line
+    mtext = project.parsed.text
+    before = _edited(
+        project, T.replace_line(mtext, num, mtext[num].text + " nsubpix=8")
+    )
+    assert project.paused
+    assert any(
+        p.line == num and "'nsubsigma='" in p.message for p in project.parsed.problems
+    )
+    assert ST.rename_step(project, 0) is None
+    step = ST.rename_step(project, num)
+    project.apply(step)
+    assert not project.paused
+    assert project.text.splitlines()[num].endswith(" nsubsigma=8")
+    assert project.parsed.data[0].keywords["nsubsigma"].value == "8"
+    # ALIS's own loaders read it (the validator's full check)
+    assert [p for p in V.check(project) if p.severity == V.ERROR] == []
+    project.revert(step)
+    assert project.text == before

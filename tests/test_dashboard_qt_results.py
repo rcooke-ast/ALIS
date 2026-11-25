@@ -120,6 +120,16 @@ def undo(window):
 # -- J1358p6522: the table, statistics and correlations ------------------------------
 
 
+# ALIS's warning of a best fit that asks for more sub-pixels (alis/load.py, Stage 14)
+BEST_FIT_WARNING = (
+    "The best fit asks for more sub-pixels than the fit used for 1 snip, to give each"
+    " profile nsubsigma (5) across its standard deviation.\n  Spectrum 0,"
+    " segment 0: the fit used 6; its best fit asks for 23.\n  A fit started from this"
+    " best fit, with its sub-pixels worked out again (nsubpixel= removed from the"
+    " .mod.out's data lines), uses them."
+)
+
+
 def test_j1358s_results_as_in_the_mockup(window, qtbot):
     results = j1358(window, qtbot)
     assert results.table_pane.title.text() == "Results · the latest run"
@@ -135,7 +145,7 @@ def test_j1358s_results_as_in_the_mockup(window, qtbot):
     assert cells["H I a2 z"][1:] == ["3.0672580", "± 0.0000011", "−0.12", "⛓ ra", ""]
     assert cells["D I a2 b"][5] == "! not tied to H I"
     # Q6.12: on no bound, so not "at limit"; the forest's flagged rows shown
-    assert cells["Lyα z=2.1786 b"][1:3] == ["0.29", "± 60.55"]
+    assert cells["Lyα z=2.1786 b"][1:3] == ["0.29", "± 60.27"]
     assert cells["Lyα z=2.1786 b"][5] == "! unconstrained"
     assert not any("at limit" in r[-1] for r in rows if len(r) > 1)
     # Q6.23: no coefficient flagged; Lyα's continuum is below zero only beyond its
@@ -150,7 +160,7 @@ def test_j1358s_results_as_in_the_mockup(window, qtbot):
     assert results.shown_rows() == rows
     # The statistics
     stats = dict(results.statistics_rows)
-    assert stats["χ²"] == "3790.5707 (initial 4002.7099)"
+    assert stats["χ²"] == "3790.5388 (initial 4002.7922)"
     assert stats["χ²ν"] == "0.9143" and stats["Iterations"] == "14"
     assert results.stats_pane.title.text() == "Fit statistics · the latest run"
     # The correlations of the primary system, the pair under the mouse
@@ -233,7 +243,7 @@ def test_a_fit_stopped_at_its_maximum_warns_in_red(window, qtbot, tmp_path):
         status_code=5,
         reason=RS.MAXITER_REASON,
         convergence={"converged": False, "failed": 2, "total": 9},
-        warnings=["sub-pixellation scale (30) has exceeded the warning level of: 10"],
+        warnings=[BEST_FIT_WARNING],
     )
     results = show_results(window, qtbot)
     rows = dict(results.statistics_rows)
@@ -271,11 +281,10 @@ def test_a_fit_stopped_at_its_maximum_warns_in_red(window, qtbot, tmp_path):
         "The convergence check: not converged for 2 of 9 parameters.",
         RS.NOT_CONVERGED_ADVICE,
     )
-    # ALIS's own warning, with no suggestion (Q13.8 (iii))
+    # ALIS's own warning, with what resolves it (Stage 14, Task 14.5)
     assert found[2] == (
-        "ALIS warned: sub-pixellation scale (30) has exceeded the warning level of:"
-        " 10",
-        "",
+        "ALIS warned: " + " ".join(BEST_FIT_WARNING.split()),
+        RS.BEST_FIT_ADVICE,
     )
     # The end of the run
     window.fit.job = SimpleNamespace(kind="run", warnings=[], message="")

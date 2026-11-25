@@ -3,6 +3,7 @@ import io
 import os, sys
 import copy
 from collections.abc import Mapping
+from alis import config
 from alis import gpu
 from alis import logger
 from alis.config import (
@@ -197,6 +198,8 @@ def apply_cli_settings(argflag, argv, verbose=2):
         if len(parts) < 3:
             msgs.error("--set takes a whole setting, e.g. --set 'run backend cpu'"+msgs.newline()+"got: "+line)
         section, key = parts[0], parts[1]
+        if config.renamed_setting(section, key) is not None:
+            msgs.error("--set: "+config.renamed_setting(section, key))
         if section not in argflag.keys() or key not in argflag[section].keys():
             msgs.error("--set does not recognise the setting '{0:s} {1:s}'".format(section, key)+msgs.newline()+"Run 'run_alis --list-settings' to see what is available.")
         old = argflag[section][key]
@@ -322,6 +325,9 @@ def set_params(lines, argflag, setstr="", verbose=None):
                         msgs.error(setstr + "Settings contains bad line (arg 3):"+msgs.newline()+lines[i].split('#')[0].strip())
                 except:
                     msgs.error(setstr + "Settings contains bad line (arg 3):"+msgs.newline()+lines[i].split('#')[0].strip())
+            elif config.renamed_setting(linspl[0], linspl[1]) is not None:
+                # An old name of the sub-pixels (dashboard Stage 14, Q14.8 (ii))
+                msgs.error(setstr + config.renamed_setting(linspl[0], linspl[1])+msgs.newline()+lines[i].split('#')[0].strip())
             else: msgs.error(setstr + "Settings contains bad line (arg 2):"+msgs.newline()+lines[i].split('#')[0].strip())
         else: msgs.error(setstr + "Settings contains bad line (arg 1):"+msgs.newline()+lines[i].split('#')[0].strip())
     return argflag
@@ -902,7 +908,7 @@ def load_data(slf, datlines, data=None):
     specid=np.array([])
     slf._snipid=[]
     datopt = DataOpt()  # typed structure (Stage 2.1); datopt['specid'] access preserved
-    keywords = ['specid','fitrange','loadrange','bufferpix','systematics','systmodule','resolution','shift','columns','plotone','nsubpix','bintype','loadall','label','yrange']
+    keywords = ['specid','fitrange','loadrange','bufferpix','systematics','systmodule','resolution','shift','columns','plotone','nsubsigma','nsubpixel','bintype','loadall','label','yrange']
     colallow = np.array(['wave','flux','error','continuum','zerolevel','fitrange','loadrange','systematics','resolution','badpix'])
     columns  = np.array(['wave','flux','error'])
     systload = [None, 'continuumpoly']
@@ -929,6 +935,9 @@ def load_data(slf, datlines, data=None):
             for j in range(1,len(linspl)):
                 if '=' not in linspl[j]: msgs.error("read data has bad form on data line: "+str(i+1))
                 kwdspl = linspl[j].split('=')
+                if config.renamed_data_keyword(kwdspl[0]) is not None:
+                    # An old name of the sub-pixels (dashboard Stage 14, Q14.8 (ii))
+                    msgs.error(config.renamed_data_keyword(kwdspl[0])+msgs.newline()+"on data line: "+str(i+1))
                 if   kwdspl[0] not in keywords: msgs.error("read data has bad keyword "+kwdspl[0]+" on data line: "+str(i+1))
                 if   kwdspl[0] == 'specid':
                     if kwdspl[1] not in specid: specid = np.append(specid, kwdspl[1])
@@ -1013,7 +1022,9 @@ def load_data(slf, datlines, data=None):
         datopt['columns'].append([])
         datopt['systematics'].append([])
         datopt['systmodule'].append([])
-        datopt['nsubpix'].append([])
+        datopt['nsubsigma_width'].append([])
+        datopt['nsubsigma'].append([])
+        datopt['nsubpixel'].append([])
         datopt['bintype'].append([])
         datopt['label'].append([])
         datopt['yrange'].append([])
@@ -1061,7 +1072,8 @@ def load_data(slf, datlines, data=None):
         wavemin, wavemax = None, None
         lwavemin, lwavemax = None, None
         bufferpix = None  # (left, right) pixel buffer, if the user set one
-        nspix = slf._argflag['run']['nsubpix']
+        nspix = slf._argflag['run']['nsubsigma']
+        nsubpx = None  # the snip's sub-pixels per pixel, if its data line gives them
         bntyp = slf._argflag['run']['bintype']
         tempresn = 'vfwhm(0.0)' # If Resolution not specified set it to zero and make it not tied to anything
         tempshft = 'none' # By default, apply no shift
@@ -1085,9 +1097,16 @@ def load_data(slf, datlines, data=None):
                         tempshft = 'none'
                     else:
                         tempshft = kwdspl[1]
-                elif kwdspl[0] == 'nsubpix':
+                elif kwdspl[0] == 'nsubsigma':
                     if int(kwdspl[1]) > 0: nspix = int(kwdspl[1])
-                    else: msgs.error("nsubpix must be greater than 0")
+                    else: msgs.error("nsubsigma must be greater than 0")
+                elif kwdspl[0] == 'nsubpixel':
+                    # The snip's sub-pixels per pixel, as a .mod.out records those
+                    # its fit used (dashboard Stage 14, Task 14.3)
+                    try: nsubpx = int(kwdspl[1])
+                    except ValueError: nsubpx = 0
+                    if nsubpx < 1 or str(nsubpx) != kwdspl[1]:
+                        msgs.error("nsubpixel must be a whole number of at least 1, not '{0:s}', on the data line -".format(kwdspl[1])+msgs.newline()+nocoms.strip())
                 elif kwdspl[0] == 'bintype': bntyp = kwdspl[1]
                 elif kwdspl[0] == 'fitrange':
                     fitrtxt = linspl[j]
@@ -1329,8 +1348,12 @@ def load_data(slf, datlines, data=None):
                 msgs.error("Every fitted pixel is marked bad in the file -"+msgs.newline()+filename)
         datopt['badpix'][sind].append(None if badin is None else badin[w])
         fitted.append((filename, wavein[wf], fluxin[wf], fluein[wf]))
-        # Store the data
-        datopt['nsubpix'][sind].append( nspix*get_binsize(wavein[w],bintype=bntyp,verbose=slf._argflag['out']['verbose']) )
+        # Store the data. A target of fewer sub-pixels across a profile's standard
+        # deviation than the level at which ALIS warns is refused (dashboard Stage 14,
+        # Q14.9 (a))
+        datopt['nsubsigma_width'][sind].append( nspix*get_binsize(wavein[w],bintype=bntyp,verbose=slf._argflag['out']['verbose']) )
+        datopt['nsubsigma'][sind].append(nspix)
+        datopt['nsubpixel'][sind].append(nsubpx)
         posnfit[sind].append(wavemin)
         posnfit[sind].append(wavemax)
         wavefit[sind] = np.append(wavefit[sind], wavein[wf])
@@ -2182,14 +2205,26 @@ def load_links(slf, lnklines, debug=False):
     return lnkpass
 
 
-def load_subpixels(slf, parin):
-    nexbins = []
-    modtyp=[[] for all in slf._posnfull]
+def subpixels_asked(slf, parin):
+    """
+    The sub-pixels per pixel that each snip's lines ask for, ``[sp][sn]``: the most
+    that any of its profiles (``set_vars``) or its resolution asks for, so that the
+    narrowest gets the snip's ``nsubsigma`` sub-pixels across its standard
+    deviation, neither bounded by ``nsubpixel_min`` and ``nsubpixel_max`` nor
+    replaced by a data line's ``nsubpixel`` (dashboard Stage 14). 0 when nothing
+    asks.
+
+    Generated by RJC and Claude.
+    """
+    asked = []
     shind = np.where(np.array(slf._modpass['emab'])=='sh')[0][0]
+    def width(sp, sn):
+        # nsubsigma times the snip's pixel
+        return slf._datopt['nsubsigma_width'][sp][sn]
     # Find narrowest profile in the model
     for sp in range(len(slf._posnfull)):
-        lastemab, iea = ['' for all in slf._posnfull[sp][:-1]], [-1 for all in slf._posnfull[sp][:-1]]
-        nexbins.append([slf._argflag['run']['nsubmin'] for all in slf._posnfull[sp][:-1]])
+        lastemab = ['' for all in slf._posnfull[sp][:-1]]
+        asked.append([0 for all in slf._posnfull[sp][:-1]])
         for sn in range(len(slf._posnfull[sp])-1):
             ll = slf._posnfull[sp][sn]
             lu = slf._posnfull[sp][sn+1]
@@ -2199,63 +2234,158 @@ def load_subpixels(slf, parin):
             wvrngt = slf._funcarray[1][shmtyp].call_CPU(slf._funcarray[2][shmtyp], slf._wavefull[sp][ll:lu], shparams)
             shind += 1
             wvrng = [wvrngt.min(),wvrngt.max()]
-#			wvrng = [slf._wavefull[sp][ll:lu].min(),slf._wavefull[sp][ll:lu].max()]
-            modtyp[sp].append([])
             for i in range(0,len(slf._modpass['mtyp'])):
                 if slf._modpass['emab'][i] in ['cv','va','sh']: continue # This is a convolution or variable (not emission or absorption)
                 if slf._specid[sp] not in slf._modpass['mkey'][i]['specid']: continue # Don't apply this model to this data
                 if lastemab[sn] == '' and slf._modpass['emab'][i] != 'em':
                     msgs.error("Model for specid="+slf._snipid[sp]+" must specify emission before absorption")
-                if lastemab[sn] != slf._modpass['emab'][i]:
-                    modtyp[sp][sn].append(np.array(['']))
-                    iea[sn] += 1
-                    lastemab[sn] = slf._modpass['emab'][i]
+                lastemab[sn] = slf._modpass['emab'][i]
                 mtyp=slf._modpass['mtyp'][i]
-                if np.where(mtyp==modtyp[sp][sn][iea[sn]])[0].size != 1:
-                    modtyp[sp][sn][iea[sn]] = np.append(modtyp[sp][sn][iea[sn]],mtyp)
-                    if modtyp[sp][sn][iea[sn]][0] == '': modtyp[sp][sn][iea[sn]] = np.delete(modtyp[sp][sn][iea[sn]], 0)
-                mid = np.where(mtyp==modtyp[sp][sn][iea[sn]])[0][0]
                 slf._funcarray[2][mtyp]._keywd = slf._modpass['mkey'][i]
-                params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
+                params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[i], slf._modpass, i, wvrng=wvrng, spid=slf._specid[sp], levid=slf._levadd, sampling=[slf._datopt['bintype'][sp][sn],width(sp, sn)])
                 if len(params) == 0: continue
-                if nbn > nexbins[sp][sn]:
-                    if nbn > slf._argflag['run']['nsubmax']:
-                        nexbins[sp][sn] = slf._argflag['run']['nsubmax']
-                    else:
-                        nexbins[sp][sn] = nbn
+                asked[sp][sn] = max(asked[sp][sn], nbn)
     # Find narrowest profile in the instrumental FWHM
-    stf, enf = [0 for all in slf._posnfull], [0 for all in slf._posnfull]
     cvind = np.where(np.array(slf._modpass['emab'])=='cv')[0][0]
     for sp in range(len(slf._posnfull)):
         for sn in range(len(slf._posnfull[sp])-1):
             mtyp = slf._modpass['mtyp'][cvind]
-            params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[cvind], slf._modpass, cvind, nexbin=[slf._datopt['bintype'][sp][sn],slf._datopt['nsubpix'][sp][sn]])
-            if nbn > nexbins[sp][sn]:
-                if nbn > slf._argflag['run']['nsubmax']:
-                    nexbins[sp][sn] = slf._argflag['run']['nsubmax']
-                else:
-                    nexbins[sp][sn] = nbn
+            params, nbn = slf._funcarray[1][mtyp].set_vars(slf._funcarray[2][mtyp], parin, slf._levadd[cvind], slf._modpass, cvind, sampling=[slf._datopt['bintype'][sp][sn],width(sp, sn)])
+            asked[sp][sn] = max(asked[sp][sn], nbn)
             cvind += 1
+    return asked
+
+
+def bounded_subpixels(slf, asked):
+    """
+    Each snip's sub-pixels per pixel from what its lines ask (:func:`subpixels_asked`):
+    ``nsubpixel_min``, raised to what is asked, and capped at ``nsubpixel_max``; or
+    the ``nsubpixel`` its data line gives, whatever those say (dashboard Stage 14).
+
+    Generated by RJC and Claude.
+    """
+    low, high = slf._argflag['run']['nsubpixel_min'], slf._argflag['run']['nsubpixel_max']
+    out = []
+    for sp in range(len(asked)):
+        out.append([])
+        for sn in range(len(asked[sp])):
+            given = slf._datopt['nsubpixel'][sp][sn]
+            if given is not None:
+                out[sp].append(given)
+            elif asked[sp][sn] > low:
+                out[sp].append(min(asked[sp][sn], high))
+            else:
+                out[sp].append(low)
+    return out
+
+
+def _snip_name(slf, sp, sn):
+    """A snip, as ALIS's messages name it."""
+    return "spectrum {0:s}, segment {1:d}".format(slf._snipid[sp], sn)
+
+
+def _snip_line(slf, sp, sn, text):
+    """
+    One snip's line of a sub-pixel warning, a sentence of its own, so that the
+    warning reads on one line as the dashboard shows it (RJC's review of Stage 14).
+
+    Generated by RJC and Claude.
+    """
+    name = _snip_name(slf, sp, sn)
+    return "{0:s}{1:s}: {2:s}.".format(name[0].upper(), name[1:], text)
+
+
+def _nsubsigma_text(slf, snips):
+    """The nsubsigma of the snips ``[(sp, sn)]`` a warning names, as it says it."""
+    values = sorted(set(slf._datopt['nsubsigma'][sp][sn] for sp, sn in snips))
+    if len(values) == 1:
+        return "nsubsigma ({0:d})".format(values[0])
+    return "its snip's nsubsigma"
+
+
+def subpixel_warnings(slf, parin, nsubpixel):
+    """
+    Warn, once at load, of each snip left with too few sub-pixels to give each of
+    its profiles the snip's ``nsubsigma`` across its standard deviation (dashboard
+    Stage 14, Q14.7, Q14.12): where its data line records too few (Task 14.3), and
+    where ``nsubpixel_max`` caps it below what its lines ask for (Task 14.4).
+
+    Generated by RJC and Claude.
+    """
+    high = slf._argflag['run']['nsubpixel_max']
+    need = subpixels_asked(slf, parin)
+    short, capped, where_short, where_capped = [], [], [], []
+    for sp in range(len(nsubpixel)):
+        for sn in range(len(nsubpixel[sp])):
+            given = slf._datopt['nsubpixel'][sp][sn]
+            if given is not None:
+                if given < need[sp][sn]:
+                    where_short.append((sp, sn))
+                    short.append(_snip_line(slf, sp, sn, "nsubpixel={0:d} on its data line; its lines ask for {1:d}".format(given, need[sp][sn])))
+            elif nsubpixel[sp][sn] < need[sp][sn]:
+                where_capped.append((sp, sn))
+                capped.append(_snip_line(slf, sp, sn, "its lines ask for {0:d}".format(need[sp][sn])))
+    verbose = slf._argflag['out']['verbose']
+    if short:
+        msgs.warn("Too few sub-pixels are recorded for {0:d} snip{1:s} to give each profile {2:s} across its standard deviation.".format(len(short), "" if len(short) == 1 else "s", _nsubsigma_text(slf, where_short))+msgs.newline()+msgs.newline().join(short)+msgs.newline()+"Remove nsubpixel= from a data line to work its sub-pixels out again.", verbose=verbose)
+    if capped:
+        most = max(need[sp][sn] for sp in range(len(need)) for sn in range(len(need[sp])) if slf._datopt['nsubpixel'][sp][sn] is None)
+        msgs.warn("nsubpixel_max ({0:d}) leaves {1:d} snip{2:s} with too few sub-pixels to give each profile {3:s} across its standard deviation.".format(high, len(capped), "" if len(capped) == 1 else "s", _nsubsigma_text(slf, where_capped))+msgs.newline()+msgs.newline().join(capped)+msgs.newline()+"Raise 'run nsubpixel_max' to {0:d} to give them.".format(most), verbose=verbose)
+
+
+def best_fit_subpixel_warnings(slf, params):
+    """
+    Warn, once at the end of a fit, of each snip whose best fit asks for more
+    sub-pixels than the fit used, to give each profile the snip's ``nsubsigma``
+    across its standard deviation (dashboard Stage 14, Task 14.4, Q14.12). A fit's sub-pixels are
+    worked out from its starting values; a profile that narrows during the fit can
+    be left with too few. Not with ``nsubpixel_renew``, whose grid follows the fit.
+
+    Generated by RJC and Claude.
+    """
+    if slf._argflag['run']['nsubpixel_renew']:
+        return
+    need = subpixels_asked(slf, params)
+    used = slf._nsubpixel
+    short, where = [], []
+    for sp in range(len(used)):
+        for sn in range(len(used[sp])):
+            if used[sp][sn] < need[sp][sn]:
+                where.append((sp, sn))
+                short.append(_snip_line(slf, sp, sn, "the fit used {0:d}; its best fit asks for {1:d}".format(int(used[sp][sn]), need[sp][sn])))
+    if short:
+        msgs.warn("The best fit asks for more sub-pixels than the fit used for {0:d} snip{1:s}, to give each profile {2:s} across its standard deviation.".format(len(short), "" if len(short) == 1 else "s", _nsubsigma_text(slf, where))+msgs.newline()+msgs.newline().join(short)+msgs.newline()+"A fit started from this best fit, with its sub-pixels worked out again (nsubpixel= removed from the .mod.out's data lines), uses them.", verbose=slf._argflag['out']['verbose'])
+
+
+def load_subpixels(slf, parin, warn=False):
+    """
+    The sub-pixel grid of each snip: its wavelengths, continuum, zero level and
+    positions, and its sub-pixels per pixel (``nsubpixel``, :func:`bounded_subpixels`).
+    ``warn`` (at load, not at each evaluation) warns of each snip left with too few
+    (:func:`subpixel_warnings`).
+
+    Generated by RJC and Claude.
+    """
+    nsubpixel = bounded_subpixels(slf, subpixels_asked(slf, parin))
+    if warn:
+        subpixel_warnings(slf, parin, nsubpixel)
     wavespx, contspx, zerospx, posnspx = [np.array([]) for all in slf._posnfull], [np.array([]) for all in slf._posnfull], [np.array([]) for all in slf._posnfull], [[] for all in slf._posnfull]
     for sp in range(len(slf._posnfull)):
         for sn in range(len(slf._posnfull[sp])-1):
-            if nexbins[sp][sn] > slf._argflag['run']['warn_subpix']:
-                msgs.warn("sub-pixellation scale ({0:d}) has exceeded the warning level of: {1:d}".format(nexbins[sp][sn],slf._argflag['run']['warn_subpix']),verbose=slf._argflag['out']['verbose'])
-            else:
-                msgs.info("sub-pixellation scale: {0:d} for spectrum {1:s}, segment {2:d}".format(nexbins[sp][sn], slf._snipid[sp], sn),verbose=slf._argflag['out']['verbose'])
+            msgs.info("nsubpixel {0:d} for spectrum {1:s}, segment {2:d}{3:s}".format(nsubpixel[sp][sn], slf._snipid[sp], sn, "" if slf._datopt['nsubpixel'][sp][sn] is None else ", from its data line"),verbose=slf._argflag['out']['verbose'])
             ll = slf._posnfull[sp][sn]
             lu = slf._posnfull[sp][sn+1]
             binsize=get_binsize(slf._wavefull[sp][ll:lu], bintype=slf._datopt['bintype'][sp][sn], maxonly=False, verbose=slf._argflag['out']['verbose'])
-            binlen = 1.0/float(nexbins[sp][sn])
+            binlen = 1.0/float(nsubpixel[sp][sn])
             if slf._datopt['bintype'][sp][sn] == "km/s":
-                interpwav = (1.0+((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis]/2.99792458E5))
+                interpwav = (1.0+((np.arange(nsubpixel[sp][sn])-(0.5*(nsubpixel[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis]/2.99792458E5))
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1)*interpwav).flatten()
             elif slf._datopt['bintype'][sp][sn] == "A":
-                interpwav = ((np.arange(nexbins[sp][sn])-(0.5*(nexbins[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
+                interpwav = ((np.arange(nsubpixel[sp][sn])-(0.5*(nsubpixel[sp][sn]-1.0)))[np.newaxis,:]*binlen*binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
             elif slf._datopt['bintype'][sp][sn] == "Hz":
-                binlen = 1.0 / float(nexbins[sp][sn])
-                interpwav = ((np.arange(nexbins[sp][sn]) - (0.5 * (nexbins[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
+                binlen = 1.0 / float(nsubpixel[sp][sn])
+                interpwav = ((np.arange(nsubpixel[sp][sn]) - (0.5 * (nsubpixel[sp][sn] - 1.0)))[np.newaxis, :] * binlen * binsize[:,np.newaxis])
                 wavs = (slf._wavefull[sp][ll:lu].reshape(lu-ll,1) + interpwav).flatten()
             else: msgs.bug("Bintype "+slf._datopt['bintype'][sp][sn]+" is unknown",verbose=slf._argflag['out']['verbose'])
             posnspx[sp].append(wavespx[sp].size)
@@ -2266,18 +2396,17 @@ def load_subpixels(slf, parin):
                 gradA = np.append((slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._contfull[sp][lu-1]-slf._contfull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
                 gradB = np.append( np.array([(slf._contfull[sp][ll+1]-slf._contfull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._contfull[sp][ll+1:lu]-slf._contfull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
-                contspx[sp] = np.append(contspx[sp], (slf._contfull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten())
+                contspx[sp] = np.append(contspx[sp], (slf._contfull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nsubpixel[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten())
             if np.count_nonzero(slf._zerofull[sp][ll:lu]) == 0: # No zero-level is provided -- no interpolation is necessary
                 zerospx[sp] = np.append(zerospx[sp], np.zeros(np.size(wavs)))
             else: # Do linear interpolation
                 gradA = np.append((slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1]),(slf._zerofull[sp][lu-1]-slf._zerofull[sp][lu-2])/(slf._wavefull[sp][lu-1]-slf._wavefull[sp][lu-2])).reshape(lu-ll,1)
                 gradB = np.append( np.array([(slf._zerofull[sp][ll+1]-slf._zerofull[sp][ll])/(slf._wavefull[sp][ll+1]-slf._wavefull[sp][ll])]), (slf._zerofull[sp][ll+1:lu]-slf._zerofull[sp][ll:lu-1])/(slf._wavefull[sp][ll+1:lu]-slf._wavefull[sp][ll:lu-1])).reshape(lu-ll,1)
                 gradv = np.mean(np.array([gradA,gradB]),axis=0)
-                zerospx[sp] = np.append(zerospx[sp], (slf._zerofull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nexbins[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten())
+                zerospx[sp] = np.append(zerospx[sp], (slf._zerofull[sp][ll:lu].reshape(lu-ll,1) + (wavs.reshape(lu-ll,nsubpixel[sp][sn])-slf._wavefull[sp][ll:lu].reshape(lu-ll,1))*gradv).flatten())
         posnspx[sp].append(wavespx[sp].size)
 #	slf._wavespx, slf._posnspx = wavespx, posnspx
-#	slf._nexbins = nexbins
-    return wavespx, contspx, zerospx, posnspx, nexbins
+    return wavespx, contspx, zerospx, posnspx, nsubpixel
 
 
 def load_par_influence(slf, parin, setall=False):

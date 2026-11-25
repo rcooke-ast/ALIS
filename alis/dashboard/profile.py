@@ -156,7 +156,7 @@ def _load(project):
         state._contspx,
         state._zerospx,
         state._posnspx,
-        state._nexbins,
+        state._nsubpixel,
     ) = load.load_subpixels(state, state._modpass["p0"])
     ptied = []
     count = 0

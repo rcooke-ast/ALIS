@@ -296,3 +296,32 @@ def test_blind_this_line(window, qtbot):
     window.qactions["edit.undo"].trigger()
     assert line in session.project.hidden_lines()
     assert not panel._can_blind(line)
+
+
+def test_an_old_name_s_problem_offers_its_rename(window, qtbot):
+    # Stage 14, Task 14.2 (Q14.8 (ii)): typed by hand, an old name stops the model
+    # reading; its problem names the new name, and a right-click renames it
+    session = open_model(window, qtbot, METAL)
+    panel = window.panel
+    put_cursor(panel.editor, 0)
+    qtbot.keyClick(panel.editor, QtCore.Qt.Key.Key_Return)
+    type_text(qtbot, window, 0, "run nsubmin 10")
+    assert session.project.paused
+    texts = [panel.list.item(n).text() for n in range(panel.list.count())]
+    assert any("Line 1:" in t and "'run nsubpixel_min'" in t for t in texts)
+    item = next(panel.list.item(n) for n in range(panel.list.count()))
+    assert "Right-click: Rename to 'run nsubpixel_min'." in item.toolTip()
+    assert [old.action for old in panel.fixes(0)] == ["Rename to 'run nsubpixel_min'"]
+    assert panel.fixes(1) == []
+    typed = session.project.text
+    panel.renameRequested.emit(0)
+    wait_idle(qtbot, window)
+    assert not session.project.paused
+    assert session.project.text.splitlines()[0] == "run nsubpixel_min 10"
+    assert panel.editor.toPlainText().splitlines()[0] == "run nsubpixel_min 10"
+    # One step: one undo gives back what was typed
+    undo = window.qactions["edit.undo"]
+    assert undo.text() == "Undo Rename nsubmin to nsubpixel_min"
+    undo.trigger()
+    wait_idle(qtbot, window)
+    assert session.project.text == typed

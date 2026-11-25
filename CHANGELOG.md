@@ -9,6 +9,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- A `.mod.out` records the sub-pixels per pixel its fit used, `nsubpixel=N` on each
+  data line (as `bufferpix` records its pixels), and ALIS uses a data line's
+  `nsubpixel=N` as given. ALIS works the sub-pixels out from the starting values,
+  and a `.mod.out` starts from the best fit, which can ask for others: run again,
+  `examples/lsf_spline`'s `.mod.out` gave a model that differed from its fit by up
+  to 2.3 times the error; it now gives the fit's model exactly. ALIS warns, once at
+  load, when a recorded `nsubpixel` leaves a profile with fewer than its snip's
+  `nsubsigma` sub-pixels across its standard deviation. With
+  `nsubpixel_renew`, none is written. The dashboard reads it.
+- ALIS warns where a profile is left with too few sub-pixels, fewer than its
+  snip's `nsubsigma` across its standard deviation, and of nothing else about the
+  sub-pixels: at the end of a fit, of each snip whose best fit asks for more than
+  the fit used (its sub-pixels are worked out from the starting values, and a
+  profile that narrows during the fit can be left short; not with
+  `nsubpixel_renew`); and at load, of snips that `nsubpixel_max` caps below what
+  their lines ask for (it capped them in silence), saying what to raise it to.
+- Dashboard Stage 14: a data line's `nsubpixel=N` (from a `.mod.out` opened with
+  Open a fit (.mod)…, or typed) is kept as written by every edit of the line, by
+  Export… and by the bundle, and the dashboard never adds one (Continue from best
+  fit copies values alone); Set LSFSpline knots… draws the kernel on it; the
+  pre-flight check notes a snip whose line records too few, with a fix on a
+  right-click, Work them out again, that removes the keyword (one step); and
+  Warnings and options to resolve… lists ALIS's warnings of too few sub-pixels,
+  each with what resolves it.
 - `lsffile` reads an LSF file whose first column is Δv in km/s, with `unit:kms`
   (`lsffile(name:k.dat,unit:kms)`): its kernel is sampled at each sub-pixel's
   velocity offset from the centre one, as `vfwhm`'s Gaussian is, and its buffer is
@@ -236,6 +260,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   does. It keeps working, and says so once when it starts.
 
 ### Fixed
+- Each data line's `lsffile`, `apod` and `lsf` resolution keeps its own keywords.
+  ALIS loads every line of a function on one instance, and these three kept a
+  line's keywords there for the next: a line that named no `index:` took the line
+  before's (it now draws a kernel at random, as it does alone); a line that named no
+  file (`lsffile`, `lsf`) or no `kind:` (`apod`) loaded with the line before's
+  (it is now refused: "… must be set"); a keyword a line did not name (`lsf`'s
+  `grating`, `slit`, `cen_wave`) took the line before's value, not the default; and
+  a `blindrange` given on two lines gathered both. A model whose lines each name
+  their keywords loads as before.
 - An `lsfspline` resolution keeps its `locations` in the `.mod.out`
   (`lsfspline(values…;locations:…)`): they were left out, so the output model could
   not be read back ("locations must be set"), by `run_alis` or by the dashboard,
@@ -309,6 +342,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   rather than stopping.
 
 ### Changed
+- Every model is worked out on at least 10 sub-pixels per pixel (`run
+  nsubpixel_min`, 5 before) unless it sets its own: 5 left broad profiles on too few
+  sub-pixels to integrate them well. A fit of broad lines can take up to twice as
+  long; a `.mod.out` written since it records its sub-pixels (`nsubpixel=N`)
+  keeps its own. The regression references that moved were refitted, checked and
+  regenerated (`tests/README.md`).
+- Every name of the sub-pixels follows one convention: a name that counts sub-pixels
+  per pixel begins `nsubpixel`, and one that counts them across a profile's standard
+  deviation begins `nsubsigma`; `_min` and `_max` bound them. `run nsubpix` is now
+  `run nsubsigma` (and a data line's `nsubpix=N` is `nsubsigma=N`), `run nsubmin`
+  is `run nsubpixel_min`, `run nsubmax` is `run nsubpixel_max`, and
+  `run renew_subpix` is `run nsubpixel_renew`; what each does, and its default, is
+  unchanged. The old names are not read: each is refused with a message that names
+  its new one, in a model, through `--set` and in the dashboard, whose `.mod` panel
+  renames it with a right-click on its problem (one step). ALIS's log gives each snip's `nsubpixel`. A
+  model function's `set_vars` takes `sampling=` (the bin type, and `nsubsigma`
+  times the width of a pixel) where it took `nexbin=`.
 - `lsfspline`'s first value, its smoothing, is now the FWHM in km/s of the Gaussian
   that smooths the knots (it was σ√2: a Gaussian of σ = smoothing/√2, a FWHM 1.665
   times the value), and the sub-pixels it asks for follow `vfwhm`'s. A model written
@@ -332,6 +382,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   nearest whole number; the dashboard's figures do the same (dashboard Stage 10).
 
 ### Removed
+- `run warn_subpix` and its warning of a snip on more sub-pixels per pixel than it
+  (100): too many sub-pixels are not a problem, and ALIS warns only where a profile
+  has too few. A model that sets it is refused, with a message saying so.
 - onefits (`out onefits`, `run_alis file.fits`): an experimental single-file
   format that no longer worked. `out onefits` is now an unrecognised setting.
 

@@ -624,3 +624,35 @@ def test_the_velocity_is_from_the_primary_component_with_most_column(
     # A hidden column density is not compared
     hidden = BL.Gate(project, hidden_lines={project.component("a2").main.line})
     assert X.default_component(project, None, hidden) == "a3"
+
+
+def test_export_keeps_a_recorded_nsubpixel(tmp_path, registry):
+    # Stage 14, Task 14.5: an nsubpixel=N is kept as written: the start model keeps
+    # the project's, and the best fit the one its run's .mod.out records
+    session = imported(METAL, tmp_path, registry)
+    project = session.project
+    text = project.text.replace("label=OI_SiII", "label=OI_SiII   nsubpixel=8")
+    project.apply(project.step(T.Change((T.Patch(0, project.text, text),))))
+    out = Path(str(METAL) + ".out.reference").read_text()
+    out = out.replace(
+        "label=OI_SiII  bufferpix", "label=OI_SiII  nsubpixel=6  bufferpix"
+    )
+    store_run(project, METAL, mod_out=out, status="imported", started=None)
+    view = RS.View.latest(project)
+    folder = tmp_path / "out"
+    for columns in (None, ["wave", "flux", "error"]):
+        choice = X.Choice(folder=str(folder))
+        if columns is not None:
+            choice = X.Choice(folder=str(folder), columns=columns)
+        planned, _notes = X.plan(session, choice, view)
+        for model, n in (
+            ("fit_spectra_start.mod", 8),
+            ("fit_spectra_bestfit.mod.out", 6),
+        ):
+            text = planned[str(folder / model)].decode()
+            (data,) = [
+                ln
+                for ln in text.splitlines()
+                if ".dat" in ln and not ln.lstrip().startswith("#")
+            ]
+            assert data.split().count("nsubpixel={0}".format(n)) == 1, (columns, data)

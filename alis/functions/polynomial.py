@@ -592,7 +592,7 @@ class Polynomial(base.Base) :
                 levadd += 1
         return pinfo, add
             
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Polynomial function to be used by 'call'
         The only thing that should be changed here is the parb values
@@ -627,11 +627,11 @@ class Polynomial(base.Base) :
                 params[i] = lnkprm
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
-            if nexbin[0] == "km/s": return params, 1
-            elif nexbin[0] == "A" : return params, 1
-            elif nexbin[0] == "Hz" : return params, 1
-            else: msgs.bug("bintype {0:s} should not have been specified in model function: {1:s}".format(nexbin[0],self._idstr), verbose=self._verbose)
+        if sampling is not None:
+            if sampling[0] == "km/s": return params, 1
+            elif sampling[0] == "A" : return params, 1
+            elif sampling[0] == "Hz" : return params, 1
+            else: msgs.bug("bintype {0:s} should not have been specified in model function: {1:s}".format(sampling[0],self._idstr), verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params
 

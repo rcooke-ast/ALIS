@@ -174,34 +174,28 @@ commands (separated by whitespace or tabs) in your
 \multicolumn{1}{p{5.0cm}}{Number of processes to send to the GPU/GPUs (must be $\ge0$)} \\ \midrule
 
 \multicolumn{1}{p{1.5cm}}{\texttt{run}} &
-\multicolumn{1}{p{2.5cm}}{\texttt{nsubpix}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubsigma}} &
 \multicolumn{1}{p{2.0cm}}{5} &
-\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
-\multicolumn{1}{p{5.0cm}}{Number of sub-pixels per 1 standard deviation to interpolate all models over -- higher values give higher precision} \\ \midrule
+\multicolumn{1}{p{2.0cm}}{int $\ge1$} &
+\multicolumn{1}{p{5.0cm}}{Number of sub-pixels across 1 standard deviation of a snip's narrowest profile, from which each snip's sub-pixels per pixel (\texttt{nsubpixel}) are worked out -- higher values give higher precision. \alis\ warns where a profile is left with fewer} \\ \midrule
 
 \multicolumn{1}{p{1.5cm}}{\texttt{run}} &
-\multicolumn{1}{p{2.5cm}}{\texttt{nsubmin}} &
-\multicolumn{1}{p{2.0cm}}{5} &
-\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubpixel\_min}} &
+\multicolumn{1}{p{2.0cm}}{10} &
+\multicolumn{1}{p{2.0cm}}{int $\ge1$} &
 \multicolumn{1}{p{5.0cm}}{Minimum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision} \\ \midrule
 
 \multicolumn{1}{p{1.5cm}}{\texttt{run}} &
-\multicolumn{1}{p{2.5cm}}{\texttt{nsubmax}} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubpixel\_max}} &
 \multicolumn{1}{p{2.0cm}}{21} &
-\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
+\multicolumn{1}{p{2.0cm}}{int $\ge1$} &
 \multicolumn{1}{p{5.0cm}}{Maximum number of sub-pixels per 1 pixel to interpolate all models over -- higher values give higher precision} \\ \midrule
 
 \multicolumn{1}{p{1.5cm}}{\texttt{run}} &
-\multicolumn{1}{p{2.5cm}}{\texttt{renew\_subpix}} &
-\multicolumn{1}{p{2.0cm}}{True} &
+\multicolumn{1}{p{2.5cm}}{\texttt{nsubpixel\_renew}} &
+\multicolumn{1}{p{2.0cm}}{False} &
 \multicolumn{1}{p{2.0cm}}{True, False} &
-\multicolumn{1}{p{5.0cm}}{If True, the subpixellation will be calculated after every iteration} \\ \midrule
-
-\multicolumn{1}{p{1.5cm}}{\texttt{run}} &
-\multicolumn{1}{p{2.5cm}}{\texttt{warn\_subpix}} &
-\multicolumn{1}{p{2.0cm}}{100} &
-\multicolumn{1}{p{2.0cm}}{int $\ge0$} &
-\multicolumn{1}{p{5.0cm}}{If the number of sub-pixels exceeds this amount, the user will be warned} \\ \midrule
+\multicolumn{1}{p{5.0cm}}{If True, each snip's sub-pixels per pixel are worked out again at every evaluation} \\ \midrule
 
 \multicolumn{1}{p{1.5cm}}{\texttt{chisq}} &
 \multicolumn{1}{p{2.5cm}}{\texttt{atol}} &
@@ -591,7 +585,7 @@ details on these properties) are the following:
 \item \texttt{columns} --- The columns of the datafile that should be read by \alis\
 \item \texttt{loadall} --- Load all of the data (not just the fitted region)
 \item \texttt{bintype} --- This parameter allows you to override the default \texttt{run+bintype} for a given set of data
-\item \texttt{nsubpix} --- This parameter allows you to override the default \texttt{run+nsubpix} for a given set of data.
+\item \texttt{nsubsigma} --- This parameter allows you to override the default \texttt{run+nsubsigma} for a given set of data.
 \item \texttt{plotone} --- Set to True if you want to plot this data in its own panel (rather than what is specified by \texttt{plot+dims})
 \item \texttt{label} --- A label that you would like to have plotted on the lower left corner of the plot
 \item \texttt{yrange} --- An optional command if you're unsatisfied with the automatic y-axis range of the plotted data
@@ -742,11 +736,11 @@ are now described in more detail.
      value set by \texttt{run+bintype}. Conversely, if you choose to specify \texttt{bintype}
      for a given datafile, this will override the default setting for \textit{just this datafile}.
 
-\textbf{\underline{nsubpix}} --- This parameter is an optional keyword which is used by
+\textbf{\underline{nsubsigma}} --- This parameter is an optional keyword which is used by
      \alis\ to subpixelate the spectrum (one standard deviation for the model is sampled
-     by the number of pixels specified with this keyword). If you do not specify this keyword,
-     \alis\ will assume the default value given by \texttt{run+nsubpix}. If you choose to specify
-     \texttt{nsubpix} for a given datafile, this will override the default setting for \textit{just this datafile}.
+     by the number of sub-pixels specified with this keyword). If you do not specify this keyword,
+     \alis\ will assume the default value given by \texttt{run+nsubsigma}. If you choose to specify
+     \texttt{nsubsigma} for a given datafile, this will override the default setting for \textit{just this datafile}.
 
 \textbf{\underline{plotone}} --- If you are plotting your results, \alis\ will use the default \texttt{plot+dims}
      arguments toplot your data in different panels. \texttt{plotone} is an optional parameter which allows

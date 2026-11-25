@@ -129,3 +129,16 @@ def test_descriptions_leave_the_defaults_unchanged():
     assert cfg["plotscript"]["numcol"] is None
     assert cfg["sim"]["perturb"] is None
     assert cfg["out"]["reportsig"] == 3.0
+
+
+def test_the_fewest_sub_pixels_per_pixel_is_10(capsys):
+    # Dashboard Stage 14, Task 14.6 (Q12.13 (b), Q14.3): before, 5
+    from alis.scripts import run_alis
+
+    assert ArgFlag()["run"]["nsubpixel_min"] == 10
+    with pytest.raises(SystemExit):
+        run_alis.parser(["--list-settings"])
+    (line,) = [
+        ln for ln in capsys.readouterr().out.splitlines() if "nsubpixel_min" in ln
+    ]
+    assert line.split()[:2] == ["nsubpixel_min", "10"]

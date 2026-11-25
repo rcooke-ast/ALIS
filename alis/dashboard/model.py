@@ -35,7 +35,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from alis import load, logger
+from alis import config, load, logger
 from alis.config import ArgFlag, ModelPass
 from alis.dashboard import text as T
 from alis.functions import base
@@ -54,7 +54,8 @@ DATA_KEYWORDS = (
     "shift",
     "columns",
     "plotone",
-    "nsubpix",
+    "nsubsigma",
+    "nsubpixel",
     "bintype",
     "loadall",
     "label",
@@ -744,7 +745,10 @@ class ParsedModel:
                 with alis_quietly():
                     load.set_params([line.text], self.argflag)
             except AlisStop:
-                if not known:
+                if config.renamed_setting(cat, key) is not None:
+                    # An old name of the sub-pixels (Stage 14, Q14.8 (ii))
+                    self._problem(line.num, config.renamed_setting(cat, key))
+                elif not known:
                     self._problem(
                         line.num, "Unknown setting: '{0}'.".format(" ".join(words[:2]))
                     )
@@ -792,6 +796,9 @@ class ParsedModel:
                         "'{0}' is not a keyword: data lines take"
                         " the file, then key=value words.".format(tok.text),
                     )
+                elif config.renamed_data_keyword(halves[0].text) is not None:
+                    # An old name of the sub-pixels (Stage 14, Q14.8 (ii))
+                    self._problem(line.num, config.renamed_data_keyword(halves[0].text))
                 elif halves[0].text not in DATA_KEYWORDS:
                     self._problem(
                         line.num,

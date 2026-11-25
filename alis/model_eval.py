@@ -61,7 +61,7 @@ class FitState:
     # Stage 4.8: (x, per-snip fitted-pixel counts), cached the same way and for
     # the same reason as _mplan.
     _nfitpix: Any = None
-    _nexbins: Any = None
+    _nsubpixel: Any = None
     # Dashboard Stage 1.4: where 'out wavecorr' writes. A worker process gets a
     # copy, so in a bundle run its writes are discarded; the best-fit file is
     # written by the final evaluation, in the main process.
@@ -278,14 +278,14 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
     elif ddpid is None:
         compcache = {}  # base call: (re)build the per-component cache
     # else (derivative, cache on): reuse the passed-in compcache
-    if state._argflag['run']['renew_subpix']:
-        wavespx, contspx, zerospx, posnspx, nexbins = load.load_subpixels(state, p) # recalculate the sub-pixellation of the spectrum
+    if state._argflag['run']['nsubpixel_renew']:
+        wavespx, contspx, zerospx, posnspx, nsubpixel = load.load_subpixels(state, p) # recalculate the sub-pixellation of the spectrum
     else:
-        wavespx, contspx, zerospx, posnspx, nexbins = state._wavespx, state._contspx, state._zerospx, state._posnspx, state._nexbins
+        wavespx, contspx, zerospx, posnspx, nsubpixel = state._wavespx, state._contspx, state._zerospx, state._posnspx, state._nsubpixel
     # GPU dispatch (Stage 4.3). ``None`` on the CPU backend -- a single module
     # read, after which the evaluation follows the unchanged CPU path. The
     # dispatcher is told which sub-pixel grid this evaluation uses so it can
-    # drop device wavelength buffers that a ``renew_subpix`` rebuild
+    # drop device wavelength buffers that a ``nsubpixel_renew`` rebuild
     # invalidated.
     gpudisp = gpu_dispatch.active()
     if gpudisp is not None:
@@ -579,11 +579,11 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
             if len(zerlev[sp]) != 0:
                 mdtmp = mcont[sp][llx:lux]*(mdtmp +  mzero[sp][llx:lux])/(mcont[sp][llx:lux]+mzero[sp][llx:lux]) # This is a general case.
 #					mdtmp = mdtmp +  mzero[sp][llx:lux]*(1.0-mdtmp)/mcont[sp][llx:lux]
-            modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn])
+            modcv[sp][ll:lu] = mdtmp.reshape(x[sp][ll:lu].size,nsubpixel[sp][sn]).sum(axis=1)/float(nsubpixel[sp][sn])
             if state._argflag['out']['wavecorr']:
                 outname = state._snipnames[sp][sn].replace(".dat", "_wzcorr.dat")
-                wavout = shwave.reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn])
-                cntout = mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn])
+                wavout = shwave.reshape(x[sp][ll:lu].size,nsubpixel[sp][sn]).sum(axis=1)/float(nsubpixel[sp][sn])
+                cntout = mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nsubpixel[sp][sn]).sum(axis=1)/float(nsubpixel[sp][sn])
                 flxout = (state._fluxfull[sp][ll:lu]-mzero[sp][llx])/(cntout-mzero[sp][llx])
                 fleout = state._fluefull[sp][ll:lu]/(cntout-mzero[sp][llx])
                 with outputs.of(state).open(outname, "w") as fil:
@@ -605,12 +605,12 @@ def model_func(state, x, p, pos, ddpid=None, getemab=False, output=0, compcache=
             enf[sp] = stf[sp] + x[sp][ll:lu][w][wB].size
             modcvf[sp][stf[sp]:enf[sp]] = modcv[sp][ll:lu][w][wB]
             state._modfinal[sp][ll:lu][w] = modcv[sp][ll:lu][w]
-            state._contfinal[sp][ll:lu][w] = (mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn]))[w]
-            state._zerofinal[sp][ll:lu] = (mzero[sp][llx:lux].reshape(x[sp][ll:lu].size,nexbins[sp][sn]).sum(axis=1)/float(nexbins[sp][sn]))
+            state._contfinal[sp][ll:lu][w] = (mcont[sp][llx:lux].reshape(x[sp][ll:lu].size,nsubpixel[sp][sn]).sum(axis=1)/float(nsubpixel[sp][sn]))[w]
+            state._zerofinal[sp][ll:lu] = (mzero[sp][llx:lux].reshape(x[sp][ll:lu].size,nsubpixel[sp][sn]).sum(axis=1)/float(nsubpixel[sp][sn]))
             stf[sp] = enf[sp]
             cvind += 1
             shind += 1
-    del wavespx, posnspx, nexbins
+    del wavespx, posnspx, nsubpixel
     del mzero, mcont
 #		if output == 0: return modcvf
     if output == 0:

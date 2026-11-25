@@ -274,7 +274,7 @@ def _load_with_alis(project):
             state._contspx,
             state._zerospx,
             state._posnspx,
-            state._nexbins,
+            state._nsubpixel,
         ) = load.load_subpixels(state, state._modpass["p0"])
     return state
 

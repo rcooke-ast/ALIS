@@ -319,14 +319,34 @@ def test_keep_it_running_lets_go_of_the_process_at_once(home, tmp_path, registry
 def test_alis_s_warnings_are_kept_with_the_run(home, tmp_path, registry):
     # Stage 13, Task 13.10 (Q13.8 (iii)): Warnings and options to resolve… lists
     # them for a run opened later, so they are kept in run.json
+    # (Stage 14 removed the warning of too many sub-pixels, used here before:
+    # more CPUs than the computer has make ALIS warn as the model is read)
     session = S.Session.open(packed(tmp_path), registry=registry)
-    job = run(session, settings=SETTINGS + ["run warn_subpix 1"])
+    job = run(session, settings=SETTINGS[:-1] + ["run ncpus 100000"])
     assert job.status == R.COMPLETED, job.message
     assert job.take(session)
     kept = R.latest(session.project.bundle).info.get("warnings")
-    assert kept and any("sub-pixellation" in w for w in kept)
+    assert kept and any("100000 CPUs" in w for w in kept)
     assert len(kept) == len(set(kept))
     assert job.warnings and job.warnings[0] in kept
+
+
+def test_a_best_fit_s_sub_pixel_warning_is_kept_with_the_run(home, tmp_path, registry):
+    # Stage 14, Task 14.5: lsf_spline's fit starts on 10 sub-pixels per pixel
+    # (nsubpixel_min, Task 14.6) and its
+    # best fit asks for more; ALIS warns at the end of the fit (Task 14.4), and
+    # Warnings and options to resolve… lists it with what resolves it
+    spline = ROOT / "examples/lsf_spline/model/fit_spectra.mod"
+    session = S.Session.open(packed(tmp_path, spline), registry=registry)
+    job = run(session)
+    assert job.status == R.COMPLETED, job.message
+    assert job.take(session)
+    kept = R.latest(session.project.bundle).info.get("warnings")
+    best = [w for w in kept if "best fit asks for more sub-pixels" in w]
+    assert len(best) == 1 and "the fit used 10" in best[0]
+    # Its .mod.out records the sub-pixels its fit used (Task 14.3)
+    out = R.latest(session.project.bundle).mod_out()
+    assert "nsubpixel=10" in out
 
 
 def test_a_project_with_no_file_keeps_the_run_until_saved(home, tmp_path, registry):

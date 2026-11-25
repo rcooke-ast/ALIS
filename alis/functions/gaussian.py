@@ -76,11 +76,11 @@ class Gaussian(base.Base) :
 #		elif i == 2: pin = par
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
-        and possibly the nexbin details...
+        and possibly the sampling details...
         """
         levadd=0
         params=np.zeros(self._pnumr)
@@ -111,11 +111,11 @@ class Gaussian(base.Base) :
                 params[i] = lnkprm
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
-            if params[2] == 0.0: msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, int(round(parb['ap_2a']*nexbin[1]/(299792.458*params[2]) + 0.5))
-            elif nexbin[0] == "A" : return params, int(round(nexbin[1]/params[2] + 0.5))
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+        if sampling is not None:
+            if params[2] == 0.0: msgs.error("Cannot work out nsubpixel for "+self._idstr+": a profile's width is 0.0")
+            if sampling[0] == "km/s": return params, int(round(parb['ap_2a']*sampling[1]/(299792.458*params[2]) + 0.5))
+            elif sampling[0] == "A" : return params, int(round(sampling[1]/params[2] + 0.5))
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params
 
@@ -190,11 +190,11 @@ class GaussianConstant(base.Base) :
         elif i == 3: pin = parb['ap_2a'] * par/299792.458
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
-        and possibly the nexbin details...
+        and possibly the sampling details...
         """
         levadd=0
         params=np.zeros(self._pnumr)
@@ -225,11 +225,11 @@ class GaussianConstant(base.Base) :
                 params[i] = lnkprm
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
-            if params[2] == 0.0: msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, int(round(parb['ap_2a']*nexbin[1]/(299792.458*params[2]) + 0.5))
-            elif nexbin[0] == "A" : return params, int(round(nexbin[1]/params[2] + 0.5))
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+        if sampling is not None:
+            if params[2] == 0.0: msgs.error("Cannot work out nsubpixel for "+self._idstr+": a profile's width is 0.0")
+            if sampling[0] == "km/s": return params, int(round(parb['ap_2a']*sampling[1]/(299792.458*params[2]) + 0.5))
+            elif sampling[0] == "A" : return params, int(round(sampling[1]/params[2] + 0.5))
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params
 
@@ -329,11 +329,11 @@ class GaussianConstantHelium(base.Base) :
         elif i == 6: pin = par
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
-        and possibly the nexbin details...
+        and possibly the sampling details...
         """
         levadd=0
         params=np.zeros(self._pnumr)
@@ -366,10 +366,10 @@ class GaussianConstantHelium(base.Base) :
                 params[i] = lnkprm
         if ddpid is not None:
             if ddpid not in parinf: return []
-        if nexbin is not None:
-            if params[3] == 0.0: msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, int(round(parb['ap_2a']*nexbin[1]/(299792.458*params[3]) + 0.5))
-            elif nexbin[0] == "A" : return params, int(round(nexbin[1]/params[3] + 0.5))
-            else: msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+        if sampling is not None:
+            if params[3] == 0.0: msgs.error("Cannot work out nsubpixel for "+self._idstr+": a profile's width is 0.0")
+            if sampling[0] == "km/s": return params, int(round(parb['ap_2a']*sampling[1]/(299792.458*params[3]) + 0.5))
+            elif sampling[0] == "A" : return params, int(round(sampling[1]/params[3] + 0.5))
+            else: msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
         elif getinfl: return params, parinf
         else: return params

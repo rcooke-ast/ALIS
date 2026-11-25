@@ -320,7 +320,7 @@ class LineEmission(voigt.Voigt) :
             msgs.error("Function "+self._idstr+" is badly defined in definition parin.")
         return pin
 
-    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, nexbin=None, ddpid=None, getinfl=False):
+    def set_vars(self, p, level, mp, ival, wvrng=[0.0,0.0], spid='None', levid=None, sampling=None, ddpid=None, getinfl=False):
         """
         Return the parameters for a Gaussian function to be used by 'call'
         The only thing that should be changed here is the parb values
@@ -373,7 +373,7 @@ class LineEmission(voigt.Voigt) :
             nu = np.argmin( np.abs( self._atomic['Wavelength'][nv]-float(eliont[-1]) ) )
             inrng = (self._atomic['Wavelength'][nv][nu]*(1.0+pt[1]) >= wvrng[0]) and (self._atomic['Wavelength'][nv][nu]*(1.0+pt[1]) <= wvrng[1])
             if not inrng:
-                if nexbin is not None: return [], None
+                if sampling is not None: return [], None
                 elif getinfl:
                     return [], []
                 else: return []
@@ -471,16 +471,16 @@ class LineEmission(voigt.Voigt) :
                 else: params = np.append(params, paramst, axis=0)
                 tsize += 1
             if tsize == 0:
-                if nexbin is not None: return [], None
+                if sampling is not None: return [], None
                 elif getinfl: return [], []
                 else: return []
-        if nexbin is not None:
+        if sampling is not None:
             if params[:,2].min() == 0.0:
-                msgs.error("Cannot calculate "+self._idstr+" subpixellation -- width = 0.0")
-            if nexbin[0] == "km/s": return params, int(round(np.sqrt(2.0)*nexbin[1]/params[:,2].min() + 0.5))
-            elif nexbin[0] == "A" : return params, int(round(np.sqrt(2.0)*299792.458*nexbin[1]/((1.0+params[:,1])*params[:,4]*params[:,2]).min() + 0.5))
+                msgs.error("Cannot work out nsubpixel for "+self._idstr+": a profile's width is 0.0")
+            if sampling[0] == "km/s": return params, int(round(np.sqrt(2.0)*sampling[1]/params[:,2].min() + 0.5))
+            elif sampling[0] == "A" : return params, int(round(np.sqrt(2.0)*299792.458*sampling[1]/((1.0+params[:,1])*params[:,4]*params[:,2]).min() + 0.5))
             else:
-                msgs.bug("bintype "+nexbin[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
+                msgs.bug("bintype "+sampling[0]+" should not have been specified in model function: "+self._idstr, verbose=self._verbose)
                 msgs.error("Cannot proceed until this bug is fixed")
         elif getinfl: return params, parinf
         else: return params
