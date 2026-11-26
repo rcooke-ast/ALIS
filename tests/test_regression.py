@@ -96,7 +96,8 @@ MINIMISATION_KNOWN_DIVERGENCE = {}
 # them (RJC's other machine). Skipped only when --skip-machine-dependent is
 # given, so the reference machine and macOS CI stay strict; this is an opt-out
 # for working on a second machine, not a relaxation of the harness. The Ubuntu
-# examples job gives it too (dashboard Stage 7, Q7.21), for splineabs below.
+# examples job gives it too (dashboard Stage 7, Q7.21), for the two splineabs
+# fits below (the linear one since dashboard Stage 14, Prompt 5).
 #
 # Diagnosed 2026-07-30: NOT a regression. Extracting commit 182bc20 (end of
 # Stage 3.5, before any Stage 4 work) and running J0903p2628 against it gives
@@ -126,6 +127,13 @@ MINIMISATION_MACHINE_DEPENDENT = {
     # and the mode (b) evaluation still pass there. On macOS the refit is
     # bit-identical to the reference whatever ncpus or start method.
     "examples/splineabs/model/fit_spectra",
+    # Diagnosed 2026-11-26 (dashboard Stage 14, Prompt 5): the same degeneracy,
+    # since its reference was regenerated with nsubpixel_min 10, which left O I's
+    # knot 1 at its bound (0.0 +/- 0.107). On Linux the errors correlated with it
+    # come out smaller (bturb's 6.22 -> 2.88); starts perturbed by 1e-6 give
+    # chi-squared within 0.004 and bturb's error anywhere from 0 to 112 here.
+    # chi-squared, every value and the mode (b) evaluation pass on Linux.
+    "examples/splineabs/model/fit_spectra_linear",
 }
 
 

@@ -112,6 +112,10 @@ correctness first, then what users need next, then effort; RJC orders the work.
     with, which failed CI's `examples` job under numpy 2.5.5 until the harness took
     an undetermined parameter as it comes (D153). Offered to dashboard Stage 15 (its
     item 16, Q15.8).
+28. **`examples/splineabs`'s knots at their bound** (§7.14; dashboard Stage 7, Q7.21
+    (b), and Stage 14, Prompt 5): both of its fits are degenerate, so their refits
+    and bundles are skipped on Linux CI. Offered to dashboard Stage 15 with item 16
+    (Q15.8).
 
 ### Not planned, or entries to close
 - **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
@@ -734,3 +738,29 @@ from Stage 13 on; offered to Stage 15 (its item 16, Q15.8).*
   traded against, until a fit from the example's start returns the smoothing it was
   made with, with a finite error; then the references regenerated, and the harness
   run under the newest numpy as CI installs it.
+
+### 7.14 `examples/splineabs`'s knots at their bound
+
+*Found in dashboard Stage 7 (Q7.21, 2026-11-02) for `fit_spectra`, and again in
+Stage 14 (Prompt 5, 2026-11-26) for `fit_spectra_linear`; offered to Stage 15 with
+item 16 (Q15.8).*
+
+- **What:** both fits end with spline knots at, or beside, their bound of 0. A knot
+  that reaches the bound leaves the covariance, and the errors correlated with it
+  shrink, so a refit's errors depend on rounding: on Linux x86-64 CI they do not
+  reproduce the references made on macOS (`fit_spectra`: bturb's error 6.43 → 2.91;
+  `fit_spectra_linear`: 6.22 → 2.88, since its reference was regenerated with
+  `nsubpixel_min` 10, which left O I's knot 1 at 0.0 ± 0.107). Here, starts of
+  `fit_spectra_linear` perturbed by 10⁻⁶ reach χ² within 0.004 of each other, with
+  bturb's error anywhere from 0 to 112. χ², every value and the evaluation at the
+  best fit (mode (b)) pass everywhere.
+- **Why deferred:** RJC chose to skip the two refits and bundles on Linux CI
+  (`MINIMISATION_MACHINE_DEPENDENT`, Q7.21 (a)), with (b), a well-posed example,
+  later; Stage 14's Prompt 5 applied (a) to the linear fit.
+- **Where:** `examples/splineabs/model/fit_spectra.mod`, `fit_spectra_linear.mod`,
+  their data and references; `tests/test_regression.py`
+  (`MINIMISATION_MACHINE_DEPENDENT`).
+- **To finish:** the knots that end at 0 fixed or removed, or data that constrain
+  them, until perturbed starts give the same errors; then the references
+  regenerated, and the two fits taken out of `MINIMISATION_MACHINE_DEPENDENT`, so
+  that Linux CI refits them again.

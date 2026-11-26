@@ -1028,6 +1028,8 @@ passed (`--run-slow`). Since the snapshot: the three coverage tests (57 passed w
 their files) and Q14.13's two `test_fixed_param` cases (2 passed) were run on
 their own. The close waits for Q14.14 (CI's `examples` job).
 
+## Prompt 9: RJC's response to Q14.14 (2026-11-26)
+
 **Q14.14 applied** (RJC's response: (a) for now; the test data should be made at a
 higher S/N). `tests/compare.py`'s `_compare_error_line` matches a zero 1σ error with a
 zero error or with one at least as large as the parameter's value, read from the
@@ -1047,3 +1049,42 @@ included; before, 2 failed and 115 passed under 2.5.5). `lsf_spline`'s, `brokenp
 `tophat`'s `test_minimisation`, `test_fixed_param` and `test_bundle` listed as passed
 under 2.5.5. `unit` on a snapshot of this tree (`snap_q14_14`): 2475 passed, 119
 skipped (9.2.0: 2474, 120). The close waits for CI on RJC's push.
+
+## Prompt 10: the stage document's Prompt 5, CI's Ubuntu `examples` job (2026-11-26)
+
+**CI on 0744c8a** (runs 45795870010 on `alis_v2_db_stage14` and 45795926188 on
+`alis_v2`): lint, unit and gui passed on Ubuntu and macOS, and `examples` on macOS
+(Q14.14's rule: `lsf_spline` passes); `examples` failed on Ubuntu. RJC's copy of its
+log (`context/misc/GitHub_examples_Ubuntu-latest_py313.txt`): 2 failed, 110 passed,
+`examples/splineabs/model/fit_spectra_linear`'s `test_minimisation` and `test_bundle`,
+each with four 1σ errors of O I's `splineabs` outside 10% (column 0.892 vs 1.345,
+bturb 2.876 vs 6.218, knot 3 1.615 vs 1.946, knot 6 0.178 vs 0.316) and the model
+column at 9 of 368 pixels (worst 0.074 of a pixel's error). χ², every value and its
+evaluation at the best fit (mode (b)) passed; `lsf_spline`'s three tests passed on
+Linux too. Its reference was regenerated at Task 14.7, so the Ubuntu failure at
+506939b was most likely this case as well as `lsf_spline` (Q14.14 assumed the two
+`lsf_spline` tests alone).
+
+**Cause:** the degeneracy Q7.21 diagnosed for its sibling `splineabs/fit_spectra`.
+The regenerated reference (`nsubpixel_min` 10) left O I's knot 1 at its bound,
+0.0 ± 0.107 (the old reference had it at 9.65×10⁻⁵ ± 0.76, and its errors moved
+113.2 → 6.2 at the regeneration). Here the refit reproduces the reference exactly.
+Refitting from starts perturbed by 10⁻⁶ (values strictly inside their limits): χ²
+from 354.9318 to 354.9357 across 24 starts, with bturb's error 0, 2.9, 6.3, 24 or
+112 and the column's 1.2–1.9, as different knots end at the bound. Fixing knot 1 at
+0 gives bturb's error 2.92, as on Linux, though not Linux's other errors exactly;
+Linux lands on another of these points. (Starts just inside a bound, a knot at
+0.999999 for 1, stop the minimiser after 2 iterations at the start's χ², the
+stopping path of `deferred_work.md` §2.4 and §1.5.) No Linux machine was at hand to
+run it there.
+
+**Fix** (Q7.21 (a), RJC's remedy for the same degeneracy): `fit_spectra_linear` joins
+`MINIMISATION_MACHINE_DEPENDENT` in `tests/test_regression.py`, with its diagnosis,
+so the Ubuntu `examples` job (`--skip-machine-dependent`) skips its refit and bundle;
+its evaluation at the best fit, and every test on macOS, still run. Checked here:
+`-k splineabs` with the flag, 2 passed (mode (b)), 4 skipped; without it (numpy
+2.5.5), 6 passed. Ubuntu's command under numpy 2.5.5: 116 passed, 46 skipped
+(strict: 120 passed, 42 skipped). Making the example well posed (Q7.21 (b)) is
+`deferred_work.md` §7.14 (priority 28), offered to Stage 15 with `lsf_spline`'s data
+as item 16, Q15.8 now asking for both. `tests/README.md` updated; pre-commit passed.
+The close waits for CI on RJC's push.
