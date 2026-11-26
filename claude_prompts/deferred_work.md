@@ -160,6 +160,9 @@ correctness first, then what users need next, then effort; RJC orders the work.
   up to date as of Stage 6.7; `doc/tex_files/` is out of date and reference only.
   `run_alis --list-settings` (Stage 6.1, Q6.24) covers settings discovery in the
   meantime.
+- **Planned:** in `documentation_stage0.md` (D87), Documentation Stages 1–5, next
+  after dashboard Stage 14 (brought up to date at its close, 2026-11-26, with queries
+  DQ.1–DQ.14 for RJC). `CONTRIBUTING.md` is in Documentation Stage 5.
 
 ### 1.3 YAML/TOML model files (Stage 5.1)
 - **What:** a second model-file format alongside `.mod`.

@@ -1088,3 +1088,29 @@ its evaluation at the best fit, and every test on macOS, still run. Checked here
 `deferred_work.md` §7.14 (priority 28), offered to Stage 15 with `lsf_spline`'s data
 as item 16, Q15.8 now asking for both. `tests/README.md` updated; pre-commit passed.
 The close waits for CI on RJC's push.
+
+## Prompt 11: the close (2026-11-26)
+
+**CI** (run 45805049616, on 5f776f7, `alis_v2_db_stage14`): every job passed — lint;
+unit on Ubuntu (2 min 15 s) and macOS (3 min 33 s); `examples` on Ubuntu (4 min 43 s,
+the two `splineabs` refits and bundles skipped) and macOS (10 min 57 s, every case);
+`gui` on Ubuntu (36 min) and macOS (30 min), within their 90 minutes, and Stage 13's
+segfault did not recur. Both CI items of Task 14.9 are met: the `gui` job, and the
+`examples` job (Q14.14's rule, D153, and `splineabs/fit_spectra_linear` among the
+machine-dependent refits).
+
+**Task 14.9's checks**, all met: every task logged as done with its check; Q14.1–Q14.14
+answered and applied; the review applied (both threads resolved); the batches' counts
+against Stage 13's close (unit 2475 passed, 119 skipped on this tree, 2474 and 120
+under pytest 9.2.0; `gui` 342; `fast` 159; `medium` and `slow` 8; `examples` 120
+passed, 42 skipped, under numpy 2.4.3 and 2.5.5); CI on every job; `test-coverage`
+and the tests it suggested; no design reference in the window's text; pre-commit on
+every changed file; no old name of the sub-pixels left; ALIS outside
+`alis/dashboard/` changed only as the tasks said.
+
+**What follows.** `dashboard_stage0.md`: Stage 14 done (D147–D153); next, the
+documentation, `documentation_stage0.md`, brought up to date for this close with its
+queries (DQ.1–DQ.7, and DQ.8 onwards, new); then Stage 15 (`dashboard_stage15.md`,
+Q15.1–Q15.8). `dashboard_stage15.md` is untracked still, for RJC to add.
+
+**Stage 14 is closed.**

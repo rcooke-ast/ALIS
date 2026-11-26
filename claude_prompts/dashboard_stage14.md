@@ -41,6 +41,14 @@ run again (2026-11-25), applied RJC's responses to Q14.8 and Q14.9 (each lean; t
 archive of RJC's files directly in `context/`) and checked the list against the code.
 No code was changed.*
 
+*Prompt 4 (2026-11-25) built Tasks 14.1–14.9, pausing for Q14.10–Q14.13, which RJC
+answered; the review's comments were applied. CI's `examples` job then failed: under
+numpy 2.5.5, `lsf_spline`'s undetermined smoothing (Q14.14 (a): the harness's rule for a
+zero error, D153) and, on Linux, `splineabs/fit_spectra_linear`'s degenerate knots
+(Prompt 5: skipped there with `fit_spectra`, Q7.21 (a)). **Closed on 2026-11-26** (D147–D153),
+with every CI job passing on 5f776f7 (run 45805049616); the counts are in the log.
+Next: the documentation (`documentation_stage0.md`), then Stage 15.*
+
 ## The key item: ALIS's sub-pixels (`deferred_work.md` §7.10)
 
 **(a) The sub-pixels a `.mod.out` is evaluated on** (Stage 13, Task 13.2, Q13.7).

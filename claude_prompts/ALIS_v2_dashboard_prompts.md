@@ -772,7 +772,8 @@ Prompt 7, noting that they may be adjusted after feedback from users.*
 - **D86. Refusals as messages** (item 6): a refusal of Exclude, Include or a label is a
   message, never a traceback.
 - **D87. The documentation** (Q7.13): planned in `documentation_stage0.md` (its
-  queries DQ.1–DQ.7), and written in Documentation Stages 1–5 after the dashboard's
+  queries DQ.1–DQ.7, and DQ.8–DQ.14 added when it was brought up to date at dashboard
+  Stage 14's close), and written in Documentation Stages 1–5 after the dashboard's
   v1; added to "After v1".
 - **D88. Export…, only what is needed** (Q7.16, refining D10): File → Export…
   writes what is ticked to a chosen folder: the snips, one ASCII file each, named
