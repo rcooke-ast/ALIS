@@ -62,24 +62,15 @@ _GEN_CASES = [c for c in _CASES if c.kind == "generate"]
 # The sharp-feature cases run in the gate under the Q0.22 error-based
 # model-column check (|new-ref| < FITDAT_ERRFRAC_FIXEDPARAM * error).
 #
-# What remains excluded from mode (b):
-# - "reference point": brokenpowerlaw's committed .mod.out.reference
-#   does not evaluate to its own recorded chi-squared (Q0.12);
-# - "sharp edge": tophat's print-truncated edge lands between pixels,
-#   giving a ~14x-the-error model jump at the edge pixel, far beyond
-#   any sane error fraction (RJC was content to drop it; Q0.15). Its
-#   minimisation test (mode a) still runs.
-# - "sub-pixels": lsf_spline's .mod.out is evaluated on other sub-pixels than its
-#   fit used (ALIS sets them at load from the starting values: 6 from the fit's
-#   4 km/s smoothing, 21 from its best fit's 0.12 km/s), so its model differs by up
-#   to 2.3x the error. Recording them in the .mod.out waits in deferred_work.md
-#   sec. 7.10 (dashboard Stage 13, Q13.7 (b)); its fit and bundle run.
-FIXEDPARAM_EXCLUDE = {
-    "examples/brokenpowerlaw/model/fit_spectra": "reference point (chi2 374.98 vs recorded 338.15); Q0.12",
-    "examples/tophat/model/fit_spectra": "sharp edge (~14x error at edge pixel); Q0.15",
-    # examples/lsf_spline came back in dashboard Stage 14 (Task 14.7): its reference
-    # records the sub-pixels its fit used (nsubpixel=), and is evaluated on them
-}
+# Nothing is excluded from mode (b) since dashboard Stage 14. Each reference
+# records the sub-pixels its fit used (nsubpixel= on each data line, Task 14.3),
+# and is evaluated on them. lsf_spline came back at Task 14.7; brokenpowerlaw
+# ("reference point", Q0.12: its reference did not evaluate to its recorded
+# chi-squared) and tophat ("sharp edge", Q0.15: ~14x the error at its edge pixel)
+# came back at the stage's close (Q14.13): both mismatches were the sub-pixels, a
+# .mod.out evaluated on other sub-pixels than its fit used. A case left out names
+# its reason here.
+FIXEDPARAM_EXCLUDE = {}
 
 # Fixed-parameter evals normally all run on every commit (batch
 # "fast"). The DH_orders eval is the exception: a single evaluation of

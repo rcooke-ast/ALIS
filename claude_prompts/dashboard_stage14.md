@@ -1198,6 +1198,65 @@ it runs) is cheap to keep as Stage 15's first task, smaller than its key item.*
 
 **Response:** I agree with lean (b). If there are problems in the future with `brokenpowerlaw` and `tophat`, we can exclude them. They are not very important for QSO absorption line analyses that are  typically undertaken with ALIS.
 
+*Applied (Prompt 8, 2026-11-25): `FIXEDPARAM_EXCLUDE` is empty (`tests/test_regression.py`,
+its comment giving each case's history), and `test_fixed_param` runs on
+`brokenpowerlaw` and `tophat` (`fast`, both passing). `deferred_work.md` §2.4 kept open
+for Stage 15 to confirm the minimiser's stopping paths at `atol`, with the evidence and
+RJC's note that either case can be excluded again; priority 3 and Stage 15's candidate
+1 and Q15.1's lean follow (the simulations now the lean, with §2.4 as a small first
+task). `tests/README.md` and D149 say that no case is excluded.*
+
+**Q14.14 — CI's `examples` job: `examples/lsf_spline` under numpy 2.5.5 (Task 14.9,
+CI; Q0.16).** On the stage's push (506939b, run 45703269345) every job passed but
+`examples`, which failed on Ubuntu and macOS, as it has since Stage 13's push
+(f9f4539; Stage 12's, 7343048, passed). The gui job's segfault of Stage 13 did not
+recur. CI's log needs admin rights to download, so the failure was reproduced here:
+CI installs the newest numpy, 2.5.5 (released 2026-11-15), and the references were
+made with 2.4.3. On a clean copy of 506939b with numpy 2.5.5, CI's `pytest -m
+examples` gives 2 failed, 115 passed: `test_minimisation` and `test_bundle` of
+`examples/lsf_spline`, each with one comparison, "convolution errors line 1, token 1:
+1-sigma error 6127.9272242 vs 0.0"; with numpy 2.4.3, all pass.
+
+The token is `lsfspline`'s smoothing FWHM, which the data do not constrain: the
+example's data were made with 4.0 km/s, but the fit trades the smoothing against the
+knots' heights, and any smoothing narrower than a sub-pixel (0.14 km/s) leaves the
+model as it is. With numpy 2.4.3 the fit takes it to its bound (2.9×10⁻⁷ km/s), where
+it leaves the covariance and its error is 0; with 2.5.5 it stops at 0.082 km/s, with
+an error of 6128. Every other value, error, χ² and the model agree. The harness asks
+a zero reference error to stay zero (Q0.16: it confirms the degeneracy), so the
+example fails wherever rounding moves it off the bound.
+
+- **(a) Refine Q0.16's rule:** a zero reference error is matched by a zero error, or
+  by one at least as large as the parameter's value (undetermined either way); a
+  small error, which would mean the parameter became constrained, still fails.
+  Prototyped on the clean copy: `lsf_spline` passes under both numpy versions. The
+  example and its references stay as they are; unit tests of the comparator's rule
+  are added (none exist).
+- **(b) Make the example well posed:** its smoothing fixed at the 4.0 km/s its data
+  were made with, its reference regenerated. It then no longer shows a best fit that
+  asks for more sub-pixels than its start, which `test_subpixels_fit.py` and the
+  review use it for, so that test needs another example.
+- **(c) Skip `lsf_spline`'s refit and bundle on CI**, on both platforms (as
+  `MINIMISATION_MACHINE_DEPENDENT` does on Linux); its evaluation at the best fit
+  still runs.
+
+*Lean (a). The failure is a parameter the data cannot determine, reported two ways;
+the rule can say so without loosening anything that can be measured, and it covers
+the next example with a parameter at a bound. The Ubuntu job, which skips the
+machine-dependent refits, ran 3 min 39 s against macOS's 8 min 55 s; its log, if RJC
+saves it to `context/misc/` as before, would confirm that it is the same two tests.*
+
+**Response:** OK, let's go with option (a) for now. This test does seem to have issues though, since the model cannot be reproduced with the data. It suggests that the test data should be generated with higher S/N.
+
+*Applied (2026-11-26):* (a). `tests/compare.py` matches a zero 1σ error with a zero
+error or with one at least as large as the parameter's value, either way round (so
+that a reference made where rounding stops short of the bound passes where it does
+not); a small error still fails, and so does a zero error whose value is blind. Its
+rule is unit-tested in `tests/test_compare.py` (9 tests, 4 of which fail on the
+comparator as it was). D153 records it. The example's data at a higher S/N are
+`deferred_work.md` §7.13 (priority 27), offered to Stage 15 as its item 16, with
+Q15.8. CI's `examples` batch under numpy 2.5.5 and 2.4.3 is in the log.
+
 ## Prompts
 1. Please read my responses to your queries, and the work of Stages 0–13 (their documents and logs). If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please write an ordered list of tasks. Please write all the tasks, each with a description of what it builds or fixes, and the check that will verify it. Each task should be numbered sequentially (14.1, 14.2, etc.). The final Task (currently labelled 14.N) should be to close the stage, and should include the checks that will verify that the stage is complete. Note that we will implement the documentation after this stage is complete, but please write a stage 15 design documentation, which will be implemented after the documentation is up to date.
 2. I have responded to your queries. Please review my responses, and if you have any further queries, please ask them in the Queries section. When everything is clear, please check that the ordered list of tasks is correctly written. Each task should be numbered sequentially (14.1, 14.2, etc.), and should include a description of what it builds or fixes, and the check that will verify it. The final Task should be to close the stage, and should include the checks that will verify that the stage is complete. Please note that we can continue this thread provided we are below 75% context usage. If we exceed that, we will need to start a new thread to continue the discussion. I also wanted to note that the CI tests failed when I pushed the branch to GitHub. I have pasted in the output in the following context file: `context/misc/GitHub_gui_Ubuntu-latest_py313.txt`. I also note that the CI tests passed when I pushed the `alis_v2` branch (except for the examples tests), so it might be OK. Let's check the CI tests at the end of this stage, and if they fail, we can investigate the cause.

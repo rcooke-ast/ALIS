@@ -983,3 +983,67 @@ Stage 15 to confirm on the minimiser's stopping paths).
 - Pre-commit on every Python file the stage changed or added (75): passed.
 - CI: waits for RJC's push of the branch (the `gui` job's segfault of Stage 13 and the
   `examples` job, with `nsubpixel_min` 10, are checked then).
+
+## Prompt 8: RJC's response to Q14.13, and CI (2026-11-25)
+
+**Read.** Q14.13 (b): both cases back in the gate, §2.4 kept open for Stage 15; either
+can be excluded again if it gives trouble. RJC committed and pushed the stage (506939b,
+"stage 14 - completed"); CI is checked before the close.
+
+**Q14.13 applied.** `tests/test_regression.py`: `FIXEDPARAM_EXCLUDE` is empty, its
+comment giving each case's history; `test_fixed_param` on `brokenpowerlaw` and
+`tophat`: 2 passed (`fast`, two tests more). `deferred_work.md` §2.4 (kept open, with
+the evidence and what is left) and priority 3; `dashboard_stage15.md`'s candidate 1
+(now a confirmation of the minimiser's stopping paths) and Q15.1's lean (the
+simulations, with §2.4 a small first task); `tests/README.md`; D149. Pre-commit
+passes. These changes come after 506939b, for RJC's next commit.
+
+**CI** (run 45703269345, on 506939b): lint passed; unit, gui and examples on Ubuntu
+and macOS running.
+
+**CI's result** (run 45703269345 on 506939b): lint passed; unit passed on Ubuntu and
+macOS; `gui` passed on both (Ubuntu 18 min 12 s; Stage 13's segfault did not recur);
+`examples` failed on both, as it has since Stage 13's push (f9f4539 failed it on both
+platforms; 7343048, Stage 12, passed). The job's log needs admin rights to download
+(the API answers 403), so the failure was reproduced: a clean copy of 506939b (`git
+archive`, no `context/`) under CI's command. With numpy 2.4.3 (this machine): 115
+passed (2 errors of this machine's setup, pytest-qt not loaded). With numpy 2.5.5, the
+newest, which CI installs (a scratch venv): 2 failed, 115 passed:
+`examples/lsf_spline`'s `test_minimisation` and `test_bundle`, each "convolution
+errors line 1, token 1: 1-sigma error 6127.9272242 vs 0.0". The smoothing FWHM of its
+`lsfspline` is undetermined (the fit trades it against the knots, and anything
+narrower than a sub-pixel leaves the model as it is): at its bound with error 0 under
+2.4.3, at 0.082 km/s with error 6128 under 2.5.5; everything else agrees. The
+harness's Q0.16 asks a zero reference error to stay zero. A refined rule (a zero
+reference error also matched by an error at least the parameter's value) was
+prototyped on the clean copy and passes under both. Put to RJC as **Q14.14**; the
+close waits for it.
+
+**The close's batches** (snapshot `snap_t14_9`: the tree after Q14.12, before the
+three coverage tests and Q14.13; a real copy of `context/`): unit 2460 passed, 119
+skipped (9.2.0: 2459, 120), against Stage 13's close of 2356 and 119 (2355, 120);
+`gui` 342 passed under both (Stage 13: 340); `fast` 159 passed (Stage 13: 155), the
+regression harness and its `test_bundle` mode included; `medium` and `slow` 8
+passed (`--run-slow`). Since the snapshot: the three coverage tests (57 passed with
+their files) and Q14.13's two `test_fixed_param` cases (2 passed) were run on
+their own. The close waits for Q14.14 (CI's `examples` job).
+
+**Q14.14 applied** (RJC's response: (a) for now; the test data should be made at a
+higher S/N). `tests/compare.py`'s `_compare_error_line` matches a zero 1σ error with a
+zero error or with one at least as large as the parameter's value, read from the
+value line in the same file (`_undetermined`; `_compare_section` hands each error line
+its two value lines through `_function_values`, a blind value as None). The rule holds
+either way round, so a reference made where rounding stops short of the bound passes
+where it reaches it; a small error, or a zero error whose value is blind, still
+fails. `tests/test_compare.py` (`unit`, 9 tests) checks it on lines shaped like
+`lsf_spline`'s convolution section, and a blind line's error slot; 4 of the 9 fail on
+the comparator as committed (506939b). Recorded as D153; `tests/README.md` updated.
+The data at a higher S/N are `deferred_work.md` §7.13 (priority 27), offered to Stage
+15 as item 16 with Q15.8 (D range D1–D153). pre-commit passed on the changed files.
+
+CI's `examples` batch (`pytest -m examples`, from the repo): numpy 2.5.5, 120 passed,
+42 skipped; numpy 2.4.3, 120 passed, 42 skipped (Q14.13's three cases in mode (b)
+included; before, 2 failed and 115 passed under 2.5.5). `lsf_spline`'s, `brokenpowerlaw`'s and
+`tophat`'s `test_minimisation`, `test_fixed_param` and `test_bundle` listed as passed
+under 2.5.5. `unit` on a snapshot of this tree (`snap_q14_14`): 2475 passed, 119
+skipped (9.2.0: 2474, 120). The close waits for CI on RJC's push.

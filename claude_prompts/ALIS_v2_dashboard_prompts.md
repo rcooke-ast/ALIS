@@ -1213,8 +1213,10 @@ stage's page.*
   §7.10 (a), Q14.3 (a), Q14.4 (i) and (ii); refines D140, Q13.7; ALIS): `nsubpixel=N`
   on each data line (none with `nsubpixel_renew`), and a data line's `nsubpixel=N`
   used as given, whatever `nsubpixel_min` and `nsubpixel_max` say, so that a
-  `.mod.out` gives its fit's model. `examples/lsf_spline`'s evaluation at its best
-  fit is in the harness's mode (b).
+  `.mod.out` gives its fit's model. The harness's mode (b) evaluates every unblinded
+  case: `examples/lsf_spline` came back, and so did `brokenpowerlaw` and `tophat`,
+  whose mismatches since Stage 0 were the sub-pixels (Q14.13 (b); §2.4 kept open
+  for Stage 15 to confirm the minimiser's stopping paths).
 - **D150. ALIS warns only of too few sub-pixels** (Q14.4 (ii), Q14.7, Q14.11,
   Q14.12, RJC's comments on the review; refines D142, Q13.8; ALIS): where a profile
   is left with fewer than its snip's `nsubsigma` across its standard deviation, on
@@ -1241,6 +1243,15 @@ stage's page.*
   tell a local minimum from the best one, and how sensitive a fit is to the
   sub-pixels, is `deferred_work.md` §1.5, a series of its own
   (`minimisation_stage0.md`).
+- **D153. The harness takes an undetermined parameter as it comes** (Q14.14 (a);
+  refines Q0.16; the harness): a zero 1σ error is matched by a zero error, or by one
+  at least as large as the parameter's value, either way round; a small error, which
+  would mean the parameter became constrained, still fails, and so does a blind
+  one. A parameter the data cannot determine leaves the covariance at its bound or
+  stops short of it with an error that swamps its value, as rounding decides:
+  `examples/lsf_spline`'s smoothing under numpy 2.4.3 and 2.5.5, which failed CI's
+  `examples` job from Stage 13. The example's data are to be made at a higher S/N,
+  so that its fit can reproduce its model (RJC's response; `deferred_work.md` §7.13).
 
 *Status of the proposed items*
 - Accepted as written: F1, F2, F4–F6, F8–F13, S2, S3, S5–S7, S9–S21, S23–S28 and S30

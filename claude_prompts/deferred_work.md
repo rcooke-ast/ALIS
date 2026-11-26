@@ -37,7 +37,9 @@ correctness first, then what users need next, then effort; RJC orders the work.
 3. **Diagnose `examples/brokenpowerlaw`'s χ² mismatch** (§2.4: 374.98 against
    338.15). The suspected cause is that ALIS reports a rejected trial step when the
    fit stops on `atol`. If so, it would affect any model that stops on `atol`, not
-   just this example.
+   just this example. *Dashboard Stage 14 (Q14.13): the mismatch was the
+   sub-pixels; `brokenpowerlaw` and `tophat` are back in the gate. Left: confirming
+   the minimiser's stopping paths (Stage 15's candidate 1).*
 4. **Sphinx/ReadTheDocs documentation and `CONTRIBUTING.md`** (§1.2). This was
    deferred until v2.0.0 is ready to release, which is now the next milestone.
    `doc/tex_files/` is out of date.
@@ -105,6 +107,11 @@ correctness first, then what users need next, then effort; RJC orders the work.
     in dashboard Stage 13; §7.10, with the sub-pixels a `.mod.out` is evaluated on,
     is the key item of dashboard Stage 14, next (Q13.7's response).* ***Done:** §7.10
     in dashboard Stage 14 (2026-11-25, D148–D152).*
+27. **`examples/lsf_spline`'s data at a higher S/N** (§7.13; dashboard Stage 14,
+    RJC's response to Q14.14): its fit cannot determine the smoothing it was made
+    with, which failed CI's `examples` job under numpy 2.5.5 until the harness took
+    an undetermined parameter as it comes (D153). Offered to dashboard Stage 15 (its
+    item 16, Q15.8).
 
 ### Not planned, or entries to close
 - **YAML/TOML model files** (§1.3): dropped by RJC (Q5.2/Q5.3).
@@ -304,9 +311,20 @@ correctness first, then what users need next, then effort; RJC orders the work.
 
 ### 2.4 `examples/brokenpowerlaw` — excluded from the fixed-parameter gate
 
-*Not taken in dashboard Stage 14 (Q14.1); offered to Stage 15 as its key item
-(candidate 1). Its reference was regenerated with `nsubpixel_min` 10 (χ² 3503.07 →
-3499.95) and it stays out of the gate.*
+*Back in the gate at dashboard Stage 14's close (Q14.13 (b), 2026-11-25), with
+`examples/tophat`; kept open for Stage 15 to confirm (its candidate 1). With their
+references regenerated (Task 14.7), each recording the sub-pixels its fit used
+(`nsubpixel=`), both pass the evaluation at the best fit: `brokenpowerlaw` χ²
+3499.947056 against 3499.947053 recorded, `tophat` 394.132678 against 394.132678, both
+model columns within the tolerance. Their references before, which recorded no
+sub-pixels, fail it (`brokenpowerlaw` 3555.29 against 3503.07 with 5 sub-pixels per
+pixel). So the mismatch below was the sub-pixels (§7.10), and the parameters
+`brokenpowerlaw`'s `.mod.out` writes are those of the χ² it writes, which the
+suspected cause would not give. **To finish:** read the minimiser's stopping paths at
+`atol` and confirm that none reports a rejected trial step; mode (b), which now runs
+on every unblinded case, checks each case's written parameters against its written
+χ². If either case fails again, it can be excluded (RJC, Q14.13: they matter little
+to QSO absorption-line work). Kept below as it was written.*
 - **What:** its reference evaluates to chi-squared 374.98 against a recorded
   338.15, so it is in `FIXEDPARAM_EXCLUDE`.
 - **Suspected cause:** the writer may emit a final *rejected* trial step rather
@@ -694,3 +712,25 @@ with Q15.4–Q15.6).*
   every load fresh defaults in `load.call_function_load`.
 - **Where:** `alis/functions/apod.py`, `alis/functions/lsf.py`, `alis/load.py`
   (`load_data`, `call_function_load`), `alis/main.py`.
+
+### 7.13 `examples/lsf_spline`'s data at a higher S/N
+
+*Found in dashboard Stage 14 (Q14.14, 2026-11-26), when CI's `examples` job failed
+from Stage 13 on; offered to Stage 15 (its item 16, Q15.8).*
+
+- **What:** the example's data were made with an `lsfspline` smoothing of 4.0 km/s,
+  but its fit trades the smoothing against the knots' heights, and a smoothing
+  narrower than a sub-pixel (0.14 km/s) leaves the model as it is: the fit cannot
+  reproduce the model its data were made with. Under numpy 2.4.3 the smoothing goes
+  to its bound (2.9×10⁻⁷ km/s, error 0); under 2.5.5 it stops at 0.082 km/s (error
+  6128). The harness passes both (D153), but the example shows a degenerate fit.
+- **Why deferred:** RJC chose to refine the harness's rule for now (Q14.14 (a)), and
+  noted that the test data should be generated with a higher S/N.
+- **Where:** `examples/lsf_spline/model/generate_spectra.mod`, its data and
+  references; `tests/test_subpixels_fit.py` and dashboard Stage 14's review use the
+  example for a best fit that asks for more sub-pixels than its start, which new data
+  may not give (another example would then serve).
+- **To finish:** data made at a higher S/N, and perhaps knots the smoothing is not
+  traded against, until a fit from the example's start returns the smoothing it was
+  made with, with a finite error; then the references regenerated, and the harness
+  run under the newest numpy as CI installs it.
