@@ -339,7 +339,7 @@ reStructuredText is Sphinx's own, with richer cross-references.
 
 My lean: Markdown (MyST), with `doc/installing.rst` kept as it is.
 
-**Response:**
+**Response:** I agree with your lean. Markdown is best. It's also fine if `doc/installing.rst` is converted to Markdown, but it's not necessary.
 
 **DQ.2 — The theme.** `sphinx-rtd-theme` (readthedocs' familiar look) or `furo` (a
 cleaner, more modern one, with a dark mode).
@@ -350,7 +350,7 @@ My lean: `furo`.
 refactor's Task 2.5; that was not a choice of theme, and the extra follows this
 answer.*
 
-**Response:**
+**Response:** Furo sounds like a better choice for a modern look and dark mode. Let's choose `furo`.
 
 **DQ.3 — The v1.0 manual.** Convert its chapters with `pandoc` and edit them, or
 rewrite each chapter from WF and the code, using the tex chapters as a checklist.
@@ -362,7 +362,7 @@ generatedata, montecarlo, newfunctions), converted with `pandoc`.
 *Note (2026-11-26): the `build-docs` skill already says the tex files are history and
 the code is the authority, which this lean follows.*
 
-**Response:**
+**Response:** The original documentation should be used as a guide only (feel free to include whatever information is available), and the new documentation should be based on the workflow and code. No tex files or pdf will be made available for v2 and beyond. The tex files will be kept in the repository for reference only.
 
 **DQ.4 — The lists of errors and warnings.** Made from the code (the `msgs.error` and
 `msgs.warn` calls, grouped by module, each with a hand-written explanation), or
@@ -376,13 +376,20 @@ code, each gets its place at once, and an explanation is written for the commone
 a new user meets: the model file's syntax, limits, data files, the sub-pixels'
 warnings); the rest show their message and module until written.*
 
-**Response:**
+**Response:** Perhaps we should number the errors and warnings for easier reference. For example, we could use a format like "Error Code: E.1.001" for errors in Module 1, error 001. Similarly, "Warning code: W.1.001" can be used for warnings in Module 1, error 001. This would make it easier to refer to specific messages in the documentation and in discussions.
 
 **DQ.5 — The acknowledgements.** v1.0 has the chapter commented out.
 
 My lean: a short page, with the funding and the people you name.
 
-**Response:**
+**Response:** It should acknowledge the following funding sources:
+Throughout the development of ALIS, RJC acknowledges support from the following funding sources:
+ - Peterhouse, Cambridge
+ - University of California Santa Cruz Morrison Fellowship
+ - NASA Hubble Fellowship
+ - Royal Society (RS) University Research Fellowship (URF)
+ - Royal Society (RS) Faraday Discovery Fellowship (FDF)
+Version 2 of ALIS was developed with the support of Anthropic Claude. Many others have contributed to suggesting improvements and testing the software, and their contributions are gratefully appreciated.
 
 **DQ.6 — Where the site lives.** readthedocs under `alis` (if free) or another name,
 built from `master`, with a version per release tag.
@@ -393,7 +400,7 @@ My lean: as described, once the v2 branch is merged into `master`.
 readthedocs project, and linking it to the GitHub repository, are RJC's (DQ.8 asks
 what it builds before the merge).*
 
-**Response:**
+**Response:** I agree with your lean. The project name on ReadTheDocs is called `ALIS-fitting`.
 
 **DQ.7 — The screenshots in the repository.** Commit them under `doc/source/_static/`,
 or make them in the readthedocs build (which needs Qt and a display there).
@@ -405,7 +412,7 @@ reads them.
 the same question; drawing them in the build would run 26 fits there. The lean covers
 both: committed, each made by its script.*
 
-**Response:**
+**Response:** There;s no need to add screenshots for all the examples, and no examples should be made based on the context files. I agree that the screenshots should be committed and made by `screenshots.py` before each release.
 
 **DQ.8 — What readthedocs builds while the site is written.** The stages take the
 site from a skeleton to the release over several branches, before `alis_v2` is merged
@@ -420,7 +427,7 @@ into `master` (DQ.6).
 My lean: (a). The build on readthedocs is the one users will get, and Stage 1's check
 needs it. It needs the project to exist from Stage 1 (RJC's, DQ.6).
 
-**Response:**
+**Response:** I agree with your lean. The build on ReadTheDocs should be the one users will get, and it is important to have the project set up from Stage 1.
 
 **DQ.9 — `prepfit` and preparing data.** The scripts that select fitting regions and
 write snips live in `examples/prepfit/`, outside the package, and are copied and
@@ -436,7 +443,7 @@ spectrum, the Regions tab and Load snips….
 My lean: (a). Users who prefer scripts or have v1 snips keep a documented path, and
 packaging it can wait for someone to ask.
 
-**Response:**
+**Response:** There should be no mention of prepfit anymore. The dashboard is now the only supported way to prepare data. The documentation should focus on the dashboard's functionality for preparing data.
 
 **DQ.10 — One source, from Documentation Stage 2.** Until now, each dashboard stage's
 close updated WF, the tex files and the CHANGELOG. Once the site's chapters hold that
@@ -455,7 +462,7 @@ the site's pages. A fault that waits for a fix (the
 three of Stage 14's items 12–14) is described as it should work, with a note saying
 what does not work yet, and Stage 15's close removes the notes.
 
-**Response:**
+**Response:** I agree with your lean. I will also note that the tex files will be kept in the repository for reference only, but they will not be updated or edited anymore. The site will serve as the primary source of all documentation. We will ensure that the penultimate task of each stage of development is always to update the site's pages that are affected by the changes made in that stage.
 
 **DQ.11 — The v1.0 manual's files.** `doc/tex_files/` (its sources and
 `alis_v1p0.pdf`) and `doc/alis_userguide.pdf`, once the site covers them.
@@ -466,7 +473,7 @@ what does not work yet, and Stage 15's close removes the notes.
 
 My lean: (a). The PDF is what users of v1 know, and keeping it costs nothing.
 
-**Response:**
+**Response:** There should be no mention of the v1.0 manual in the new documentation. The v1.0 manual will be kept in the repository for reference only, but it will not be updated or edited anymore. The site will serve as the primary source of all documentation for ALIS v2 and beyond.
 
 **DQ.12 — The dashboard's link to the site.** Its Help menu has Keyboard shortcuts
 (F1) and About ALIS, and no link to any documentation.
@@ -478,7 +485,7 @@ My lean: (a). The PDF is what users of v1 know, and keeping it costs nothing.
 My lean: (a). A user who is stuck on a tab reaches the page that explains it in one
 step; the pages' addresses are fixed in Stage 4, with the dashboard chapter.
 
-**Response:**
+**Response:** I agree with your lean. The Help menu should have a link to the ALIS documentation, which opens the site's page for the tab in view. This will provide users with quick access to relevant documentation while using the dashboard.
 
 **DQ.13 — The documentation in CI.** The four checks of "The tools", and when each
 runs.
@@ -492,7 +499,7 @@ runs.
 My lean: (a). A setting or function added without its page fails the push that adds
 it, and an external site being down does not.
 
-**Response:**
+**Response:** I agree with your lean.
 
 **DQ.14 — The API pages.** The developer chapter's reference to the code.
 - **(a)** The modules a developer extends or calls: `functions/base.py`, `user.py`,
@@ -507,7 +514,7 @@ My lean: (a). Those docstrings are the ones a developer reads, and keeping the b
 free of warnings over the whole package (b) would be a stage of docstring work on its
 own, which can follow.
 
-**Response:**
+**Response:** I agree with you lean. Please note that it would be helpful not to mix developer and user documentation. There should be a separate section for anything that developers/contributors need to know. We do not want to overwhelm users with developer information. Let's spend effort to really focus on one specific goal: We must ensure that the documentation is succinct to users, and that it is easy to navigate.
 
 ## Prompts
-
+1. Please read my responses to your queries, the ALIS code base, and the dashboard development (their design documents and logs). If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please update this document to reflect any changes to the design document based on my responses. When you have a clear perspective on the documentation, please write a plan for the documentation development, including the stages, tasks, and checks, and any other relevant information. We will develop one stage at a time, so please make a plan for how many stages are required, and what each stage will accomplish.
