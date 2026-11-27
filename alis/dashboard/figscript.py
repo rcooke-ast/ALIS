@@ -594,7 +594,7 @@ def script(project, view, fid, name, style=STYLE_NAME):
     lines = [
         "#!/usr/bin/env python3",
         '"""',
-        "{0} of {1}: a publication figure written by the ALIS dashboard on {2},".format(
+        "{0} of {1}: a publication figure written by the ALIS GUI on {2},".format(
             fig["name"], name, datetime.date.today().isoformat()
         ),
         "from the best fit of {0}.".format(view.name),
@@ -606,7 +606,7 @@ def script(project, view, fid, name, style=STYLE_NAME):
         "",
         "Every colour, size and range is a variable below, and each panel is an",
         "entry of PANELS, so the figure can be changed here. The data are the",
-        "snips' files beside this script, as the dashboard's Export writes them;",
+        "snips' files beside this script, as the GUI's Export… writes them;",
         "their columns are found by the names in their headers.",
         '"""',
         "",

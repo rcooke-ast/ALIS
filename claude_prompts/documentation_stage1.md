@@ -71,6 +71,21 @@ its comments for maintainers, off the site (`html_copy_source = False`). The
 deprecation in `pyproject.toml` that would stop readthedocs' builds in February
 2027. The stage pauses for RJC's push and readthedocs' hidden version.*
 
+*Prompt 3 (2026-11-27), logged in `logs/documentation_stage1_log.md`:*
+- *Task 1.4's checks after RJC's push (8833500): readthedocs built the hidden
+  version; its front page shows the three ways in, and all 36 pages answer; CI's
+  `docs` job passed.*
+- *DQ1.5 answered (a), through Claude's question; Task 1.5 fixes the licence.*
+- *Tasks 1.5–1.7 built: `prepfit` and `atomic.dat` removed, the GUI by name
+  (`tests/test_gui_by_name.py`), and the documents.*
+- *Task 1.8's review page published.*
+
+*Three small changes to the design, each logged: WF's §0.4 is renumbered §0.2;
+`load.py`'s message is the warning on an `.xml` atomic table, not one on a missing
+transition; and `test_docs.py`'s pattern is the one line outside the history and
+the CHANGELOG that names `prepfit`, since the pattern must contain the word.
+Task 1.9 waits for RJC's comments on the review page and for CI after the push.*
+
 ## RJC first
 
 Before Task 1.1 (DQ.6, DQ.8):
@@ -351,7 +366,8 @@ The tests that read these texts (`test_dashboard_loadfit.py`, lines 171 and 261)
 - **WF §0** (lines 29–265) becomes "0. Snips":
   - its opening paragraphs on why spectra are cut into snips, without the tool;
   - §0.1, what a snip contains, with its file name described for itself;
-  - §0.4, from snips to a model file;
+  - §0.4, from snips to a model file, renumbered §0.2 so that §0 has no gap
+    (Prompt 3: nothing outside WF linked to it);
   - a pointer to §4.3's Data and Regions tabs, which make snips.
 
   The new §0 says "GUI", never "dashboard".
@@ -428,7 +444,7 @@ and docstrings (DQ1.4), and the values it stores.
 | `export.py`, an exported file's header | "ALIS dashboard export of …" | "ALIS GUI export of …" |
 | `figscript.py`, a figure script's header (two) | "… a publication figure written by the ALIS dashboard on …"; "… as the dashboard's Export writes them;" | "… written by the ALIS GUI on …"; "… as the GUI's Export… writes them;" |
 | `scripts/dashboard.py`, the `alis` command (two) | 'The ALIS dashboard needs the optional "gui" extra …'; "ALIS dashboard v*v*: prepare, run and inspect ALIS fits." | 'The ALIS GUI needs …'; "ALIS GUI v*v*: …" |
-| `load.py`, an atomic table without a transition | "… or ask RJC to add the transitions to the shipped atomic.ecsv" | "… or ask Ryan Cooke, through an issue on GitHub, to add the transitions to the shipped atomic.ecsv" |
+| `load.py`, an atomic table in the old `.xml` format (Prompt 3: the warning that table gets) | "… or ask RJC to add the transitions to the shipped atomic.ecsv" | "… or ask Ryan Cooke, through an issue on GitHub, to add the transitions to the shipped atomic.ecsv" |
 
 "The main window" replaces "the dashboard" where the `.mod` panel's own window is
 meant: that window is part of the GUI too.
@@ -535,10 +551,13 @@ DQ.14; DQ1.1, DQ1.2).**
   - the hidden version's front page is fetched, and shows its three ways in.
 
 **1.5 — `prepfit` removed from ALIS (`alis/prepfit/`, `alis/data/`, `examples/`,
-`pyproject.toml`, `alis/dashboard/`, `tests/`; DQ.16, DQ.19).**
+`pyproject.toml`, `alis/dashboard/`, `tests/`; DQ.16, DQ.19, DQ1.5).**
 - "Removed", "The texts a user sees", "The code's comments and docstrings" and "The
   tests" of "`prepfit` removed" above.
-- `CHANGELOG.md`: the Removed entry.
+- `pyproject.toml`'s licence (DQ1.5 (a)): `license = "BSD-3-Clause"` and
+  `license-files = ["LICENSE"]`; `requires = ["setuptools>=77"]`; the licence
+  classifier removed.
+- `CHANGELOG.md`: the Removed entry; under Changed, the licence's form.
 - **Check:**
   - `git grep -i prepfit -- alis tests examples pyproject.toml` finds nothing;
   - `git grep -w atomic.dat -- alis tests` finds nothing;
@@ -546,7 +565,8 @@ DQ.14; DQ1.1, DQ1.2).**
   - the `unit` and `gui` batches pass, also under CI's versions, with one test fewer
     (`test_prepfit_deprecated.py`'s) and no other change in their counts;
   - `pip install .` in a scratch venv installs a package with no `alis/prepfit/` and
-    no `atomic.dat`.
+    no `atomic.dat`, prints no warning from setuptools, and gives `License-Expression:
+    BSD-3-Clause` in its metadata.
 
 **1.6 — The GUI by name, in ALIS (`alis/dashboard/`, `alis/scripts/dashboard.py`,
 `alis/load.py`, `tests/`; DQ1.2, DQ1.3).**
@@ -577,7 +597,8 @@ DQ.14; DQ1.1, DQ1.2).**
   - no file outside the history names `atomic.dat`;
   - `CHANGELOG.md`, the README and `alis/data/`'s documents say neither "dashboard"
     (apart from the file name `dashboard.json`) nor "RJC";
-  - WF's §0 reads on its own, and its links to §0.1, §0.4 and §4.3 hold;
+  - WF's §0 reads on its own, and its links to §0.1, §0.2 (§0.4 before) and §4.3
+    hold;
   - the `unit` batch passes.
 
 **1.8 — The review.** A claude.ai page, built with the `artifact-design` skill. It
@@ -847,10 +868,15 @@ The options:
 My lean: (a). It is three lines, the site's build depends on it, and Stage 1 is
 already the stage that changes the packaging for the documentation.
 
-**Response:**
+**Response:** (a), chosen through Claude's question at the start of Prompt 3
+(2026-11-27).
+
+*Applied (Prompt 3): Task 1.5 gains the licence fix, and its check gains the
+warnings' absence and the installed package's licence.*
 
 ## Prompts
 
 > RJC will be responsible for writing this section.
 1. Please read my responses to your queries, the ALIS code base, and the dashboard development (their design documents and logs). If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please update this document to reflect any changes to the design document based on my responses. Please let me know when you are ready to proceed with the next steps of the documentation development in this stage.
 2. Please execute Tasks 1.1-1.4, and after that, please pause while I push and activate the docs on readthedocs. Once you've completed stage 1.4, please provide instructions about the steps I need to perform to successfully load the documentation onto readthedocs.
+3. I have executed all the tasks you mentioned. The version's address is: `https://alis-fitting.readthedocs.io/en/alis_v2_doc_stage1/`. Please finish Task 1.4's check. Once that is confirmed, please ask further queries if needed, and then proceed with executing the next tasks in this stage.

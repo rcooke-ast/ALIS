@@ -265,7 +265,6 @@ fit_tab.view_of(record)            # any run as a View, kept while nothing chang
 
 ## Notes
 
-- `alis/prepfit/specplot.py` is the old matplotlib GUI; do not add to it (D4).
 - Do not change existing components or key bindings without explicit instruction.
 
 ## Stage 11 additions

@@ -517,7 +517,7 @@ def test_the_resolution_column_sets_the_dataset_s_function(window, qtbot, tmp_pa
 def test_an_emptied_unassigned_dataset_keeps_its_data(window, qtbot, tmp_path):
     # Stage 12, RJC's comment on the review (Q12.15, Q12.16): before, the row read
     # "0 snips · unassigned: no source spectrum !", and SNIP could not cut it again
-    from dashboard_fits import SII, noisy_copy, prepfit_snip
+    from dashboard_fits import SII, earlier_snip, noisy_copy
     from qtpy import QtCore, QtWidgets
 
     from alis.dashboard import loadfit as LF
@@ -527,7 +527,7 @@ def test_an_emptied_unassigned_dataset_keeps_its_data(window, qtbot, tmp_path):
     tab = new_project(window, tmp_path, z=0.0)
     project = window.session.project
     spectra = {r.id: sources.spectrum(project, r) for r in project.rows}
-    theirs = prepfit_snip(
+    theirs = earlier_snip(
         tmp_path / "data",
         noisy_copy(tmp_path),
         SII,

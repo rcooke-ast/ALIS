@@ -1,7 +1,7 @@
 # Packaging for ALIS (Absorption LIne Software).
 # PEP 517/518/621 configuration; replaces the legacy setup.py.
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,7 +10,8 @@ dynamic = ["version"]
 description = "ALIS: Absorption LIne Software for model fitting of spectroscopic data"
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "BSD-3-Clause" }
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 authors = [
     { name = "Ryan Cooke", email = "rcooke.ast@gmail.com" },
 ]
@@ -18,7 +19,6 @@ keywords = ["astronomy", "spectroscopy", "absorption lines", "model fitting"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Astronomy",
@@ -115,14 +115,14 @@ alis = ["data/*"]
 # delete a path from it once that file has been formatted and its ruff findings
 # resolved.
 #
-# The legacy `alis/` modules (39 files) are not merely mis-formatted -- ruff
+# The legacy `alis/` modules (38 files) are not merely mis-formatted -- ruff
 # reports ~1518 findings across them under its default rule set, of which only
 # ~21 are auto-fixable (1217 are E701 "if x: return y" one-liners that black
 # rewrites, plus 66 bare excepts, 70 unused variables and 39 genuinely
 # undefined names). Clearing them is a dedicated task, not a side effect of
 # another change -- see Stage 6.5.
 #
-# The non-`alis/` entries (6 files) are vendored reference code
+# The non-`alis/` entries (5 files) are vendored reference code
 # (context/voigt_gpu/) and standalone example scripts; they are not ALIS source
 # and are excluded permanently rather than pending.
 # ---------------------------------------------------------------------------
@@ -169,7 +169,6 @@ force-exclude = '''
     | alis/minimise\.py
     | alis/model_eval\.py
     | alis/plot\.py
-    | alis/prepfit/specplot\.py
     | alis/save\.py
     | alis/scripts/run_alis\.py
     | alis/simulate\.py
@@ -179,8 +178,6 @@ force-exclude = '''
     | context/voigt_gpu/numba_test\.py
     | context/voigt_gpu/simple_test\.py
     | examples/lsf_file/model/make_lsf\.py
-    | examples/prepfit/myobjects\.py
-    | examples/prepfit/select_fitting_regions\.py
 )$
 '''
 
@@ -258,7 +255,6 @@ extend_skip = [
     "alis/minimise.py",
     "alis/model_eval.py",
     "alis/plot.py",
-    "alis/prepfit/specplot.py",
     "alis/save.py",
     "alis/scripts/run_alis.py",
     "alis/simulate.py",
@@ -268,8 +264,6 @@ extend_skip = [
     "context/voigt_gpu/numba_test.py",
     "context/voigt_gpu/simple_test.py",
     "examples/lsf_file/model/make_lsf.py",
-    "examples/prepfit/myobjects.py",
-    "examples/prepfit/select_fitting_regions.py",
 ]
 
 [tool.ruff]
@@ -288,6 +282,4 @@ extend-exclude = [
     "context/voigt_gpu/numba_test.py",
     "context/voigt_gpu/simple_test.py",
     "examples/lsf_file/model/make_lsf.py",
-    "examples/prepfit/myobjects.py",
-    "examples/prepfit/select_fitting_regions.py",
 ]

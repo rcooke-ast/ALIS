@@ -63,7 +63,7 @@ PySide6, written against `qtpy`, with pyqtgraph for the interactive panels (D2).
      (`window.panel.editor.toPlainText()`), and look at the screenshots for unmasked
      values (`▒▒▒▒` expected);
    - the terminal: an unexpected error prints its traceback there, and the window
-     shows only "The ALIS dashboard has encountered an unexpected error ...";
+     shows only "The ALIS GUI has encountered an unexpected error ...";
    - no text in the window names a design document (D44: no D/F/S/QF/Q numbers;
      `dashboard_qt_helpers.ui_strings` and `design_references` check it).
 
@@ -73,9 +73,6 @@ PySide6, written against `qtpy`, with pyqtgraph for the interactive panels (D2).
 
 ## Notes
 
-- `prepfit` (`alis/prepfit/specplot.py`, matplotlib with Qt5Agg) is the old region
-  selector, kept in v2.0 and deprecated once the dashboard covers it (D4). Run it only
-  when asked: `cd examples/prepfit && python select_fitting_regions.py`.
 - ALIS's fits run in worker processes that are spawned, so scripts that start a fit
   must be files with an `if __name__ == "__main__":` guard, never `python -` from
   standard input (the workers cannot import `<stdin>` and the pool hangs).

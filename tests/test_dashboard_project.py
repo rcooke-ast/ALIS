@@ -61,7 +61,7 @@ def make_project(registry, text, files):
 
 
 def snip_bytes(wave, mask=None):
-    """A four-column snip in prepfit's format (np.savetxt's default)."""
+    """A snip's four columns (np.savetxt's default)."""
     flux = np.ones_like(wave)
     error = np.full_like(wave, 0.1)
     cols = [wave, flux, error] + ([] if mask is None else [mask.astype(float)])

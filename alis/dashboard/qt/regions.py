@@ -16,8 +16,8 @@ spectrum per dataset that covers the transition, with the tools above, and the
 - **The spectra** (D36): one per dataset, stacked, scrolling beyond a number (a
   preference), with a velocity axis above (D43). Clicking one selects its dataset.
   Above them, what acts on the spectra (Q4.19): SNIP, CLEAR, and Adjust fit regions
-  ▾ (Stage 10): all spectra, one spectrum or off. In the first two, as in prepfit, a
-  drag adds a region and a right-drag leaves pixels out, in every dataset of the
+  ▾ (Stage 10): all spectra, one spectrum or off. In the first two, a drag adds a
+  region and a right-drag leaves pixels out, in every dataset of the
   transition or in the selected dataset alone (on a transition with no snip, a drag
   SNIPs first, Q4.2(c)); then the zoom bar. The snip's edges are orange handles; a
   fit region's edges move while the menu is not off; a right-click removes a region
@@ -92,7 +92,7 @@ SETTINGS = ("model_from", "order")
 # review, Q4.19
 # The two ways of editing the fit regions (RJC's review of draft 2): in every dataset
 # at once, or in the selected dataset alone; in both a drag adds a region and a
-# right-drag leaves pixels out, as in prepfit
+# right-drag leaves pixels out
 REGION_TOOLS = ("regions.draw", "regions.tweak")
 TOOL_BUTTONS = ("regions.snip", "regions.clear")
 # Adjust fit regions ▾ (Stage 10, point 3): its entries, and the tool each chooses
@@ -464,8 +464,8 @@ class RegionsTab(W.Tab):
         self.regions_menu.setCurrentIndex(len(REGION_ENTRIES) - 1)
         self.regions_menu.setToolTip(
             "Adjust the fit regions of all spectra at once, or of the selected one"
-            " alone: a drag adds a region and a right-drag leaves pixels out, as in"
-            " prepfit; off, a drag pans or zooms"
+            " alone: a drag adds a region and a right-drag leaves pixels out; off, a"
+            " drag pans or zooms"
         )
         self.regions_menu.activated.connect(self._regions_chosen)
         self.scroll = QtWidgets.QScrollArea()
@@ -2740,7 +2740,7 @@ class RegionsTab(W.Tab):
     def do_tweak(self):
         """
         Adjust fit regions: one spectrum: a drag adds a fit region, and a right-drag
-        leaves pixels out, in the selected dataset alone (as in prepfit).
+        leaves pixels out, in the selected dataset alone.
         """
         self._tool("regions.tweak")
 
@@ -2808,7 +2808,7 @@ class RegionsTab(W.Tab):
 
     def do_load_snips(self):
         """
-        Load snips…: snips saved earlier (by prepfit, or exported), each placed at
+        Load snips…: snips from an earlier analysis, or exported, each placed at
         the transition its file name names, with the spectrum the dialog that
         assigns snips gives it: held, cut again, unassigned or left out (Stage 11);
         one that shares pixels with a snip of the project replaces it, once the user

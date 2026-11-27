@@ -62,7 +62,7 @@ def need(path):
 def check_workspace(window, name):
     """The parts every open project shows."""
     assert window.stack.currentIndex() == 1
-    assert window.windowTitle().startswith("ALIS dashboard — " + name)
+    assert window.windowTitle().startswith("ALIS GUI — " + name)
     assert [window.tabs.tabText(n) for n in range(5)] == list(A.TABS)
     # The Figure tab is greyed, saying why, until the shown run has a best fit
     reason = window.figure_tab.reason
@@ -87,7 +87,7 @@ def check_workspace(window, name):
 def test_nothing_opens_the_start_page(window, qtbot):
     window.launch(S.launch_target(None))
     assert window.stack.currentIndex() == 0
-    assert window.windowTitle() == "ALIS dashboard"
+    assert window.windowTitle() == "ALIS GUI"
     assert not window.qactions["file.save"].isEnabled()
     assert window.qactions["file.new"].isEnabled()
     assert window.start.recent.item(0).text() == "No recent projects."

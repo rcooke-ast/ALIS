@@ -312,7 +312,7 @@ class Job:
                 self.channel.send(
                     "warning",
                     message="The run could not be stored in the project's file, so"
-                    " the dashboard keeps it until the project is saved: " + str(err),
+                    " the GUI keeps it until the project is saved: " + str(err),
                 )
         for member in [m for m in bundle.members if m.startswith(B.RUNS)]:
             del bundle.members[member]
@@ -342,7 +342,7 @@ class Job:
 
         msgs = logger.msgs()
         sizes = [int(n) for n in self.header["restarts"]]
-        command = self.header.get("command") or "alis (dashboard, restarts)"
+        command = self.header.get("command") or "alis (GUI, restarts)"
         warnings = _Warnings(self.channel)
         msgs.addHandler(warnings)
         status, message = "completed", ""
@@ -428,7 +428,7 @@ class Job:
         msgs.addHandler(warnings)
         checked = _Convergence()
         msgs.addHandler(checked)
-        command = self.header.get("command") or "alis (dashboard)"
+        command = self.header.get("command") or "alis (GUI)"
         try:
             bundle = B.read(self.data)
             store = bundle.hidden_model_lines()
@@ -523,7 +523,7 @@ def main():
     try:
         header = json.loads(stdin.readline().decode("utf-8"))
         if header.get("protocol") != PROTOCOL:
-            raise ValueError("The dashboard and its fitting process differ in version.")
+            raise ValueError("The GUI and its fitting process differ in version.")
         data = _read_exactly(stdin, int(header["size"]))
     except (OSError, ValueError, KeyError, EOFError) as err:
         channel.send("finished", status="error", message=str(err), stored=None)

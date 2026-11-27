@@ -13,9 +13,8 @@ perform a model fit to spectroscopic data.
 See the examples directory for some common user examples.
 
 # Setup a fit
-In the examples directory, there is a example of how to use
-the `prepfit` code. This is a GUI that allows you to manually
-select fitting regions. 
+ALIS's GUI (the `alis` command) prepares a fit, runs it, and shows its results.
+The documentation, at https://alis-fitting.readthedocs.io, will describe it.
 
 # Requirements
 * python3

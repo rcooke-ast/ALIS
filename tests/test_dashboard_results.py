@@ -761,7 +761,7 @@ def test_the_run_history(metal):
         (None, "Latest", "stopped"),
         (number, "1", ""),
     ]
-    assert rows[0].where == "dashboard" and "no errors" in rows[0].tip
+    assert rows[0].where == "GUI" and "no errors" in rows[0].tip
     R.describe(bundle, number, "T fixed")
     assert RS.history(metal)[1].description == "T fixed"
     # The run shown: chosen in the history, or the latest (also once removed)

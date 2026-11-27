@@ -2565,7 +2565,7 @@ def suggest_label(project, par):
 RENUMBER_WARNING = (
     "Renumber labels renames the labels of every component of {0} so that their"
     " numbers follow the components' order by redshift. Labels written outside the"
-    " dashboard (in notes or scripts) will no longer match. Undo takes it back."
+    " GUI (in notes or scripts) will no longer match. Undo takes it back."
 )
 
 

@@ -58,7 +58,7 @@ from alis.dashboard.qt import style as ST
 from alis.dashboard.qt import tabs as TB
 from alis.dashboard.qt import widgets as W
 
-TITLE = "ALIS dashboard"
+TITLE = "ALIS GUI"
 # How often the bundle on disk is looked at (S31, Q3.8), in ms
 DISK_CHECK = 2000
 NO_FIT = "No fit running"
@@ -67,7 +67,7 @@ PAUSED = (
     " panel; the panels will follow."
 )
 UNEXPECTED = (
-    "The ALIS dashboard has encountered an unexpected error. The terminal window"
+    "The ALIS GUI has encountered an unexpected error. The terminal window"
     " shows the details."
 )
 UNDO_STOP = (
@@ -1383,7 +1383,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if state == S.RUNS:
             session.take_runs()
             self.statusBar().showMessage(
-                "A run finished outside the dashboard; the Fit tab shows it.", 10000
+                "A run finished outside the GUI; the Fit tab shows it.", 10000
             )
             self.refresh()
             return
@@ -2367,7 +2367,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         self.start_run(
             extra=["run convergence True", "run convcriteria {0:g}".format(value)],
-            command="alis (dashboard, convergence check)",
+            command="alis (GUI, convergence check)",
         )
 
     def do_fit_restarts(self):
@@ -2659,7 +2659,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """About ALIS."""
         self.tell(
             "About ALIS",
-            "ALIS dashboard, ALIS {0}.\nAbsorption LIne Software: model fitting of"
+            "ALIS GUI, ALIS {0}.\nAbsorption LIne Software: model fitting of"
             " spectroscopic data.".format(alis.__version__),
         )
 

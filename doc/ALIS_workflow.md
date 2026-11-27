@@ -26,32 +26,24 @@ incomplete and may be out of date in places.
 
 ---
 
-## 0. Prepare fitting regions
+## 0. Snips
 
-The very first step in the fitting process is to start with a single spectrum containing
-thousands to tens of thousands of pixels, and to identify the regions of the spectrum that
-are suitable for fitting. Usually, small wavelength regions are selected around the
-absorption lines of interest, given an estimate of the redshift of the absorption line
-system. Typically, a user will use the `prepfit` tool (`alis/prepfit/specplot.py`) to
-interactively select the fitting regions.
-
-> **Deprecated (2026-10-19).** The dashboard (`alis`, §4.3) now does what `prepfit`
-> does, and fits and inspects the result. `prepfit` keeps working, and says so when
-> it starts.
-
-For an example of how to use the `prepfit` tool, see the `examples/prepfit/README` ascii file
-for further context. A user typically creates a simple python script that specifies the data
-file that contains all of the absorption lines of interest and an estimate of the absorber
-redshift. The `prepfit` tool then steps through the transitions of that absorber one at a
-time, and allows the user to interactively select the fitting regions around each. The
-output of the `prepfit` tool is a set of small data files (called "snips"), one per
-transition. Each snip contains a small extracted region of the spectrum, plus a column that
-flags which of its pixels are to be included in the fit. The model file (§2) is then written
-by hand, with one line in its `data read` block for each snip (§0.4).
+A fit usually starts from a single spectrum of thousands to tens of thousands of pixels,
+of which only small regions are suitable for fitting: those around the absorption lines
+of interest, at an estimate of the absorption system's redshift. Each region is cut from
+the spectrum into a small data file of its own, called a "snip", one per transition.
+A snip holds a small extracted region of the spectrum, plus a column that flags which of
+its pixels are included in the fit. The model file (§2) then has one line in its
+`data read` block for each snip (§0.2).
 
 Cutting the spectrum into snips makes a fit quicker to set up, because each transition is
 inspected once and in isolation. It also makes the fit quicker to run, because ALIS loads
 and models only the few hundred pixels around each line, not the whole spectrum.
+
+The GUI (`alis`) makes the snips: its Data and Regions tabs (§4.3, "Preparing a fit: the
+Data and Regions tabs") cut each transition from every spectrum that covers it, draw its
+fit regions, and write the `data read` block. Snips from an earlier analysis are brought
+in with File → Load snips….
 
 ### 0.1 What a snip contains
 
@@ -64,111 +56,23 @@ A snip is a headerless, whitespace-delimited ASCII file with four columns:
 | 2 | 1σ flux error |
 | 3 | Fit mask: 1 = include this pixel in χ², 0 = exclude it |
 
+The GUI adds a fifth column, a bad-pixel mask (`badpix`), when the spectrum it cuts from
+has one.
+
 Pixels with a mask of 0 are still loaded. They provide context either side of the fitted
 pixels, plus a buffer for the instrumental convolution at the edges of the fitted region.
 They are also used to exclude blends and bad pixels *inside* a fitted region. In the
 `_fit.dat` output these pixels carry the sentinel model value (§5.1).
 
-The file is written next to the input spectrum and named
-`<stem>_<isotope+element>_<ion>_<rest wavelength, 1 d.p.>_reg.dat`, where `<stem>` is the
-input file name without `.dat`. For example, the O I 916.8 Å snip cut from
-`J0814p5029_HIRES.dat` is `J0814p5029_HIRES_16O_I_916.8_reg.dat`. (Snips in older fitting
-examples omit the mass number, e.g. `Q1243p307_Al_II_1670.8_reg.dat`; this naming reflects
-the version of the atomic data in use at the time.)
+A snip's file name gives its transition:
+`<stem>_<element>_<ion>_<rest wavelength, 1 d.p.>_reg.dat`, where `<stem>` is the name of
+the spectrum it was cut from. The GUI's O I 916.8 Å snip cut from `J0814p5029_HIRES.dat`
+is `J0814p5029_HIRES_O_I_916.8_reg.dat` (with `z<n>_` before the element for a system
+other than the primary). Snips from earlier analyses often give the mass number too
+(`J0814p5029_HIRES_16O_I_916.8_reg.dat`), and Load snips… reads the transition from
+either form.
 
-### 0.2 Setting up `prepfit`
-
-**The input spectrum** must be an ASCII file, because `prepfit` reads it with
-`numpy.loadtxt` (FITS is not supported here, unlike in ALIS itself). Its columns are:
-wavelength, flux, error, and optionally a continuum in column 4 (the fifth column; column 3
-is ignored). When a continuum column is present, `prepfit` multiplies both the flux and the
-error by it before writing the snip. This means that a spectrum that was normalised
-elsewhere is written out in un-normalised units, and ALIS fits the continuum locally around
-each line (§0.4). For example, in `context/fitting_examples/VMP_DLA/J0814p5029/` the pixel at
-4312.978 Å has normalised flux 0.0789 and continuum 2020.06 in the parent spectrum, and
-flux 159.3 in the snip. Without a continuum column the flux and error are copied unchanged.
-
-**Directory layout.** The README recommends one directory per object, with the spectrum
-and its snips in `<object>/data/` and the model files in a sibling directory
-(e.g. `<object>/model/`). The model files can then refer to the snips as `../data/<snip>`,
-which is the convention throughout `context/fitting_examples/`. The two `prepfit` scripts
-live in a shared `software/` directory:
-
-```
-/path/to/my/project/fitting/software/myobjects.py
-/path/to/my/project/fitting/software/select_fitting_regions.py
-/path/to/my/project/fitting/object1/data/object1.dat
-/path/to/my/project/fitting/object1/model/
-```
-
-**The two scripts** (copy them from `examples/prepfit/`):
-
-- `myobjects.py` defines a class `dlas` with one method per object, which sets the absorber
-  redshift `_zabs`, the data directory `_path` and the spectrum `_filename`:
-
-  ```python
-  def object1(self):
-      self._zabs = 2.0
-      self._path += "object1/data/"
-      self._filename = "object1.dat"
-  ```
-
-- `select_fitting_regions.py` picks an object (`dla = dlas("object1")`), loads the spectrum
-  (`specplot.props`), loads the atomic transitions whose rest wavelength falls within the
-  spectrum's coverage at that redshift (`specplot.atomic`), and opens the selection window
-  (`specplot.SelectRegions`).
-
-Run it with `python select_fitting_regions.py`. The window uses matplotlib's `Qt5Agg`
-backend, so PyQt5 must be installed.
-
-### 0.3 Selecting the regions
-
-**The transition list.** `prepfit` offers every transition in ALIS's default atomic data
-file (`alis/data/atomic.ecsv`) whose observed wavelength, λ₀(1 + z_abs), falls within the
-spectrum. The pseudo-ions used for forest modelling (`1Ly_a`, `1H_IB`, `FAKE`) are left
-out. Transitions are visited in the order they appear in the atomic data file, so the H I
-Lyman series comes first, and the list wraps around at either end. Note that `prepfit`
-always uses the default atomic data file, even if the fit will use a different one via
-`run atomic`.
-
-**The window.** Each transition opens in a window of ±500 km/s around its observed
-wavelength. This is the `vel=` argument of `SelectRegions`, and corresponds to about 400
-pixels of a 2.5 km/s-per-pixel echelle spectrum. The y-axis runs from −0.1 to 1.1 times
-the 99th percentile of the flux nearby. The title shows the current transition. When the
-current transition is H I Lyα, a red damped-Lyα profile is overlaid (log N(H I) = 22,
-b = 10 km/s, at z_abs), scaled to the median flux of the whole spectrum. It is a rough
-guide to how far the damping wings extend, and so where the continuum can be found.
-
-**Controls** (press `?` with the cursor over the plot to print this list in the terminal,
-along with the current transition's rest and observed wavelength and f-value):
-
-| Input | Effect |
-|-------|--------|
-| Left-click and drag | Add the pixels to the fitting region (shaded green) |
-| Right-click and drag | Remove the pixels from the fitting region |
-| `w` | Write the snip for the current transition |
-| `n` / `b` | Next / previous transition |
-| `]` / `[` | First transition of the next / previous element |
-| `.` / `,` | First transition of the next / previous ion |
-| `+` / `-` | Raise / lower log N(H I) of the Lyα overlay by 0.1 (but see §0.6) |
-| `q` | Quit |
-
-Panning and zooming use the matplotlib toolbar. While a toolbar mode is active, mouse drags
-pan or zoom rather than editing the regions.
-
-**What to select** (from the README): select enough pixels either side of the line to pin
-down the continuum, because more continuum pixels give a better-defined continuum. However,
-keep the region narrow enough that the continuum is well described by a low-order
-polynomial. Deselect blends, cosmic rays and bad pixels within the region.
-
-**Writing a snip.** `w` writes *every* pixel between the current x-axis limits, whether it
-is selected or not. To change the extent of a snip, zoom or pan before pressing `w`. The
-snip is the only record of the selection. Moving to another transition clears the regions,
-then reloads the new transition's snip if one exists, restoring its mask and its x-limits.
-This lets you quit and resume a session later, but any selection that was not written with
-`w` is lost as soon as you move to another transition.
-
-### 0.4 From snips to a model file
+### 0.2 From snips to a model file
 
 Each snip becomes one line of the `data read` block (§2.2), usually with its own `specid`,
 so that each snip gets its own continuum model. From
@@ -191,18 +95,19 @@ model read
 ```
 
 - `fitrange=columns` with `fitrange:3` in `columns=` reads the mask from the snip. The
-  minimal form, as given in the README, is `columns=[wave:0,flux:1,error:2,fitrange:3]`.
+  minimal form is `columns=[wave:0,flux:1,error:2,fitrange:3]`.
 - The fitting examples also map `continuum:4,zerolevel:5`, even though a snip has only
   four columns. ALIS then writes the best-fitting continuum and zero level into those
   columns of the output files (§1).
 - `loadrange=all` (written `loadall=True` in older models, which is now deprecated) loads
   every pixel of the snip. The model is computed over all of them, but only pixels with a
   mask of 1 contribute to χ².
-- Because the snips are in un-normalised units (§0.2), the starting values of the continuum
-  polynomial are of the order of the local flux level (e.g. 1765.0 above).
+- The snips of this example are in un-normalised units, so the starting values of the
+  continuum polynomial are of the order of the local flux level (e.g. 1765.0 above). The
+  GUI gives each new snip a first guess of its continuum.
 
-The `emission`, `absorption` and `zerolevel` sub-blocks are then written by hand (§2.4–2.6).
-Larger fits follow the same pattern at scale:
+The `emission`, `absorption` and `zerolevel` sub-blocks follow (§2.4–2.6). The GUI writes
+them from its Components tab (§4.3). Larger fits follow the same pattern at scale:
 
 - `VMP_DLA/J1358p6522` has 12 snips (8 H I Lyman-series lines and 4 O I lines), with
   `specid`s H1–H8 and O1–O4.
@@ -211,55 +116,6 @@ Larger fits follow the same pattern at scale:
   parameter and zero level, and the archival sets also carry a velocity shift.
 - `DH_orders/Q1243p307` goes a step further and splits each snip by echelle order
   (`..._reg_FR0000.dat`, `..._reg_FR0001.dat`, …), giving 351 data lines.
-
-### 0.5 Alternatives to `prepfit`
-
-`prepfit` is a convenience; ALIS itself only needs a 0/1 `fitrange` column. Others have
-been used in practice:
-
-- **Write the mask any other way.** Any script that produces wavelength, flux, error and a
-  0/1 mask column will do (the README gives a seven-pixel example).
-- **Use the full spectrum with `fitrange=[lo,hi]`.** The same file can appear on several
-  data lines, each with its own `specid` and window (e.g. Lyβ and Ly7 in
-  `VMP_DLA/J0903p2628`). ALIS loads only the window, plus a buffer wide enough for the
-  instrumental convolution. The limitation is one contiguous fitted window per line, with no
-  way to mask a blend inside it.
-- **A separate mask file.** Some older examples keep the mask in a one-column `.reg` file
-  and paste it onto the spectrum with a short script (`VMP_DLA/J0903p2628/data/join_regions.py`).
-
-### 0.6 Notes for the dashboard design
-
-These are behaviours of the current `prepfit` (as of v2) that the dashboard should either
-keep or fix:
-
-1. **Selections are lost silently.** The snip file is the only saved state. Moving to
-   another transition discards an unwritten selection. `q` is meant to warn about unsaved
-   changes, but the flag it checks (`_changes`) is never set, so `q` always exits
-   immediately.
-2. **The Lyα overlay does not respond to `+`/`-`.** Those keys change `logn`, but the
-   recomputed profile is never stored back into `HImodel`, so the overlay stays at
-   log N(H I) = 22.
-3. **`p` does nothing.** The help text lists `p` as toggling pan/zoom, but the key is
-   unbound. Use the toolbar instead.
-4. **Fine-structure lines are not filtered out.** The code intends to drop excited states
-   (C II\*, Si II\*, O I\*, O I\*\*), but compares against padded strings (`"I*  "`) that never
-   match. Verified: the list for 900–1310 Å (rest frame) includes `I*`, `I**` and `II*`
-   transitions.
-5. **The continuum column is inferred from the column count.** In a file with five or more
-   columns, column 4 is taken as the continuum. In a four-column file
-   (wave, flux, error, continuum) the continuum is ignored.
-6. **No line identifications are drawn.** Code to mark the other transitions of the absorber
-   (and molecular lines) within the window exists, but cannot be reached (`draw_lines`
-   returns early). Blends from other transitions of the same absorber are therefore not
-   flagged, and only one absorber redshift is supported.
-7. **Only data files are produced.** The `data read` block, `specid`s, resolution, and
-   continuum starting values (the local flux level) are all typed by hand, which is
-   repetitive and error-prone for large fits. These are natural for the dashboard to
-   generate.
-8. **Snips carry no provenance.** There is no header recording the source spectrum, z_abs,
-   or whether a continuum was applied.
-9. **Not tested.** `prepfit/specplot.py` is not exercised by the test suite
-   (`claude_prompts/deferred_work.md` §5).
 
 ---
 
@@ -874,13 +730,12 @@ run_alis myfit.model     # fits the project from the command line, as before
   Components tabs, then run, inspect, keep, compare and check it on the Fit tab. The
   Figure tab, for publication figures, followed in Stage 9 (below); the model's
   `plotscript` settings still write a plotting script for `run_alis`.
-  `prepfit` (§0) keeps working, and says that the dashboard now covers it.
 - **Since version 1** (dashboard Stage 7, 2026-10-31), from real use:
   - **An earlier fit.** File → Open a fit (.mod)… loads a `.mod` and its snips into a
     project of their spectrum, after a preview. With no such project open, it asks
     whether to open the fit with its full spectrum (recommended: the snips are
     checked against it and new snips can be cut from it) or without. File → Load
-    snips… places `prepfit`'s snips one by one.
+    snips… places snips from an earlier analysis one by one.
   - **Excluding.** Each ion of a card's row (H I, and D I with it) has its own
     Exclude/Include. A component excluded from every ion stays, greyed, until it is
     included again or removed with ✕, and its labels stay its own. An ion given by a
@@ -1086,8 +941,7 @@ run_alis myfit.model     # fits the project from the command line, as before
 
 #### Preparing a fit: the Data and Regions tabs
 
-*Added 2026-10-07 (dashboard Stage 4).* These two tabs replace `prepfit` (§0) for a
-new project.
+*Added 2026-10-07 (dashboard Stage 4).* These two tabs make a new project's snips (§0).
 
 - **Data.** The primary redshift: type it, or press *Identify a feature*, click an
   absorption line, and choose its transition (the first choice is the transition
@@ -1105,7 +959,7 @@ new project.
   ±300 km/s (a preference), with the source's pixels at full precision and a
   first-guess continuum; drag the orange handles to move its edges (outwards, more
   pixels are cut from the source), or the ▼ at a handle's top to move that edge in
-  every dataset. With **Adjust fit regions ▾**, as in `prepfit`, a drag adds a fit
+  every dataset. With **Adjust fit regions ▾**, a drag adds a fit
   region and a right-drag leaves pixels out: on **all spectra**, in every spectrum
   of the transition (moving or removing a region does the same); on **one
   spectrum**, in the selected spectrum alone (a cosmic ray, a bad pixel); **off**,
@@ -1126,7 +980,7 @@ new project.
   snip, or merge the snips (after listing what changes).
 
 Every action is one step that Undo takes back, and every change is written to the
-`.mod` text, which stays the authority: the snips are written as `prepfit` writes
+`.mod` text, which stays the authority: the snips are written as §0.1 describes
 them, and `run_alis project.model` fits the project as it stands.
 
 #### Building the model: the Components tab

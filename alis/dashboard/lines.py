@@ -17,8 +17,8 @@ draw what it says.
   of the data than a snip's half-width); no forest or telluric flags (Q4.5). A
   transition that already has a snip is listed whatever its flags.
 - **Line IDs** (S5, Q4.4): for every system, the transitions of its ions (in the
-  model, or named as its line IDs), the strong lines (by fλ and the solar abundance,
-  as ``prepfit`` ranks them), or every line; and the number left unlabelled.
+  model, or named as its line IDs), the strong lines (ranked by fλ and the solar
+  abundance), or every line; and the number left unlabelled.
 - **Identify a feature** (S24, D35): the transitions that could make a feature at a
   clicked wavelength, each with the redshift it implies.
 - **Coverage** (Q0.5): which transitions of a system each file row has a snip of, or
@@ -50,8 +50,8 @@ SYMBOLS = (
     " Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl"
     " Pb Bi Po At Rn Fr Ra Ac Th Pa U"
 ).split()
-# Solar abundances, log ε with H = 12 (Asplund et al. 2009), the table
-# ``alis/prepfit/specplot.py`` ranks lines with
+# Solar abundances, log ε with H = 12 (Asplund et al. 2009), with which the strong
+# lines are ranked
 SOLAR = {
     "H": 12.0,
     "He": 10.93,
@@ -1062,7 +1062,7 @@ def snip_transitions(project):
 
 def named_line(atom, name):
     """
-    The transition a snip's file name names, as ``prepfit`` names its snips
+    The transition a snip's file name names, by its ion and rest wavelength
     (``<stem>_1H_I_1215.7_reg.dat``), or None.
 
     A name to a tenth of an Å means the ion's nearest line; one in whole Å

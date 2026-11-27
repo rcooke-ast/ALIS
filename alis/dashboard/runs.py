@@ -1222,7 +1222,7 @@ class Run:
     kind = "run"
 
     def __init__(
-        self, session, settings=(), command="alis (dashboard)", python=None, cwd=None
+        self, session, settings=(), command="alis (GUI)", python=None, cwd=None
     ):
         self.path = (
             session.path if session.path and os.path.exists(session.path) else None
@@ -1391,7 +1391,7 @@ class Restarts(Run):
         session,
         bundles,
         settings=(),
-        command="alis (dashboard, random restarts)",
+        command="alis (GUI, random restarts)",
         python=None,
         cwd=None,
         taker=None,

@@ -1077,7 +1077,7 @@ def save_preset(project, fid, name, home, builtin=()):
             " underscores and dots."
         )
     if name.lower() in [b.lower() for b in builtin]:
-        raise FigureError("{0} is one of the dashboard's own presets.".format(name))
+        raise FigureError("{0} is one of the GUI's own presets.".format(name))
     fig = copy.deepcopy(figure(project, fid))
     primary = {s.id for s in project.systems if s.primary}
     for row in fig["cells"]:

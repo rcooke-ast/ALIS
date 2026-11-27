@@ -36,10 +36,10 @@ report every warning. Linkcheck runs only when asked.
    python -m pytest tests/test_docs.py -q
    ```
    They check that every page of `PAGES` exists and lists its sources, that no page
-   is missing from `PAGES`, that no file of the site names `prepfit`, the v1.0
-   manual or `context/`, or says "dashboard" or "RJC", that About ALIS and
-   `CITATION.cff` cite the same paper, and that the `alis` lexer reads every
-   example model.
+   is missing from `PAGES`, that no file of the site names what it leaves out (a
+   removed tool, the v1.0 manual, `context/`: `LEFT_OUT`), or says "dashboard" or
+   "RJC", that About ALIS and `CITATION.cff` cite the same paper, and that the
+   `alis` lexer reads every example model.
 
 4. **Linkcheck, on request only** (other sites fail at random, so it is not in CI):
    ```

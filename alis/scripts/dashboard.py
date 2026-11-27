@@ -17,7 +17,7 @@ import sys
 
 # What the user is told when the gui extra is missing
 INSTALL = (
-    'The ALIS dashboard needs the optional "gui" extra (PySide6, qtpy and'
+    'The ALIS GUI needs the optional "gui" extra (PySide6, qtpy and'
     " pyqtgraph). Install it with:\n"
     '    pip install "alis[gui]"'
 )
@@ -31,7 +31,7 @@ def _description():
     """
     import alis
 
-    return "ALIS dashboard v{0:s}: prepare, run and inspect ALIS fits.".format(
+    return "ALIS GUI v{0:s}: prepare, run and inspect ALIS fits.".format(
         alis.__version__
     )
 

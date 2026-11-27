@@ -1420,7 +1420,7 @@ def statistics_rows(stats):
         out.append(("Stopped because", stats.reason))
     if stats.convergence is not None:
         out.append(("Convergence", convergence_text(stats.convergence)))
-    where = {R.DASHBOARD: "the dashboard", R.COMMAND: "the command line"}.get(
+    where = {R.DASHBOARD: "the GUI", R.COMMAND: "the command line"}.get(
         stats.origin, "imported with the model"
     )
     if stats.host:
@@ -1557,7 +1557,7 @@ def _history_row(record, gate, key, latest):
     elif origin == R.IMPORTED:
         where = "imported"
     else:
-        where = "dashboard"
+        where = "GUI"
     if key is None:
         run = "Latest"
     else:
@@ -1565,7 +1565,7 @@ def _history_row(record, gate, key, latest):
     status = _STATUS_WORDS.get(record.status, "")
     when = when_text(record.finished, short=True) if record.finished else ""
     how = {
-        R.DASHBOARD: "Run from the dashboard",
+        R.DASHBOARD: "Run from the GUI",
         R.COMMAND: "Run with run_alis",
         R.IMPORTED: "Imported with the model",
     }.get(origin, "Run")

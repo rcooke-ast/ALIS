@@ -1,6 +1,6 @@
 """Loading snips and a .mod from an earlier analysis (dashboard Task 7.1).
 
-A new project is made from a spectrum, then snips saved by ``prepfit`` (wave, flux,
+A new project is made from a spectrum, then snips from an earlier analysis (wave, flux,
 error and a fit range of 0s and 1s, named ``<stem>_<ion>_<λ>_reg.dat``) are loaded:
 each is matched to the spectrum it was cut from and placed at its transition, its fit
 range kept. A file that fails any check stops the whole load (Q7.4), and a snip that
@@ -24,7 +24,7 @@ from pathlib import Path
 import dashboard_fits as FT
 import numpy as np
 import pytest
-from dashboard_fits import OI, SII, SPECTRUM, noisy_copy, prepfit_snip
+from dashboard_fits import OI, SII, SPECTRUM, earlier_snip, noisy_copy
 
 from alis.dashboard import blinding as BL
 from alis.dashboard import datasets as DS
@@ -89,15 +89,15 @@ def load(project, paths):
 # -- Reading a snip file ----------------------------------------------------------------
 
 
-def test_a_prepfit_snip_is_read_with_its_fit_range(source, tmp_path):
-    path = prepfit_snip(tmp_path / "data", source, OI)
+def test_an_earlier_snip_is_read_with_its_fit_range(source, tmp_path):
+    path = earlier_snip(tmp_path / "data", source, OI)
     old = LF.read_snip_file(str(path))
     assert old.name == path.name
     assert old.fit is not None and old.fit.sum() > 0 and not old.fit.all()
     assert old.bad is None
     assert old.content == path.read_bytes()
     # Three columns: no fit range; five: a bad-pixel mask
-    old = LF.read_snip_file(str(prepfit_snip(tmp_path, source, OI, ncols=3)))
+    old = LF.read_snip_file(str(earlier_snip(tmp_path, source, OI, ncols=3)))
     assert old.fit is None
 
 
@@ -130,12 +130,12 @@ def test_a_missing_file_is_refused(tmp_path):
 def test_a_snip_matches_the_spectrum_it_was_cut_from(registry, source, tmp_path):
     project = new_project(registry, [source])
     spec = spectra(project)["r1"]
-    old = LF.read_snip_file(str(prepfit_snip(tmp_path, source, OI)))
+    old = LF.read_snip_file(str(earlier_snip(tmp_path, source, OI)))
     match = LF.match_row(project, spectra(project), old.wave, old.flux, old.error)
     assert match.row.id == "r1"
     assert np.array_equal(spec.wave[match.index], old.wave)
     # Written with fewer digits, it still matches
-    rounded = prepfit_snip(tmp_path, source, OI, fmt="%.7e", name="r_16O_I_1302.2.dat")
+    rounded = earlier_snip(tmp_path, source, OI, fmt="%.7e", name="r_16O_I_1302.2.dat")
     old = LF.read_snip_file(str(rounded))
     assert LF.match_row(project, spectra(project), old.wave, old.flux, old.error)
 
@@ -145,7 +145,7 @@ def test_a_snip_from_another_spectrum_is_refused_with_the_reason(
 ):
     project = new_project(registry, [source])
     found = spectra(project)
-    old = LF.read_snip_file(str(prepfit_snip(tmp_path, source, OI)))
+    old = LF.read_snip_file(str(earlier_snip(tmp_path, source, OI)))
     # The flux changed at three pixels
     flux = old.flux.copy()
     flux[[3, 10, 20]] *= 1.5
@@ -181,12 +181,12 @@ def test_a_snip_is_placed_at_the_transition_its_name_names(registry, source):
 # -- Load snips… ----------------------------------------------------------------------
 
 
-def test_prepfit_snips_load_with_their_fit_ranges(registry, source, tmp_path):
+def test_earlier_snips_load_with_their_fit_ranges(registry, source, tmp_path):
     project = new_project(registry, [source])
     hist = H.History(project)
     before = state(project)
-    one = prepfit_snip(tmp_path / "data", source, OI)
-    two = prepfit_snip(tmp_path / "data", source, SII)
+    one = earlier_snip(tmp_path / "data", source, OI)
+    two = earlier_snip(tmp_path / "data", source, SII)
     plan = load(project, [one, two])
     assert plan.ok and not plan.replaced
     assert plan.description == "Load 2 snips (O I 1302.2, Si II 1304.4)"
@@ -214,7 +214,7 @@ def test_prepfit_snips_load_with_their_fit_ranges(registry, source, tmp_path):
 
 def test_a_snip_without_a_fit_range_loads_with_none(registry, source, tmp_path):
     project = new_project(registry, [source])
-    path = prepfit_snip(tmp_path, source, OI, ncols=3)
+    path = earlier_snip(tmp_path, source, OI, ncols=3)
     H.History(project).do(load(project, [path]).step)
     snip = project.snip("OI_1302")
     assert snip.pixels.ncols == 4
@@ -240,7 +240,7 @@ def test_a_bad_pixel_mask_of_the_source_is_carried(registry, tmp_path):
     )
     plain = tmp_path / "plain.dat"
     np.savetxt(str(plain), table)
-    snip_file = prepfit_snip(
+    snip_file = earlier_snip(
         tmp_path / "data", plain, OI, name="masked_16O_I_1302.2.dat"
     )
     H.History(project).do(load(project, [snip_file]).step)
@@ -253,8 +253,8 @@ def test_a_bad_pixel_mask_of_the_source_is_carried(registry, tmp_path):
 
 def test_one_file_that_fails_stops_the_whole_load(registry, source, tmp_path):
     project = new_project(registry, [source])
-    good = prepfit_snip(tmp_path, source, OI)
-    unnamed = prepfit_snip(tmp_path, source, SII, name="nameless.dat")
+    good = earlier_snip(tmp_path, source, OI)
+    unnamed = earlier_snip(tmp_path, source, SII, name="nameless.dat")
     plan = load(project, [good, unnamed])
     assert not plan.ok and plan.step is None
     assert plan.problems == [("nameless.dat", LF.NO_NAME)]
@@ -264,8 +264,8 @@ def test_one_file_that_fails_stops_the_whole_load(registry, source, tmp_path):
 
 def test_two_chosen_files_that_share_pixels_are_refused(registry, source, tmp_path):
     project = new_project(registry, [source])
-    one = prepfit_snip(tmp_path, source, OI)
-    two = prepfit_snip(tmp_path, source, OI, half=100.0, name="b_16O_I_1302.2.dat")
+    one = earlier_snip(tmp_path, source, OI)
+    two = earlier_snip(tmp_path, source, OI, half=100.0, name="b_16O_I_1302.2.dat")
     plan = load(project, [one, two])
     assert not plan.ok
     assert "shares pixels of src with b_16O_I_1302.2.dat" in plan.problems[0][1]
@@ -274,10 +274,10 @@ def test_two_chosen_files_that_share_pixels_are_refused(registry, source, tmp_pa
 def test_a_snip_that_overlaps_one_loaded_replaces_it(registry, source, tmp_path):
     project = new_project(registry, [source])
     hist = H.History(project)
-    hist.do(load(project, [prepfit_snip(tmp_path / "a", source, OI)]).step)
-    hist.do(load(project, [prepfit_snip(tmp_path / "a", source, SII)]).step)
+    hist.do(load(project, [earlier_snip(tmp_path / "a", source, OI)]).step)
+    hist.do(load(project, [earlier_snip(tmp_path / "a", source, SII)]).step)
     before = state(project)
-    wider = prepfit_snip(tmp_path / "b", source, OI, half=200.0, fit=(-60.0, 60.0))
+    wider = earlier_snip(tmp_path / "b", source, OI, half=200.0, fit=(-60.0, 60.0))
     plan = load(project, [wider])
     assert plan.ok
     assert [s.specid for s, _ in plan.replaced] == ["OI_1302"]
@@ -302,7 +302,7 @@ def test_a_snip_that_overlaps_one_loaded_replaces_it(registry, source, tmp_path)
 def test_snip_still_cuts_after_a_load(registry, source, tmp_path):
     project = new_project(registry, [source])
     hist = H.History(project)
-    hist.do(load(project, [prepfit_snip(tmp_path, source, OI)]).step)
+    hist.do(load(project, [earlier_snip(tmp_path, source, OI)]).step)
     atom = L.atomic(registry)
     line = next(ln for ln in atom.ion_lines(SII[0]) if abs(ln.rest - SII[1]) < 0.01)
     hist.do(S.snip_step(project, project.systems[0], line, spectra(project)))
@@ -313,8 +313,8 @@ def unassigned_project(registry, source, tmp_path):
     """A project of src, with a snip of src and one loaded unassigned (Stage 11)."""
     other = noisy_copy(tmp_path)
     project = new_project(registry, [source])
-    mine = prepfit_snip(tmp_path / "data", source, OI)
-    theirs = prepfit_snip(
+    mine = earlier_snip(tmp_path / "data", source, OI)
+    theirs = earlier_snip(
         tmp_path / "data", other, SII, name="other_28Si_II_1304.4_reg.dat"
     )
     hist = H.History(project)
@@ -392,7 +392,7 @@ def test_clear_leaves_an_unassigned_dataset_its_data_and_snip_cuts_again(
 def test_kept_data_carry_the_snip_s_bad_pixels(registry, source, tmp_path):
     # Stage 12 (Q12.16 (i)): a bad-pixel mask comes with the data, so that a snip
     # cut again from them keeps its bad pixels out of the fit (D52)
-    path = prepfit_snip(
+    path = earlier_snip(
         tmp_path / "data",
         noisy_copy(tmp_path),
         SII,
@@ -469,8 +469,8 @@ def test_a_dataset_emptied_before_its_data_were_kept_says_so(
 def test_snips_in_one_dataset_join_their_pixels(registry, source, tmp_path):
     # Q12.16 (iii): in wavelength order; where two overlap, the first snip's pixels
     data = tmp_path / "old" / "data"
-    first = prepfit_snip(data, source, OI, name="a_16O_I_1302.2_reg.dat")
-    second = prepfit_snip(
+    first = earlier_snip(data, source, OI, name="a_16O_I_1302.2_reg.dat")
+    second = earlier_snip(
         data,
         noisy_copy(tmp_path),
         OI,
@@ -510,8 +510,8 @@ def test_load_snips_gives_each_file_a_fate(registry, source, tmp_path):
     # from it; unticked, it is left out
     other = noisy_copy(tmp_path)
     project = new_project(registry, [source])
-    mine = prepfit_snip(tmp_path / "data", source, OI)
-    theirs = prepfit_snip(
+    mine = earlier_snip(tmp_path / "data", source, OI)
+    theirs = earlier_snip(
         tmp_path / "data", other, SII, name="other_28Si_II_1304.4_reg.dat"
     )
     paths = [str(mine), str(theirs)]
@@ -597,8 +597,8 @@ model end
 
 def write_mod(folder, source, blind="False", fwhm="7.0", z="0.0", one=None, two=None):
     data = folder / "data"
-    one = one or prepfit_snip(data, source, OI)
-    two = two or prepfit_snip(data, source, SII)
+    one = one or earlier_snip(data, source, OI)
+    two = two or earlier_snip(data, source, SII)
     model = folder / "model"
     model.mkdir(parents=True, exist_ok=True)
     path = model / "old.mod"
@@ -610,7 +610,7 @@ def test_a_mod_brings_its_model_as_written_and_its_snips(registry, source, tmp_p
     project = new_project(registry, [source])
     hist = H.History(project)
     # A snip loaded first, then the .mod, whose snips replace it (Q7.1)
-    hist.do(load(project, [prepfit_snip(tmp_path / "first", source, OI)]).step)
+    hist.do(load(project, [earlier_snip(tmp_path / "first", source, OI)]).step)
     before = state(project)
     mod = write_mod(tmp_path / "old", source)
     plan = LF.load_mod_plan(project, str(mod), spectra(project))
@@ -694,7 +694,7 @@ def test_a_mod_whose_snip_is_not_from_the_spectra_loads_it_unassigned(
     # holds is loaded as it is, with no source, and the plan says why
     project = new_project(registry, [source])
     data = tmp_path / "data"
-    one = prepfit_snip(data, source, OI)
+    one = earlier_snip(data, source, OI)
     table = np.loadtxt(str(one))
     table[5, 1] += 1.0
     np.savetxt(str(one), table)
@@ -746,8 +746,8 @@ def test_a_mod_whose_model_does_not_read_is_refused(registry, source, tmp_path):
 def test_a_data_path_outside_the_project_is_rewritten(registry, source, tmp_path):
     project = new_project(registry, [source])
     far = tmp_path / "far" / "away"
-    one = prepfit_snip(far, source, OI)
-    two = prepfit_snip(far, source, SII)
+    one = earlier_snip(far, source, OI)
+    two = earlier_snip(far, source, SII)
     model = tmp_path / "a" / "b" / "model"
     model.mkdir(parents=True)
     mod = model / "old.mod"
@@ -785,8 +785,8 @@ model end
 def write_two_mod(folder, source, other, shift_one="", shift_two=""):
     """A .mod of two datasets: O I cut from ``source``, Si II from ``other``."""
     data = folder / "data"
-    one = prepfit_snip(data, source, OI)
-    two = prepfit_snip(data, other, SII, name="other_{0}_reg.dat".format(SII[2]))
+    one = earlier_snip(data, source, OI)
+    two = earlier_snip(data, other, SII, name="other_{0}_reg.dat".format(SII[2]))
     model = folder / "model"
     model.mkdir(parents=True, exist_ok=True)
     path = model / "old.mod"
@@ -855,10 +855,10 @@ def test_the_datasets_of_a_mod_of_two_spectra(registry, source, tmp_path):
     other = noisy_copy(tmp_path)
     data = tmp_path / "old" / "data"
     snips = [
-        (prepfit_snip(data, source, OI), "7.0", "VA", ""),
-        (prepfit_snip(data, source, SII), "7.0", "VA", ""),
+        (earlier_snip(data, source, OI), "7.0", "VA", ""),
+        (earlier_snip(data, source, SII), "7.0", "VA", ""),
         (
-            prepfit_snip(data, other, OI, name="other_16O_I_1302.2_reg.dat"),
+            earlier_snip(data, other, OI, name="other_16O_I_1302.2_reg.dat"),
             "5.0",
             "vb",
             "shift=vshift(0.0vsb)",
@@ -908,13 +908,13 @@ def test_a_snip_held_by_two_spectra_is_guessed_by_its_dataset(
     data = tmp_path / "old" / "data"
     snips = [
         (
-            prepfit_snip(data, path, OI, name="half_16O_I_1302.2_reg.dat"),
+            earlier_snip(data, path, OI, name="half_16O_I_1302.2_reg.dat"),
             "7.0",
             "VA",
             "",
         ),
         (
-            prepfit_snip(data, path, SII, name="half_28Si_II_1304.4_reg.dat"),
+            earlier_snip(data, path, SII, name="half_28Si_II_1304.4_reg.dat"),
             "7.0",
             "VA",
             "",
@@ -935,7 +935,7 @@ def test_a_snip_that_no_spectrum_holds_has_a_reason_for_each(
     one, two = noisy_copy(tmp_path, "one.dat", 1), noisy_copy(tmp_path, "two.dat", 2)
     project = new_project(registry, [source, one, two])
     far = noisy_copy(tmp_path / "far", "far.dat", 4)
-    old = LF.read_snip_file(str(prepfit_snip(tmp_path / "data", far, OI)))
+    old = LF.read_snip_file(str(earlier_snip(tmp_path / "data", far, OI)))
     with pytest.raises(LF.LoadError) as err:
         LF.match_row(project, spectra(project), old.wave, old.flux, old.error)
     # Before: the reason of the row nearest to matching alone
@@ -944,7 +944,7 @@ def test_a_snip_that_no_spectrum_holds_has_a_reason_for_each(
     assert str(err.value).count(";") == 2
     data = tmp_path / "old" / "data"
     snips = [
-        (prepfit_snip(data, far, OI, name="far_16O_I_1302.2_reg.dat"), "7.0", "VA", "")
+        (earlier_snip(data, far, OI, name="far_16O_I_1302.2_reg.dat"), "7.0", "VA", "")
     ]
     fit = LF.read_fit(
         str(FT.write_mod(tmp_path / "old", snips, ions=(OI[0],))), registry
@@ -1007,7 +1007,7 @@ def test_a_fit_range_is_carried_over_by_wavelength(registry, source, tmp_path):
     project = new_project(registry, [moved])
     spec = spectra(project)["r1"]
     data = tmp_path / "old" / "data"
-    snips = [(prepfit_snip(data, source, OI), "7.0", "VA", "")]
+    snips = [(earlier_snip(data, source, OI), "7.0", "VA", "")]
     fit = LF.read_fit(
         str(FT.write_mod(tmp_path / "old", snips, ions=(OI[0],))), registry
     )
@@ -1059,7 +1059,7 @@ def test_a_bare_data_line_is_cut_again_with_its_columns_written(
     # assignment to a dataset that has no source
     other = noisy_copy(tmp_path)
     data = tmp_path / "old" / "data"
-    piece = prepfit_snip(data, other, SII, name="piece.dat", ncols=3)
+    piece = earlier_snip(data, other, SII, name="piece.dat", ncols=3)
     model = tmp_path / "old" / "model"
     model.mkdir(parents=True)
     mod = model / "old.mod"
@@ -1105,15 +1105,15 @@ def three_snip_mod(folder, source, other):
     each with a continuum of its own."""
     data = folder / "data"
     snips = [
-        (prepfit_snip(data, source, OI), "7.0", "VA", ""),
+        (earlier_snip(data, source, OI), "7.0", "VA", ""),
         (
-            prepfit_snip(data, other, SII, name="other_28Si_II_1304.4_reg.dat"),
+            earlier_snip(data, other, SII, name="other_28Si_II_1304.4_reg.dat"),
             "5.0",
             "vb",
             "",
         ),
         (
-            prepfit_snip(data, other, OI, name="other_16O_I_1302.2_reg.dat"),
+            earlier_snip(data, other, OI, name="other_16O_I_1302.2_reg.dat"),
             "5.0",
             "vb",
             "",
@@ -1196,15 +1196,15 @@ def test_unassigned_snips_that_would_share_a_dataset_and_overlap(
     data = tmp_path / "old" / "data"
     snips = [
         # O I twice, overlapping; Si II from far enough out to overlap O I
-        (prepfit_snip(data, other, OI, name="a_16O_I_1302.2_reg.dat"), "5.0", "vb", ""),
+        (earlier_snip(data, other, OI, name="a_16O_I_1302.2_reg.dat"), "5.0", "vb", ""),
         (
-            prepfit_snip(data, other, OI, name="b_16O_I_1302.2_reg.dat", centre=1302.4),
+            earlier_snip(data, other, OI, name="b_16O_I_1302.2_reg.dat", centre=1302.4),
             "5.0",
             "vb",
             "",
         ),
         (
-            prepfit_snip(data, other, SII, name="c_28Si_II_1304.4_reg.dat", half=500.0),
+            earlier_snip(data, other, SII, name="c_28Si_II_1304.4_reg.dat", half=500.0),
             "5.0",
             "vb",
             "",

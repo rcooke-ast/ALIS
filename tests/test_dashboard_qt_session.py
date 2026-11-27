@@ -133,7 +133,7 @@ def test_save_as_for_an_import(setup, qtbot, tmp_path):
     window.chosen["save"] = str(target)
     window.qactions["file.save"].trigger()
     assert window.session.path == str(target) + ".model"
-    assert window.windowTitle().startswith("ALIS dashboard — saved_as.model")
+    assert window.windowTitle().startswith("ALIS GUI — saved_as.model")
     assert not window.isWindowModified()
 
 

@@ -166,7 +166,7 @@ NO_RUN = "No fit has run yet."
 BLIND = "BLIND"
 HIDDEN = (
     "Hidden values are written as BLIND, so the exported models run outside the"
-    " dashboard only once the project is unblinded; run_alis {0}.model runs the"
+    " GUI only once the project is unblinded; run_alis {0}.model runs the"
     " project itself."
 )
 IN_PROGRESS = "The fit is still running: wait for it to end, or stop it, first."
@@ -588,7 +588,7 @@ def tables(project, name, keys, view=None, velocity_of=""):
             if key in values:
                 words.append(BY_KEY[key].word)
                 cols.append(values[key])
-        header = ["ALIS dashboard export of {0}, {1}".format(name, stamp)]
+        header = ["ALIS GUI export of {0}, {1}".format(name, stamp)]
         header.append(
             "Snip {0}{1}".format(
                 snip.specid,

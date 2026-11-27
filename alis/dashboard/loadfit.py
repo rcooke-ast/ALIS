@@ -1,9 +1,10 @@
 """Loading snips and a ``.mod`` from an earlier analysis.
 
 Dashboard Stage 7.1 (Q7.1–Q7.4). An analysis made with ALIS before the dashboard has
-a full spectrum, snips that ``prepfit`` cut from it (``<stem>_1H_I_1215.7_reg.dat``:
-wave, flux and error, and a fit range of 0s and 1s), and a ``.mod`` that names the
-snips. The user starts a new project from the spectrum, then brings in the rest:
+a full spectrum, snips cut from it (``<stem>_1H_I_1215.7_reg.dat``: a snip's four
+columns, wavelength, flux, error and a fit range of 0s and 1s), and a ``.mod``
+that names the snips. The user starts a new project from the spectrum, then
+brings in the rest:
 
 - **Load snips…** (the Regions tab) reads one file or several. Each file is matched
   to the file row whose source spectrum it was cut from: every pixel's wavelength
@@ -54,14 +55,14 @@ WAVE_TOLERANCE = 0.05
 # Its flux and error are the source's when they differ by less than this fraction of
 # the source's error, so that a snip written with fewer digits still matches
 VALUE_TOLERANCE = 1.0e-3
-# A snip file's columns: wave, flux and error, then prepfit's fit range, then a
+# A snip file's columns: wave, flux and error, then its fit range, then a
 # bad-pixel mask (as the dashboard writes its own snips, D52)
 MIN_COLUMNS, MAX_COLUMNS = 3, 5
 # The lines of the model that a loaded .mod replaces, as its preview lists them
 _MODEL_KINDS = (T.DATA, T.FIX, T.LIM, T.FUNCTION, T.LINK)
 NO_NAME = (
-    "its file name names no transition. prepfit names a snip"
-    " <stem>_<ion>_<wavelength>_reg.dat, as in J0133_1H_I_1215.7_reg.dat."
+    "its file name names no transition. A snip's file name gives its ion and rest"
+    " wavelength, as in J0133_1H_I_1215.7_reg.dat."
 )
 
 
@@ -75,7 +76,8 @@ class LoadError(Exception):
 @dataclass
 class OldSnip:
     """
-    A snip read from a file: ``prepfit``'s, or one the dashboard exported.
+    A snip read from a file: one from an earlier analysis, or one the dashboard
+    exported.
 
     Attributes
     ----------
@@ -120,7 +122,7 @@ def _flags(values, message):
 def read_snip_file(path, content=None):
     """
     Read a snip file: a table of 3 to 5 columns, wave, flux and error, then a fit
-    range of 0s and 1s (``prepfit``'s fourth column), then a bad-pixel mask of 0s and
+    range of 0s and 1s (a snip's fourth column), then a bad-pixel mask of 0s and
     1s (D52).
 
     Parameters

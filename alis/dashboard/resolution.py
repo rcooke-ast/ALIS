@@ -106,7 +106,7 @@ KNOTS_NOTE = "lsfspline's knots are set with " + KNOTS_TEXT
 LINETOOLS_MARK = "needs linetools"
 LINETOOLS_NOTE = (
     "lsf needs linetools, which is not installed here. Install it with"
-    " `pip install linetools`, then open the dashboard again."
+    " `pip install linetools`, then open the GUI again."
 )
 # apod's kinds (alis/functions/apod.py)
 APOD_KINDS = ("uniform", "hanning", "hamming", "bartlett", "blackmann", "welch", "new")

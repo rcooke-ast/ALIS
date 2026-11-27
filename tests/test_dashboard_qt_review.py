@@ -114,7 +114,7 @@ def test_the_panel_in_its_own_window_and_back(window, qtbot, tmp_path):
     window.panel.window_button.click()
     assert dock.isFloating() and dock.isVisible()
     assert window.qactions["view.mod_window"].isChecked()
-    assert window.panel.window_button.text() == "↩ Back to the dashboard"
+    assert window.panel.window_button.text() == "↩ Back to the main window"
     assert window.session.view["mod_panel"]["window"] is True
     # It still works with the dashboard: typing reaches the project
     editor = window.panel.editor

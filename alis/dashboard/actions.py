@@ -107,8 +107,8 @@ ACTIONS = (
         "Load snips…",
         "File",
         "",
-        "Load snips saved earlier (by prepfit, for example), each checked against the"
-        " spectrum it was cut from",
+        "Load snips saved earlier (files of wavelength, flux, error and fit range),"
+        " each checked against the spectrum it was cut from",
     ),
     Action(
         "file.save",
@@ -165,7 +165,7 @@ ACTIONS = (
     Action(
         "file.close", "Close project", "File", "Ctrl+W", "Close the project", section=4
     ),
-    Action("file.quit", "Quit", "File", "Ctrl+Q", "Quit the dashboard", section=4),
+    Action("file.quit", "Quit", "File", "Ctrl+Q", "Quit the GUI", section=4),
     # Edit
     Action("edit.undo", "Undo", "Edit", "Ctrl+Z", "Undo the last change", toolbar=True),
     Action(
@@ -225,7 +225,7 @@ ACTIONS = (
         "The .mod panel in its own window",
         "View",
         "Ctrl+Shift+W",
-        "Move the .mod panel to a window of its own, or back into the dashboard",
+        "Move the .mod panel to a window of its own, or back into the main window",
         checkable=True,
         section=1,
     ),
@@ -467,7 +467,7 @@ ACTIONS += (
         REGIONS_TAB,
         "",
         "Drag to add a fit region, right-drag to leave pixels out, in the selected"
-        " dataset alone (as in prepfit)",
+        " dataset alone",
         checkable=True,
         scope="Regions",
         section=2,

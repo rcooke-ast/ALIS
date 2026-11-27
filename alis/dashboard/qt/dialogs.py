@@ -2116,12 +2116,12 @@ class AllSettingsDialog(QtWidgets.QDialog):
             notes = [setting.help]
             if setting.owner == SE.COMPUTER:
                 notes.append(
-                    "This computer's setting: the dashboard's runs use {0} (the"
+                    "This computer's setting: the GUI's runs use {0} (the"
                     " preferences) unless the model sets it.".format(computer.get(name))
                 )
             elif setting.owner == SE.DASHBOARD and name in runs:
                 notes.append(
-                    "The dashboard's runs use {0}; run_alis uses the model's.".format(
+                    "The GUI's runs use {0}; run_alis uses the model's.".format(
                         runs[name]
                     )
                 )

@@ -661,7 +661,9 @@ def read_atomic_table(fname, verbose=2, content=None):
                   + msgs.newline() + fname + msgs.newline()
                   + "Convert it with alis/data/convert_xmlFormat_to_ecsvFormat.py,"
                   + msgs.newline()
-                  + "or ask RJC to add the transitions to the shipped atomic.ecsv",
+                  + "or ask Ryan Cooke, through an issue on GitHub, to add the"
+                  + msgs.newline()
+                  + "transitions to the shipped atomic.ecsv",
                   verbose=verbose)
         try:
             return parse_single_table(fname).to_table()

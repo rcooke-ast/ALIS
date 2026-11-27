@@ -143,8 +143,7 @@ correctness first, then what users need next, then effort; RJC orders the work.
 - **Where:** `refactor_code_stage6.md` §6.2, §6.6, Q6.2, Q6.4.
 - **To finish:** the emitter half of 6.6 is **done** — `alis/plotscript.py`, ten
   `plotscript` settings, ten unit tests in `tests/test_plotscript.py`. Only the
-  GUI surface is missing. `alis/prepfit/specplot.py:390` `set_regions` was kept
-  and repaired specifically for this (Q6.8/Q6.10).
+  GUI surface is missing.
 - **Note:** two of the three `plotscript` `DH` layouts have never been exercised
   on real data — no model in the harness has exactly one or two datasets
   covering a Lyman series (stage 5 log, Task 5.3).
@@ -155,14 +154,16 @@ correctness first, then what users need next, then effort; RJC orders the work.
   `CONTRIBUTING.md`.
 - **Why deferred:** RJC, Q6.3 — until v2.0.0 is ready for deployment.
 - **Where:** `refactor_code_stage6.md` §6.3, Q6.3.
-- **To finish:** there is no `docs/` tree, no `.readthedocs.yaml` and no
-  `CONTRIBUTING.md` yet. `doc/ALIS_workflow.md` is the current reference and is
-  up to date as of Stage 6.7; `doc/tex_files/` is out of date and reference only.
+- **To finish:** the site's skeleton (`doc/source/`, `.readthedocs.yaml`) is built in
+  Documentation Stage 1; there is no `CONTRIBUTING.md` yet. `doc/ALIS_workflow.md`
+  is the current reference and is up to date as of Stage 6.7; `doc/tex_files/` is
+  out of date and reference only.
   `run_alis --list-settings` (Stage 6.1, Q6.24) covers settings discovery in the
   meantime.
-- **Planned:** in `documentation_stage0.md` (D87), Documentation Stages 1–5, next
-  after dashboard Stage 14 (brought up to date at its close, 2026-11-26, with queries
-  DQ.1–DQ.14 for RJC). `CONTRIBUTING.md` is in Documentation Stage 5.
+- **Planned:** in `documentation_stage0.md` (D87), Documentation Stages 1–5. The
+  plan's queries (DQ.1–DQ.19) are answered, and Documentation Stage 1 has started
+  (2026-11-26, `documentation_stage1.md`). `CONTRIBUTING.md` is in Documentation
+  Stage 5.
 
 ### 1.3 YAML/TOML model files (Stage 5.1)
 - **What:** a second model-file format alongside `.mod`.
@@ -444,7 +445,7 @@ leaving it implicit made the gate depend on which ruff happened to be installed.
 *The `context/` fits in CI were not taken in dashboard Stage 14 (Q14.1); offered to
 Stage 15 (its candidate 5).*
 
-- **`plot.py` and `prepfit/specplot.py` are not reached by the Stage 0 gate.**
+- **`plot.py` is not reached by the Stage 0 gate.**
   The harness exercises fitting, not plotting. `plot dims 0` is now covered by
   the fast batch, but the drawing code is not.
 - **The `plotscript` `DH` layouts for one and two datasets** are unit-tested
@@ -503,13 +504,12 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
 - **What:** fill the `SolarAbundance` column of `alis/data/atomic.ecsv`, which holds
   0.0 (or NaN) for every line, with each element's solar abundance as log ε (H = 12),
   and read it from there: the dashboard's line IDs (`alis/dashboard/lines.py`, the
-  `SOLAR` table) and `prepfit` (`alis/prepfit/specplot.py`, `solar()`) each keep
-  their own copy of Asplund et al. (2009) today.
+  `SOLAR` table) keep the only copy of Asplund et al. (2009) today.
 - **Why deferred:** RJC, on the review page of the Data tab (Q4.18(b)): an item for
   future work. Read as log ε, the column would not change which lines are labelled.
 - **Where:** Q4.18 in `dashboard_stage4.md`; the "Line IDs" design of Stage 4.
 - **To finish:** the values in the ECSV (with their source), `check_atomic_table`
-  checking them, and `lines.SOLAR` and `specplot.solar()` replaced by the column.
+  checking them, and `lines.SOLAR` replaced by the column.
 
 ### 7.4 A stacked spectrum of a transition
 - **What:** combine the data of one transition from every dataset (resampled onto one
@@ -608,8 +608,8 @@ Stage 6), where `Q6.n` is a query in `claude_prompts/dashboard_stage6.md`. §7.8
   snips could take it instead, on its right, if the transition were guessed from the
   system's ions or chosen by the user.
 - **Why deferred:** RJC, Q12.1 (b) of `dashboard_stage12.md`: it waits for a user to
-  ask for it. A guessed transition is one the user would have to check, and a file
-  of `prepfit`'s names its transition.
+  ask for it. A guessed transition is one the user would have to check, and a snip
+  from an earlier analysis names its transition.
 - **Where:** Stage 11's "Carried over" item 1 (`dashboard_stage12.md`), D122;
   `alis/dashboard/loadfit.py` (the files' transitions), `alis/dashboard/qt/window.py`
   (Load snips…).

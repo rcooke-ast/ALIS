@@ -810,8 +810,8 @@ def test_q1243_regions_are_the_same_in_every_dataset(window, qtbot):
 
 
 def test_add_regions_to_all_and_tweak_one_dataset(window, qtbot, tmp_path):
-    """RJC's review of draft 2: two tools, as in prepfit (a drag adds, a right-drag
-    leaves pixels out), in every dataset or in the selected one alone."""
+    """RJC's review of draft 2: two tools (a drag adds, a right-drag leaves pixels
+    out), in every dataset or in the selected one alone."""
     second = tmp_path / "second.dat"
     second.write_bytes(SPECTRUM.read_bytes())
     tab = new_project(window, tmp_path, z=0.0, spectra=(SPECTRUM, second))
@@ -1407,7 +1407,8 @@ def confirm(then=1):
 
 
 def saved_snip(window, folder, ion_word, rest, half=150.0, fit=40.0, name=None):
-    """A snip as prepfit saves it, cut from the project's first spectrum (z = 0)."""
+    """A snip as an earlier analysis saved it, cut from the project's first spectrum
+    (z = 0)."""
     project = window.session.project
     spec = SR.spectrum(project, project.rows[0])
     vel = (spec.wave / rest - 1.0) * C_KMS
@@ -1486,7 +1487,7 @@ def test_load_snips_places_them_or_loads_nothing(window, qtbot, tmp_path):
 
 
 def old_fit(window, tmp_path):
-    """An earlier fit of the project's spectrum: two prepfit snips and a .mod."""
+    """An earlier fit of the project's spectrum: two snips and a .mod."""
     data = tmp_path / "old" / "data"
     one = saved_snip(window, data, "16O_I", 1302.16849)
     two = saved_snip(window, data, "28Si_II", 1304.3702)

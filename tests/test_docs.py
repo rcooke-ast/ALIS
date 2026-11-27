@@ -10,8 +10,8 @@ what the build cannot:
 - every page of ``PAGES`` exists, and no page is missing from it;
 - every page has its title and lists its sources, for whoever updates it;
 - no file of the site, nor ``CITATION.cff``, names what the site leaves out
-  (``prepfit``, the v1.0 manual, ``context/``), or says "dashboard" or "RJC" where
-  a user reads it;
+  (``LEFT_OUT``: a removed tool, the v1.0 manual, ``context/``), or says "dashboard"
+  or "RJC" where a user reads it;
 - About ALIS and ``CITATION.cff`` cite the same paper;
 - the ``alis`` lexer reads every example model with no error token.
 

@@ -427,13 +427,15 @@ class ModPanel(QtWidgets.QWidget):
     def set_window_mode(self, own):
         """The header's button, for a panel in its own window or in the dashboard."""
         if own:
-            self.window_button.setText("↩ Back to the dashboard")
-            self.window_button.setToolTip("Put the .mod panel back into the dashboard")
+            self.window_button.setText("↩ Back to the main window")
+            self.window_button.setToolTip(
+                "Put the .mod panel back into the main window"
+            )
         else:
             self.window_button.setText("⧉ Own window")
             self.window_button.setToolTip(
                 "Move the .mod panel to a window of its own; it keeps working with"
-                " the dashboard"
+                " the main window"
             )
         self.hide_button.setVisible(not own)
 

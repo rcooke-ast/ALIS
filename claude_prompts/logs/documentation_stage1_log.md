@@ -281,3 +281,242 @@ build succeed.
 
 Paused here, as Prompt 2 asks, for RJC to push and to activate the hidden version
 on readthedocs.
+
+## Prompt 3 (2026-11-27): Task 1.4 finished, DQ1.5 answered, Tasks 1.5–
+
+RJC committed Tasks 1.1–1.4 (8833500), pushed `alis_v2_doc_stage1`, and activated
+its hidden version on readthedocs.
+
+### Task 1.4, its checks after the push
+
+- **readthedocs:** build 36207992 of `alis_v2_doc_stage1`, at 8833500, finished
+  with success (`fail_on_warning`). `latest` fails, as expected: `master` has no
+  `.readthedocs.yaml`.
+- **The hidden version** is at
+  `https://alis-fitting.readthedocs.io/en/alis_v2_doc_stage1/`, the slug unchanged.
+  - Its front page, fetched: the title "ALIS", the three sentences, and the three
+    ways in (Your first fit → `user/start/first-fit.html`, The GUI at a glance →
+    `user/gui/overview.html`, The model file → `user/fitting/model-file.html`), each
+    with its line, then the line to the Developer guide.
+  - The sidebar has its six captions: Getting started, The GUI, Fitting with ALIS,
+    Reference, About, Developer guide.
+  - Each of the 36 pages of `PAGES` answers at its address (HTTP 200).
+- **CI** (run 45977718491, at 8833500): every job passed. `docs` took 24 s; `unit`,
+  `gui` and `examples` passed on Ubuntu and macOS (`gui` 20 and 27 min), and `lint`.
+
+Task 1.4 is done.
+
+### DQ1.5 answered
+
+RJC chose (a), through Claude's question at the start of Prompt 3: `pyproject.toml`'s
+licence is fixed in Task 1.5.
+
+### Task 1.5 — `prepfit` removed from ALIS
+
+**Removed:** `alis/prepfit/` (`specplot.py`, `__init__.py`), `examples/prepfit/`
+(`README`, `myobjects.py`, `select_fitting_regions.py`), `tests/test_prepfit_deprecated.py`
+and its sentence in `tests/README.md`, and `alis/data/atomic.dat`. Files deleted with
+`rm`; RJC's commit records them.
+
+**`pyproject.toml`:**
+- the eight entries: black's `force-exclude` (3), isort's `extend_skip` (3), ruff's
+  `extend-exclude` (2). The comment above the lists counts 38 `alis/` files and 5
+  others (39 and 6 before);
+- DQ1.5 (a): `license = "BSD-3-Clause"`, `license-files = ["LICENSE"]`, `requires =
+  ["setuptools>=77"]`, and the licence classifier removed.
+
+**The texts a user sees**, as in the design's table: Load snips…' tooltip, Adjust fit
+regions: one spectrum's, the Adjust fit regions ▾ menu's, and `loadfit.NO_NAME`.
+Printed from the code, each reads as the table's "Becomes".
+
+**The comments and docstrings:** `lines.py` (3), `loadfit.py` (4), `modes.py`,
+`snips.py` (2), `qt/plots.py`, `qt/regions.py` (4), as the design gives them.
+
+**`alis/data/atomic_README`:** its first lines name `atomic.ecsv` and `atomic.xml`
+alone; "To make things complicated" and "this will all resolve itself one day" went.
+
+**The tests:** `prepfit_snip` is `earlier_snip` (67 uses in four files; with the two
+tests' names, the design's 69 lines). The two tests are
+`test_an_earlier_snip_is_read_with_its_fit_range` and
+`test_earlier_snips_load_with_their_fit_ranges`. Five docstrings reworded. isort
+moved `earlier_snip` ahead of `noisy_copy` in three imports.
+
+**`CHANGELOG.md`:** the Deprecated section (`prepfit` alone) became a Removed entry,
+with `atomic.dat`; under Changed, the licence's form.
+
+**Check:**
+- `git grep -i prepfit -- alis tests examples pyproject.toml`: one line,
+  `tests/test_docs.py`'s pattern, `"prepfit": re.compile(r"prepfit", …)`, which must
+  name the word to find it. Its docstring no longer names it (Task 1.7). Nothing else.
+- `git grep -w atomic.dat -- alis tests`: nothing.
+- Collected against a snapshot of HEAD (8833500): `unit` 2641 → 2640, the difference
+  being `test_prepfit_deprecated.py`'s test and the two renamed tests; `gui` 342 →
+  342, the same list.
+- Batches, on a snapshot of the tree (`snap_t15`):
+  - `unit`: 2521 passed, 119 skipped (Stage 14's 2475, plus `test_docs.py`'s 47,
+    less one);
+  - `gui`: 342 passed (11 min 33 s);
+  - `unit` under CI's versions (pytest 9.2.0, numpy 2.5.5, PySide6 6.12.0, in a
+    scratch venv): 2511 passed, 129 skipped. A first run gave 9 errors in
+    `test_voigt_gpu.py`: the venv saw the conda env's numba, which refuses numpy
+    2.5 ("Numba needs NumPy 2.4 or less"), and pytest 9.2's `importorskip` skips
+    only a module that is missing. CI installs no numba, so the rerun hid it, as on
+    CI. The ten extra skips are numba's;
+  - `gui` under CI's versions: 342 passed (11 min 23 s).
+- `pip install` of the tracked files (a copy, without the untracked `atomic_*.xml`)
+  into a fresh venv, built with `pip wheel -v`: no setuptools deprecation (HEAD's
+  tree gives 12 such lines); the metadata says `Metadata-Version: 2.4`,
+  `License-Expression: BSD-3-Clause`, `License-File: LICENSE`, and no licence
+  classifier; the wheel has `licenses/LICENSE`, no `alis/prepfit/` and no
+  `atomic.dat`.
+- The site builds with `-W`; `test_docs.py` passes (47); pre-commit passes on the 14
+  Python files.
+
+### Task 1.6 — The GUI by name, in ALIS
+
+**Before the change**, each string was checked for being shown, stored or read back:
+- **The command a run records** (`alis (dashboard)` and the three others): written
+  to `run.json`'s `command` and read back in one place, `results.py`'s Results,
+  which shows it only for a run from the command line (`origin == "cmd"`). Nothing
+  compares it. Changed.
+- **`validate.py`'s `"dashboard"`**, the fourth field of the unexpected problem
+  (`Problem.source`): passed on by `blinding.py`, never shown. Kept.
+- **A setting's owner `"dashboard"`** (`settings.py`): compared in `qt/dialogs.py`,
+  never shown. Kept.
+- **The export's header** ("ALIS dashboard export of …"): nothing reads it back. A
+  figure script reads its snips' columns from the header's last line alone. Changed.
+- Nothing in `tests/` compares a generated figure script with a saved copy.
+
+**Changed:** the 35 texts of the design's table, and `load.py`'s message (36
+replacements in 16 files). One correction to the table: `load.py`'s message is
+the warning on an atomic table in the old `.xml` format, not one on a missing
+transition. It now reads "… or ask Ryan Cooke, through an issue on GitHub, to add
+the" / "transitions to the shipped atomic.ecsv", over two lines. black re-wrapped
+one tooltip in `qt/modpanel.py`.
+
+**Kept** (the ast scan of `alis/` after the change): the ten strings of the design,
+`dashboard.json`, `alis.dashboard.runner`, `alis.dashboard.qt`, the stored
+`"dashboard"` (`runs.py`, `runner.py`, `settings.py`, `validate.py`), and the names
+`DASHBOARD` (`runs.py`, `settings.py`) and `DASHBOARD_SETTINGS` in `__all__`. No
+string says "RJC".
+
+**The tests that read the texts** (8 lines in 7 files): `test_dashboard_figure.py`,
+`test_dashboard_qt_figure.py` ("GUI's own"), `test_dashboard_qt_fit_cmd.py`
+("outside the GUI"), `test_dashboard_qt_review.py` ("↩ Back to the main window"),
+`test_dashboard_qt_session.py` and `test_dashboard_qt_window.py` (2; "ALIS GUI"),
+`test_dashboard_results.py` (`where == "GUI"`). Left: `conftest.py`'s skip reason
+(design), path components, `test_dashboard_no_qt.py`'s assertion message, and
+`test_dashboard_qt_app.py`'s planted `RuntimeError("a bug in the dashboard")`,
+which is the test's own text, not the GUI's.
+
+**`tests/test_gui_by_name.py`** (`unit`, 3 tests): it reads all 20 858 string
+literals of `alis/` but docstrings. One that says "dashboard" must be in `KEPT`,
+by file and text; every entry of `KEPT` must still be there; none may say "RJC".
+
+**`CHANGELOG.md`:** under Changed, the GUI's name in its texts.
+
+**Check:**
+- `test_gui_by_name.py` passes (3).
+- Scratch copies: "the dashboard" put back into a status message fails it (naming
+  `qt/window.py:1386`); "ask RJC" in `load.py` fails it; a docstring "The dashboard,
+  by RJC." passes it; `alis.dashboard.runner` renamed fails the `KEPT` test.
+- **The window** (gui-dev, headless at 1440×900, scripts in the scratchpad):
+  - a project saved by HEAD's code: `examples/metal_line_abs` packed, opened and
+    fitted in HEAD's window (title "ALIS dashboard — metal.model"), then saved.
+    Its `runs/latest/run.json` records origin `dashboard` and command `alis
+    (dashboard)`;
+  - opened by the new code: the start page's title "ALIS GUI", the project's "ALIS
+    GUI — old_metal.model"; About ALIS "ALIS GUI, ALIS 2.0.0.dev0. …"; Quit's
+    tooltip "Quit the GUI (⌘Q)"; the View action "… or back into the main window";
+    the panel's button, docked, "⧉ Own window" (tooltip "… it keeps working with
+    the main window"), and in its own window "↩ Back to the main window" (tooltip
+    "Put the .mod panel back into the main window");
+  - Results' history lists the old run as "GUI", its tooltip "Run from the GUI on
+    …", and the run.json keeps what it recorded.
+- `alis --help` (the installed command): "ALIS GUI v2.0.0.dev0: prepare, run and
+  inspect ALIS fits."
+- Collected: `unit` 2643 (2640 and the new test's 3); `gui` 342, the same list.
+- The batches are below, run once for Tasks 1.6 and 1.7 together: Task 1.7 changes
+  no code, only documents, comments and docstrings.
+- pre-commit passes on every changed Python file.
+
+### Task 1.7 — The documents
+
+- **README.md:** "Setup a fit" is two lines: the GUI (`alis`) prepares, runs and
+  shows a fit, and the documentation's address.
+- **WF:** §0 is "0. Snips": the opening paragraphs without the tool, with the GUI's
+  Data and Regions tabs (§4.3) as what makes snips; §0.1 (the columns, the GUI's
+  `badpix` fifth column, and the file name described from `snips._names`:
+  `<stem>_<El>_<ion>_<λ>_reg.dat`, `z<n>_` for a system other than the primary,
+  the mass number in earlier analyses' names); then **§0.2**, "From snips to a
+  model file" (§0.4 before). §0.2 and §0.3 (`prepfit`'s set-up and use), §0.5 and
+  §0.6 went.
+  - One change from the design: §0.4 is renumbered §0.2, so that §0 has no gap.
+    Nothing outside WF linked to a subsection of §0; its one link inside WF (§0's
+    opening) now says §0.2.
+  - Two lines of the old §0.4 relied on what went: "as given in the README" (the
+    example's README) and "un-normalised units (§0.2)". Both reworded.
+  - The five later mentions (§4.3): one sentence went ("`prepfit` (§0) keeps
+    working …"); the others are reworded. WF keeps "dashboard" elsewhere until
+    Stage 3; the new §0 says "GUI".
+- **Skills:** `gui-dev`'s note on running `prepfit` and `gui-component`'s "do not add
+  to it" went. Also, beyond the design: `gui-dev` quoted the old unexpected-error text,
+  now "The ALIS GUI has encountered …"; `build-docs` named `prepfit` in its
+  description of `test_docs.py`, now "what it leaves out (a removed tool, the v1.0
+  manual, `context/`: `LEFT_OUT`)", as does `test_docs.py`'s docstring.
+- **`deferred_work.md`:** §1.1's note on `set_regions` went; §5 keeps `plot.py`
+  alone; §7.3 names `lines.SOLAR` as the only copy; §7.8's reason says "a snip from
+  an earlier analysis names its transition"; §1.2's "Planned" says that the plan's
+  queries are answered and Stage 1 has started. Also §1.2's "To finish", which said
+  that there is no `.readthedocs.yaml`.
+- **`tests/README.md`:** done in Task 1.5.
+- **`CHANGELOG.md`:** "dashboard" → "GUI" by the site test's pattern (40 words, the
+  stage labels "GUI Stage 14" among them), sparing `alis/dashboard/`,
+  `alis/dashboard/qt/` and `~/.alis/dashboard.json`; "RJC" → "Ryan Cooke" (3); the
+  two mentions of `prepfit` in Added reworded.
+- **`alis/data/`:** `atomic_README` ("Ryan Cooke's own table"; "ask Ryan Cooke,
+  through an issue on GitHub, …"), `alis_publication.mplstyle` (its comments: "GUI
+  Stage 9", "the GUI's Figure tab", "Ryan Cooke" three times, the "Generated by"
+  line among them), `convert_xmlFormat_to_ecsvFormat.py`'s docstring (both "RJC").
+
+**Check:**
+- `git grep -i prepfit` outside the history: the CHANGELOG's Removed entry and
+  `test_docs.py`'s pattern.
+- `atomic.dat` outside the history: the same Removed entry alone, which names it by
+  design.
+- `CHANGELOG.md`, `README.md`, `alis/data/`'s documents and `examples/`: no
+  "dashboard" but in a code path and `dashboard.json`, and no "RJC".
+- WF's §0 read through: it stands on its own; its links (§0.1, §0.2, §2, §2.2,
+  §2.4–2.6, §4.3 and its "Preparing a fit" heading, §5.1) all name sections that
+  exist.
+- The site builds with `-W`; `test_docs.py` and `test_gui_by_name.py` pass (50);
+  pre-commit passes on the three Python files.
+
+### The batches of Tasks 1.6 and 1.7
+
+On a snapshot of the tree after Task 1.7 (`snap_t17`), which differs from the tree
+after Task 1.6 only in documents, comments, docstrings and `test_docs.py`'s docstring:
+- `unit`: 2524 passed, 119 skipped (Task 1.5's 2521, plus `test_gui_by_name.py`'s 3);
+- `gui`: 342 passed (11 min 31 s);
+- under CI's versions, numba hidden as on CI: `unit` 2514 passed, 129 skipped; `gui`
+  342 passed (11 min 15 s).
+
+### Task 1.8 — The review
+
+Published, draft 1: https://claude.ai/artifact/F6mgYnnpJrHmd3cUmDBdE7 (private to
+RJC). Built by the session scratchpad's `build_doc1_review.py` from:
+- `sitemap.json`: each page's title, sentence of purpose and stage, read from the
+  pages;
+- the screenshots of `test_shots.py` (headless, 1440×900), run under HEAD's code
+  and this tree's on a project saved by HEAD's code: About ALIS, and the `.mod`
+  panel's header in its own window, each before and after. The window's title is
+  drawn by the operating system, so an off-screen grab cannot show it; the page
+  quotes it. Results' history did not fit a grab whole, so the page gives its row
+  as text;
+- WF's new §0, rendered with markdown-it;
+- the batches above.
+
+It gives the hidden version's address with a link to each of the 36 pages, what to
+look for, `prepfit`'s four texts and the GUI's (20 rows for the 36 texts) before and
+after, WF's §0, the choices made beyond the design, and the checks. No question is
+open. Task 1.9 waits for RJC's comments on it, and for CI after the push.

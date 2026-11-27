@@ -535,7 +535,7 @@ class FakeDrag:
 
 
 def test_in_draw_mode_a_right_drag_masks(view, qtbot):
-    """As in prepfit: a left drag adds a region, a right drag leaves pixels out."""
+    """In draw mode, a left drag adds a region and a right drag leaves pixels out."""
     from qtpy import QtCore
 
     widget, _ = view

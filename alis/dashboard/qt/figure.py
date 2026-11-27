@@ -1280,7 +1280,7 @@ class FigureTab(W.Tab):
                 )
             if name.lower() in [p.lower() for p in FP.PRESETS]:
                 raise FG.FigureError(
-                    "{0} is one of the dashboard's own presets.".format(name)
+                    "{0} is one of the GUI's own presets.".format(name)
                 )
             return name
 
@@ -1288,7 +1288,7 @@ class FigureTab(W.Tab):
             "Save as preset",
             "",
             check,
-            "Your presets are kept in the dashboard's folder, for every project.",
+            "Your presets are kept in the GUI's folder, for every project.",
             self,
         )
         if self.main.run_dialog(dialog):

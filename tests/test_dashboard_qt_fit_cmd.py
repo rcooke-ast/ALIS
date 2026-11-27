@@ -156,7 +156,7 @@ def test_a_run_alis_run_is_taken_in_without_asking(window, qtbot, tmp_path):
     asked = len(window.answers.asked)
     window.watch_disk()
     assert len(window.answers.asked) == asked
-    assert "outside the dashboard" in window.statusBar().currentMessage()
+    assert "outside the GUI" in window.statusBar().currentMessage()
     record = R.latest(window.session.project.bundle)
     assert record is not None and record.origin == R.COMMAND
     window.tabs.setCurrentIndex(3)

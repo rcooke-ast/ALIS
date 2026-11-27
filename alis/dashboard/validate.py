@@ -49,7 +49,7 @@ ERROR = "error"
 WARNING = "warning"
 C_KMS = 299792.458
 UNEXPECTED = (
-    "The ALIS dashboard has encountered an unexpected error while checking"
+    "The ALIS GUI has encountered an unexpected error while checking"
     " the model. The terminal window shows the details."
 )
 # ALIS's warnings that do not apply in the dashboard: a blind project still keeps its
@@ -84,7 +84,7 @@ BUFFER = (
     " pixels, but the instrumental resolution needs {2:.1f} km/s. The model may"
     " be wrong near the edge of the fit: widen the snip."
 )
-UNSUPPORTED = "The dashboard cannot run this model as it is: {0}."
+UNSUPPORTED = "The GUI cannot run this model as it is: {0}."
 NO_DATA_LINES = "The model has no data lines yet: add a snip before fitting."
 
 
@@ -392,7 +392,7 @@ def unexpected(error=None):
     """
     detail = traceback.format_exc() if error is not None else ""
     msgs.bug(
-        "The ALIS dashboard has encountered an unexpected error."
+        "The ALIS GUI has encountered an unexpected error."
         + msgs.newline()
         + detail.rstrip().replace("\n", msgs.newline())
     )

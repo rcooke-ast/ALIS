@@ -442,7 +442,7 @@ def test_a_preset_applied_and_saved(window, qtbot, tmp_path):
 
     def save(dialog):
         dialog.set("name", "DH")
-        assert "dashboard's own" in dialog.problem()
+        assert "GUI's own" in dialog.problem()
         dialog.set("name", "my metals")
         return 1
 

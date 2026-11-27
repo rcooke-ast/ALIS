@@ -364,7 +364,7 @@ def test_a_preset_saved_and_loaded_in_another_project(metal, registry, tmp_path)
     path = FG.save_preset(metal, fid, "my metals", str(home))
     assert Path(path).name == "my metals.json"
     assert FG.saved_presets(str(home)) == ["my metals"]
-    with pytest.raises(FG.FigureError, match="dashboard's own"):
+    with pytest.raises(FG.FigureError, match="GUI's own"):
         FG.save_preset(metal, fid, "DH", str(home), builtin=("metals", "DH"))
     # Another project: a fresh import, with no figure yet
     other = P.Project.import_model(str(METAL), registry=registry)
