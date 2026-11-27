@@ -95,6 +95,11 @@ in three ways:*
 project's, DQ2.1), which version's pages the Help link opens (DQ2.2), and what Your
 first fit runs from the command line (DQ2.3).*
 
+*After the close, RJC changed how readthedocs builds the stages (DQ.8's note):
+`alis_v2` is one hidden version, and each stage is built as a preview of its pull
+request into `alis_v2`. "The tools", "How each stage runs", Stage 5's review and
+"After the documentation" follow.*
+
 ## What exists
 
 ### The v1.0 manual (`doc/tex_files/`)
@@ -551,8 +556,9 @@ The site describes the messages in one place, Troubleshooting (Stage 3):
   `pandoc` is not used. Equations are MyST math, drawn by MathJax.
 - **readthedocs:** the project `ALIS-fitting`, at `alis-fitting.readthedocs.io`
   (DQ.6). `.readthedocs.yaml` builds on Ubuntu with Python 3.13 (`pip install
-  .[docs]`, `fail_on_warning: true`), in HTML alone: no PDF or ePub (DQ.3). Each
-  documentation stage's branch is built as a hidden version (DQ.8).
+  .[docs]`, `fail_on_warning: true`), in HTML alone: no PDF or ePub (DQ.3). It
+  builds `alis_v2` as one hidden version, and a preview of each stage's pull request
+  into `alis_v2` (DQ.8, as changed after Stage 1's close).
 - **The checks** (DQ.13 (a)):
   - a `docs` job in CI, on Ubuntu, on every push:
     `sphinx-build -W --keep-going -b html doc/source doc/_build/html`;
@@ -587,8 +593,15 @@ The site describes the messages in one place, Troubleshooting (Stage 3):
   (`claude_prompts/documentation_stageN.md`), written when the stage before it
   closes, with its design, tasks, checks and queries. Its log is
   `claude_prompts/logs/documentation_stageN_log.md`.
-- **Its branch.** Each stage has a branch (`alis_v2_doc_stageN`, made by RJC), which
-  readthedocs builds as a hidden version (DQ.8).
+- **Its branch, and its pull request** (DQ.8, as changed after Stage 1's close).
+  - readthedocs builds `alis_v2` as one hidden version, at
+    `https://alis-fitting.readthedocs.io/en/alis_v2/`. It holds the stages that are
+    closed, together.
+  - RJC makes each stage's branch (`alis_v2_doc_stageN`) from `alis_v2`. At the
+    stage's start, RJC opens a pull request from that branch into `alis_v2`.
+  - readthedocs then builds a preview of the pull request on every push, at the
+    address that the pull request's check links. It is usually
+    `https://alis-fitting--<number>.org.readthedocs.build/en/<number>/`.
 - **After every task:**
   - the site builds with no warning (`build-docs`);
   - `tests/test_docs.py` passes;
@@ -598,10 +611,12 @@ The site describes the messages in one place, Troubleshooting (Stage 3):
   regression harness by Stage 14's rules), also under CI's versions (memory
   `ci-test-versions`).
 - **The review is the last task but one.** It is a claude.ai page that links each page
-  the stage built on the hidden version, says what to look for on each, and asks the
-  stage's open questions. RJC's comments arrive as threads on it.
-- **The last task closes the stage:** its checks, CI on every job, and the next
-  stage's document.
+  the stage built on its pull request's preview, says what to look for on each, and
+  asks the stage's open questions. RJC's comments arrive as threads on it.
+- **The last task closes the stage:** its checks (on the preview, too), CI on every
+  job, and the next stage's document. RJC then merges the pull request into
+  `alis_v2`. The next stage's first prompt checks that `alis_v2`'s version built the
+  merge.
 - **What a documentation stage changes outside `doc/`:**
   - the build (`pyproject.toml`'s `docs` extra, `.readthedocs.yaml`, `MANIFEST.in`,
     `.gitignore`);
@@ -894,7 +909,7 @@ written where every later stage reads it.
      (`documentation_stage1.md`, DQ1.2 and DQ1.3).
 7. **Before the release:** linkcheck, the screenshots made again, and a final pass of
    the whole site against "How the pages are written".
-8. **The review** of the whole site, on its hidden version.
+8. **The review** of the whole site, on its pull request's preview.
 9. **The close.**
 
 **Checks:**
@@ -914,7 +929,8 @@ written where every later stage reads it.
   updates the pages its changes touch (DQ.10's response).
 - **At the merge** of `alis_v2` into `master`, RJC sets readthedocs to build `master`
   as `latest`, each release tag as its own version, and `stable` as the newest
-  release (DQ.6). The hidden versions of the stages are then deactivated.
+  release (DQ.6). `alis_v2`'s hidden version is then deactivated, as is any stage's
+  version still active.
 
 ## Skills to use
 
@@ -1080,6 +1096,13 @@ needs it. It needs the project to exist from Stage 1 (RJC's, DQ.6).
 
 *Applied (Prompt 1): RJC's setup opens Stage 1. Each stage's review page links its
 pages on that stage's hidden version.*
+
+*Changed by RJC after Stage 1's close (2026-11-27). readthedocs now builds
+`alis_v2` alone, as one hidden version, with the closed stages merged in. Each stage
+is built as a preview of its pull request into `alis_v2`, and the stage's review
+links that preview. The close is the pull request's merge. Stage 1 was built as the
+hidden version `alis_v2_doc_stage1`, and then merged into `alis_v2`. The reviews
+are still of the real site's build, which (a) asked for.*
 
 **DQ.9 — `prepfit` and preparing data.** The scripts that select fitting regions and
 write snips live in `examples/prepfit/`, outside the package, and are copied and

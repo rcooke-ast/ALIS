@@ -621,3 +621,46 @@ Stage 2's document), `deferred_work.md` §1.2 ("Planned"), and this stage's docu
 
 Documentation Stage 1 is closed. Stage 2 waits for RJC's answers to DQ2.1–DQ2.3, and
 for its branch, `alis_v2_doc_stage2`, with its hidden version on readthedocs.
+
+## After the close (2026-11-27): one hidden version, and pull-request previews
+
+RJC's question: rather than a hidden version for each stage, build `alis_v2` alone
+as a hidden version, and merge each stage into it at its close. Claude's answer: yes,
+but a stage's review comes before its close, so it needs the stage built somewhere.
+There were two ways to do that:
+- readthedocs' previews of pull requests (recommended);
+- a second merge, before each review.
+
+RJC chose the previews, merged Stage 1 into `alis_v2` (7590f56, a fast-forward from
+0744c8a, Stage 14's close), activated `alis_v2` as a hidden version, and turned the
+previews on.
+
+**Checked:**
+- readthedocs build 36220236 of `alis_v2`, at 7590f56: success. An earlier build of
+  `alis_v2`, 36220209, failed with no commit recorded, and readthedocs gives no error
+  for it.
+- `https://alis-fitting.readthedocs.io/en/alis_v2/`: all 36 addresses of `PAGES`
+  answer (HTTP 200). The front page shows its three ways in, and the sidebar its six
+  captions.
+
+**Changed:**
+- `documentation_stage0.md`:
+  - "The tools" (readthedocs);
+  - "How each stage runs" (the branch and its pull request, the review on the
+    preview, and the merge after the close);
+  - Stage 5's review;
+  - "After the documentation" (`alis_v2`'s version deactivated at the merge);
+  - a note under DQ.8, and a header note.
+- `documentation_stage2.md`:
+  - "RJC first": the branch from `alis_v2`, with this document as its first commit,
+    and the pull request;
+  - the review and the close, on the preview;
+  - Stage 3's first prompt checks `alis_v2`'s build of the merge;
+  - a note under DQ2.2: until the merge into `master`, `latest` builds nothing;
+  - a header note.
+
+**A note for RJC:** CI runs on every push and on every pull request
+(`.github/workflows/ci.yml`). With a stage's pull request open, each push to its
+branch runs CI twice, once for the branch and once for the pull request. The two
+runs are in different concurrency groups, so neither cancels the other. Nothing was
+changed.
