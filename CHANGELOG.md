@@ -9,6 +9,17 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- The documentation's build, for readthedocs (`alis-fitting.readthedocs.io`):
+  the site's sources in `doc/source/`, written in Markdown (MyST) with the furo
+  theme; `.readthedocs.yaml`, which builds it as HTML and fails on a warning; and
+  `doc/source/_ext/`, the site's own Sphinx extension, with a highlighter for model
+  files (code blocks fenced as `alis`) and one for ALIS's messages
+  (`alis-message`). Every page of the site has its address, which it keeps;
+  `tests/test_docs.py` checks that each exists and lists its sources, and that no
+  page names what the site leaves out (Documentation Stage 1).
+- `CITATION.cff`: how to cite ALIS (Cooke et al. 2014, ApJ, 781, 31), which GitHub
+  offers as "Cite this repository"; the documentation's About ALIS page gives the
+  same citation, with the licence and acknowledgements (Documentation Stage 1).
 - A `.mod.out` records the sub-pixels per pixel its fit used, `nsubpixel=N` on each
   data line (as `bufferpix` records its pixels), and ALIS uses a data line's
   `nsubpixel=N` as given. ALIS works the sub-pixels out from the starting values,
@@ -342,6 +353,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   rather than stopping.
 
 ### Changed
+- The `docs` extra installs `sphinx`, `furo` and `myst-parser`, in place of
+  `sphinx-rtd-theme` (Documentation Stage 1).
 - Every model is worked out on at least 10 sub-pixels per pixel (`run
   nsubpixel_min`, 5 before) unless it sets its own: 5 left broad profiles on too few
   sub-pixels to integrate them well. A fit of broad lines can take up to twice as

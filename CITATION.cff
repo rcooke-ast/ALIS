@@ -1,0 +1,39 @@
+# How to cite ALIS (Documentation Stage 1). GitHub reads this file and offers
+# "Cite this repository". The documentation's About ALIS page gives the same
+# citation, and tests/test_docs.py checks that the two agree.
+cff-version: 1.2.0
+message: >-
+  If you use ALIS in your research, please cite the paper below, and give the
+  repository's address.
+title: "ALIS: Absorption LIne Software"
+type: software
+authors:
+  - family-names: Cooke
+    given-names: Ryan
+license: BSD-3-Clause
+repository-code: "https://github.com/rcooke-ast/ALIS"
+url: "https://alis-fitting.readthedocs.io"
+keywords:
+  - astronomy
+  - spectroscopy
+  - absorption lines
+  - model fitting
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Cooke
+      given-names: Ryan J.
+    - family-names: Pettini
+      given-names: Max
+    - family-names: Jorgenson
+      given-names: Regina A.
+    - family-names: Murphy
+      given-names: Michael T.
+    - family-names: Steidel
+      given-names: Charles C.
+  title: "Precision measures of the primordial abundance of deuterium"
+  journal: "The Astrophysical Journal"
+  volume: 781
+  start: 31
+  year: 2014
+  doi: "10.1088/0004-637X/781/1/31"

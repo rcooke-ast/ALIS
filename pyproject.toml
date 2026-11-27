@@ -71,10 +71,14 @@ dev = [
     "isort",
     "pre-commit",
 ]
-# Documentation build.
+# Documentation build (Documentation Stage 1, DQ.1/DQ.2): Sphinx, with the pages
+# in Markdown (myst-parser) and the furo theme. The lower bounds are the oldest
+# versions that build the site, checked in a scratch venv; readthedocs and CI's
+# docs job get the newest.
 docs = [
-    "sphinx",
-    "sphinx-rtd-theme",
+    "sphinx>=8.2",
+    "furo>=2024.8.6",
+    "myst-parser>=4.0",
 ]
 
 [project.urls]

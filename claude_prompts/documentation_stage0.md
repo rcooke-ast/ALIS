@@ -72,6 +72,17 @@ DQ.19 are new: whether a page lists every message, now that they have no codes, 
 *No query is open, and the plan is ready for Documentation Stage 1's document. No
 code was changed.*
 
+*Prompt 3 (2026-11-26) wrote Documentation Stage 1's document,
+`claude_prompts/documentation_stage1.md`, from this plan. Its queries DQ1.1–DQ1.3
+ask about the pages' addresses, the sidebar, and About ALIS's details.*
+
+*Stage 1's Prompt 1 (2026-11-26) brought this plan into step with RJC's responses to
+DQ1.1–DQ1.3:*
+- *a caption for each section of the User guide;*
+- *the GUI and Ryan Cooke by name, as a rule of "How the pages are written";*
+- *"The GUI" and "The GUI at a glance" in the outline;*
+- *the rule joins the stage template at Stage 5.*
+
 ## What exists
 
 ### The v1.0 manual (`doc/tex_files/`)
@@ -217,17 +228,27 @@ to navigate. Every stage writes by these rules, and each review checks them.
   layout the text refers to. It is never decoration (DQ.7).
 - **ALIS's own words.** Menu items, buttons and dialog titles are written as the
   window shows them, so that a user can find them. British spelling, as in ALIS.
+- **The GUI, and Ryan Cooke, by name** (`documentation_stage1.md`, DQ1.2's and
+  DQ1.3's responses).
+  - A page says "the GUI", never "dashboard", except within a code path such as
+    `alis/dashboard/`.
+  - It names Ryan Cooke, never "RJC".
+  - The same holds for every text ALIS shows or ships. Between RJC and Claude, and in
+    the code, "dashboard" and "GUI" are the same thing.
 
 ## The site's outline
 
 The site has a front page and two parts, the **User guide** and the **Developer
-guide**, shown as separate captions in furo's sidebar. The front page says in three
-sentences what ALIS is, and offers three ways in: Your first fit, The dashboard at a
-glance, and The model file. One line below them points developers to their part.
+guide**. furo's sidebar has a caption for each section of the User guide (Getting
+started, The GUI, Fitting with ALIS, Reference, About), then the Developer guide's,
+last (`documentation_stage1.md`, DQ1.2). The front page says in three sentences what
+ALIS is, and offers three ways in: Your first fit, The GUI at a glance, and The model
+file. One line below them points developers to their part.
 
 The pages' addresses are fixed in Documentation Stage 1 (`user/…`, `developer/…`;
-for example `user/dashboard/fit.html`), so that links, and the dashboard's Help menu
-(DQ.12), never move. "WF" is `doc/ALIS_workflow.md`.
+for example `user/gui/fit.html`), so that links, and the GUI's Help menu (DQ.12),
+never move. `documentation_stage1.md` gives each address (DQ1.1). "WF" is
+`doc/ALIS_workflow.md`.
 
 ### User guide (readers 1–3)
 
@@ -245,12 +266,12 @@ for example `user/dashboard/fit.html`), so that links, and the dashboard's Help 
    the dashboard, then the same fit with `run_alis`. Sources: WF §4.1, and the
    dashboard.
 
-*The dashboard*
+*The GUI*
 
 Sources for pages 4–10: WF §4.3, the code, and the decisions of
 `ALIS_v2_dashboard_prompts.md`, ordered by task.
 
-4. **The dashboard at a glance**: opening it; projects and saving (bundles, autosave,
+4. **The GUI at a glance**: opening it; projects and saving (bundles, autosave,
    recovery); the window (the tabs and their markers, the `.mod` panel, the status
    bar); Undo; blinding (Blind the analysis…, Blind lines…, Unblind…); Preferences…;
    keys (Keyboard shortcuts, Keys…).
@@ -337,7 +358,7 @@ Sources for pages 4–10: WF §4.3, the code, and the decisions of
    checked against the `new-alfunc` skill's recipe.
 3. **GPU kernels**: `voigt_gpu.py` as the model, the dispatch and its threshold, and
    testing against the CPU (the `port-to-gpu` skill).
-4. **The dashboard's code**: the logic in `alis/dashboard/`, the windows in
+4. **The GUI's code**: the logic in `alis/dashboard/`, the windows in
    `alis/dashboard/qt/`, the project model, the history, the blinding gate, the
    validator and the pre-flight check, and the modes.
 5. **Tests and the regression harness**: the batches and markers, the harness's
@@ -722,7 +743,7 @@ menu item and dialog described.
    - `doc/installing.rst` is removed.
 2. **`screenshots.py`:** the script, the folder of screenshots, and a test that every
    image a page uses exists and is one the script names.
-3. **The dashboard at a glance**, and **Data**.
+3. **The GUI at a glance**, and **Data**.
 4. **Regions** and **Components**.
 5. **Fit**, with its three sub-tabs and its tools, and **Figure**. The pre-flight
    check's findings and Warnings and options to resolve… are described here, each
@@ -841,16 +862,24 @@ written where every later stage reads it.
    - a figure for a few examples only (DQ.7).
 2. **The Developer guide, part 1:** How ALIS is organised; Adding a model function
    (checked against the `new-alfunc` skill); GPU kernels.
-3. **The Developer guide, part 2:** The dashboard's code; Tests and the regression
-   harness; Writing the documentation.
+3. **The Developer guide, part 2:** The GUI's code (which says once that the GUI's
+   code is `alis/dashboard/`); Tests and the regression harness; Writing the
+   documentation.
 4. **`CONTRIBUTING.md`** at the repository's root, included in the site. **API**
-   (DQ.14 (a)), with no warning from those modules' docstrings. **Changelog**.
+   (DQ.14 (a)), with no warning from those modules' docstrings. A hook in
+   `alisdoc.py` drops each docstring's "Generated by …" line, so that no API page
+   shows "RJC" (`documentation_stage1.md`, DQ1.4 (a)); the code keeps its comments
+   and docstrings as they are. **Changelog**, with the CHANGELOG's
+   [Unreleased] section rewritten for the release: the GUI by name, and no design
+   stages or query numbers.
 5. **The README:** short, with the site's link, the install line, and citing ALIS
    (as About ALIS does).
-6. **The rule for later stages** (DQ.10): the template (`dashboard_stageX.md`) and
-   `dashboard_stage15.md` gain it. The task just before the review updates the site's
-   pages that the stage's changes touch, and the site builds with no warning after
-   every task (Q15.3).
+6. **The rules for later stages** (DQ.10): the template (`dashboard_stageX.md`) and
+   `dashboard_stage15.md` gain them.
+   - The task just before the review updates the site's pages that the stage's
+     changes touch, and the site builds with no warning after every task (Q15.3).
+   - Every text a user sees says "GUI" and "Ryan Cooke", never "dashboard" or "RJC"
+     (`documentation_stage1.md`, DQ1.2 and DQ1.3).
 7. **Before the release:** linkcheck, the screenshots made again, and a final pass of
    the whole site against "How the pages are written".
 8. **The review** of the whole site, on its hidden version.
@@ -859,7 +888,7 @@ written where every later stage reads it.
 **Checks:**
 - Every shipped example has its entry, and its included model is the harness's own.
 - Linkcheck passes.
-- The API pages build with no warning.
+- The API pages build with no warning, and none shows "RJC".
 - RJC's review is applied.
 - The rule is in the template.
 
@@ -868,7 +897,7 @@ written where every later stage reads it.
 - **Dashboard Stage 15** comes next, under DQ.10's rule (its Q15.3 (a)).
   - Its items 12–14 remove the pages' notes on the three faults.
   - Its item 17, Help → Atomic data (RJC, DQ.19's response), adds the dialog to the
-    Atomic data page and to The dashboard at a glance.
+    Atomic data page and to The GUI at a glance.
 - **Every later stage** keeps the site in step: the task just before its review
   updates the pages its changes touch (DQ.10's response).
 - **At the merge** of `alis_v2` into `master`, RJC sets readthedocs to build `master`

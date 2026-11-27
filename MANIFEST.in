@@ -4,14 +4,13 @@ include README.md
 include setup.cfg
 
 recursive-include *.pyx *.c *.pxd
-recursive-include docs *
+recursive-include doc/source *
 recursive-include licenses *
 recursive-include cextern *
 recursive-include scripts *
 
 prune build
-prune docs/_build
-prune docs/api
+prune doc/_build
 
 #recursive-include astropy_helpers *
 #exclude astropy_helpers/.git
