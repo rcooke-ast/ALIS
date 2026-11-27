@@ -118,7 +118,7 @@ def shoot_menu(menu, at, path):
 
 def screens(window, outdir, work):
     """The screens, each a function that saves its PNG."""
-    from dashboard_fits import SII, SPECTRUM, noisy_copy, prepfit_snip
+    from dashboard_fits import SII, SPECTRUM, earlier_snip, noisy_copy
     from dashboard_synthetic import (
         write_linked_fit,
         write_ratio_fit,
@@ -249,7 +249,7 @@ def screens(window, outdir, work):
         window.set_panel_open(False)
         project = session.project
         spectra = {r.id: SR.spectrum(project, r) for r in project.rows}
-        theirs = prepfit_snip(
+        theirs = earlier_snip(
             work / "empty" / "data",
             noisy_copy(work / "empty"),
             SII,

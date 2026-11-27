@@ -97,8 +97,8 @@ def screens(window, outdir, work):
         OI,
         SII,
         SPECTRUM,
+        earlier_snip,
         noisy_copy,
-        prepfit_snip,
         two_exposures,
         write_mod,
     )
@@ -121,9 +121,9 @@ def screens(window, outdir, work):
         src, other = spectra(folder / "spectra")
         data = folder / "old" / "data"
         snips = [
-            (prepfit_snip(data, src, OI, name="specA_16O_I_1302.2_reg.dat"),)
+            (earlier_snip(data, src, OI, name="specA_16O_I_1302.2_reg.dat"),)
             + ("7.0", "va", "shift=vshift(0.0vsa)"),
-            (prepfit_snip(data, other, SII, name="specB_28Si_II_1304.4_reg.dat"),)
+            (earlier_snip(data, other, SII, name="specB_28Si_II_1304.4_reg.dat"),)
             + ("5.0", "vb", ""),
         ] + list(extra)
         return src, other, write_mod(folder / "old", snips)
@@ -148,7 +148,7 @@ def screens(window, outdir, work):
             work / "open",
             [
                 (
-                    prepfit_snip(
+                    earlier_snip(
                         work / "open" / "old" / "data",
                         far,
                         OI,
@@ -221,12 +221,12 @@ def screens(window, outdir, work):
         mod = write_mod(
             work / "overlap" / "old",
             [
-                (prepfit_snip(data, src, OI, name="specA_16O_I_1302.2_reg.dat"),)
+                (earlier_snip(data, src, OI, name="specA_16O_I_1302.2_reg.dat"),)
                 + ("7.0", "va", ""),
-                (prepfit_snip(data, one, OI, name="e1_16O_I_1302.2_reg.dat"),)
+                (earlier_snip(data, one, OI, name="e1_16O_I_1302.2_reg.dat"),)
                 + ("5.0", "vb", ""),
                 (
-                    prepfit_snip(
+                    earlier_snip(
                         data, two, OI, name="e2_16O_I_1302.2_reg.dat", centre=1302.3
                     ),
                 )

@@ -161,9 +161,10 @@ correctness first, then what users need next, then effort; RJC orders the work.
   `run_alis --list-settings` (Stage 6.1, Q6.24) covers settings discovery in the
   meantime.
 - **Planned:** in `documentation_stage0.md` (D87), Documentation Stages 1–5. The
-  plan's queries (DQ.1–DQ.19) are answered, and Documentation Stage 1 has started
-  (2026-11-26, `documentation_stage1.md`). `CONTRIBUTING.md` is in Documentation
-  Stage 5.
+  plan's queries (DQ.1–DQ.19) are answered. Documentation Stage 1 (the skeleton)
+  closed on 2026-11-27, and Stage 2's document (`documentation_stage2.md`, Getting
+  started and the GUI) waits for answers to its queries, DQ2.1–DQ2.3.
+  `CONTRIBUTING.md` is in Documentation Stage 5.
 
 ### 1.3 YAML/TOML model files (Stage 5.1)
 - **What:** a second model-file format alongside `.mod`.

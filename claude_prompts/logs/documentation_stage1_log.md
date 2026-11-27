@@ -520,3 +520,104 @@ It gives the hidden version's address with a link to each of the 36 pages, what 
 look for, `prepfit`'s four texts and the GUI's (20 rows for the 36 texts) before and
 after, WF's §0, the choices made beyond the design, and the checks. No question is
 open. Task 1.9 waits for RJC's comments on it, and for CI after the push.
+
+## Prompt 4 (2026-11-27): Task 1.9, the close
+
+RJC committed Tasks 1.5–1.8 (4f05fca, "stage 1 completed") and pushed. Prompt 4:
+"Everything looks good to me so far. Please proceed with the next task." The review
+page has no comment threads.
+
+### Task 1.9 — The close
+
+**The stage's checks**, at 4f05fca:
+- **The site builds with no warning**, here (`sphinx-build -W --keep-going`, in the
+  scratch venv with the `docs` extra) and on readthedocs (build 36213010 of
+  `alis_v2_doc_stage1`, at 4f05fca, `fail_on_warning`: success).
+- **Every page of the outline is at its address, with its sources.**
+  `test_docs.py`'s tests of `PAGES` pass. On the hidden version, all 36 addresses
+  answer (HTTP 200), and the front page shows its three ways in and the sidebar its
+  six captions.
+- **No file under `doc/source/` names `prepfit`, the v1.0 manual or `context/`**,
+  nor says "dashboard" or "RJC" (`test_docs.py`'s `LEFT_OUT`).
+- **`git grep -i prepfit`** outside `claude_prompts/`, `logs/` and `doc/dashboard/`
+  finds the CHANGELOG's Removed entry and `test_docs.py`'s pattern alone.
+  `atomic.dat` outside them: the Removed entry alone.
+- **No text a user sees says "dashboard" or "RJC":** `test_docs.py` and
+  `test_gui_by_name.py` pass (50).
+- **The batches**, on a snapshot of 4f05fca (`git archive`, with `context/`
+  linked): `unit` 2524 passed, 119 skipped; `gui` 342 passed (11 min 42 s). These
+  are the counts of Task 1.7's batches.
+- **`CITATION.cff`:** `cffconvert --validate`: "Citation metadata are valid
+  according to schema version 1.2.0." The citation's test passes.
+
+**CI** (run 46014614916, at 4f05fca): every job passed. `docs` and `lint` under a
+minute; `unit` 2 min on Ubuntu and macOS; `gui` 24 min (Ubuntu) and 18 min (macOS);
+`examples` 4 and 8 min.
+
+**Found, and fixed:** Task 1.5 renamed the tests' helper `prepfit_snip` to
+`earlier_snip`, but two of the review pages' scripts import it:
+`doc/dashboard/stage11/take_screenshots.py` (7 lines) and
+`doc/dashboard/stage12/take_screenshots.py` (2 lines). Both failed at their import.
+They now import `earlier_snip`, with isort's order (pre-commit passes). The screens
+that use it were run off-screen, and drew with no failure: Stage 11's
+`regions_two`, `open_fit` and `overlap` (6 images), and Stage 12's `emptied` (2).
+Stages 13 and 14 load Stage 12's script, and need nothing more. The design counted
+`doc/dashboard/` as history, which is why Task 1.7's search passed it over. These
+are scripts that still run, so they now match the helper. `git grep -i prepfit`
+there now finds only the prose of Stage 4's two review builders.
+
+**The stage's counts:**
+- **Pages:** 36 at their addresses (the front page, 26 in the User guide, 9 in the
+  Developer guide). Two are written in full (the front page and About ALIS); 34 hold
+  their title, sentence of purpose and sources, with `% Written in:` for Stage 2
+  (10), 3 (5), 4 (9) and 5 (10).
+- **The site's sources:** `conf.py`, `_ext/alis_lexers.py` and `_ext/alisdoc.py`,
+  and the 36 pages. `CITATION.cff` at the root.
+- **Tests:** `test_docs.py` 47 and `test_gui_by_name.py` 3 are new;
+  `test_prepfit_deprecated.py`'s one test is gone; two tests are renamed. The `unit`
+  batch collects 2643 (Stage 14's close: 2594).
+- **Batches:** `unit` 2524 passed, 119 skipped (Stage 14's close: 2475 passed);
+  `gui` 342 passed, unchanged. Under CI's versions at Task 1.7: `unit` 2514 passed,
+  129 skipped; `gui` 342.
+- **ALIS:** `prepfit` (2 files), its example (3), its test and `atomic.dat` removed;
+  36 texts of the GUI reworded, in 16 files; `pyproject.toml`'s licence in SPDX
+  form.
+
+### Documentation Stage 2's document
+
+`claude_prompts/documentation_stage2.md`, written from `documentation_stage0.md`'s
+Stage 2, this log and 4f05fca:
+- **What it builds:**
+  - Introduction, Installing and Your first fit;
+  - the GUI's seven pages, each laid out the same way;
+  - `doc/source/screenshots.py`, which makes the pages' 23 images (about 3 MB) and
+    Your first fit's numbers;
+  - Help → ALIS documentation (`alis/dashboard/helpdocs.py`, the action
+    `help.documentation`, and their tests);
+  - the completeness test of the actions and dialogs.
+- **Three changes to the plan's order:**
+  - the Help link first (2.1), so that its batches run once;
+  - `screenshots.py` before the pages (2.2);
+  - the completeness test after the last page (2.9).
+- **Found while drafting:**
+  - **The name `alis` on PyPI is another project's** ("ALIS API Python Client",
+    0.0.5), so `pip install alis` installs the wrong package. With ALIS installed,
+    though, `pip install --dry-run "alis[gui]"` takes the extras from the installed
+    ALIS and fetches nothing from PyPI (checked in a scratch venv). So the GUI's
+    two messages that name the extras are right as they are.
+  - **The examples are not in the package** (`alis*` and `alis/data/*` alone).
+  - **The only git tag is `Release`.**
+- **Its queries, each with a lean:**
+  - DQ2.1, how a user installs ALIS (lean: a clone, then `pip install ".[gui]"`;
+    PyPI's name settled at the release);
+  - DQ2.2, which version's pages the Help link opens (lean: the installed
+    version's, `latest` for a development version, tags `v2.0.0`);
+  - DQ2.3, what Your first fit runs from the command line (lean: the project the
+    GUI saved, so that both halves are one fit).
+
+**Also changed:** `documentation_stage0.md` (a header note on Stage 1's close and
+Stage 2's document), `deferred_work.md` §1.2 ("Planned"), and this stage's document
+(a header note).
+
+Documentation Stage 1 is closed. Stage 2 waits for RJC's answers to DQ2.1–DQ2.3, and
+for its branch, `alis_v2_doc_stage2`, with its hidden version on readthedocs.

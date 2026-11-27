@@ -83,6 +83,18 @@ DQ1.1–DQ1.3:*
 - *"The GUI" and "The GUI at a glance" in the outline;*
 - *the rule joins the stage template at Stage 5.*
 
+*Stage 1 closed on 2026-11-27 (its Task 1.9), and Stage 2's document,
+`documentation_stage2.md`, was written from this plan. It changes the plan's Stage 2
+in three ways:*
+- *the Help link is its first task, so that the stage's one change to ALIS is made
+  and tested before the pages describe it;*
+- *`screenshots.py` comes before the pages;*
+- *the completeness test comes after the last page.*
+
+*Its queries ask how a user installs ALIS (the name `alis` on PyPI is another
+project's, DQ2.1), which version's pages the Help link opens (DQ2.2), and what Your
+first fit runs from the command line (DQ2.3).*
+
 ## What exists
 
 ### The v1.0 manual (`doc/tex_files/`)

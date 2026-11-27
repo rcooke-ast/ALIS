@@ -86,6 +86,14 @@ transition; and `test_docs.py`'s pattern is the one line outside the history and
 the CHANGELOG that names `prepfit`, since the pattern must contain the word.
 Task 1.9 waits for RJC's comments on the review page and for CI after the push.*
 
+*Prompt 4 (2026-11-27) closed the stage (Task 1.9), logged in
+`logs/documentation_stage1_log.md`. The review page had no comments, and RJC's
+commit 4f05fca passed every check: readthedocs, CI on every job, the batches and
+`CITATION.cff`. The close found that Task 1.5's rename of `prepfit_snip` had broken
+two of the review pages' scripts (`doc/dashboard/stage11/` and `stage12/`). They now
+import `earlier_snip`, and their screens draw again. Documentation Stage 2's
+document, `documentation_stage2.md`, is written, with DQ2.1–DQ2.3.*
+
 ## RJC first
 
 Before Task 1.1 (DQ.6, DQ.8):
@@ -880,3 +888,4 @@ warnings' absence and the installed package's licence.*
 1. Please read my responses to your queries, the ALIS code base, and the dashboard development (their design documents and logs). If anything is unclear, ask in the Queries section, and I will respond; when everything is clear, please update this document to reflect any changes to the design document based on my responses. Please let me know when you are ready to proceed with the next steps of the documentation development in this stage.
 2. Please execute Tasks 1.1-1.4, and after that, please pause while I push and activate the docs on readthedocs. Once you've completed stage 1.4, please provide instructions about the steps I need to perform to successfully load the documentation onto readthedocs.
 3. I have executed all the tasks you mentioned. The version's address is: `https://alis-fitting.readthedocs.io/en/alis_v2_doc_stage1/`. Please finish Task 1.4's check. Once that is confirmed, please ask further queries if needed, and then proceed with executing the next tasks in this stage.
+4. Everything looks good to me so far. Please proceed with the next task.
